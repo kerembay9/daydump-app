@@ -1,4 +1,5 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { PhotoAsset } from '../types';
 
 // High-aesthetic fallback photos for simulator testing or when camera roll is empty
@@ -83,11 +84,44 @@ export class GalleryService {
    */
   static async requestPermissions(): Promise<boolean> {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      return status === 'granted';
+      // Explicitly request ONLY 'photo' permission so Android does not reject due to undeclared AUDIO permission
+      const response = await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+      return response.status === 'granted' || (response as any).accessPrivileges === 'limited';
     } catch (e) {
       console.warn('[GalleryService] Permissions check failed:', e);
       return false;
+    }
+  }
+
+  /**
+   * Launch system photo picker to let user select photos directly
+   * (Works 100% reliably in Expo Go and Android 13/14 without broad storage permissions)
+   */
+  static async pickPhotosFromGallery(): Promise<PhotoAsset[]> {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 10,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return [];
+      }
+
+      return result.assets.map((asset, idx) => ({
+        id: asset.assetId || `picked-${Date.now()}-${idx}`,
+        uri: asset.uri,
+        filename: asset.fileName || `photo-${idx}.jpg`,
+        creationTime: Date.now() - idx * 1000 * 60 * 30,
+        width: asset.width || 1200,
+        height: asset.height || 1500,
+        mediaType: 'photo',
+      }));
+    } catch (e) {
+      console.warn('[GalleryService] Image picker failed:', e);
+      return [];
     }
   }
 

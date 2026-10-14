@@ -4,11 +4,11 @@ import {
   View,
   Text,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   StatusBar,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from './src/components/Header';
 import { ThemePromptBar } from './src/components/ThemePromptBar';
 import { CarouselViewer } from './src/components/CarouselViewer';
@@ -121,6 +121,25 @@ export default function App() {
     }
   };
 
+  const handlePickFromGallery = async () => {
+    try {
+      const photos = await GalleryService.pickPhotosFromGallery();
+      if (photos.length > 0) {
+        setIsLoading(true);
+        setLoadingText('Gemini Nano curating selected photos...');
+        const curated = await GeminiService.curateCarousel(photos, 'My Selection', 6);
+        if (!subscription.isPro) {
+          curated.frameStyle = 'clean';
+        }
+        setCarousel(curated);
+      }
+    } catch (e) {
+      console.warn('Pick photos error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSelectFrame = (style: FrameStyle) => {
     if (style !== 'clean' && !subscription.isPro) {
       setShowPaywall(true);
@@ -146,34 +165,36 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
 
-      {/* Header */}
-      <Header
-        subscription={subscription}
-        onOpenPaywall={() => setShowPaywall(true)}
-        onOpenSettings={() => setShowSettings(true)}
-      />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#FF9500"
-          />
-        }
-      >
-        {/* Theme Prompt Bar with Custom Query & Preset Chips */}
-        <ThemePromptBar
-          isPro={subscription.isPro}
-          isLoading={isLoading}
-          onCurateTheme={handleCurateTheme}
-          onRequirePro={() => setShowPaywall(true)}
+        {/* Header */}
+        <Header
+          subscription={subscription}
+          onOpenPaywall={() => setShowPaywall(true)}
+          onOpenSettings={() => setShowSettings(true)}
         />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF9500"
+            />
+          }
+        >
+          {/* Theme Prompt Bar with Custom Query & Preset Chips */}
+          <ThemePromptBar
+            isPro={subscription.isPro}
+            isLoading={isLoading}
+            onCurateTheme={handleCurateTheme}
+            onRequirePro={() => setShowPaywall(true)}
+            onPickFromGallery={handlePickFromGallery}
+          />
 
         {/* Loading Overlay or Carousel Studio */}
         {isLoading ? (
@@ -222,6 +243,7 @@ export default function App() {
         onReloadSubscription={refreshSubscriptionState}
       />
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

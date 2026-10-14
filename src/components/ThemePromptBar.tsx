@@ -8,7 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Sparkles, Lock, ArrowRight } from 'lucide-react-native';
+import { Sparkles, Lock, ArrowRight, Image as ImageIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 interface ThemePromptBarProps {
@@ -16,6 +16,7 @@ interface ThemePromptBarProps {
   isLoading: boolean;
   onCurateTheme: (themeQuery: string, isCustom: boolean) => void;
   onRequirePro: () => void;
+  onPickFromGallery?: () => void;
 }
 
 const PRESET_CHIPS = [
@@ -31,6 +32,7 @@ export const ThemePromptBar: React.FC<ThemePromptBarProps> = ({
   isLoading,
   onCurateTheme,
   onRequirePro,
+  onPickFromGallery,
 }) => {
   const [inputText, setInputText] = useState('');
 
@@ -94,6 +96,23 @@ export const ThemePromptBar: React.FC<ThemePromptBarProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chipsScroll}
       >
+        {onPickFromGallery && (
+          <TouchableOpacity
+            style={[styles.chip, styles.chipPick]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onPickFromGallery();
+            }}
+            activeOpacity={0.7}
+            disabled={isLoading}
+          >
+            <ImageIcon size={12} color="#0A84FF" style={styles.chipIcon} />
+            <Text style={[styles.chipText, { color: '#0A84FF', fontWeight: '700' }]}>
+              Pick Photos
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {PRESET_CHIPS.map((chip) => {
           const isLocked = chip.isProOnly && !isPro;
           return (
@@ -170,6 +189,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 149, 0, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  chipPick: {
+    backgroundColor: 'rgba(10, 132, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(10, 132, 255, 0.3)',
   },
   chipIcon: {
     marginRight: 4,
