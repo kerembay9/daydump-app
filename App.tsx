@@ -1,20 +1,261 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
+  StatusBar,
+} from 'react-native';
+import { Header } from './src/components/Header';
+import { ThemePromptBar } from './src/components/ThemePromptBar';
+import { CarouselViewer } from './src/components/CarouselViewer';
+import { CaptionStudio } from './src/components/CaptionStudio';
+import { PaywallModal } from './src/components/PaywallModal';
+import { SettingsModal } from './src/components/SettingsModal';
+import { GalleryService } from './src/services/galleryService';
+import { GeminiService } from './src/services/geminiService';
+import { RevenueCatService } from './src/services/revenuecat';
+import { ShareService } from './src/services/shareService';
+import { CuratedCarousel, FrameStyle, UserSubscriptionState } from './src/types';
 
 export default function App() {
+  const [subscription, setSubscription] = useState<UserSubscriptionState>({
+    isPro: false,
+    dailyDumpsUsedToday: 0,
+    maxFreeDailyDumps: 1,
+  });
+
+  const [carousel, setCarousel] = useState<CuratedCarousel | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadingText, setLoadingText] = useState<string>('Scanning camera roll...');
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const [showPaywall, setShowPaywall] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+
+  useEffect(() => {
+    initApp();
+  }, []);
+
+  const initApp = async () => {
+    await RevenueCatService.init();
+    await refreshSubscriptionState();
+    await loadInitialDailyDump();
+  };
+
+  const refreshSubscriptionState = async () => {
+    const state = await RevenueCatService.getUserSubscriptionState();
+    setSubscription(state);
+    return state;
+  };
+
+  const loadInitialDailyDump = async () => {
+    setIsLoading(true);
+    setLoadingText('Scanning today’s camera roll...');
+
+    try {
+      // 1. Fetch today's photos
+      const photos = await GalleryService.fetchTodaysPhotos(30);
+
+      // 2. Curate initial daily recap with Gemini Nano on-device engine
+      setLoadingText('Gemini Nano analyzing scenes & pacing...');
+      const curated = await GeminiService.curateCarousel(photos, undefined, 6);
+
+      // Default frame: if free, use 'clean'; if pro, use 'film35mm'
+      const state = await RevenueCatService.getUserSubscriptionState();
+      if (!state.isPro) {
+        curated.frameStyle = 'clean';
+      }
+
+      setCarousel(curated);
+    } catch (err) {
+      console.warn('Initial dump error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCurateTheme = async (themeQuery: string, isCustom: boolean) => {
+    // Aggressive Creator Model Paywall Gate 1: Custom theme prompts require Pro
+    if (isCustom && !subscription.isPro) {
+      setShowPaywall(true);
+      return;
+    }
+
+    // Aggressive Creator Model Paywall Gate 2: More than 1 daily dump requires Pro
+    if (!subscription.isPro && subscription.dailyDumpsUsedToday >= subscription.maxFreeDailyDumps) {
+      setShowPaywall(true);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingText(`Searching photos for "${themeQuery || 'Today'}"...`);
+
+    try {
+      const photos = themeQuery
+        ? await GalleryService.fetchPhotosForTheme(themeQuery, 35)
+        : await GalleryService.fetchTodaysPhotos(30);
+
+      setLoadingText('Gemini Nano structuring visual story...');
+      const curated = await GeminiService.curateCarousel(photos, themeQuery, 6);
+
+      // Enforce frame style based on subscription
+      if (!subscription.isPro) {
+        curated.frameStyle = 'clean';
+      }
+
+      setCarousel(curated);
+
+      // Track usage for free limits
+      if (!subscription.isPro) {
+        await RevenueCatService.recordDumpGenerated();
+        await refreshSubscriptionState();
+      }
+    } catch (err) {
+      console.warn('Curate theme error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectFrame = (style: FrameStyle) => {
+    if (style !== 'clean' && !subscription.isPro) {
+      setShowPaywall(true);
+      return;
+    }
+
+    if (carousel) {
+      setCarousel({ ...carousel, frameStyle: style });
+    }
+  };
+
+  const handleShareSlide = async (slideIndex: number) => {
+    if (!carousel) return;
+    const slide = carousel.slides[slideIndex] || carousel.slides[0];
+    await ShareService.shareSlide(slide, carousel.captions.minimal);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshSubscriptionState();
+    await loadInitialDailyDump();
+    setRefreshing(false);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
+
+      {/* Header */}
+      <Header
+        subscription={subscription}
+        onOpenPaywall={() => setShowPaywall(true)}
+        onOpenSettings={() => setShowSettings(true)}
+      />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FF9500"
+          />
+        }
+      >
+        {/* Theme Prompt Bar with Custom Query & Preset Chips */}
+        <ThemePromptBar
+          isPro={subscription.isPro}
+          isLoading={isLoading}
+          onCurateTheme={handleCurateTheme}
+          onRequirePro={() => setShowPaywall(true)}
+        />
+
+        {/* Loading Overlay or Carousel Studio */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF9500" />
+            <Text style={styles.loadingText}>{loadingText}</Text>
+          </View>
+        ) : carousel ? (
+          <>
+            {/* 4:5 Instagram Feed Carousel Preview */}
+            <CarouselViewer
+              carousel={carousel}
+              isPro={subscription.isPro}
+              onSelectFrame={handleSelectFrame}
+              onShare={handleShareSlide}
+              onRequirePro={() => setShowPaywall(true)}
+            />
+
+            {/* Multi-Tone Caption Studio & Hashtags */}
+            <CaptionStudio
+              carousel={carousel}
+              isPro={subscription.isPro}
+              onRequirePro={() => setShowPaywall(true)}
+            />
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No photos found. Take a few photos today to begin!</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Aggressive Creator Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onSuccess={async () => {
+          await refreshSubscriptionState();
+        }}
+      />
+
+      {/* Settings & Dev Debug Modal */}
+      <SettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+        onReloadSubscription={refreshSubscriptionState}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0A0A0C',
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    height: 400,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    marginTop: 14,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+    letterSpacing: 0.3,
+  },
+  emptyContainer: {
+    height: 300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+  },
+  emptyText: {
+    color: '#8E8E93',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

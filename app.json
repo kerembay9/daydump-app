@@ -7,11 +7,23 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.daydump.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "DayDump scans your photos locally to curate aesthetic Instagram carousels and suggest daily themes.",
+        "NSPhotoLibraryAddUsageDescription": "DayDump needs permission to save your curated carousel slides to your camera roll."
+      }
     },
     "android": {
+      "package": "com.daydump.app",
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#121212",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +32,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow DayDump to access your photos to curate daily aesthetic carousels.",
+          "savePhotosPermission": "Allow DayDump to save curated posts to your gallery.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ]
   }
 }
