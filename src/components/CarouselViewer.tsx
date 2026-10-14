@@ -78,6 +78,16 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* AI Visual Understanding Pill (Shows what Gemini detected in this photo) */}
+      {currentSlide?.subtitle && (
+        <View style={styles.visionDetailBadge}>
+          <Sparkles size={11} color="#FF9500" style={{ marginRight: 4 }} />
+          <Text style={styles.visionDetailText} numberOfLines={1}>
+            {currentSlide.subtitle}
+          </Text>
+        </View>
+      )}
+
       {/* 4:5 Aspect Ratio Swipeable Carousel */}
       <ScrollView
         horizontal
@@ -240,6 +250,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  visionDetailBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1E1C14',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  visionDetailText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFD60A',
+    flex: 1,
   },
   scrollWrapper: {
     width: SCREEN_WIDTH,

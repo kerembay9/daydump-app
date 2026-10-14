@@ -140,7 +140,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.inputLabel}>Google Gemini API Key (For Cloud Flash)</Text>
+              <Text style={styles.inputLabel}>Google Gemini API Key (Multimodal Vision)</Text>
+              <Text style={styles.helperText}>
+                Unlocks deep pixel vision: detects exact objects, people, food, and vibes in your photos. Free key at aistudio.google.com
+              </Text>
               <TextInput
                 style={styles.input}
                 placeholder="AIzaSy..."
@@ -271,7 +274,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#8E8E93',
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#8E8E93',
+    lineHeight: 15,
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#121212',
