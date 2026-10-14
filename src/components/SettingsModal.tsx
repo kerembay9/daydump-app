@@ -14,6 +14,7 @@ import { X, Key, ShieldCheck, Cpu, RefreshCw } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RevenueCatService } from '../services/revenuecat';
 import { GeminiService } from '../services/geminiService';
+import { GemmaService, GemmaModelStatus } from '../services/gemmaService';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -29,6 +30,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [geminiKey, setGeminiKey] = useState('');
   const [rcKey, setRcKey] = useState('');
   const [isSimulatedPro, setIsSimulatedPro] = useState(false);
+  const [gemmaStatus, setGemmaStatus] = useState<GemmaModelStatus | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -40,10 +42,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const savedGemini = await GeminiService.getApiKey();
     const savedRc = await RevenueCatService.getCustomApiKey();
     const subState = await RevenueCatService.getUserSubscriptionState();
+    const gemma = await GemmaService.checkStatus();
 
     if (savedGemini) setGeminiKey(savedGemini);
     if (savedRc) setRcKey(savedRc);
     setIsSimulatedPro(subState.isPro);
+    setGemmaStatus(gemma);
   };
 
   const handleSaveKeys = async () => {
@@ -90,12 +94,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <View style={styles.card}>
               <View style={styles.row}>
-                <Text style={styles.cardLabel}>Primary Engine</Text>
-                <Text style={styles.statusBadge}>Gemini Nano (On-Device)</Text>
+                <Text style={styles.cardLabel}>On-Device Model</Text>
+                <Text style={gemmaStatus?.isAvailable ? styles.statusBadge : styles.statusBadgeSubtle}>
+                  {gemmaStatus?.isAvailable ? 'Gemma E2B (Active)' : 'Gemma E2B (Searching)'}
+                </Text>
               </View>
-              <View style={styles.row}>
-                <Text style={styles.cardLabel}>Fallback Engine</Text>
-                <Text style={styles.statusBadgeSubtle}>Gemini 2.0 Flash (Cloud)</Text>
+              {gemmaStatus?.isAvailable ? (
+                <View style={styles.row}>
+                  <Text style={styles.cardSublabel}>Model Weights</Text>
+                  <Text style={[styles.cardSublabel, { color: '#30D158', fontWeight: '700' }]}>
+                    {gemmaStatus.fileName} ({Math.round(gemmaStatus.fileSizeMB || 0)} MB)
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={styles.cardSublabel}>
+                    Scanning /sdcard/Download/ for Gemma .bin / .task weights
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.row, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#2C2C2E' }]}>
+                <Text style={styles.cardLabel}>Cloud Fallback</Text>
+                <Text style={styles.statusBadgeSubtle}>Gemini 2.0 Flash</Text>
               </View>
             </View>
           </View>

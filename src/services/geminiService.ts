@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { PhotoAsset, CuratedCarousel, CarouselSlide, FrameStyle } from '../types';
+import { GemmaService } from './gemmaService';
 
 const STORAGE_KEYS = {
   GEMINI_API_KEY: '@daydump_gemini_api_key',
@@ -31,9 +32,20 @@ export class GeminiService {
       throw new Error('No photos available to curate');
     }
 
+    // 1. First Priority: Check if On-Device Gemma E2B is available via MediaPipe!
+    try {
+      const gemmaStatus = await GemmaService.checkStatus();
+      if (gemmaStatus.isAvailable) {
+        console.log('[GeminiService] Found on-device Gemma weights at:', gemmaStatus.modelPath);
+        return await GemmaService.generateCuratedCarousel(photos, userTheme, requestedCount);
+      }
+    } catch (err) {
+      console.warn('[GeminiService] On-device Gemma execution error:', err);
+    }
+
     const apiKey = await this.getApiKey();
 
-    // If a Gemini API key is configured, perform REAL Multimodal Pixel Understanding!
+    // 2. Second Priority: Cloud Multimodal Vision if key is configured
     if (apiKey && apiKey.trim().length > 10) {
       try {
         console.log('[GeminiService] Launching Deep Multimodal Vision Pipeline...');
@@ -43,7 +55,7 @@ export class GeminiService {
       }
     }
 
-    // Default: On-device simulation engine (chronological pacing & theme inference)
+    // 3. Fallback: On-device chronological simulation engine
     return this.runOnDeviceNanoEngine(photos, userTheme, requestedCount);
   }
 
