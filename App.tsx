@@ -7,8 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Image as ImageIcon, Sparkles, FolderOpen } from 'lucide-react-native';
 import { Header } from './src/components/Header';
 import { ThemePromptBar } from './src/components/ThemePromptBar';
 import { CarouselViewer } from './src/components/CarouselViewer';
@@ -29,6 +31,7 @@ export default function App() {
   });
 
   const [carousel, setCarousel] = useState<CuratedCarousel | null>(null);
+  const [isSamplePhotos, setIsSamplePhotos] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadingText, setLoadingText] = useState<string>('Scanning camera roll...');
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -70,6 +73,9 @@ export default function App() {
         curated.frameStyle = 'clean';
       }
 
+      const isSample = photos[0]?.id?.startsWith('sample-') || false;
+      setIsSamplePhotos(isSample);
+
       setCarousel(curated);
     } catch (err) {
       console.warn('Initial dump error:', err);
@@ -99,6 +105,9 @@ export default function App() {
         ? await GalleryService.fetchPhotosForTheme(themeQuery, 35)
         : await GalleryService.fetchTodaysPhotos(30);
 
+      const isSample = photos[0]?.id?.startsWith('sample-') || false;
+      setIsSamplePhotos(isSample);
+
       setLoadingText('Gemini Nano structuring visual story...');
       const curated = await GeminiService.curateCarousel(photos, themeQuery, 6);
 
@@ -127,6 +136,7 @@ export default function App() {
       if (photos.length > 0) {
         setIsLoading(true);
         setLoadingText('Gemini Nano curating selected photos...');
+        setIsSamplePhotos(false);
         const curated = await GeminiService.curateCarousel(photos, 'My Selection', 6);
         if (!subscription.isPro) {
           curated.frameStyle = 'clean';
@@ -204,6 +214,27 @@ export default function App() {
           </View>
         ) : carousel ? (
           <>
+            {/* Notice banner if showing sample photos due to Expo Go */}
+            {isSamplePhotos && (
+              <View style={styles.demoBanner}>
+                <View style={styles.demoBannerHeader}>
+                  <Sparkles size={14} color="#FF9500" />
+                  <Text style={styles.demoBannerTitle}>Demo Photos Active</Text>
+                </View>
+                <Text style={styles.demoBannerText}>
+                  Expo Go restricts automatic background camera roll scans. Tap below to pick photos from your phone:
+                </Text>
+                <TouchableOpacity
+                  style={styles.demoBannerBtn}
+                  onPress={handlePickFromGallery}
+                  activeOpacity={0.8}
+                >
+                  <FolderOpen size={14} color="#000" />
+                  <Text style={styles.demoBannerBtnText}>Pick Photos From My Gallery</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* 4:5 Instagram Feed Carousel Preview */}
             <CarouselViewer
               carousel={carousel}
@@ -279,5 +310,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  demoBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  demoBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  demoBannerTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF9500',
+    letterSpacing: 0.5,
+  },
+  demoBannerText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  demoBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FF9500',
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  demoBannerBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#000000',
   },
 });
