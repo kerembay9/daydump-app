@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import { PhotoAsset, CuratedCarousel, CarouselSlide, FrameStyle } from '../types';
 
 const { GemmaEdgeModule } = NativeModules;
@@ -44,6 +45,45 @@ export class GemmaService {
   }
 
   /**
+   * Download quantized Gemma weights directly onto the device with progress callbacks
+   */
+  static async downloadModelWeights(
+    modelUrl: string,
+    onProgress: (ratio: number, writtenBytes: number, totalBytes: number) => void
+  ): Promise<{ success: boolean; path?: string; error?: string }> {
+    if (Platform.OS !== 'android') {
+      return { success: false, error: 'On-device Gemma requires Android GPU' };
+    }
+
+    try {
+      const targetPath = `${FileSystem.documentDirectory}gemma-2b-it-gpu-int4.bin`;
+      const downloadResumable = FileSystem.createDownloadResumable(
+        modelUrl,
+        targetPath,
+        {},
+        (downloadProgress) => {
+          const ratio =
+            downloadProgress.totalBytesExpectedToWrite > 0
+              ? downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
+              : 0;
+          onProgress(ratio, downloadProgress.totalBytesWritten, downloadProgress.totalBytesExpectedToWrite);
+        }
+      );
+
+      const result = await downloadResumable.downloadAsync();
+      if (result?.uri) {
+        // Load the downloaded weights immediately
+        const loaded = await this.loadModel(result.uri);
+        return { success: loaded, path: result.uri };
+      }
+      return { success: false, error: 'Download could not complete' };
+    } catch (err: any) {
+      console.warn('[GemmaService] Download weights error:', err);
+      return { success: false, error: err.message || 'Download error' };
+    }
+  }
+
+  /**
    * Run 100% On-Device Gemma Inference (Zero Cloud, Zero API Keys)
    */
   static async generateCuratedCarousel(
@@ -60,10 +100,12 @@ export class GemmaService {
     const candidatePhotos = sortedPhotos.slice(0, count);
 
     // Build photo summaries (timestamps, aspect ratios, filenames)
-    const photoSummaries = candidatePhotos.map((p, idx) => {
-      const timeStr = new Date(p.creationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return `Photo ${idx}: taken at ${timeStr}, aspect: ${p.width}x${p.height}`;
-    }).join('\n');
+    const photoSummaries = candidatePhotos
+      .map((p, idx) => {
+        const timeStr = new Date(p.creationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `Photo ${idx}: taken at ${timeStr}, aspect: ${p.width}x${p.height}`;
+      })
+      .join('\n');
 
     const prompt = `
 <start_of_turn>user

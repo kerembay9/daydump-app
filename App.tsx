@@ -17,13 +17,16 @@ import { CarouselViewer } from './src/components/CarouselViewer';
 import { CaptionStudio } from './src/components/CaptionStudio';
 import { PaywallModal } from './src/components/PaywallModal';
 import { SettingsModal } from './src/components/SettingsModal';
+import { OnboardingModal } from './src/components/OnboardingModal';
 import { GalleryService } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
 import { RevenueCatService } from './src/services/revenuecat';
 import { ShareService } from './src/services/shareService';
+import { OnboardingService } from './src/services/onboardingService';
+import { PremiumStatusProvider } from './src/contexts/PremiumStatusContext';
 import { CuratedCarousel, FrameStyle, UserSubscriptionState } from './src/types';
 
-export default function App() {
+function MainApp() {
   const [subscription, setSubscription] = useState<UserSubscriptionState>({
     isPro: false,
     dailyDumpsUsedToday: 0,
@@ -36,6 +39,7 @@ export default function App() {
   const [loadingText, setLoadingText] = useState<string>('Scanning camera roll...');
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
@@ -46,6 +50,23 @@ export default function App() {
   const initApp = async () => {
     await RevenueCatService.init();
     await refreshSubscriptionState();
+
+    // Check if first-time onboarding has been seen
+    const hasCompleted = await OnboardingService.hasCompletedOnboarding();
+    if (!hasCompleted) {
+      setIsLoading(false);
+      setShowOnboarding(true);
+    } else {
+      await loadInitialDailyDump();
+    }
+  };
+
+  const handleFinishOnboarding = async (triggerPaywallHook?: boolean) => {
+    setShowOnboarding(false);
+    // Aggressive Creator Model: 60-70% conversion hook right after onboarding
+    if (triggerPaywallHook && !subscription.isPro) {
+      setShowPaywall(true);
+    }
     await loadInitialDailyDump();
   };
 
@@ -63,8 +84,8 @@ export default function App() {
       // 1. Fetch today's photos
       const photos = await GalleryService.fetchTodaysPhotos(30);
 
-      // 2. Curate initial daily recap with Gemini Nano on-device engine
-      setLoadingText('Gemini Nano analyzing scenes & pacing...');
+      // 2. Curate initial daily recap with Gemma E2B / Gemini Nano on-device engine
+      setLoadingText('Analyzing scenes & visual pacing...');
       const curated = await GeminiService.curateCarousel(photos, undefined, 6);
 
       // Default frame: if free, use 'clean'; if pro, use 'film35mm'
@@ -108,7 +129,7 @@ export default function App() {
       const isSample = photos[0]?.id?.startsWith('sample-') || false;
       setIsSamplePhotos(isSample);
 
-      setLoadingText('Gemini Nano structuring visual story...');
+      setLoadingText('Structuring visual story & pacing...');
       const curated = await GeminiService.curateCarousel(photos, themeQuery, 6);
 
       // Enforce frame style based on subscription
@@ -135,7 +156,7 @@ export default function App() {
       const photos = await GalleryService.pickPhotosFromGallery();
       if (photos.length > 0) {
         setIsLoading(true);
-        setLoadingText('Gemini Nano curating selected photos...');
+        setLoadingText('Curating selected photos...');
         setIsSamplePhotos(false);
         const curated = await GeminiService.curateCarousel(photos, 'My Selection', 6);
         if (!subscription.isPro) {
@@ -164,7 +185,11 @@ export default function App() {
   const handleShareSlide = async (slideIndex: number) => {
     if (!carousel) return;
     const slide = carousel.slides[slideIndex] || carousel.slides[0];
-    await ShareService.shareSlide(slide, carousel.captions.minimal);
+    await ShareService.shareImage(
+      slide.photo.uri,
+      carousel.captions.minimal,
+      carousel.suggestedTags
+    );
   };
 
   const onRefresh = async () => {
@@ -175,36 +200,35 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
 
-        {/* Header */}
-        <Header
-          subscription={subscription}
-          onOpenPaywall={() => setShowPaywall(true)}
-          onOpenSettings={() => setShowSettings(true)}
-        />
+      {/* Header */}
+      <Header
+        subscription={subscription}
+        onOpenPaywall={() => setShowPaywall(true)}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#FF9500"
-            />
-          }
-        >
-          {/* Theme Prompt Bar with Custom Query & Preset Chips */}
-          <ThemePromptBar
-            isPro={subscription.isPro}
-            isLoading={isLoading}
-            onCurateTheme={handleCurateTheme}
-            onRequirePro={() => setShowPaywall(true)}
-            onPickFromGallery={handlePickFromGallery}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FF9500"
           />
+        }
+      >
+        {/* Theme Prompt Bar with Custom Query & Preset Chips */}
+        <ThemePromptBar
+          isPro={subscription.isPro}
+          isLoading={isLoading}
+          onCurateTheme={handleCurateTheme}
+          onRequirePro={() => setShowPaywall(true)}
+          onPickFromGallery={handlePickFromGallery}
+        />
 
         {/* Loading Overlay or Carousel Studio */}
         {isLoading ? (
@@ -235,7 +259,7 @@ export default function App() {
               </View>
             )}
 
-            {/* 4:5 Instagram Feed Carousel Preview */}
+            {/* 4:5 Instagram Feed Carousel Preview with ViewShot & Save All Album */}
             <CarouselViewer
               carousel={carousel}
               isPro={subscription.isPro}
@@ -258,6 +282,12 @@ export default function App() {
         )}
       </ScrollView>
 
+      {/* 3-Slide Visual Onboarding & Pre-Permission Primer */}
+      <OnboardingModal
+        visible={showOnboarding}
+        onFinish={handleFinishOnboarding}
+      />
+
       {/* Aggressive Creator Paywall Modal */}
       <PaywallModal
         visible={showPaywall}
@@ -272,8 +302,18 @@ export default function App() {
         visible={showSettings}
         onClose={() => setShowSettings(false)}
         onReloadSubscription={refreshSubscriptionState}
+        onTriggerOnboarding={() => setShowOnboarding(true)}
       />
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <PremiumStatusProvider>
+        <MainApp />
+      </PremiumStatusProvider>
     </SafeAreaProvider>
   );
 }

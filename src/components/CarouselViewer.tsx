@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,15 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Share2, Lock, Sparkles, Film, Square, BookOpen } from 'lucide-react-native';
+import { Share2, Lock, Sparkles, Film, Square, BookOpen, Download, Check, Save } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { captureRef } from 'react-native-view-shot';
 import { CuratedCarousel, FrameStyle } from '../types';
+import { ShareService } from '../services/shareService';
 
 interface CarouselViewerProps {
   carousel: CuratedCarousel;
@@ -35,6 +39,12 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   onRequirePro,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isExportingAll, setIsExportingAll] = useState(false);
+  const [isSharingCard, setIsSharingCard] = useState(false);
+  const [isSavingCard, setIsSavingCard] = useState(false);
+
+  // References to rendered slide views for high-res view-shot export
+  const slideRefs = useRef<(View | null)[]>([]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x;
@@ -54,11 +64,129 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
     onSelectFrame(style);
   };
 
+  /**
+   * Capture and Share the currently active framed card
+   */
+  const handleShareRenderedCard = async () => {
+    if (isSharingCard) return;
+    setIsSharingCard(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const activeRef = slideRefs.current[activeIndex];
+      let targetUri = carousel.slides[activeIndex]?.photo?.uri;
+
+      if (activeRef) {
+        targetUri = await captureRef(activeRef, {
+          format: 'jpg',
+          quality: 0.95,
+          result: 'tmpfile',
+        });
+      }
+
+      await ShareService.shareImage(
+        targetUri,
+        carousel.captions.minimal,
+        carousel.suggestedTags
+      );
+    } catch (err) {
+      console.warn('Error sharing rendered card:', err);
+      // Fallback to basic share
+      onShare(activeIndex);
+    } finally {
+      setIsSharingCard(false);
+    }
+  };
+
+  /**
+   * Save the current active rendered card to camera roll
+   */
+  const handleSaveActiveCard = async () => {
+    if (isSavingCard) return;
+    setIsSavingCard(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const activeRef = slideRefs.current[activeIndex];
+      let targetUri = carousel.slides[activeIndex]?.photo?.uri;
+
+      if (activeRef) {
+        targetUri = await captureRef(activeRef, {
+          format: 'jpg',
+          quality: 0.95,
+          result: 'tmpfile',
+        });
+      }
+
+      const success = await ShareService.saveSlideToGallery(targetUri);
+      if (success) {
+        Alert.alert(
+          'Slide Saved! 📸',
+          `Slide ${activeIndex + 1} saved to your photos in "DayDump" album.`
+        );
+      }
+    } catch (err) {
+      console.warn('Error saving card:', err);
+    } finally {
+      setIsSavingCard(false);
+    }
+  };
+
+  /**
+   * Capture and Save all slides in order into the "DayDump" album
+   */
+  const handleSaveAllSlidesToAlbum = async () => {
+    if (isExportingAll) return;
+    setIsExportingAll(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const capturedUris: string[] = [];
+
+      for (let i = 0; i < carousel.slides.length; i++) {
+        const ref = slideRefs.current[i];
+        if (ref) {
+          try {
+            const uri = await captureRef(ref, {
+              format: 'jpg',
+              quality: 0.95,
+              result: 'tmpfile',
+            });
+            capturedUris.push(uri);
+          } catch (e) {
+            console.warn(`Failed to capture slide ${i}, falling back to raw uri:`, e);
+            capturedUris.push(carousel.slides[i].photo.uri);
+          }
+        } else {
+          capturedUris.push(carousel.slides[i].photo.uri);
+        }
+      }
+
+      const savedCount = await ShareService.saveAllSlidesToAlbum(
+        capturedUris,
+        carousel.captions.minimal,
+        carousel.suggestedTags
+      );
+
+      if (savedCount > 0) {
+        Alert.alert(
+          'Saved to DayDump Album! 📸',
+          `All ${savedCount} curated slides have been saved in sequence to your camera roll. Caption and tags copied to clipboard — ready to post on Instagram!`
+        );
+      }
+    } catch (err: any) {
+      console.warn('Error saving all slides:', err);
+      Alert.alert('Notice', 'Failed to save all slides. Please check gallery permissions.');
+    } finally {
+      setIsExportingAll(false);
+    }
+  };
+
   const currentSlide = carousel.slides[activeIndex] || carousel.slides[0];
 
   return (
     <View style={styles.container}>
-      {/* Slide Header: Role Indicator & Share Button */}
+      {/* Slide Header: Role Indicator & Action Buttons */}
       <View style={styles.slideHeader}>
         <View style={styles.roleContainer}>
           <Text style={styles.slideCounter}>
@@ -68,17 +196,41 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           <Text style={styles.roleText}>{currentSlide?.role}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.shareHeaderBtn}
-          onPress={() => onShare(activeIndex)}
-          activeOpacity={0.8}
-        >
-          <Share2 size={15} color="#FFF" />
-          <Text style={styles.shareBtnText}>Share Post</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {/* Quick Save Current Slide */}
+          <TouchableOpacity
+            style={styles.quickSaveBtn}
+            onPress={handleSaveActiveCard}
+            disabled={isSavingCard}
+            activeOpacity={0.8}
+          >
+            {isSavingCard ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Save size={14} color="#FFF" />
+            )}
+          </TouchableOpacity>
+
+          {/* Share Rendered Card */}
+          <TouchableOpacity
+            style={styles.shareHeaderBtn}
+            onPress={handleShareRenderedCard}
+            disabled={isSharingCard}
+            activeOpacity={0.8}
+          >
+            {isSharingCard ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <>
+                <Share2 size={14} color="#FFF" />
+                <Text style={styles.shareBtnText}>Share Card</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* AI Visual Understanding Pill (Shows what Gemini detected in this photo) */}
+      {/* AI Visual Understanding Pill */}
       {currentSlide?.subtitle && (
         <View style={styles.visionDetailBadge}>
           <Sparkles size={11} color="#FF9500" style={{ marginRight: 4 }} />
@@ -101,6 +253,10 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
         {carousel.slides.map((slide, idx) => (
           <View
             key={slide.id}
+            ref={(el) => {
+              slideRefs.current[idx] = el;
+            }}
+            collapsable={false}
             style={[
               styles.slideCard,
               carousel.frameStyle === 'film35mm' && styles.frameFilm,
@@ -203,6 +359,28 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           {!isPro && <Lock size={10} color="#FF9500" style={{ marginLeft: 4 }} />}
         </TouchableOpacity>
       </View>
+
+      {/* Primary Multi-Slide Export: Save All Slides to Album */}
+      <View style={styles.exportAllSection}>
+        <TouchableOpacity
+          style={[styles.saveAllBtn, isExportingAll && styles.saveAllBtnDisabled]}
+          onPress={handleSaveAllSlidesToAlbum}
+          disabled={isExportingAll}
+          activeOpacity={0.85}
+        >
+          {isExportingAll ? (
+            <>
+              <ActivityIndicator size="small" color="#000" />
+              <Text style={styles.saveAllBtnText}>Saving {carousel.slides.length} Slides to DayDump Album...</Text>
+            </>
+          ) : (
+            <>
+              <Download size={16} color="#000" />
+              <Text style={styles.saveAllBtnText}>Save All {carousel.slides.length} Slides to Album</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -237,13 +415,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#E5E5EA',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickSaveBtn: {
+    backgroundColor: '#2C2C2E',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shareHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#007AFF',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 16,
   },
   shareBtnText: {
@@ -420,5 +611,32 @@ const styles = StyleSheet.create({
   },
   frameBtnTextActive: {
     color: '#FFFFFF',
+  },
+  exportAllSection: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+  },
+  saveAllBtn: {
+    backgroundColor: '#FF9500',
+    borderRadius: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveAllBtnDisabled: {
+    opacity: 0.7,
+  },
+  saveAllBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 0.3,
   },
 });

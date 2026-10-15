@@ -11,11 +11,39 @@ const STORAGE_KEYS = {
   API_KEY: '@daydump_revenuecat_api_key',
 };
 
-// Default RevenueCat Keys (Can be configured dynamically or via env)
+// Default RevenueCat Keys (configured dynamically or via dashboard)
 const DEFAULT_RC_KEYS = {
   apple: 'appl_YOUR_REVENUECAT_APPLE_KEY',
   google: 'goog_YOUR_REVENUECAT_GOOGLE_KEY',
 };
+
+/**
+ * Resilient package identifiers matching App Store and Google Play variations
+ */
+export function isYearlySubscriptionPackage(pkg: any): boolean {
+  const rcId = String(pkg?.identifier ?? '').toLowerCase();
+  const storeId = String(pkg?.product?.identifier ?? '').toLowerCase();
+  return (
+    rcId.includes('annual') ||
+    rcId.includes('yearly') ||
+    rcId.includes('year') ||
+    storeId.includes('annual') ||
+    storeId.includes('yearly') ||
+    storeId.includes('year')
+  );
+}
+
+export function isWeeklySubscriptionPackage(pkg: any): boolean {
+  const rcId = String(pkg?.identifier ?? '').toLowerCase();
+  const storeId = String(pkg?.product?.identifier ?? '').toLowerCase();
+  return rcId.includes('week') || storeId.includes('week');
+}
+
+export function isLifetimePackage(pkg: any): boolean {
+  const rcId = String(pkg?.identifier ?? '').toLowerCase();
+  const storeId = String(pkg?.product?.identifier ?? '').toLowerCase();
+  return rcId.includes('life') || storeId.includes('life');
+}
 
 export class RevenueCatService {
   private static isInitialized = false;
@@ -71,6 +99,7 @@ export class RevenueCatService {
       try {
         const customerInfo: CustomerInfo = await Purchases.getCustomerInfo();
         const isPro = !!(
+          customerInfo.entitlements.active['pro_access'] ||
           customerInfo.entitlements.active['pro'] ||
           customerInfo.entitlements.active['creator_pass'] ||
           customerInfo.entitlements.active['daydump_pro']
@@ -79,6 +108,7 @@ export class RevenueCatService {
         let activePlan: SubscriptionPlanId | undefined;
         if (isPro) {
           const proEntitlement =
+            customerInfo.entitlements.active['pro_access'] ||
             customerInfo.entitlements.active['pro'] ||
             customerInfo.entitlements.active['creator_pass'] ||
             customerInfo.entitlements.active['daydump_pro'];
@@ -154,11 +184,17 @@ export class RevenueCatService {
       const availablePackages = offerings.current.availablePackages;
 
       if (planId === 'weekly') {
-        selectedPackage = availablePackages.find((p) => p.packageType === 'WEEKLY' || p.identifier.includes('week'));
+        selectedPackage = availablePackages.find(
+          (p) => p.packageType === 'WEEKLY' || isWeeklySubscriptionPackage(p)
+        );
       } else if (planId === 'annual') {
-        selectedPackage = availablePackages.find((p) => p.packageType === 'ANNUAL' || p.identifier.includes('annual') || p.identifier.includes('year'));
+        selectedPackage = availablePackages.find(
+          (p) => p.packageType === 'ANNUAL' || isYearlySubscriptionPackage(p)
+        );
       } else if (planId === 'lifetime') {
-        selectedPackage = availablePackages.find((p) => p.packageType === 'LIFETIME' || p.identifier.includes('life'));
+        selectedPackage = availablePackages.find(
+          (p) => p.packageType === 'LIFETIME' || isLifetimePackage(p)
+        );
       }
 
       if (!selectedPackage && availablePackages.length > 0) {
@@ -168,6 +204,7 @@ export class RevenueCatService {
       if (selectedPackage) {
         const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
         const isPro = !!(
+          customerInfo.entitlements.active['pro_access'] ||
           customerInfo.entitlements.active['pro'] ||
           customerInfo.entitlements.active['creator_pass']
         );
@@ -194,6 +231,7 @@ export class RevenueCatService {
     try {
       const customerInfo = await Purchases.restorePurchases();
       const isPro = !!(
+        customerInfo.entitlements.active['pro_access'] ||
         customerInfo.entitlements.active['pro'] ||
         customerInfo.entitlements.active['creator_pass']
       );
