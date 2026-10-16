@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,9 +27,12 @@ interface CarouselViewerProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CAROUSEL_WIDTH = SCREEN_WIDTH - 32;
+const CAROUSEL_WIDTH = SCREEN_WIDTH - 40;
 // 4:5 Instagram Feed Aspect Ratio
 const CAROUSEL_HEIGHT = Math.round(CAROUSEL_WIDTH * 1.25);
+const CARD_GAP = 12;
+const SNAP_INTERVAL = CAROUSEL_WIDTH + CARD_GAP;
+const HORIZONTAL_PADDING = (SCREEN_WIDTH - CAROUSEL_WIDTH) / 2;
 
 export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   carousel,
@@ -43,14 +46,31 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   const [isSharingCard, setIsSharingCard] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
 
+  const scrollViewRef = useRef<ScrollView>(null);
   // References to rendered slide views for high-res view-shot export
   const slideRefs = useRef<(View | null)[]>([]);
 
+  const snapOffsets = useMemo(
+    () => carousel.slides.map((_, i) => i * SNAP_INTERVAL),
+    [carousel.slides.length]
+  );
+
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CAROUSEL_WIDTH);
+    const index = Math.round(offsetX / SNAP_INTERVAL);
     if (index !== activeIndex && index >= 0 && index < carousel.slides.length) {
       setActiveIndex(index);
+      Haptics.selectionAsync();
+    }
+  };
+
+  const scrollToIndex = (idx: number) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        x: idx * SNAP_INTERVAL,
+        animated: true,
+      });
+      setActiveIndex(idx);
       Haptics.selectionAsync();
     }
   };
@@ -242,9 +262,14 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
 
       {/* 4:5 Aspect Ratio Swipeable Carousel */}
       <ScrollView
+        ref={scrollViewRef}
         horizontal
-        pagingEnabled
         showsHorizontalScrollIndicator={false}
+        snapToInterval={SNAP_INTERVAL}
+        snapToOffsets={snapOffsets}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        disableIntervalMomentum={true}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         style={styles.scrollWrapper}
@@ -313,6 +338,24 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           </View>
         ))}
       </ScrollView>
+
+      {/* Pagination Dots Indicator */}
+      <View style={styles.paginationRow}>
+        {carousel.slides.map((_, i) => (
+          <TouchableOpacity
+            key={i}
+            onPress={() => scrollToIndex(i)}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+          >
+            <View
+              style={[
+                styles.paginationDot,
+                activeIndex === i ? styles.paginationDotActive : styles.paginationDotInactive,
+              ]}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Frame Style Switcher */}
       <View style={styles.framePicker}>
@@ -464,8 +507,8 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: CARD_GAP,
   },
   slideCard: {
     width: CAROUSEL_WIDTH,
@@ -581,6 +624,26 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  paginationDot: {
+    height: 5,
+    borderRadius: 2.5,
+  },
+  paginationDotActive: {
+    width: 18,
+    backgroundColor: '#FF9500',
+  },
+  paginationDotInactive: {
+    width: 5,
+    backgroundColor: '#2C2C2E',
   },
   framePicker: {
     flexDirection: 'row',
