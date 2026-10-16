@@ -138,6 +138,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleOpenCustomerCenter = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await RevenueCatService.presentCustomerCenter();
+    } catch (e: any) {
+      Alert.alert(
+        'Customer Center',
+        'Customer Center is active when configured in your RevenueCat dashboard. You can also manage subscriptions in Google Play / App Store account settings.'
+      );
+    }
+  };
+
   const handleSaveKeys = async () => {
     if (geminiKey) await GeminiService.setApiKey(geminiKey.trim());
     if (rcKey) await RevenueCatService.setCustomApiKey(rcKey.trim());
@@ -261,6 +273,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <Text style={styles.actionRowText}>Restore Purchases</Text>
                 <ChevronRight size={14} color="#8E8E93" />
               </TouchableOpacity>
+
+              {subState?.isPro && (
+                <TouchableOpacity
+                  style={[styles.actionRow, { borderTopWidth: 1, borderTopColor: '#2C2C2E' }]}
+                  onPress={handleOpenCustomerCenter}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.actionRowText}>Manage Subscription (Customer Center)</Text>
+                  <ChevronRight size={14} color="#8E8E93" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 

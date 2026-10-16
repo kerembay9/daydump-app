@@ -44,7 +44,7 @@ export interface CuratedCarousel {
   isCustomTheme: boolean;
 }
 
-export type SubscriptionPlanId = 'weekly' | 'annual' | 'lifetime';
+export type SubscriptionPlanId = 'weekly' | 'yearly' | 'annual' | 'lifetime';
 
 export interface SubscriptionPlan {
   id: SubscriptionPlanId;

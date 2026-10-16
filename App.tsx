@@ -27,6 +27,7 @@ import { OnboardingService } from './src/services/onboardingService';
 import { NotificationService } from './src/services/notificationService';
 import { PremiumStatusProvider } from './src/contexts/PremiumStatusContext';
 import { CuratedCarousel, FrameStyle, UserSubscriptionState } from './src/types';
+import { PAYWALL_RESULT } from 'react-native-purchases-ui';
 
 function MainApp() {
   const [subscription, setSubscription] = useState<UserSubscriptionState>({
@@ -48,6 +49,15 @@ function MainApp() {
 
   useEffect(() => {
     initApp();
+
+    // Real-time listener for subscription updates (purchases, renewals, restores)
+    const unsubscribe = RevenueCatService.addCustomerInfoListener((_, isPro) => {
+      setSubscription((prev) => ({ ...prev, isPro }));
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const initApp = async () => {
@@ -65,11 +75,25 @@ function MainApp() {
     }
   };
 
+  const handleOpenPaywall = async () => {
+    // 1. Try modern RevenueCat native remote paywall first (from dashboard/AI paywall)
+    const { result, isPro } = await RevenueCatService.presentNativePaywall();
+    if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED || isPro) {
+      await refreshSubscriptionState();
+      return;
+    }
+
+    // 2. Fallback to custom branded PaywallModal if remote paywall is not yet configured
+    if (result === PAYWALL_RESULT.NOT_PRESENTED || result === PAYWALL_RESULT.ERROR) {
+      setShowPaywall(true);
+    }
+  };
+
   const handleFinishOnboarding = async (triggerPaywallHook?: boolean) => {
     setShowOnboarding(false);
     // Aggressive Creator Model: 60-70% conversion hook right after onboarding
     if (triggerPaywallHook && !subscription.isPro) {
-      setShowPaywall(true);
+      handleOpenPaywall();
     }
     await loadInitialDailyDump();
   };
@@ -115,13 +139,13 @@ function MainApp() {
   const handleCurateTheme = async (themeQuery: string, isCustom: boolean) => {
     // Aggressive Creator Model Paywall Gate 1: Custom theme prompts require Pro
     if (isCustom && !subscription.isPro) {
-      setShowPaywall(true);
+      handleOpenPaywall();
       return;
     }
 
     // Aggressive Creator Model Paywall Gate 2: More than 1 daily dump requires Pro
     if (!subscription.isPro && subscription.dailyDumpsUsedToday >= subscription.maxFreeDailyDumps) {
-      setShowPaywall(true);
+      handleOpenPaywall();
       return;
     }
 
@@ -180,7 +204,7 @@ function MainApp() {
 
   const handleSelectFrame = (style: FrameStyle) => {
     if (style !== 'clean' && !subscription.isPro) {
-      setShowPaywall(true);
+      handleOpenPaywall();
       return;
     }
 
@@ -213,7 +237,7 @@ function MainApp() {
       {/* Header */}
       <Header
         subscription={subscription}
-        onOpenPaywall={() => setShowPaywall(true)}
+        onOpenPaywall={handleOpenPaywall}
         onOpenSettings={() => setShowSettings(true)}
       />
 
@@ -233,7 +257,7 @@ function MainApp() {
           isPro={subscription.isPro}
           isLoading={isLoading}
           onCurateTheme={handleCurateTheme}
-          onRequirePro={() => setShowPaywall(true)}
+          onRequirePro={handleOpenPaywall}
           onPickFromGallery={handlePickFromGallery}
         />
 
@@ -287,14 +311,14 @@ function MainApp() {
               isPro={subscription.isPro}
               onSelectFrame={handleSelectFrame}
               onShare={handleShareSlide}
-              onRequirePro={() => setShowPaywall(true)}
+              onRequirePro={handleOpenPaywall}
             />
 
             {/* Multi-Tone Caption Studio & Hashtags */}
             <CaptionStudio
               carousel={carousel}
               isPro={subscription.isPro}
-              onRequirePro={() => setShowPaywall(true)}
+              onRequirePro={handleOpenPaywall}
             />
           </>
         ) : (
@@ -325,7 +349,7 @@ function MainApp() {
         onClose={() => setShowSettings(false)}
         onReloadSubscription={refreshSubscriptionState}
         onTriggerOnboarding={() => setShowOnboarding(true)}
-        onOpenPaywall={() => setShowPaywall(true)}
+        onOpenPaywall={handleOpenPaywall}
       />
     </SafeAreaView>
   );

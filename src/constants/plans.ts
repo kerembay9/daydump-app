@@ -11,7 +11,7 @@ export const AGGRESSIVE_CREATOR_PLANS: SubscriptionPlan[] = [
     popular: true,
   },
   {
-    id: 'annual',
+    id: 'yearly',
     title: 'Annual Creator Pass',
     priceString: '$34.99 / year',
     billingPeriod: '$2.91/mo, billed annually',
