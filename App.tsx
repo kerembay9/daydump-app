@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StatusBar,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Image as ImageIcon, Sparkles, FolderOpen } from 'lucide-react-native';
@@ -36,6 +37,7 @@ function MainApp() {
 
   const [carousel, setCarousel] = useState<CuratedCarousel | null>(null);
   const [isSamplePhotos, setIsSamplePhotos] = useState<boolean>(false);
+  const [hasPhotoPermission, setHasPhotoPermission] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadingText, setLoadingText] = useState<string>('Scanning camera roll...');
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -83,6 +85,9 @@ function MainApp() {
     setLoadingText('Scanning today’s camera roll...');
 
     try {
+      const perm = await GalleryService.requestPermissions();
+      setHasPhotoPermission(perm);
+
       // 1. Fetch today's photos
       const photos = await GalleryService.fetchTodaysPhotos(30);
 
@@ -240,24 +245,39 @@ function MainApp() {
           </View>
         ) : carousel ? (
           <>
-            {/* Notice banner if showing sample photos due to Expo Go */}
+            {/* Notice banner if showing sample photos */}
             {isSamplePhotos && (
               <View style={styles.demoBanner}>
                 <View style={styles.demoBannerHeader}>
                   <Sparkles size={14} color="#FF9500" />
-                  <Text style={styles.demoBannerTitle}>Demo Photos Active</Text>
+                  <Text style={styles.demoBannerTitle}>
+                    {!hasPhotoPermission ? 'Photo Access Needed' : 'Demo Carousel Preview'}
+                  </Text>
                 </View>
                 <Text style={styles.demoBannerText}>
-                  Expo Go restricts automatic background camera roll scans. Tap below to pick photos from your phone:
+                  {!hasPhotoPermission
+                    ? 'DayDump needs photo access to automatically discover and curate today’s moments.'
+                    : 'Showing sample photos because no shots were taken today yet. Pick photos from your library to craft your 4:5 drop:'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.demoBannerBtn}
-                  onPress={handlePickFromGallery}
-                  activeOpacity={0.8}
-                >
-                  <FolderOpen size={14} color="#000" />
-                  <Text style={styles.demoBannerBtnText}>Pick Photos From My Gallery</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {!hasPhotoPermission && (
+                    <TouchableOpacity
+                      style={[styles.demoBannerBtn, { flex: 1, backgroundColor: '#3A3A3C' }]}
+                      onPress={() => Linking.openSettings()}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.demoBannerBtnText, { color: '#FFFFFF' }]}>Open Settings</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.demoBannerBtn, { flex: 1 }]}
+                    onPress={handlePickFromGallery}
+                    activeOpacity={0.8}
+                  >
+                    <FolderOpen size={14} color="#000" />
+                    <Text style={styles.demoBannerBtnText}>Pick My Photos</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -299,12 +319,13 @@ function MainApp() {
         }}
       />
 
-      {/* Settings & Dev Debug Modal */}
+      {/* Settings Modal */}
       <SettingsModal
         visible={showSettings}
         onClose={() => setShowSettings(false)}
         onReloadSubscription={refreshSubscriptionState}
         onTriggerOnboarding={() => setShowOnboarding(true)}
+        onOpenPaywall={() => setShowPaywall(true)}
       />
     </SafeAreaView>
   );

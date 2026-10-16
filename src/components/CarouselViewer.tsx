@@ -34,6 +34,14 @@ const CARD_GAP = 12;
 const SNAP_INTERVAL = CAROUSEL_WIDTH + CARD_GAP;
 const HORIZONTAL_PADDING = (SCREEN_WIDTH - CAROUSEL_WIDTH) / 2;
 
+const formatFilmDate = (timestamp?: number): string => {
+  const d = timestamp ? new Date(timestamp) : new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `'${yy} ${mm} ${dd}`;
+};
+
 export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   carousel,
   isPro,
@@ -164,6 +172,10 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
       const capturedUris: string[] = [];
 
       for (let i = 0; i < carousel.slides.length; i++) {
+        // Bring card into active viewport and allow GPU 120ms to rasterize
+        scrollToIndex(i);
+        await new Promise((resolve) => setTimeout(resolve, 120));
+
         const ref = slideRefs.current[i];
         if (ref) {
           try {
@@ -181,6 +193,9 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           capturedUris.push(carousel.slides[i].photo.uri);
         }
       }
+
+      // Return carousel to first slide
+      scrollToIndex(0);
 
       const savedCount = await ShareService.saveAllSlidesToAlbum(
         capturedUris,
@@ -309,7 +324,9 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
               {/* Film Amber LED Date Stamp */}
               {carousel.frameStyle === 'film35mm' && (
                 <View style={styles.filmDateStamp}>
-                  <Text style={styles.filmDateText}>'26 10 15</Text>
+                  <Text style={styles.filmDateText}>
+                    {formatFilmDate(slide.photo.creationTime)}
+                  </Text>
                 </View>
               )}
 
@@ -326,7 +343,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
             {carousel.frameStyle === 'editorial' && (
               <View style={styles.editorialBottom}>
                 <Text style={styles.editorialTitle}>{carousel.themeTitle.toUpperCase()}</Text>
-                <Text style={styles.editorialSubtitle}>PLATE {idx + 1} — FIG. 4</Text>
+                <Text style={styles.editorialSubtitle}>PLATE {idx + 1} — FIG. {idx + 1}</Text>
               </View>
             )}
 

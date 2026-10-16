@@ -23,6 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { AGGRESSIVE_CREATOR_PLANS, PRO_FEATURES } from '../constants/plans';
 import { SubscriptionPlanId } from '../types';
 import { RevenueCatService } from '../services/revenuecat';
+import { LegalModal, LegalDocType } from './LegalModal';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -39,6 +40,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const [selectedPlanId, setSelectedPlanId] = useState<SubscriptionPlanId>('weekly');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(null);
 
   const selectedPlan =
     AGGRESSIVE_CREATOR_PLANS.find((p) => p.id === selectedPlanId) ||
@@ -226,11 +228,21 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               </Text>
             </TouchableOpacity>
             <Text style={styles.footerDivider}>•</Text>
-            <Text style={styles.footerLink}>Terms</Text>
+            <TouchableOpacity onPress={() => setLegalDoc('terms')}>
+              <Text style={styles.footerLink}>Terms of Service</Text>
+            </TouchableOpacity>
             <Text style={styles.footerDivider}>•</Text>
-            <Text style={styles.footerLink}>Privacy</Text>
+            <TouchableOpacity onPress={() => setLegalDoc('privacy')}>
+              <Text style={styles.footerLink}>Privacy Policy</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
+
+        <LegalModal
+          visible={legalDoc !== null}
+          type={legalDoc || 'terms'}
+          onClose={() => setLegalDoc(null)}
+        />
       </View>
     </Modal>
   );
