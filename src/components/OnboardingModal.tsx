@@ -147,7 +147,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onFin
                     </View>
                     <View style={styles.featureRow}>
                       <Layers size={14} color="#FF9500" />
-                      <Text style={styles.featureRowText}>Visual pacing: Hook $\rightarrow$ Action $\rightarrow$ Detail</Text>
+                      <Text style={styles.featureRowText}>Visual pacing: Hook → Action → Detail</Text>
                     </View>
                   </View>
                 )}

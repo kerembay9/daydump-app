@@ -12,11 +12,35 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Share2, Lock, Sparkles, Film, Square, BookOpen, Download, Check, Save } from 'lucide-react-native';
+import {
+  Share2,
+  Lock,
+  Sparkles,
+  Film,
+  Square,
+  BookOpen,
+  Download,
+  Check,
+  Save,
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Send,
+  MoreHorizontal,
+  Music2,
+  Search,
+  Grid3x3,
+  Smartphone,
+  EyeOff,
+  Layers,
+} from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { captureRef } from 'react-native-view-shot';
 import { CuratedCarousel, FrameStyle } from '../types';
 import { ShareService } from '../services/shareService';
+
+export type AspectRatioMode = '4:5' | '9:16';
+export type PreviewOverlayMode = 'none' | 'instagram' | 'tiktok' | 'grid_1x1';
 
 interface CarouselViewerProps {
   carousel: CuratedCarousel;
@@ -28,8 +52,6 @@ interface CarouselViewerProps {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_WIDTH = SCREEN_WIDTH - 40;
-// 4:5 Instagram Feed Aspect Ratio
-const CAROUSEL_HEIGHT = Math.round(CAROUSEL_WIDTH * 1.25);
 const CARD_GAP = 12;
 const SNAP_INTERVAL = CAROUSEL_WIDTH + CARD_GAP;
 const HORIZONTAL_PADDING = (SCREEN_WIDTH - CAROUSEL_WIDTH) / 2;
@@ -50,6 +72,8 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   onRequirePro,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioMode>('4:5');
+  const [previewOverlay, setPreviewOverlay] = useState<PreviewOverlayMode>('none');
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [isSharingCard, setIsSharingCard] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -57,6 +81,14 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   // References to rendered slide views for high-res view-shot export
   const slideRefs = useRef<(View | null)[]>([]);
+
+  const cardHeight =
+    aspectRatio === '9:16'
+      ? Math.round(CAROUSEL_WIDTH * (16 / 9))
+      : Math.round(CAROUSEL_WIDTH * 1.25);
+
+  const gridCutoffHeight = Math.max(0, Math.round((cardHeight - CAROUSEL_WIDTH) / 2));
+  const isExporting = isExportingAll || isSavingCard || isSharingCard;
 
   const snapOffsets = useMemo(
     () => carousel.slides.map((_, i) => i * SNAP_INTERVAL),
@@ -275,7 +307,158 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
         </View>
       )}
 
-      {/* 4:5 Aspect Ratio Swipeable Carousel */}
+      {/* Studio Toolbar: Aspect Ratio Switcher & Platform Ghost UI Overlays */}
+      <View style={styles.studioToolbar}>
+        {/* Aspect Ratio Toggle */}
+        <View style={styles.toolbarSection}>
+          <Text style={styles.toolbarLabel}>ASPECT RATIO</Text>
+          <View style={styles.pillGroup}>
+            <TouchableOpacity
+              style={[
+                styles.ratioPill,
+                aspectRatio === '4:5' && styles.ratioPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAspectRatio('4:5');
+              }}
+              activeOpacity={0.7}
+            >
+              <Smartphone size={11} color={aspectRatio === '4:5' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.ratioPillText,
+                  aspectRatio === '4:5' && styles.ratioPillTextActive,
+                ]}
+              >
+                4:5 IG Feed
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.ratioPill,
+                aspectRatio === '9:16' && styles.ratioPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAspectRatio('9:16');
+              }}
+              activeOpacity={0.7}
+            >
+              <Smartphone size={11} color={aspectRatio === '9:16' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.ratioPillText,
+                  aspectRatio === '9:16' && styles.ratioPillTextActive,
+                ]}
+              >
+                9:16 TikTok / Story
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Platform Preview Overlay Toggle */}
+        <View style={styles.toolbarSection}>
+          <Text style={styles.toolbarLabel}>PREVIEW OVERLAY</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.overlayPillScroll}
+          >
+            <TouchableOpacity
+              style={[
+                styles.overlayPill,
+                previewOverlay === 'none' && styles.overlayPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setPreviewOverlay('none');
+              }}
+              activeOpacity={0.7}
+            >
+              <EyeOff size={11} color={previewOverlay === 'none' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.overlayPillText,
+                  previewOverlay === 'none' && styles.overlayPillTextActive,
+                ]}
+              >
+                Clean
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.overlayPill,
+                previewOverlay === 'instagram' && styles.overlayPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setPreviewOverlay('instagram');
+              }}
+              activeOpacity={0.7}
+            >
+              <Layers size={11} color={previewOverlay === 'instagram' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.overlayPillText,
+                  previewOverlay === 'instagram' && styles.overlayPillTextActive,
+                ]}
+              >
+                Instagram UI
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.overlayPill,
+                previewOverlay === 'tiktok' && styles.overlayPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setPreviewOverlay('tiktok');
+              }}
+              activeOpacity={0.7}
+            >
+              <Music2 size={11} color={previewOverlay === 'tiktok' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.overlayPillText,
+                  previewOverlay === 'tiktok' && styles.overlayPillTextActive,
+                ]}
+              >
+                TikTok UI
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.overlayPill,
+                previewOverlay === 'grid_1x1' && styles.overlayPillActive,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setPreviewOverlay('grid_1x1');
+              }}
+              activeOpacity={0.7}
+            >
+              <Grid3x3 size={11} color={previewOverlay === 'grid_1x1' ? '#000' : '#8E8E93'} />
+              <Text
+                style={[
+                  styles.overlayPillText,
+                  previewOverlay === 'grid_1x1' && styles.overlayPillTextActive,
+                ]}
+              >
+                1:1 Grid Check
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* Swipeable Carousel */}
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -299,6 +482,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
             collapsable={false}
             style={[
               styles.slideCard,
+              { height: cardHeight },
               carousel.frameStyle === 'film35mm' && styles.frameFilm,
               carousel.frameStyle === 'editorial' && styles.frameEditorial,
               carousel.frameStyle === 'polaroid' && styles.framePolaroid,
@@ -350,6 +534,152 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
             {carousel.frameStyle === 'polaroid' && (
               <View style={styles.polaroidBottom}>
                 <Text style={styles.polaroidCaption}>{carousel.themeTitle}</Text>
+              </View>
+            )}
+
+            {/* ======================================================== */}
+            {/* PREVIEW ONLY: Social Platform Ghost Overlays & Safe Zones */}
+            {/* Hidden during export to keep saved photos pristine!      */}
+            {/* ======================================================== */}
+            {!isExporting && activeIndex === idx && previewOverlay === 'instagram' && (
+              <View style={styles.overlayContainer} pointerEvents="none">
+                {/* Instagram Header */}
+                <View style={styles.igHeader}>
+                  <View style={styles.igUserRow}>
+                    <View style={styles.igAvatar} />
+                    <Text style={styles.igUsername}>your_account</Text>
+                    <Text style={styles.igFollow}>• Follow</Text>
+                  </View>
+                  <MoreHorizontal size={18} color="#FFFFFF" />
+                </View>
+
+                {/* Instagram Slide Counter Tag */}
+                <View style={styles.igCounterBadge}>
+                  <Text style={styles.igCounterText}>
+                    {idx + 1}/{carousel.slides.length}
+                  </Text>
+                </View>
+
+                {/* Instagram Bottom Actions Bar */}
+                <View style={styles.igBottomContainer}>
+                  <View style={styles.igActionRow}>
+                    <View style={styles.igActionLeft}>
+                      <Heart size={22} color="#FFFFFF" />
+                      <MessageCircle size={22} color="#FFFFFF" style={{ marginLeft: 14 }} />
+                      <Send size={20} color="#FFFFFF" style={{ marginLeft: 14 }} />
+                    </View>
+                    <Bookmark size={22} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.igLikesText}>1,482 likes</Text>
+                  <Text style={styles.igCaptionText} numberOfLines={2}>
+                    <Text style={styles.igCaptionUser}>your_account </Text>
+                    {carousel.captions.minimal || 'Weekend camera roll moments ✨'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {!isExporting && activeIndex === idx && previewOverlay === 'tiktok' && (
+              <View style={styles.overlayContainer} pointerEvents="none">
+                {/* TikTok Header */}
+                <View style={styles.ttHeader}>
+                  <Text style={styles.ttTabInactive}>Following</Text>
+                  <View style={styles.ttTabActiveWrapper}>
+                    <Text style={styles.ttTabActive}>For You</Text>
+                    <View style={styles.ttTabIndicator} />
+                  </View>
+                  <Search size={18} color="#FFFFFF" style={styles.ttSearchIcon} />
+                </View>
+
+                {/* TikTok Right Action Rail */}
+                <View style={styles.ttRightRail}>
+                  <View style={styles.ttAvatarContainer}>
+                    <View style={styles.ttAvatar} />
+                    <View style={styles.ttAvatarPlus}>
+                      <Text style={styles.ttAvatarPlusText}>+</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.ttActionButton}>
+                    <Heart size={24} color="#FFFFFF" />
+                    <Text style={styles.ttActionCount}>52.4K</Text>
+                  </View>
+
+                  <View style={styles.ttActionButton}>
+                    <MessageCircle size={24} color="#FFFFFF" />
+                    <Text style={styles.ttActionCount}>642</Text>
+                  </View>
+
+                  <View style={styles.ttActionButton}>
+                    <Bookmark size={24} color="#FFFFFF" />
+                    <Text style={styles.ttActionCount}>2.8K</Text>
+                  </View>
+
+                  <View style={styles.ttActionButton}>
+                    <Share2 size={24} color="#FFFFFF" />
+                    <Text style={styles.ttActionCount}>1.1K</Text>
+                  </View>
+
+                  <View style={styles.ttVinylContainer}>
+                    <View style={styles.ttVinylDisc}>
+                      <Music2 size={12} color="#FFFFFF" />
+                    </View>
+                  </View>
+                </View>
+
+                {/* TikTok Bottom Metadata */}
+                <View style={styles.ttBottomMeta}>
+                  <Text style={styles.ttUsername}>@your_account</Text>
+                  <Text style={styles.ttCaption} numberOfLines={2}>
+                    {carousel.captions.minimal || 'Sunday photo dump 📸'} #daydump #aesthetic #carousel
+                  </Text>
+                  <View style={styles.ttAudioRow}>
+                    <Music2 size={11} color="#FFFFFF" />
+                    <Text style={styles.ttAudioText} numberOfLines={1}>
+                      original sound - ambient weekend vibes
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {!isExporting && activeIndex === idx && previewOverlay === 'grid_1x1' && (
+              <View style={styles.overlayContainer} pointerEvents="none">
+                {/* Top Mask */}
+                {gridCutoffHeight > 0 && (
+                  <View style={[styles.gridCutoffMask, { top: 0, height: gridCutoffHeight }]}>
+                    <Text style={styles.gridCutoffLabel}>HIDDEN ON PROFILE GRID</Text>
+                  </View>
+                )}
+
+                {/* Center 1:1 Instagram Profile Square */}
+                <View
+                  style={[
+                    styles.gridCenterSquare,
+                    {
+                      top: gridCutoffHeight,
+                      height: CAROUSEL_WIDTH,
+                    },
+                  ]}
+                >
+                  {/* Rule of thirds grid lines */}
+                  <View style={[styles.gridThirdsLine, { top: '33.3%' }]} />
+                  <View style={[styles.gridThirdsLine, { top: '66.6%' }]} />
+                  <View style={[styles.gridThirdsLineVertical, { left: '33.3%' }]} />
+                  <View style={[styles.gridThirdsLineVertical, { left: '66.6%' }]} />
+
+                  <View style={styles.gridCenterBadge}>
+                    <Grid3x3 size={11} color="#FFF" style={{ marginRight: 4 }} />
+                    <Text style={styles.gridCenterBadgeText}>1:1 Instagram Profile Crop</Text>
+                  </View>
+                </View>
+
+                {/* Bottom Mask */}
+                {gridCutoffHeight > 0 && (
+                  <View style={[styles.gridCutoffMask, { bottom: 0, height: gridCutoffHeight }]}>
+                    <Text style={styles.gridCutoffLabel}>HIDDEN ON PROFILE GRID</Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -529,10 +859,10 @@ const styles = StyleSheet.create({
   },
   slideCard: {
     width: CAROUSEL_WIDTH,
-    height: CAROUSEL_HEIGHT,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1C1C1E',
+    position: 'relative',
   },
   imageWrapper: {
     flex: 1,
@@ -718,5 +1048,377 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000000',
     letterSpacing: 0.3,
+  },
+
+  // Studio Toolbar
+  studioToolbar: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#161618',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#262628',
+    gap: 8,
+  },
+  toolbarSection: {
+    gap: 6,
+  },
+  toolbarLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8E8E93',
+    letterSpacing: 1.2,
+  },
+  pillGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratioPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#242426',
+    borderWidth: 1,
+    borderColor: '#333336',
+  },
+  ratioPillActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  ratioPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  ratioPillTextActive: {
+    color: '#000000',
+  },
+  overlayPillScroll: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  overlayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#242426',
+    borderWidth: 1,
+    borderColor: '#333336',
+  },
+  overlayPillActive: {
+    backgroundColor: '#FF9500',
+    borderColor: '#FF9500',
+  },
+  overlayPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  overlayPillTextActive: {
+    color: '#000000',
+  },
+
+  // Overlay Container
+  overlayContainer: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 10,
+    justifyContent: 'space-between',
+  },
+
+  // Instagram UI
+  igHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  igUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  igAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderWidth: 1.5,
+    borderColor: '#E1306C',
+    marginRight: 8,
+  },
+  igUsername: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  igFollow: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#3897F0',
+    marginLeft: 6,
+  },
+  igCounterBadge: {
+    position: 'absolute',
+    top: 14,
+    right: 38,
+    backgroundColor: 'rgba(18,18,18,0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  igCounterText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  igBottomContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 14,
+    paddingTop: 8,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  igActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  igActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  igLikesText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  igCaptionText: {
+    fontSize: 11,
+    color: '#E5E5EA',
+    lineHeight: 15,
+  },
+  igCaptionUser: {
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // TikTok UI
+  ttHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingBottom: 8,
+    position: 'relative',
+  },
+  ttTabInactive: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    marginRight: 16,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  ttTabActiveWrapper: {
+    alignItems: 'center',
+  },
+  ttTabActive: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  ttTabIndicator: {
+    width: 24,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
+    borderRadius: 1,
+  },
+  ttSearchIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+  },
+  ttRightRail: {
+    position: 'absolute',
+    right: 8,
+    bottom: 40,
+    alignItems: 'center',
+    gap: 14,
+  },
+  ttAvatarContainer: {
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  ttAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#333336',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  ttAvatarPlus: {
+    position: 'absolute',
+    bottom: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FE2C55',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ttAvatarPlusText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
+    lineHeight: 14,
+  },
+  ttActionButton: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  ttActionCount: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  ttVinylContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1E1E22',
+    borderWidth: 6,
+    borderColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  ttVinylDisc: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ttBottomMeta: {
+    position: 'absolute',
+    left: 12,
+    right: 70,
+    bottom: 14,
+  },
+  ttUsername: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  ttCaption: {
+    fontSize: 11,
+    color: '#F2F2F7',
+    lineHeight: 15,
+    marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  ttAudioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ttAudioText: {
+    fontSize: 10,
+    color: '#E5E5EA',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+
+  // 1:1 Profile Grid Check
+  gridCutoffMask: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 12,
+  },
+  gridCutoffLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FF453A',
+    letterSpacing: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  gridCenterSquare: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.7)',
+    borderStyle: 'dashed',
+    zIndex: 11,
+  },
+  gridThirdsLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  gridThirdsLineVertical: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  gridCenterBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  gridCenterBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
