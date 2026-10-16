@@ -24,8 +24,14 @@ const STORAGE_KEYS = {
  * RevenueCat Configuration Constants
  */
 export const REVENUECAT_CONFIG = {
-  // Official project API key
-  API_KEY: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
+  // Official project API keys
+  API_KEYS: {
+    GOOGLE: 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
+    TEST_STORE: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
+  },
+  // In development/test builds, default to test store key for instant mock purchases.
+  // In production builds, default to Google Play Store production key.
+  API_KEY: __DEV__ ? 'test_ylRDWCJBJadzsPOeIwXNCitplYA' : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
   // Primary Pro Entitlement Identifier
   ENTITLEMENT_ID: 'daydump_pro',
   // Product Identifiers
