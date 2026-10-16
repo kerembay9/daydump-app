@@ -23,6 +23,7 @@ import { GeminiService } from './src/services/geminiService';
 import { RevenueCatService } from './src/services/revenuecat';
 import { ShareService } from './src/services/shareService';
 import { OnboardingService } from './src/services/onboardingService';
+import { NotificationService } from './src/services/notificationService';
 import { PremiumStatusProvider } from './src/contexts/PremiumStatusContext';
 import { CuratedCarousel, FrameStyle, UserSubscriptionState } from './src/types';
 
@@ -49,6 +50,7 @@ function MainApp() {
 
   const initApp = async () => {
     await RevenueCatService.init();
+    await NotificationService.init();
     await refreshSubscriptionState();
 
     // Check if first-time onboarding has been seen

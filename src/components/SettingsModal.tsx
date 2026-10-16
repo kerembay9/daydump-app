@@ -11,12 +11,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { X, Key, ShieldCheck, Cpu, RefreshCw, Download, Sparkles, BookOpen } from 'lucide-react-native';
+import { X, Key, ShieldCheck, Cpu, RefreshCw, Download, Sparkles, BookOpen, Bell } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RevenueCatService } from '../services/revenuecat';
 import { GeminiService } from '../services/geminiService';
 import { GemmaService, GemmaModelStatus } from '../services/gemmaService';
 import { OnboardingService } from '../services/onboardingService';
+import { NotificationService } from '../services/notificationService';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [rcKey, setRcKey] = useState('');
   const [isSimulatedPro, setIsSimulatedPro] = useState(false);
   const [gemmaStatus, setGemmaStatus] = useState<GemmaModelStatus | null>(null);
+  const [notifEnabled, setNotifEnabled] = useState(true);
 
   // Model Download States
   const [downloadUrl, setDownloadUrl] = useState('');
@@ -52,11 +54,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const savedRc = await RevenueCatService.getCustomApiKey();
     const subState = await RevenueCatService.getUserSubscriptionState();
     const gemma = await GemmaService.checkStatus();
+    const isNotif = await NotificationService.isEnabled();
 
     if (savedGemini) setGeminiKey(savedGemini);
     if (savedRc) setRcKey(savedRc);
     setIsSimulatedPro(subState.isPro);
     setGemmaStatus(gemma);
+    setNotifEnabled(isNotif);
+  };
+
+  const handleToggleNotification = async (val: boolean) => {
+    setNotifEnabled(val);
+    const success = await NotificationService.setEnabled(val);
+    if (!success && val) {
+      setNotifEnabled(false);
+      Alert.alert('Permission Required', 'Please enable notifications in Device Settings.');
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    try {
+      await NotificationService.sendTestNotification();
+      Alert.alert('Notification Sent! 🔔', 'Check your notification shade to preview the 8:00 PM Daily Dump reminder.');
+    } catch (e: any) {
+      Alert.alert('Notification Notice', e.message || 'Could not send test notification.');
+    }
   };
 
   const handleSaveKeys = async () => {
@@ -233,6 +255,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 <BookOpen size={14} color="#FF9500" />
                 <Text style={[styles.resetLimitText, { color: '#FF9500' }]}>Relaunch Onboarding & Permission Primer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Daily Push Notification Settings */}
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <Bell size={16} color="#FF9500" />
+              <Text style={styles.sectionTitle}>DAILY RECAP NOTIFICATION</Text>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.cardLabel}>8:00 PM Daily Dump Alert</Text>
+                  <Text style={styles.cardSublabel}>Automatic evening reminder to review today's top 6 shots</Text>
+                </View>
+                <Switch
+                  value={notifEnabled}
+                  onValueChange={handleToggleNotification}
+                  trackColor={{ false: '#3A3A3C', true: '#FFD60A' }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetLimitBtn}
+                onPress={handleSendTestNotification}
+                activeOpacity={0.7}
+              >
+                <Bell size={14} color="#FF9500" />
+                <Text style={[styles.resetLimitText, { color: '#FF9500' }]}>Send Test Notification Now</Text>
               </TouchableOpacity>
             </View>
           </View>
