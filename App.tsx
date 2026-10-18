@@ -11,11 +11,11 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Image as ImageIcon, Sparkles, FolderOpen } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { Sparkles, FolderOpen, ArrowRight } from 'lucide-react-native';
 import { Header } from './src/components/Header';
 import { ThemePromptBar } from './src/components/ThemePromptBar';
-import { CarouselViewer } from './src/components/CarouselViewer';
-import { CaptionStudio } from './src/components/CaptionStudio';
+import { StoryBuilder } from './src/components/StoryBuilder';
 import { PaywallModal } from './src/components/PaywallModal';
 import { SettingsModal } from './src/components/SettingsModal';
 import { OnboardingModal } from './src/components/OnboardingModal';
@@ -26,7 +26,6 @@ import { buildStories, markSeen, searchStory, Story, toCarousel } from './src/se
 import { GalleryService } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
 import { RevenueCatService } from './src/services/revenuecat';
-import { ShareService } from './src/services/shareService';
 import { OnboardingService } from './src/services/onboardingService';
 import { NotificationService } from './src/services/notificationService';
 import { PremiumStatusProvider } from './src/contexts/PremiumStatusContext';
@@ -53,6 +52,7 @@ function MainApp() {
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showStoriesDebug, setShowStoriesDebug] = useState<boolean>(false);
+  const [showBuilder, setShowBuilder] = useState<boolean>(false);
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
@@ -171,6 +171,7 @@ function MainApp() {
     if (!subscription.isPro) curated.frameStyle = 'clean';
     setIsSamplePhotos(false);
     setCarousel(curated);
+    setShowBuilder(true);
     markSeen([story.id]);
   };
 
@@ -204,6 +205,7 @@ function MainApp() {
         if (!subscription.isPro) curated.frameStyle = 'clean';
         setIsSamplePhotos(false);
         setCarousel(curated);
+        setShowBuilder(true);
         if (!subscription.isPro) {
           await RevenueCatService.recordDumpGenerated();
           await refreshSubscriptionState();
@@ -227,6 +229,7 @@ function MainApp() {
       }
 
       setCarousel(curated);
+      setShowBuilder(true);
 
       // Track usage for free limits
       if (!subscription.isPro) {
@@ -252,6 +255,7 @@ function MainApp() {
           curated.frameStyle = 'clean';
         }
         setCarousel(curated);
+        setShowBuilder(true);
       }
     } catch (e) {
       console.warn('Pick photos error:', e);
@@ -269,16 +273,6 @@ function MainApp() {
     if (carousel) {
       setCarousel({ ...carousel, frameStyle: style });
     }
-  };
-
-  const handleShareSlide = async (slideIndex: number) => {
-    if (!carousel) return;
-    const slide = carousel.slides[slideIndex] || carousel.slides[0];
-    await ShareService.shareImage(
-      slide.photo.uri,
-      carousel.captions.minimal,
-      carousel.suggestedTags
-    );
   };
 
   const onRefresh = async () => {
@@ -371,21 +365,24 @@ function MainApp() {
               </View>
             )}
 
-            {/* 4:5 Instagram Feed Carousel Preview with ViewShot & Save All Album */}
-            <CarouselViewer
-              carousel={carousel}
-              isPro={subscription.isPro}
-              onSelectFrame={handleSelectFrame}
-              onShare={handleShareSlide}
-              onRequirePro={handleOpenPaywall}
-            />
-
-            {/* Multi-Tone Caption Studio & Hashtags */}
-            <CaptionStudio
-              carousel={carousel}
-              isPro={subscription.isPro}
-              onRequirePro={handleOpenPaywall}
-            />
+            {/* Current draft: opens the step-by-step builder (photos -> frame -> caption -> share) */}
+            <TouchableOpacity style={styles.draftCard} onPress={() => setShowBuilder(true)} activeOpacity={0.85}>
+              <View style={styles.draftStrip}>
+                {carousel.slides.map((s) => (
+                  <Image key={s.id} source={{ uri: s.photo.uri }} style={styles.draftThumb} contentFit="cover" recyclingKey={s.id} />
+                ))}
+              </View>
+              <View style={styles.draftFooter}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.draftTitle} numberOfLines={1}>{carousel.themeTitle}</Text>
+                  <Text style={styles.draftSubtitle} numberOfLines={1}>{carousel.themeDescription}</Text>
+                </View>
+                <View style={styles.draftBtn}>
+                  <Text style={styles.draftBtnText}>Edit & share</Text>
+                  <ArrowRight size={14} color="#000" />
+                </View>
+              </View>
+            </TouchableOpacity>
           </>
         ) : (
           <View style={styles.emptyContainer}>
@@ -393,6 +390,18 @@ function MainApp() {
           </View>
         )}
       </ScrollView>
+
+      {carousel && showBuilder && (
+        <StoryBuilder
+          carousel={carousel}
+          library={library}
+          isPro={subscription.isPro}
+          onChange={setCarousel}
+          onSelectFrame={handleSelectFrame}
+          onRequirePro={handleOpenPaywall}
+          onClose={() => setShowBuilder(false)}
+        />
+      )}
 
       {/* 3-Slide Visual Onboarding & Pre-Permission Primer */}
       <OnboardingModal
@@ -511,4 +520,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000000',
   },
+  draftCard: { marginHorizontal: 16, marginTop: 4, borderRadius: 16, backgroundColor: '#1C1C1E', overflow: 'hidden' },
+  draftStrip: { flexDirection: 'row', height: 120, gap: 2 },
+  draftThumb: { flex: 1, backgroundColor: '#2C2C2E' },
+  draftFooter: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
+  draftTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  draftSubtitle: { color: '#8E8E93', fontSize: 11, marginTop: 2 },
+  draftBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF9500', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  draftBtnText: { color: '#000000', fontSize: 12, fontWeight: '800' },
 });
