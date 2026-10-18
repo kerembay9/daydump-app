@@ -48,7 +48,9 @@ const IDX_MODES = [
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
 
-const sample = (lib: Library) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, N);
+const sample = (lib: Library, n = N) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, n);
+// TinyCLIP photos per embedImages call in "Run random photos"; the indexer ships with 16.
+const BATCHES = [1, 16, 64];
 const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : NaN);
 const timed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
   const t0 = Date.now();
@@ -79,6 +81,8 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [busy, setBusy] = useState('');
   const [opt, setOpt] = useState<OptRow[]>([]);
   const [idx, setIdx] = useState<string[]>([]);
+  const [batch, setBatch] = useState(1);
+  const count = batch === 1 ? N : batch;
 
   const refresh = () => EdgeBench?.gemmaFile().then(setFile);
   useEffect(() => {
@@ -135,17 +139,27 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       if (!mlkit) setDl('ML Kit model still downloading; this run skips ML Kit');
       setBusy('run');
     }
-    const out: Row[] = sample(lib).map((p) => ({ p }));
+    const out: Row[] = sample(lib, count).map((p) => ({ p }));
     setRows([...out]);
+    if (!out.length) return;
+    await clip.embedImages([out[0].p.uri]); // untimed warm-up: model load isn't per-photo cost
+    if (batch > 1) {
+      // One call for the whole batch, like the indexer; per-photo time = total / n.
+      const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages(out.map((r) => r.p.uri)), 3));
+      out.forEach((r, i) => (r.clip = { ms: Math.round(ms / out.length), words: c.ids.slice(i * 3, i * 3 + 3).map((id) => lib.conceptNames[id]) }));
+      setRows([...out]);
+    }
     for (let i = 0; i < out.length; i++) {
       const r = out[i];
       try {
-        const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages([r.p.uri]), 3));
-        r.clip = { ms, words: c.ids.map((id) => lib.conceptNames[id]) };
+        if (batch === 1) {
+          const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages([r.p.uri]), 3));
+          r.clip = { ms, words: c.ids.map((id) => lib.conceptNames[id]) };
+          setRows([...out]);
+        }
+        if (mlkit) r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE); // no batch API: one photo per call
         setRows([...out]);
-        if (mlkit) r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE);
-        setRows([...out]);
-        if (loadMs != null) r.gemma = await bench.gemmaDescribe([r.p.uri], PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS, null);
+        if (loadMs != null && i < N) r.gemma = await bench.gemmaDescribe([r.p.uri], PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS, null);
       } catch (e) {
         r.err = e instanceof Error ? e.message : String(e);
       }
@@ -241,7 +255,8 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         {have && <Btn label="Delete" onPress={guard('delete', async () => { await bench.deleteGemma(); setLoadMs(null); })} />}
       </View>
       <View style={s.row}>
-        <Btn label={`Run ${N} random photos${loadMs == null ? ' (no Gemma)' : ''}`} onPress={run} />
+        <Btn label={`TinyCLIP batch ${batch}`} onPress={() => setBatch(BATCHES[(BATCHES.indexOf(batch) + 1) % BATCHES.length])} />
+        <Btn label={`Run ${count} random photos${loadMs == null ? ' (no Gemma)' : count > N ? ` (Gemma on ${N})` : ''}`} onPress={run} />
         {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
         <Btn label="TinyCLIP index bench" onPress={runIndexBench} />
       </View>
