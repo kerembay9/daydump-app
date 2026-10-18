@@ -181,15 +181,10 @@ function MainApp() {
     setStories((await buildStories(library)).slice(0, STORIES_SHOWN));
   };
 
-  const handleCurateTheme = async (themeQuery: string, isCustom: boolean) => {
-    // Aggressive Creator Model Paywall Gate 1: Custom theme prompts require Pro
-    if (isCustom && !subscription.isPro) {
-      handleOpenPaywall();
-      return;
-    }
-
-    // Aggressive Creator Model Paywall Gate 2: More than 1 daily dump requires Pro
-    if (!subscription.isPro && subscription.dailyDumpsUsedToday >= subscription.maxFreeDailyDumps) {
+  const handleCurateTheme = async (themeQuery: string) => {
+    // Search (typed or preset query) is free and unlimited; only the plain daily recap counts toward the free limit.
+    const isSearch = !!themeQuery;
+    if (!isSearch && !subscription.isPro && subscription.dailyDumpsUsedToday >= subscription.maxFreeDailyDumps) {
       handleOpenPaywall();
       return;
     }
@@ -206,10 +201,6 @@ function MainApp() {
         setIsSamplePhotos(false);
         setCarousel(curated);
         setShowBuilder(true);
-        if (!subscription.isPro) {
-          await RevenueCatService.recordDumpGenerated();
-          await refreshSubscriptionState();
-        }
         return;
       }
 
@@ -232,7 +223,7 @@ function MainApp() {
       setShowBuilder(true);
 
       // Track usage for free limits
-      if (!subscription.isPro) {
+      if (!isSearch && !subscription.isPro) {
         await RevenueCatService.recordDumpGenerated();
         await refreshSubscriptionState();
       }
@@ -306,10 +297,8 @@ function MainApp() {
       >
         {/* Theme Prompt Bar with Custom Query & Preset Chips */}
         <ThemePromptBar
-          isPro={subscription.isPro}
           isLoading={isLoading}
           onCurateTheme={handleCurateTheme}
-          onRequirePro={handleOpenPaywall}
           onPickFromGallery={handlePickFromGallery}
         />
 

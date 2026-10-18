@@ -8,30 +8,26 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Sparkles, Lock, ArrowRight, Image as ImageIcon } from 'lucide-react-native';
+import { Sparkles, ArrowRight, Image as ImageIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 interface ThemePromptBarProps {
-  isPro: boolean;
   isLoading: boolean;
-  onCurateTheme: (themeQuery: string, isCustom: boolean) => void;
-  onRequirePro: () => void;
+  onCurateTheme: (themeQuery: string) => void;
   onPickFromGallery?: () => void;
 }
 
 const PRESET_CHIPS = [
-  { id: 'today', title: "Today's Recap", query: '', isProOnly: false },
-  { id: 'dec', title: '6 Pics from Dec', query: '6 pics from december', isProOnly: true },
-  { id: 'summer', title: 'Summer Vacation', query: 'your summer vacation', isProOnly: true },
-  { id: 'coffee', title: 'Coffee Run', query: 'candid coffee bakery', isProOnly: true },
-  { id: 'golden', title: 'Golden Hour', query: 'golden hour sunset', isProOnly: true },
+  { id: 'today', title: "Today's Recap", query: '' },
+  { id: 'dec', title: '6 Pics from Dec', query: '6 pics from december' },
+  { id: 'summer', title: 'Summer Vacation', query: 'your summer vacation' },
+  { id: 'coffee', title: 'Coffee Run', query: 'candid coffee bakery' },
+  { id: 'golden', title: 'Golden Hour', query: 'golden hour sunset' },
 ];
 
 export const ThemePromptBar: React.FC<ThemePromptBarProps> = ({
-  isPro,
   isLoading,
   onCurateTheme,
-  onRequirePro,
   onPickFromGallery,
 }) => {
   const [inputText, setInputText] = useState('');
@@ -40,26 +36,13 @@ export const ThemePromptBar: React.FC<ThemePromptBarProps> = ({
     if (!inputText.trim()) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Custom prompts are a core Pro feature in the Aggressive Creator Model
-    if (!isPro) {
-      onRequirePro();
-      return;
-    }
-
-    onCurateTheme(inputText.trim(), true);
+    onCurateTheme(inputText.trim());
   };
 
   const handleSelectChip = (chip: (typeof PRESET_CHIPS)[0]) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    if (chip.isProOnly && !isPro) {
-      onRequirePro();
-      return;
-    }
-
     setInputText(chip.query);
-    onCurateTheme(chip.query, chip.isProOnly);
+    onCurateTheme(chip.query);
   };
 
   return (
@@ -113,25 +96,17 @@ export const ThemePromptBar: React.FC<ThemePromptBarProps> = ({
           </TouchableOpacity>
         )}
 
-        {PRESET_CHIPS.map((chip) => {
-          const isLocked = chip.isProOnly && !isPro;
-          return (
-            <TouchableOpacity
-              key={chip.id}
-              style={[styles.chip, isLocked && styles.chipLocked]}
-              onPress={() => handleSelectChip(chip)}
-              activeOpacity={0.7}
-              disabled={isLoading}
-            >
-              {isLocked ? (
-                <Lock size={11} color="#FF9500" style={styles.chipIcon} />
-              ) : null}
-              <Text style={[styles.chipText, isLocked && styles.chipTextLocked]}>
-                {chip.title}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {PRESET_CHIPS.map((chip) => (
+          <TouchableOpacity
+            key={chip.id}
+            style={styles.chip}
+            onPress={() => handleSelectChip(chip)}
+            activeOpacity={0.7}
+            disabled={isLoading}
+          >
+            <Text style={styles.chipText}>{chip.title}</Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
@@ -185,11 +160,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 18,
   },
-  chipLocked: {
-    backgroundColor: 'rgba(255, 149, 0, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 149, 0, 0.3)',
-  },
   chipPick: {
     backgroundColor: 'rgba(10, 132, 255, 0.12)',
     borderWidth: 1,
@@ -202,8 +172,5 @@ const styles = StyleSheet.create({
     color: '#E5E5EA',
     fontSize: 12,
     fontWeight: '600',
-  },
-  chipTextLocked: {
-    color: '#FF9500',
   },
 });
