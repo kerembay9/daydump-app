@@ -22,7 +22,7 @@ type EdgeBenchModule = {
   downloadGemma(url: string): Promise<string>;
   deleteGemma(): Promise<void>;
   /** Returns load time in ms. */
-  loadGemma(gpu: boolean): Promise<number>;
+  loadGemma(gpu: boolean, visionGpu: boolean): Promise<number>;
   unloadGemma(): Promise<void>;
   /** side = shortest image side sent to the model, in px. */
   gemmaDescribe(uris: string[], prompt: string, side: number, maxTokens: number, thinking: boolean | null): Promise<GemmaResult>;

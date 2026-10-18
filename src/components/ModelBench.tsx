@@ -13,17 +13,23 @@ const GEMMA_MAX_TOKENS = 48;
 
 const CAPTION = 'Write one short caption for this photo. Reply with the caption only.';
 const STORY = 'These photos are one story from a camera roll. Reply with a short title and a one-line caption.\nFormat:\ntitle: ...\ncaption: ...';
-type Variant = { name: string; prompt: string; side: number; max: number; thinking?: boolean; story?: boolean };
+type Variant = { name: string; prompt: string; side: number; max: number; thinking?: boolean; story?: boolean; text?: boolean };
 /** Same photos through each config; "story" sends 6 photos in one call. */
 const VARIANTS: Variant[] = [
   { name: 'base 512 tags+cap', prompt: PROMPT, side: 512, max: GEMMA_MAX_TOKENS },
-  { name: 'caption 512', prompt: CAPTION, side: 512, max: 24 },
+  // 256 px and thinking=false measured no faster than 384 on GPU (encoder resizes; thinking is off by default).
   { name: 'caption 384', prompt: CAPTION, side: 384, max: 24 },
-  { name: 'caption 256', prompt: CAPTION, side: 256, max: 24 },
-  { name: 'caption 384 nothink', prompt: CAPTION, side: 384, max: 24, thinking: false },
+  { name: 'text only (no image)', prompt: 'Write one short caption for a photo of a beach at sunset. Reply with the caption only.', side: 0, max: 24, text: true },
   { name: 'story 6 photos 384', prompt: STORY, side: 384, max: 32, story: true },
 ];
 const OPT_N = 5;
+const MODES = [
+  { gpu: true, visionGpu: true },
+  { gpu: false, visionGpu: true },
+  { gpu: true, visionGpu: false },
+  { gpu: false, visionGpu: false },
+];
+const modeName = (m: { gpu: boolean; visionGpu: boolean }) => `LLM ${m.gpu ? 'GPU' : 'CPU'} · vision ${m.visionGpu ? 'GPU' : 'CPU'}`;
 type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
@@ -42,7 +48,8 @@ const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
 export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [file, setFile] = useState({ bytes: 0, partial: 0 });
   const [dl, setDl] = useState('');
-  const [gpu, setGpu] = useState(true);
+  const [mode, setMode] = useState(0); // index into MODES
+  const { gpu, visionGpu } = MODES[mode];
   const [loadMs, setLoadMs] = useState<number | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState('');
@@ -79,7 +86,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
 
   const load = guard('load', async () => {
     setLoadMs(null);
-    setLoadMs(await bench.loadGemma(gpu));
+    setLoadMs(await bench.loadGemma(gpu, visionGpu));
   });
 
   const run = guard('run', async () => {
@@ -105,11 +112,11 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const runVariants = guard('variants', async () => {
     if (!lib || loadMs == null) return;
     const photos = sample(lib).slice(0, 6);
-    const backend = gpu ? 'GPU' : 'CPU';
+    const backend = modeName(MODES[mode]);
     for (const v of VARIANTS) {
       const row: OptRow = { backend, v, runs: [], photos: v.story ? photos.length : 1 };
       setOpt((o) => [...o, row]);
-      const calls = v.story ? [photos.map((p) => p.uri)] : photos.slice(0, OPT_N).map((p) => [p.uri]);
+      const calls = v.story ? [photos.map((p) => p.uri)] : photos.slice(0, OPT_N).map((p) => (v.text ? [] : [p.uri]));
       for (const uris of calls) {
         row.runs.push(await bench.gemmaDescribe(uris, v.prompt, v.side, v.max, v.thinking ?? null));
         setOpt((o) => [...o]);
@@ -129,12 +136,12 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       <Text style={s.meta}>
         Gemma 4 E2B: {have ? `on device, ${mb(file.bytes)}` : file.partial ? `partial ${mb(file.partial)}` : 'not downloaded (2.6 GB)'}
         {dl ? `\n${dl}` : ''}
-        {loadMs != null ? `\nloaded on ${gpu ? 'GPU' : 'CPU'} in ${(loadMs / 1000).toFixed(1)} s` : ''}
+        {loadMs != null ? `\nloaded (${modeName(MODES[mode])}) in ${(loadMs / 1000).toFixed(1)} s` : ''}
         {busy ? `\n${busy}…` : ''}
       </Text>
       <View style={s.row}>
         {!have && <Btn label={file.partial ? 'Resume download' : 'Download Gemma'} onPress={download} />}
-        {have && <Btn label={`LLM on ${gpu ? 'GPU' : 'CPU'}`} onPress={() => { setGpu(!gpu); setLoadMs(null); bench.unloadGemma(); }} />}
+        {have && <Btn label={modeName(MODES[mode])} onPress={() => { setMode((mode + 1) % MODES.length); setLoadMs(null); bench.unloadGemma(); }} />}
         {have && <Btn label="Load" onPress={load} />}
         {have && <Btn label="Delete" onPress={guard('delete', async () => { await bench.deleteGemma(); setLoadMs(null); })} />}
       </View>

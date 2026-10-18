@@ -52,14 +52,14 @@ class EdgeBenchModule : Module() {
       model.delete(); File(model.path + ".part").delete()
     }
 
-    /** Loads the model; returns load time in ms. gpu=false runs the LLM on CPU (vision encoder stays on GPU). */
-    AsyncFunction("loadGemma") Coroutine { gpu: Boolean ->
+    /** Loads the model; returns load time in ms. gpu / visionGpu pick the backend for the LLM and the image encoder. */
+    AsyncFunction("loadGemma") Coroutine { gpu: Boolean, visionGpu: Boolean ->
       withContext(Dispatchers.Default) {
         engine?.close(); engine = null
         ExperimentalFlags.enableBenchmark = true // fills getBenchmarkInfo (ttft, tok/s)
         val t0 = SystemClock.elapsedRealtime()
         // maxNumImages: room for one call per 6-photo story.
-        engine = Engine(EngineConfig(model.path, if (gpu) Backend.GPU() else Backend.CPU(), visionBackend = Backend.GPU(), maxNumImages = 6, cacheDir = ctx.cacheDir.path))
+        engine = Engine(EngineConfig(model.path, if (gpu) Backend.GPU() else Backend.CPU(), visionBackend = if (visionGpu) Backend.GPU() else Backend.CPU(), maxNumImages = 6, cacheDir = ctx.cacheDir.path))
           .also { it.initialize() }
         SystemClock.elapsedRealtime() - t0
       }
