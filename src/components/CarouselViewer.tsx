@@ -42,11 +42,16 @@ import { ShareService } from '../services/shareService';
 export type AspectRatioMode = '4:5' | '9:16';
 export type PreviewOverlayMode = 'none' | 'instagram' | 'tiktok' | 'grid_1x1';
 
+export type ViewerSection = 'frame' | 'share';
+
 interface CarouselViewerProps {
   carousel: CuratedCarousel;
   isPro: boolean;
+  /** which builder step's tools to show: frame = aspect + frame picker, share = overlays + save/share */
+  section: ViewerSection;
+  /** caption copied on share/save, in the tone picked in the caption step */
+  caption: string;
   onSelectFrame: (style: FrameStyle) => void;
-  onShare: (slideIndex: number) => void;
   onRequirePro: () => void;
 }
 
@@ -67,13 +72,15 @@ const formatFilmDate = (timestamp?: number): string => {
 export const CarouselViewer: React.FC<CarouselViewerProps> = ({
   carousel,
   isPro,
+  section,
+  caption,
   onSelectFrame,
-  onShare,
   onRequirePro,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [aspectRatio, setAspectRatio] = useState<AspectRatioMode>('4:5');
-  const [previewOverlay, setPreviewOverlay] = useState<PreviewOverlayMode>('none');
+  const [overlayChoice, setPreviewOverlay] = useState<PreviewOverlayMode>('none');
+  const previewOverlay = section === 'share' ? overlayChoice : 'none';
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [isSharingCard, setIsSharingCard] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -146,13 +153,13 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
 
       await ShareService.shareImage(
         targetUri,
-        carousel.captions.minimal,
+        caption,
         carousel.suggestedTags
       );
     } catch (err) {
       console.warn('Error sharing rendered card:', err);
       // Fallback to basic share
-      onShare(activeIndex);
+      await ShareService.shareImage(carousel.slides[activeIndex].photo.uri, caption, carousel.suggestedTags);
     } finally {
       setIsSharingCard(false);
     }
@@ -231,7 +238,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
 
       const savedCount = await ShareService.saveAllSlidesToAlbum(
         capturedUris,
-        carousel.captions.minimal,
+        caption,
         carousel.suggestedTags
       );
 
@@ -263,7 +270,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           <Text style={styles.roleText}>{currentSlide?.role}</Text>
         </View>
 
-        <View style={styles.headerActions}>
+        {section === 'share' && <View style={styles.headerActions}>
           {/* Quick Save Current Slide */}
           <TouchableOpacity
             style={styles.quickSaveBtn}
@@ -294,7 +301,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
               </>
             )}
           </TouchableOpacity>
-        </View>
+        </View>}
       </View>
 
       {/* AI Visual Understanding Pill */}
@@ -310,7 +317,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
       {/* Studio Toolbar: Aspect Ratio Switcher & Platform Ghost UI Overlays */}
       <View style={styles.studioToolbar}>
         {/* Aspect Ratio Toggle */}
-        <View style={styles.toolbarSection}>
+        {section === 'frame' && <View style={styles.toolbarSection}>
           <Text style={styles.toolbarLabel}>ASPECT RATIO</Text>
           <View style={styles.pillGroup}>
             <TouchableOpacity
@@ -357,10 +364,10 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View>}
 
         {/* Platform Preview Overlay Toggle */}
-        <View style={styles.toolbarSection}>
+        {section === 'share' && <View style={styles.toolbarSection}>
           <Text style={styles.toolbarLabel}>PREVIEW OVERLAY</Text>
           <ScrollView
             horizontal
@@ -455,7 +462,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
               </Text>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </View>}
       </View>
 
       {/* Swipeable Carousel */}
@@ -573,7 +580,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
                   <Text style={styles.igLikesText}>1,482 likes</Text>
                   <Text style={styles.igCaptionText} numberOfLines={2}>
                     <Text style={styles.igCaptionUser}>your_account </Text>
-                    {carousel.captions.minimal || 'Weekend camera roll moments ✨'}
+                    {caption || 'Weekend camera roll moments ✨'}
                   </Text>
                 </View>
               </View>
@@ -631,7 +638,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
                 <View style={styles.ttBottomMeta}>
                   <Text style={styles.ttUsername}>@your_account</Text>
                   <Text style={styles.ttCaption} numberOfLines={2}>
-                    {carousel.captions.minimal || 'Sunday photo dump 📸'} #daydump #aesthetic #carousel
+                    {caption || 'Sunday photo dump 📸'} #daydump #aesthetic #carousel
                   </Text>
                   <View style={styles.ttAudioRow}>
                     <Music2 size={11} color="#FFFFFF" />
@@ -705,7 +712,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
       </View>
 
       {/* Frame Style Switcher */}
-      <View style={styles.framePicker}>
+      {section === 'frame' && <View style={styles.framePicker}>
         <TouchableOpacity
           style={[styles.frameBtn, carousel.frameStyle === 'clean' && styles.frameBtnActive]}
           onPress={() => handleFrameChange('clean', false)}
@@ -748,10 +755,10 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
           </Text>
           {!isPro && <Lock size={10} color="#FF9500" style={{ marginLeft: 4 }} />}
         </TouchableOpacity>
-      </View>
+      </View>}
 
       {/* Primary Multi-Slide Export: Save All Slides to Album */}
-      <View style={styles.exportAllSection}>
+      {section === 'share' && <View style={styles.exportAllSection}>
         <TouchableOpacity
           style={[styles.saveAllBtn, isExportingAll && styles.saveAllBtnDisabled]}
           onPress={handleSaveAllSlidesToAlbum}
@@ -770,7 +777,7 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
             </>
           )}
         </TouchableOpacity>
-      </View>
+      </View>}
     </View>
   );
 };

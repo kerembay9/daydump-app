@@ -8,15 +8,18 @@ import { ShareService } from '../services/shareService';
 interface CaptionStudioProps {
   carousel: CuratedCarousel;
   isPro: boolean;
+  tone: CaptionTone;
+  onTone: (tone: CaptionTone) => void;
   onRequirePro: () => void;
 }
 
 export const CaptionStudio: React.FC<CaptionStudioProps> = ({
   carousel,
   isPro,
+  tone: selectedTone,
+  onTone: setSelectedTone,
   onRequirePro,
 }) => {
-  const [selectedTone, setSelectedTone] = useState<CaptionTone>('minimal');
   const [copied, setCopied] = useState(false);
 
   const handleSelectTone = (tone: CaptionTone, isProOnly: boolean) => {
