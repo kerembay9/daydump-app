@@ -76,8 +76,8 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
 /** Free-text theme -> story from CLIP text/image similarity. Null without CLIP or no match. */
 export async function searchStory(lib: Library, query: string, minScore = 0.2, k = 40): Promise<Story | null> {
   const ranked = await searchRanked(lib, query);
-  // Absolute floor plus "close to the best hit": CLIP cosines are low and query-dependent.
-  const top = ranked.filter((x) => x.s >= minScore && x.s >= (ranked[0]?.s ?? 0) - 0.06).slice(0, k);
+  // Absolute floor plus "close to the best hit": CLIP cosines are low and query-dependent. 0.03 tuned on the eval album.
+  const top = ranked.filter((x) => x.s >= minScore && x.s >= (ranked[0]?.s ?? 0) - 0.03).slice(0, k);
   if (!top.length) return null;
   const photos = top.map((x) => x.p).sort((a, b) => a.creationTime - b.creationTime);
   const sc = new Map(top.map((x) => [x.p.id, x.s]));

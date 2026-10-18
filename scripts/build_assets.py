@@ -1,6 +1,6 @@
 """Build on-device ML/geo assets. Outputs are gitignored (big) except cities.json + clipGolden.json.
 
-Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript
+Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq
         (needs torch + transformers already installed)
 Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [cities]   (no args = all)
 
@@ -40,6 +40,12 @@ EXTRA = {
         "halloween", "fireworks", "a candlelit dinner", "a rainy window", "a messy desk", "a laptop at work", "a screenshot", "a document", "a receipt",
     ],
 }
+MIN_ZIPF = 4.0
+# Never a story title. Word-level (any word matches) and whole-phrase lists.
+BLOCK = set("""orgasm sex sexual erotic erotica nude nudity naked porn pornography lingerie condom penis vagina breast breasts
+buttocks nipple genitals umbilical placenta childbirth corpse cadaver blood wound injury vomit feces urine diarrhea autopsy
+suicide murder gun rifle weapon bomb drug drugs cocaine heroin syringe tumor cancer disease rash acne fetish bondage stripper""".split())
+BLOCK_PHRASES = {"making out", "human body", "hair removal", "begging"}
 LICENSE_NOTE = "Open Images V7 class names (CC BY 4.0, Google LLC) + hand-written concepts"
 
 
@@ -69,11 +75,11 @@ def token_ids(tok, texts):
     return out
 
 
-def preprocess(path):
+def preprocess(path):  # path or PIL image
     """Mirror of the Kotlin path: shortest side -> 224, center crop, CLIP mean/std."""
     import numpy as np
     from PIL import Image, ImageOps
-    im = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+    im = ImageOps.exif_transpose(path if isinstance(path, Image.Image) else Image.open(path)).convert("RGB")
     s = 224 / min(im.size)
     im = im.resize((round(im.width * s), round(im.height * s)), Image.BILINEAR)
     l, t = (im.width - 224) // 2, (im.height - 224) // 2
@@ -143,15 +149,22 @@ def build_vocab():
     import numpy as np, torch
     m, tok, _ = load_model()
     csv_path = fetch("https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions.csv", "oidv7-class-descriptions.csv")
-    names = set()
+    import re, wordfreq
+    entries, seen = [], set()
+    def add(n):
+        key = re.sub(r"^(a|an|the) ", "", n)  # "a selfie" == "selfie": one concept, not two half-sized topics
+        if key not in seen and not BLOCK & set(re.split(r"[\s-]+", n)) and n not in BLOCK_PHRASES:
+            seen.add(key); entries.append((n, f"a photo of {n}."))
+    for tmpl, items in EXTRA.items():  # hand-written first, so they win dedup
+        for x in items:
+            add(tmpl.format(x))
     with open(csv_path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            n = row["DisplayName"].strip()
-            if 2 < len(n) < 40 and not any(c.isdigit() for c in n):
-                names.add(n.lower())
-    entries = [(n, f"a photo of {n}.") for n in sorted(names)]
-    for tmpl, items in EXTRA.items():
-        entries += [(tmpl.format(x), "a photo of " + tmpl.format(x) + ".") for x in items]
+        oi = sorted({r["DisplayName"].strip().lower() for r in csv.DictReader(f)})
+    # Common words only: long-tail names ("polydactyl cat", "umeboshi") outscore "cat"/"food" and split every
+    # subject across rare words, so no word gathers enough photos to become a topic. Tuned on the eval album.
+    for n in oi:
+        if 2 < len(n) < 40 and not any(c.isdigit() for c in n) and wordfreq.zipf_frequency(n, "en") >= MIN_ZIPF:
+            add(n)
     print(len(entries), "concepts")
     vecs = []
     with torch.no_grad():

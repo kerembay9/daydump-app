@@ -40,7 +40,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
   const reindex = async () => {
     const t0 = Date.now();
     const n = await indexLibrary((d, t) => setStatus(`indexing ${d}/${t}`));
-    setStatus(`indexed ${n} new in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+    setStatus(`${n} photos indexed or retagged in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     rebuild(opts);
   };
 
@@ -117,7 +117,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
         <View style={styles.grid}>
           {hits.map(({ p, s }) => (
-            <Thumb key={p.id} p={p} label={s.toFixed(3)} dim={s < minScore || s < (hits[0]?.s ?? 0) - 0.06} onPress={() => showConcepts(p)} />
+            <Thumb key={p.id} p={p} label={s.toFixed(3)} dim={s < minScore || s < (hits[0]?.s ?? 0) - 0.03} onPress={() => showConcepts(p)} />
           ))}
         </View>
 

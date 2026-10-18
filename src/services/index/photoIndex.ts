@@ -34,7 +34,7 @@ let running: Promise<number> | null = null;
 
 /**
  * Incremental: indexes photos not yet in the DB (plus un-embedded rows once CLIP is available), drops deleted ones.
- * Returns the number of newly indexed photos.
+ * Returns how many photos changed (newly indexed or retagged), so callers know to rebuild stories.
  * ponytail: foreground only, runs on app open; WorkManager backfill when big libraries make first open slow.
  */
 export function indexLibrary(onProgress?: (done: number, total: number) => void): Promise<number> {
@@ -52,6 +52,8 @@ async function run(onProgress?: (done: number, total: number) => void): Promise<
     const ids = gone.slice(i, i + 500);
     await d.runAsync(`DELETE FROM photos WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
   }
+
+  const retagged = await retagIfVocabChanged(d);
 
   const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
   const t0 = Date.now();
@@ -81,10 +83,37 @@ async function run(onProgress?: (done: number, total: number) => void): Promise<
     onProgress?.(Math.min(i + BATCH, todo.length), todo.length);
   }
   if (todo.length) console.log(`[photoIndex] indexed ${todo.length} photos in ${Date.now() - t0} ms (${((Date.now() - t0) / todo.length).toFixed(0)} ms/photo)`);
-  return todo.length;
+  return todo.length + retagged;
 }
 
 let names: string[] | null = null;
+
+/**
+ * Stored concept ids point into the bundled vocab; a new vocab means re-scoring every stored embedding (no image decode).
+ * ponytail: vocab size as its fingerprint (PRAGMA user_version); hash vocab.json if two vocabs ever share a size.
+ */
+async function retagIfVocabChanged(d: SQLite.SQLiteDatabase): Promise<number> {
+  if (!ClipEmbedder) return 0;
+  names ??= await ClipEmbedder.conceptNames();
+  const v = (await d.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version;
+  if (v === names.length) return 0;
+  const rows = await d.getAllAsync<{ id: string; emb: Uint8Array }>('SELECT id, emb FROM photos WHERE emb IS NOT NULL');
+  for (let i = 0; i < rows.length; i += 256) {
+    const chunk = rows.slice(i, i + 256);
+    const vecs = new Float32Array(chunk.length * DIM);
+    chunk.forEach((r, j) => vecs.set(new Float32Array(r.emb.buffer.slice(r.emb.byteOffset, r.emb.byteOffset + DIM * 4)), j * DIM));
+    const c = await ClipEmbedder.topConcepts(floatsToB64(vecs), TOP_CONCEPTS);
+    await d.withTransactionAsync(async () => {
+      for (let j = 0; j < chunk.length; j++) {
+        const s = j * TOP_CONCEPTS, e = s + TOP_CONCEPTS;
+        await d.runAsync('UPDATE photos SET concepts = ? WHERE id = ?', [JSON.stringify([c.ids.slice(s, e), c.scores.slice(s, e).map((x) => +x.toFixed(4))]), chunk[j].id]);
+      }
+    });
+  }
+  await d.execAsync(`PRAGMA user_version = ${names.length}`);
+  console.log(`[photoIndex] retagged ${rows.length} photos for a ${names.length}-concept vocab`);
+  return rows.length;
+}
 
 export async function loadLibrary(): Promise<Library> {
   const d = await db();
