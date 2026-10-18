@@ -1,8 +1,13 @@
 import { requireOptionalNativeModule } from 'expo';
 
 type ClipEmbedderModule = {
-  /** base64 little-endian Float32, uris.length * 512, L2-normalized; zero rows = undecodable photo */
-  embedImages(uris: string[]): Promise<string>;
+  /**
+   * base64 little-endian Float32, uris.length * 512, L2-normalized; zero rows = undecodable photo.
+   * thumb > 0: uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
+   */
+  embedImages(uris: string[], thumb?: number): Promise<string>;
+  /** decode vs model time of the last embedImages call; size = first decoded bitmap */
+  lastEmbedTimings(): { decodeMs: number; modelMs: number; size: string };
   embedTexts(texts: string[]): Promise<string>;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */

@@ -9,8 +9,10 @@ import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
+import android.util.Size
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
@@ -49,6 +51,7 @@ class ClipEmbedderModule : Module() {
     Array(a.length()) { a.getString(it) }
   }
   private val vocab by lazy { asset("vocab.bin") } // rows of [float32 scale][512 x int8]
+  private var timings = mapOf<String, Any>()
 
   private fun asset(name: String) = ctx.assets.open("clip/$name").use { it.readBytes() }
 
@@ -58,9 +61,13 @@ class ClipEmbedderModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ClipEmbedder")
 
-    AsyncFunction("embedImages") Coroutine { uris: List<String> ->
-      withContext(Dispatchers.Default) { encode(embedImages(uris)) }
+    // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
+    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
+      withContext(Dispatchers.Default) { encode(embedImages(uris, thumb ?: 0)) }
     }
+
+    // Split of the last embedImages call: decode vs model ms, plus the first decoded bitmap's size.
+    Function("lastEmbedTimings") { timings }
 
     AsyncFunction("embedTexts") Coroutine { texts: List<String> ->
       withContext(Dispatchers.Default) { encode(embedTexts(texts)) }
@@ -78,15 +85,22 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { vocabNames.toList() } }
   }
 
-  private fun embedImages(uris: List<String>): FloatArray {
+  private fun embedImages(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
     val n = uris.size
     val input = FloatBuffer.allocate(n * 3 * PLANE)
     val ok = BooleanArray(n)
     val px = IntArray(PLANE)
+    var srcSize = ""
+    val t0 = SystemClock.elapsedRealtime()
     uris.forEachIndexed { i, uri ->
       try {
-        val bmp = decodeScaled(ctx, uri, SIZE)
+        val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
+        } else {
+          decodeScaled(ctx, uri, SIZE)
+        }
+        if (i == 0) srcSize = "${bmp.width}x${bmp.height}"
         bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
         bmp.recycle()
         val base = i * 3 * PLANE
@@ -101,7 +115,9 @@ class ClipEmbedderModule : Module() {
         Log.w("ClipEmbedder", "decode failed: $uri", e)
       }
     }
+    val t1 = SystemClock.elapsedRealtime()
     val out = run(vision, "pixel_values", OnnxTensor.createTensor(env, input, longArrayOf(n.toLong(), 3, SIZE.toLong(), SIZE.toLong())))
+    timings = mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (SystemClock.elapsedRealtime() - t1).toDouble(), "size" to srcSize)
     for (i in 0 until n) if (!ok[i]) out.fill(0f, i * DIM, (i + 1) * DIM)
     return out
   }
@@ -153,6 +169,18 @@ class ClipEmbedderModule : Module() {
 }
 
 /** Decoded so the shortest side is exactly `side` (EXIF orientation applied on API 28+). */
+/**
+ * MediaStore's cached thumbnail (EXIF rotation applied), scaled so the shortest side is SIZE.
+ * ponytail: the cache can be evicted; MediaProvider regenerates it from the original, which costs a full decode.
+ */
+// Caller checks SDK_INT >= Q.
+private fun loadThumb(ctx: Context, uri: String, req: Int): Bitmap {
+  val t = ctx.contentResolver.loadThumbnail(Uri.parse(uri), Size(req, req), null)
+  val s = SIZE.toFloat() / min(t.width, t.height)
+  if (s == 1f) return t
+  return Bitmap.createScaledBitmap(t, max(SIZE, (t.width * s).roundToInt()), max(SIZE, (t.height * s).roundToInt()), true).also { if (it !== t) t.recycle() }
+}
+
 internal fun decodeScaled(ctx: Context, uri: String, side: Int): Bitmap {
   val u = Uri.parse(uri)
   val isFile = u.scheme == null || u.scheme == "file"

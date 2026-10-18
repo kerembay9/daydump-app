@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { ClipEmbedder, EdgeBench, GemmaResult, MlkitResult } from '../../modules/clip-embedder';
 import { IndexedPhoto, Library } from '../services/index/photoIndex';
+import { b64ToFloats, DIM } from '../services/index/vectors';
 
 const GEMMA_URL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm';
 const PROMPT = 'Give 5 short tags and a one-line caption for this photo.\nFormat:\ntags: a, b, c, d, e\ncaption: ...';
@@ -32,6 +34,12 @@ const MODES = [
 const modeName = (m: { gpu: boolean; visionGpu: boolean }) => `LLM ${m.gpu ? 'GPU' : 'CPU'} · vision ${m.visionGpu ? 'GPU' : 'CPU'}`;
 type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
 
+/** Indexer path (batches of 16: asset info for GPS, embed, top concepts) with full decode vs MediaStore thumbnails. */
+const IDX_N = 64;
+const IDX_BATCH = 16;
+const IDX_MODES = [{ name: 'full decode', thumb: 0 }, { name: 'thumb 448', thumb: 448 }, { name: 'thumb 256', thumb: 256 }];
+const contentUri = (id: string) => `content://media/external/images/media/${id}`;
+
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
 
 const sample = (lib: Library) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, N);
@@ -54,6 +62,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState('');
   const [opt, setOpt] = useState<OptRow[]>([]);
+  const [idx, setIdx] = useState<string[]>([]);
 
   const refresh = () => EdgeBench?.gemmaFile().then(setFile);
   useEffect(() => {
@@ -124,6 +133,48 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     }
   });
 
+  const runIndexBench = guard('index bench', async () => {
+    if (!lib) return;
+    const photos = [...lib.photos].sort(() => Math.random() - 0.5).slice(0, IDX_N);
+    const n = photos.length;
+    const lines: string[] = [];
+    let ref: { vecs: Float32Array; top1: number[] } | null = null;
+    for (const m of IDX_MODES) {
+      const t = { info: 0, decode: 0, model: 0, concepts: 0 };
+      let size = '';
+      const vecs = new Float32Array(n * DIM);
+      const top1: number[] = [];
+      for (let i = 0; i < n; i += IDX_BATCH) {
+        const batch = photos.slice(i, i + IDX_BATCH);
+        const [infos, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
+        t.info += infoMs;
+        const b64 = await clip.embedImages(batch.map((a, j) => (m.thumb ? contentUri(a.id) : (infos[j]?.localUri ?? a.uri))), m.thumb);
+        const lt = clip.lastEmbedTimings();
+        t.decode += lt.decodeMs;
+        t.model += lt.modelMs;
+        size ||= lt.size;
+        const [c, cMs] = await timed(() => clip.topConcepts(b64, 10));
+        t.concepts += cMs;
+        for (let j = 0; j < batch.length; j++) top1.push(c.ids[j * 10]);
+        vecs.set(b64ToFloats(b64), i * DIM);
+      }
+      const per = (x: number) => (x / n).toFixed(0);
+      let vs = '';
+      if (ref) {
+        const cos = photos.map((_, k) => {
+          let d = 0;
+          for (let x = 0; x < DIM; x++) d += vecs[k * DIM + x] * ref!.vecs[k * DIM + x];
+          return d;
+        });
+        const same = top1.filter((id, k) => id === ref!.top1[k]).length;
+        vs = `\n   vs full: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
+      }
+      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n})\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)} · src ${size}${vs}`);
+      setIdx([...lines]);
+      ref ??= { vecs, top1 };
+    }
+  });
+
   const have = file.bytes > 0;
   const stat = (k: 'clip' | 'mlkit' | 'gemma') => {
     const ms = rows.flatMap((r) => (r[k] ? [r[k]!.ms] : []));
@@ -148,7 +199,9 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       <View style={s.row}>
         <Btn label={`Run ${N} random photos${loadMs == null ? ' (no Gemma)' : ''}`} onPress={run} />
         {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
+        <Btn label="CLIP index bench" onPress={runIndexBench} />
       </View>
+      {idx.length > 0 && <Text style={s.mono}>{idx.join('\n')}</Text>}
 
       {opt.map((o, i) => (
         <Text key={i} style={s.line}>
