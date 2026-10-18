@@ -10,6 +10,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.ThinkingConfig
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
@@ -57,7 +58,8 @@ class EdgeBenchModule : Module() {
         engine?.close(); engine = null
         ExperimentalFlags.enableBenchmark = true // fills getBenchmarkInfo (ttft, tok/s)
         val t0 = SystemClock.elapsedRealtime()
-        engine = Engine(EngineConfig(model.path, if (gpu) Backend.GPU() else Backend.CPU(), visionBackend = Backend.GPU(), cacheDir = ctx.cacheDir.path))
+        // maxNumImages: room for one call per 6-photo story.
+        engine = Engine(EngineConfig(model.path, if (gpu) Backend.GPU() else Backend.CPU(), visionBackend = Backend.GPU(), maxNumImages = 6, cacheDir = ctx.cacheDir.path))
           .also { it.initialize() }
         SystemClock.elapsedRealtime() - t0
       }
@@ -65,21 +67,28 @@ class EdgeBenchModule : Module() {
 
     AsyncFunction("unloadGemma") { -> engine?.close(); engine = null }
 
-    AsyncFunction("gemmaDescribe") Coroutine { uri: String, prompt: String, side: Int, maxTokens: Int ->
+    /** One prompt over 1..6 photos. prepMs = decode + resize + JPEG; ms = total wall time. thinking=null keeps the model default. */
+    AsyncFunction("gemmaDescribe") Coroutine { uris: List<String>, prompt: String, side: Int, maxTokens: Int, thinking: Boolean? ->
       withContext(Dispatchers.Default) {
         val e = engine ?: throw IllegalStateException("Gemma not loaded")
         val t0 = SystemClock.elapsedRealtime()
-        val jpeg = ByteArrayOutputStream().also { decodeScaled(ctx, uri, side).apply { compress(Bitmap.CompressFormat.JPEG, 90, it); recycle() } }.toByteArray()
-        // Fresh conversation per photo so earlier answers don't grow the context.
+        val images = uris.map { uri ->
+          val jpeg = ByteArrayOutputStream().also { decodeScaled(ctx, uri, side).apply { compress(Bitmap.CompressFormat.JPEG, 90, it); recycle() } }.toByteArray()
+          Content.ImageBytes(jpeg)
+        }
+        val prepMs = SystemClock.elapsedRealtime() - t0
+        // Fresh conversation per call so earlier answers don't grow the context.
         e.createConversation().use { c ->
-          val msg = c.sendMessage(Contents.of(Content.ImageBytes(jpeg), Content.Text(prompt)), maxOutputToken = maxTokens)
+          val msg = c.sendMessage(Contents.of(images + Content.Text(prompt)), maxOutputToken = maxTokens, thinkingConfig = thinking?.let { ThinkingConfig(it) })
           val ms = SystemClock.elapsedRealtime() - t0
           val b = c.getBenchmarkInfo()
           mapOf(
             "ms" to ms.toDouble(),
+            "prepMs" to prepMs.toDouble(),
             "text" to msg.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }.trim(),
             "ttftMs" to b.timeToFirstTokenInSecond * 1000,
             "prefillTokens" to b.lastPrefillTokenCount,
+            "prefillTps" to b.lastPrefillTokensPerSecond,
             "decodeTokens" to b.lastDecodeTokenCount,
             "decodeTps" to b.lastDecodeTokensPerSecond,
           )

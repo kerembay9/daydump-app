@@ -11,6 +11,21 @@ const GEMMA_SIDE = 512; // shortest side sent to Gemma's vision encoder
 const MLKIT_SIDE = 480;
 const GEMMA_MAX_TOKENS = 48;
 
+const CAPTION = 'Write one short caption for this photo. Reply with the caption only.';
+const STORY = 'These photos are one story from a camera roll. Reply with a short title and a one-line caption.\nFormat:\ntitle: ...\ncaption: ...';
+type Variant = { name: string; prompt: string; side: number; max: number; thinking?: boolean; story?: boolean };
+/** Same photos through each config; "story" sends 6 photos in one call. */
+const VARIANTS: Variant[] = [
+  { name: 'base 512 tags+cap', prompt: PROMPT, side: 512, max: GEMMA_MAX_TOKENS },
+  { name: 'caption 512', prompt: CAPTION, side: 512, max: 24 },
+  { name: 'caption 384', prompt: CAPTION, side: 384, max: 24 },
+  { name: 'caption 256', prompt: CAPTION, side: 256, max: 24 },
+  { name: 'caption 384 nothink', prompt: CAPTION, side: 384, max: 24, thinking: false },
+  { name: 'story 6 photos 384', prompt: STORY, side: 384, max: 32, story: true },
+];
+const OPT_N = 5;
+type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
+
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
 
 const sample = (lib: Library) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, N);
@@ -20,6 +35,7 @@ const timed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
   const r = await f();
   return [r, Date.now() - t0];
 };
+const med = (rs: GemmaResult[], f: (r: GemmaResult) => number) => median(rs.map(f));
 const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
 
 /** Same N random photos through CLIP, ML Kit labeling and Gemma 4 E2B; per-photo wall time including decode. */
@@ -30,6 +46,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [loadMs, setLoadMs] = useState<number | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState('');
+  const [opt, setOpt] = useState<OptRow[]>([]);
 
   const refresh = () => EdgeBench?.gemmaFile().then(setFile);
   useEffect(() => {
@@ -77,11 +94,26 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         setRows([...out]);
         r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE);
         setRows([...out]);
-        if (loadMs != null) r.gemma = await bench.gemmaDescribe(r.p.uri, PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS);
+        if (loadMs != null) r.gemma = await bench.gemmaDescribe([r.p.uri], PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS, null);
       } catch (e) {
         r.err = e instanceof Error ? e.message : String(e);
       }
       setRows([...out]);
+    }
+  });
+
+  const runVariants = guard('variants', async () => {
+    if (!lib || loadMs == null) return;
+    const photos = sample(lib).slice(0, 6);
+    const backend = gpu ? 'GPU' : 'CPU';
+    for (const v of VARIANTS) {
+      const row: OptRow = { backend, v, runs: [], photos: v.story ? photos.length : 1 };
+      setOpt((o) => [...o, row]);
+      const calls = v.story ? [photos.map((p) => p.uri)] : photos.slice(0, OPT_N).map((p) => [p.uri]);
+      for (const uris of calls) {
+        row.runs.push(await bench.gemmaDescribe(uris, v.prompt, v.side, v.max, v.thinking ?? null));
+        setOpt((o) => [...o]);
+      }
     }
   });
 
@@ -108,7 +140,19 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       </View>
       <View style={s.row}>
         <Btn label={`Run ${N} random photos${loadMs == null ? ' (no Gemma)' : ''}`} onPress={run} />
+        {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
       </View>
+
+      {opt.map((o, i) => (
+        <Text key={i} style={s.line}>
+          <Text style={s.k}>
+            {o.backend} {o.v.name}: {o.runs.length ? `${(med(o.runs, (r) => r.ms) / 1000).toFixed(1)} s/call${o.photos > 1 ? ` (${(med(o.runs, (r) => r.ms) / 1000 / o.photos).toFixed(1)} s/photo)` : ''}` : '…'}
+          </Text>
+          {o.runs.length
+            ? `  n=${o.runs.length} · prep ${med(o.runs, (r) => r.prepMs)} ms · ttft ${(med(o.runs, (r) => r.ttftMs) / 1000).toFixed(1)} s · prefill ${med(o.runs, (r) => r.prefillTokens)} tok @ ${med(o.runs, (r) => r.prefillTps).toFixed(0)}/s · decode ${med(o.runs, (r) => r.decodeTokens)} tok @ ${med(o.runs, (r) => r.decodeTps).toFixed(1)}/s\n  “${o.runs[0].text.replace(/\s+/g, ' ')}”`
+            : ''}
+        </Text>
+      ))}
 
       <Text style={s.mono}>
         CLIP   {stat('clip')}{'\n'}

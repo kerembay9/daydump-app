@@ -13,7 +13,7 @@ type ClipEmbedderModule = {
 /** null on iOS / Expo Go: callers fall back to non-CLIP behavior. */
 export const ClipEmbedder = requireOptionalNativeModule<ClipEmbedderModule>('ClipEmbedder');
 
-export type GemmaResult = { ms: number; text: string; ttftMs: number; prefillTokens: number; decodeTokens: number; decodeTps: number };
+export type GemmaResult = { ms: number; prepMs: number; text: string; ttftMs: number; prefillTokens: number; prefillTps: number; decodeTokens: number; decodeTps: number };
 export type MlkitResult = { ms: number; labels: { text: string; conf: number }[] };
 
 type EdgeBenchModule = {
@@ -25,7 +25,7 @@ type EdgeBenchModule = {
   loadGemma(gpu: boolean): Promise<number>;
   unloadGemma(): Promise<void>;
   /** side = shortest image side sent to the model, in px. */
-  gemmaDescribe(uri: string, prompt: string, side: number, maxTokens: number): Promise<GemmaResult>;
+  gemmaDescribe(uris: string[], prompt: string, side: number, maxTokens: number, thinking: boolean | null): Promise<GemmaResult>;
   mlkitLabels(uri: string, side: number): Promise<MlkitResult>;
   addListener(event: 'onDownload', cb: (e: { bytes: number; total: number }) => void): { remove(): void };
 };
