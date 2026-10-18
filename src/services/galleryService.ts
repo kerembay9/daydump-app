@@ -78,7 +78,36 @@ export const SAMPLE_AESTHETIC_PHOTOS: PhotoAsset[] = [
   },
 ];
 
+/** Validation mode: EXPO_PUBLIC_EVAL_ALBUM="DayDump Eval" restricts every gallery read to that album. */
+export const EVAL_ALBUM = process.env.EXPO_PUBLIC_EVAL_ALBUM || null;
+
 export class GalleryService {
+  private static async evalAlbum(): Promise<MediaLibrary.Album | undefined> {
+    if (!EVAL_ALBUM) return undefined;
+    const album = await MediaLibrary.getAlbumAsync(EVAL_ALBUM);
+    if (!album) throw new Error(`Eval album "${EVAL_ALBUM}" not found on device`);
+    return album;
+  }
+
+  /** Newest-first library photos (pruned), the input to the on-device index. */
+  static async listLibraryPhotos(max = 5000): Promise<PhotoAsset[]> {
+    const album = await this.evalAlbum();
+    const raw: MediaLibrary.Asset[] = [];
+    let after: string | undefined;
+    do {
+      const page = await MediaLibrary.getAssetsAsync({
+        album,
+        mediaType: MediaLibrary.MediaType.photo,
+        sortBy: [[MediaLibrary.SortBy.creationTime, false]],
+        first: 500,
+        after,
+      });
+      raw.push(...page.assets);
+      after = page.hasNextPage && raw.length < max ? page.endCursor : undefined;
+    } while (after);
+    return this.pruneAndCleanAssets(raw.slice(0, max));
+  }
+
   /**
    * Request gallery permissions from user
    */
@@ -140,6 +169,7 @@ export class GalleryService {
       startOfDay.setHours(0, 0, 0, 0);
 
       const assets = await MediaLibrary.getAssetsAsync({
+        album: await this.evalAlbum(),
         mediaType: MediaLibrary.MediaType.photo,
         createdAfter: startOfDay.getTime(),
         sortBy: [MediaLibrary.SortBy.creationTime],
@@ -150,6 +180,7 @@ export class GalleryService {
         // If user took no photos today yet, look at the last 48 hours
         const twoDaysAgo = Date.now() - 48 * 60 * 60 * 1000;
         const recentAssets = await MediaLibrary.getAssetsAsync({
+          album: await this.evalAlbum(),
           mediaType: MediaLibrary.MediaType.photo,
           createdAfter: twoDaysAgo,
           sortBy: [MediaLibrary.SortBy.creationTime],
@@ -203,6 +234,7 @@ export class GalleryService {
       }
 
       const assets = await MediaLibrary.getAssetsAsync({
+        album: await this.evalAlbum(),
         mediaType: MediaLibrary.MediaType.photo,
         createdAfter,
         createdBefore,
@@ -213,6 +245,7 @@ export class GalleryService {
       if (assets.assets.length === 0) {
         // Fallback to recent assets if date specific search returned 0
         const recent = await MediaLibrary.getAssetsAsync({
+          album: await this.evalAlbum(),
           mediaType: MediaLibrary.MediaType.photo,
           first: limit,
           sortBy: [MediaLibrary.SortBy.creationTime],
@@ -231,7 +264,7 @@ export class GalleryService {
    * Tier 1: Fast Heuristic Pruning & Deduplication
    * Discards burst duplicates (shots taken < 2.5s apart), very narrow screenshots, etc.
    */
-  private static pruneAndCleanAssets(rawAssets: MediaLibrary.Asset[]): PhotoAsset[] {
+  static pruneAndCleanAssets(rawAssets: MediaLibrary.Asset[]): PhotoAsset[] {
     const cleaned: PhotoAsset[] = [];
     let lastTime = 0;
 

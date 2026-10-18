@@ -250,7 +250,7 @@ Respond ONLY with a strictly valid JSON object matching this schema:
   /**
    * On-Device Gemini Nano Engine Simulation (Offline / Zero-Config fallback)
    */
-  private static runOnDeviceNanoEngine(
+  static runOnDeviceNanoEngine(
     photos: PhotoAsset[],
     theme?: string,
     requestedCount: number = 6

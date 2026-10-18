@@ -42,7 +42,8 @@
           "savePhotosPermission": "Allow DayDump to save curated posts to your gallery.",
           "isAccessMediaLocationEnabled": true
         }
-      ]
+      ],
+      "expo-sqlite"
     ]
   }
 }
