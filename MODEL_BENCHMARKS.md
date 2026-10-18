@@ -53,6 +53,16 @@ Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw capt
 | Parallel decode, XNNPACK EP | 240 | 209 |
 | MediaStore thumbnails instead of full decode | decode 83 → 23–47 ms | top concept changed for ~40% of photos: not used |
 
+Thread and core tests (2026-10-19, 128 photos, wall time per photo; the shipped config scored 88–92 in the same runs). None beat it, so the code was removed.
+
+| Setting | Wall ms/photo | Why |
+|---|---|---|
+| 6 model threads | 106 | Threads 5+ land on the little cores and the run waits for the slowest |
+| 8 model threads | 110 | Same |
+| Pipelined: next batch decodes while the model runs | 90 | Decode and model compete for the same cores |
+| Pipelined, decode pinned to little cores (cpu0–3), model to big (cpu4–7) | 92 | Little cores decode ~4× slower (90 vs 23 ms/photo), so decode becomes the bottleneck; model also slows 60 → 75 ms |
+| Same, ORT spinning off | 103 | Spinning off adds wake-up latency |
+
 Full reindex of 3,942 photos with the 45M took 7.6 min (116 ms/photo, with the app UI running).
 
 ## Reproducing
