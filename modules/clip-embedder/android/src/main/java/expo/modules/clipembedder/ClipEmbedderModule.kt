@@ -18,6 +18,10 @@ import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -25,6 +29,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
+import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -43,7 +48,13 @@ class ClipEmbedderModule : Module() {
   private val ctx: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
   private val env by lazy { OrtEnvironment.getEnvironment() }
-  private val vision by lazy { session("vision.onnx") }
+  private var visionSession: OrtSession? = null
+  private val vision get() = visionSession ?: makeVision().also { visionSession = it }
+  // Bench knobs (configure): parallel batch decode, XNNPACK EP, optional fp32 vision model file.
+  private var parallel = true
+  private var xnnpack = false
+  private var visionFile: String? = null
+  private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
   private val text by lazy { session("text.onnx") }
   private val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
   private val vocabNames by lazy {
@@ -58,12 +69,40 @@ class ClipEmbedderModule : Module() {
   private fun session(name: String): OrtSession =
     env.createSession(asset(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
 
+  private fun makeVision(): OrtSession {
+    val opts = OrtSession.SessionOptions().apply {
+      if (xnnpack) {
+        // ORT guidance for XNNPACK: threads go to the EP, session pool stays at 1 without spinning.
+        addXnnpack(mapOf("intra_op_num_threads" to "4"))
+        setIntraOpNumThreads(1)
+        addConfigEntry("session.intra_op.allow_spinning", "0")
+      } else {
+        setIntraOpNumThreads(4)
+      }
+    }
+    return visionFile?.let { env.createSession(it, opts) } ?: env.createSession(asset("vision.onnx"), opts)
+  }
+
   override fun definition() = ModuleDefinition {
     Name("ClipEmbedder")
 
     // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
     AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
       withContext(Dispatchers.Default) { encode(embedImages(uris, thumb ?: 0)) }
+    }
+
+    // fp32: use filesDir/models/vision_fp32.onnx (pushed by hand for benchmarking) instead of the bundled int8 model.
+    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, useXnnpack: Boolean, fp32: Boolean ->
+      withContext(Dispatchers.Default) {
+        parallel = parallelDecode
+        xnnpack = useXnnpack
+        visionFile = File(ctx.filesDir, "models/vision_fp32.onnx").takeIf { fp32 && it.exists() }?.path
+        visionSession?.close()
+        visionSession = null
+        val t0 = SystemClock.elapsedRealtime()
+        vision.inputNames // force the session to load so loadMs is measured here
+        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "fp32" to (visionFile != null))
+      }
     }
 
     // Split of the last embedImages call: decode vs model ms, plus the first decoded bitmap's size.
@@ -85,40 +124,40 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { vocabNames.toList() } }
   }
 
-  private fun embedImages(uris: List<String>, thumb: Int): FloatArray {
+  private suspend fun embedImages(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
     val n = uris.size
-    val input = FloatBuffer.allocate(n * 3 * PLANE)
-    val ok = BooleanArray(n)
-    val px = IntArray(PLANE)
-    var srcSize = ""
+    val input = FloatArray(n * 3 * PLANE)
     val t0 = SystemClock.elapsedRealtime()
-    uris.forEachIndexed { i, uri ->
-      try {
-        val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
-        } else {
-          decodeScaled(ctx, uri, SIZE)
-        }
-        if (i == 0) srcSize = "${bmp.width}x${bmp.height}"
-        bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
-        bmp.recycle()
-        val base = i * 3 * PLANE
-        for (j in 0 until PLANE) {
-          val p = px[j]
-          input.put(base + j, ((p shr 16 and 255) / 255f - MEAN[0]) / STD[0])
-          input.put(base + PLANE + j, ((p shr 8 and 255) / 255f - MEAN[1]) / STD[1])
-          input.put(base + 2 * PLANE + j, ((p and 255) / 255f - MEAN[2]) / STD[2])
-        }
-        ok[i] = true
-      } catch (e: Exception) {
-        Log.w("ClipEmbedder", "decode failed: $uri", e)
+    // Each photo writes its own disjoint slice of input; returns the decoded size or null if undecodable.
+    fun fill(i: Int): String? = try {
+      val uri = uris[i]
+      val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
+      } else {
+        decodeScaled(ctx, uri, SIZE)
       }
+      val size = "${bmp.width}x${bmp.height}"
+      val px = IntArray(PLANE)
+      bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
+      bmp.recycle()
+      val base = i * 3 * PLANE
+      for (j in 0 until PLANE) {
+        val p = px[j]
+        input[base + j] = ((p shr 16 and 255) / 255f - MEAN[0]) / STD[0]
+        input[base + PLANE + j] = ((p shr 8 and 255) / 255f - MEAN[1]) / STD[1]
+        input[base + 2 * PLANE + j] = ((p and 255) / 255f - MEAN[2]) / STD[2]
+      }
+      size
+    } catch (e: Exception) {
+      Log.w("ClipEmbedder", "decode failed: ${uris[i]}", e)
+      null
     }
+    val sizes = if (parallel) coroutineScope { (0 until n).map { i -> async(decodePool) { fill(i) } }.awaitAll() } else (0 until n).map(::fill)
     val t1 = SystemClock.elapsedRealtime()
-    val out = run(vision, "pixel_values", OnnxTensor.createTensor(env, input, longArrayOf(n.toLong(), 3, SIZE.toLong(), SIZE.toLong())))
-    timings = mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (SystemClock.elapsedRealtime() - t1).toDouble(), "size" to srcSize)
-    for (i in 0 until n) if (!ok[i]) out.fill(0f, i * DIM, (i + 1) * DIM)
+    val out = run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(n.toLong(), 3, SIZE.toLong(), SIZE.toLong())))
+    timings = mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (SystemClock.elapsedRealtime() - t1).toDouble(), "size" to (sizes.firstOrNull() ?: ""))
+    for (i in 0 until n) if (sizes[i] == null) out.fill(0f, i * DIM, (i + 1) * DIM)
     return out
   }
 

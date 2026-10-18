@@ -37,8 +37,14 @@ type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number
 /** Indexer path (batches of 16: asset info for GPS, embed, top concepts) with full decode vs MediaStore thumbnails. */
 const IDX_N = 64;
 const IDX_BATCH = 16;
-const IDX_MODES = [{ name: 'full decode', thumb: 0 }, { name: 'thumb 448', thumb: 448 }, { name: 'thumb 256', thumb: 256 }];
-const contentUri = (id: string) => `content://media/external/images/media/${id}`;
+// Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
+const IDX_MODES = [
+  { name: 'serial · CPU EP · int8', parallel: false, xnnpack: false, fp32: false },
+  { name: 'parallel · CPU EP · int8', parallel: true, xnnpack: false, fp32: false },
+  { name: 'parallel · XNNPACK · int8', parallel: true, xnnpack: true, fp32: false },
+  { name: 'parallel · CPU EP · fp32', parallel: true, xnnpack: false, fp32: true },
+  { name: 'parallel · XNNPACK · fp32', parallel: true, xnnpack: true, fp32: true },
+];
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
 
@@ -138,17 +144,19 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     const photos = [...lib.photos].sort(() => Math.random() - 0.5).slice(0, IDX_N);
     const n = photos.length;
     const lines: string[] = [];
-    let ref: { vecs: Float32Array; top1: number[] } | null = null;
-    for (const m of IDX_MODES) {
+    const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
+    // Untimed pass with the shipped config: warms the file cache (fair to every mode) and gives the reference vectors.
+    await clip.configure(false, false, false);
+    const pass = async () => {
       const t = { info: 0, decode: 0, model: 0, concepts: 0 };
       let size = '';
       const vecs = new Float32Array(n * DIM);
       const top1: number[] = [];
       for (let i = 0; i < n; i += IDX_BATCH) {
         const batch = photos.slice(i, i + IDX_BATCH);
-        const [infos, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
+        const [, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
         t.info += infoMs;
-        const b64 = await clip.embedImages(batch.map((a, j) => (m.thumb ? contentUri(a.id) : (infos[j]?.localUri ?? a.uri))), m.thumb);
+        const b64 = await clip.embedImages(uris.slice(i, i + IDX_BATCH));
         const lt = clip.lastEmbedTimings();
         t.decode += lt.decodeMs;
         t.model += lt.modelMs;
@@ -158,21 +166,28 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         for (let j = 0; j < batch.length; j++) top1.push(c.ids[j * 10]);
         vecs.set(b64ToFloats(b64), i * DIM);
       }
-      const per = (x: number) => (x / n).toFixed(0);
-      let vs = '';
-      if (ref) {
-        const cos = photos.map((_, k) => {
-          let d = 0;
-          for (let x = 0; x < DIM; x++) d += vecs[k * DIM + x] * ref!.vecs[k * DIM + x];
-          return d;
-        });
-        const same = top1.filter((id, k) => id === ref!.top1[k]).length;
-        vs = `\n   vs full: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
+      return { t, size, vecs, top1 };
+    };
+    const ref = await pass();
+    for (const m of IDX_MODES) {
+      const cfg = await clip.configure(m.parallel, m.xnnpack, m.fp32);
+      if (m.fp32 && !cfg.fp32) {
+        lines.push(`${m.name}: skipped (no files/models/vision_fp32.onnx)`);
+        continue;
       }
-      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n})\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)} · src ${size}${vs}`);
+      const { t, size, vecs, top1 } = await pass();
+      const per = (x: number) => (x / n).toFixed(0);
+      const cos = photos.map((_, k) => {
+        let d = 0;
+        for (let x = 0; x < DIM; x++) d += vecs[k * DIM + x] * ref.vecs[k * DIM + x];
+        return d;
+      });
+      const same = top1.filter((id, k) => id === ref.top1[k]).length;
+      const vs = `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
+      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)} · src ${size}${vs}`);
       setIdx([...lines]);
-      ref ??= { vecs, top1 };
     }
+    await clip.configure(true, false, false); // back to shipped defaults
   });
 
   const have = file.bytes > 0;
