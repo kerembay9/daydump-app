@@ -19,7 +19,9 @@ dependencies {
   // Benchmark engines (EdgeBenchModule). ponytail: litertlm pinned to 0.16.1 (stdlib 2.2, metadata 2.3, read via
   // the flag below); 0.17+ pulls stdlib 2.4, which the app's Kotlin 2.1.20 can't compile against. Unpin when Expo moves to Kotlin 2.4.
   implementation 'com.google.ai.edge.litertlm:litertlm-android:0.16.1'
-  implementation 'com.google.mlkit:image-labeling:17.0.9'
+  // Unbundled ML Kit: Play services fetches the model on request instead of adding ~13 MB to every install.
+  implementation 'com.google.android.gms:play-services-mlkit-image-labeling:16.0.8'
+  implementation 'com.google.android.gms:play-services-base:18.5.0'
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {

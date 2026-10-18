@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { ClipEmbedder, EdgeBench, GemmaResult, MlkitResult } from '../../modules/clip-embedder';
@@ -57,6 +57,16 @@ const timed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
 };
 const med = (rs: GemmaResult[], f: (r: GemmaResult) => number) => median(rs.map(f));
 const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
+const GEMMA_BYTES = 2.6e9;
+
+/** Caution popup; resolves true only on the confirm button. */
+const confirm = (title: string, message: string, ok: string) =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: ok, onPress: () => resolve(true) },
+    ], { cancelable: true, onDismiss: () => resolve(false) })
+  );
 
 /** Same N random photos through CLIP, ML Kit labeling and Gemma 4 E2B; per-photo wall time including decode. */
 export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
@@ -95,6 +105,13 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   };
 
   const download = guard('download', async () => {
+    const left = mb(GEMMA_BYTES - file.partial);
+    const ok = await confirm(
+      'Download Gemma 4 E2B?',
+      `This downloads ${left} for benchmarking only. Use Wi-Fi: on mobile data it can use up your plan. It needs about 3 GB of free storage, and you can delete it here afterwards.`,
+      `Download ${left}`
+    );
+    if (!ok) return;
     await bench.downloadGemma(GEMMA_URL);
     setDl('downloaded');
   });
@@ -106,6 +123,18 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
 
   const run = guard('run', async () => {
     if (!lib) return;
+    // ML Kit's model comes from Play services on first use; ask before fetching it, else run without ML Kit.
+    let mlkit = await bench.mlkitReady();
+    if (!mlkit && (await confirm(
+      'Download ML Kit model?',
+      'Google Play services downloads a small image labeling model (a few MB) once, for this benchmark only. Cancel runs the benchmark without ML Kit.',
+      'Download'
+    ))) {
+      setBusy('downloading ML Kit model');
+      mlkit = await bench.mlkitInstall();
+      if (!mlkit) setDl('ML Kit model still downloading; this run skips ML Kit');
+      setBusy('run');
+    }
     const out: Row[] = sample(lib).map((p) => ({ p }));
     setRows([...out]);
     for (let i = 0; i < out.length; i++) {
@@ -114,7 +143,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages([r.p.uri]), 3));
         r.clip = { ms, words: c.ids.map((id) => lib.conceptNames[id]) };
         setRows([...out]);
-        r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE);
+        if (mlkit) r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE);
         setRows([...out]);
         if (loadMs != null) r.gemma = await bench.gemmaDescribe([r.p.uri], PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS, null);
       } catch (e) {
@@ -214,7 +243,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       <View style={s.row}>
         <Btn label={`Run ${N} random photos${loadMs == null ? ' (no Gemma)' : ''}`} onPress={run} />
         {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
-        <Btn label="CLIP index bench" onPress={runIndexBench} />
+        <Btn label="TinyCLIP index bench" onPress={runIndexBench} />
       </View>
       {idx.length > 0 && <Text style={s.mono}>{idx.join('\n')}</Text>}
 
@@ -230,17 +259,17 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       ))}
 
       <Text style={s.mono}>
-        CLIP   {stat('clip')}{'\n'}
-        MLKit  {stat('mlkit')}{'\n'}
-        Gemma  {stat('gemma')}
-        {g.length ? `\n       ttft ${median(g.map((x) => x.ttftMs)).toFixed(0)} ms · ${median(g.map((x) => x.prefillTokens))} prefill tok · decode ${median(g.map((x) => x.decodeTps)).toFixed(1)} tok/s` : ''}
+        TinyCLIP {stat('clip')}{'\n'}
+        ML Kit   {stat('mlkit')}{'\n'}
+        Gemma    {stat('gemma')}
+        {g.length ? `\n         ttft ${median(g.map((x) => x.ttftMs)).toFixed(0)} ms · ${median(g.map((x) => x.prefillTokens))} prefill tok · decode ${median(g.map((x) => x.decodeTps)).toFixed(1)} tok/s` : ''}
       </Text>
 
       {rows.map((r) => (
         <View key={r.p.id} style={s.result}>
           <Image source={{ uri: r.p.uri }} style={s.thumb} contentFit="cover" />
           <View style={{ flex: 1 }}>
-            <Text style={s.line}><Text style={s.k}>CLIP {r.clip ? `${r.clip.ms} ms` : '…'} </Text>{r.clip?.words.join(', ')}</Text>
+            <Text style={s.line}><Text style={s.k}>TinyCLIP {r.clip ? `${r.clip.ms} ms` : '…'} </Text>{r.clip?.words.join(', ')}</Text>
             <Text style={s.line}>
               <Text style={s.k}>MLKit {r.mlkit ? `${r.mlkit.ms} ms` : '…'} </Text>
               {r.mlkit?.labels.slice(0, 4).map((l) => `${l.text} ${l.conf.toFixed(2)}`).join(', ')}

@@ -96,7 +96,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
         {!!status && <Text style={styles.mono}>{status}</Text>}
 
-        <Text style={styles.h2}>Model benchmark (CLIP · ML Kit · Gemma 4 E2B)</Text>
+        <Text style={styles.h2}>Model benchmark (TinyCLIP · ML Kit · Gemma 4 E2B)</Text>
         <ModelBench lib={lib} />
 
         <Text style={styles.h2}>Topic knobs</Text>

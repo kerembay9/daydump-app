@@ -33,6 +33,10 @@ type EdgeBenchModule = {
   unloadGemma(): Promise<void>;
   /** side = shortest image side sent to the model, in px. */
   gemmaDescribe(uris: string[], prompt: string, side: number, maxTokens: number, thinking: boolean | null): Promise<GemmaResult>;
+  /** Whether Play services already has the labeling model. */
+  mlkitReady(): Promise<boolean>;
+  /** Requests the model download; resolves true once usable (false after a 2 min timeout). */
+  mlkitInstall(): Promise<boolean>;
   mlkitLabels(uri: string, side: number): Promise<MlkitResult>;
   addListener(event: 'onDownload', cb: (e: { bytes: number; total: number }) => void): { remove(): void };
 };

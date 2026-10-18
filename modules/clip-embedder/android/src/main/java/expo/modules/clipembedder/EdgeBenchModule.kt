@@ -11,6 +11,8 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.ThinkingConfig
+import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
@@ -20,6 +22,7 @@ import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -29,7 +32,7 @@ import java.net.URL
 
 /**
  * Benchmark-only engines to compare against CLIP: Gemma 4 E2B (LiteRT-LM, downloaded at runtime) and
- * ML Kit image labeling (bundled). Every timing includes decoding the photo, like CLIP's embedImages.
+ * ML Kit image labeling (Play services; its model downloads once, on request). Every timing includes decoding the photo, like CLIP's embedImages.
  */
 @OptIn(ExperimentalApi::class)
 class EdgeBenchModule : Module() {
@@ -93,6 +96,23 @@ class EdgeBenchModule : Module() {
             "decodeTps" to b.lastDecodeTokensPerSecond,
           )
         }
+      }
+    }
+
+    AsyncFunction("mlkitReady") Coroutine { ->
+      withContext(Dispatchers.IO) { Tasks.await(ModuleInstall.getClient(ctx).areModulesAvailable(labeler)).areModulesAvailable() }
+    }
+
+    // Asks Play services for the labeling model and waits (up to 2 min) until it is usable.
+    AsyncFunction("mlkitInstall") Coroutine { ->
+      withContext(Dispatchers.IO) {
+        val client = ModuleInstall.getClient(ctx)
+        Tasks.await(client.installModules(ModuleInstallRequest.newBuilder().addApi(labeler).build()))
+        repeat(240) {
+          if (Tasks.await(client.areModulesAvailable(labeler)).areModulesAvailable()) return@withContext true
+          delay(500)
+        }
+        false
       }
     }
 
