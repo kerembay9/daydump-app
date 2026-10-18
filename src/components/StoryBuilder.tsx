@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, X } from 'lucide-react-native';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { CaptionTone, CarouselSlide, CuratedCarousel, FrameStyle, PhotoAsset } from '../types';
 import { Library } from '../services/index/photoIndex';
@@ -81,26 +81,26 @@ export const StoryBuilder: React.FC<StoryBuilderProps> = ({
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
           {step === 0 && (
             <View style={styles.photos}>
-              <Text style={styles.hint}>Tap a photo to swap it. Use the arrows to reorder.</Text>
+              <Text style={styles.hint}>Tap a photo to see similar ones to swap in. Use the arrows to reorder.</Text>
               {slides.map((s, i) => (
-                <View key={s.id}>
+                <View key={s.id} style={[styles.slideCard, selected === i && styles.slideCardActive]}>
+                  <View style={styles.slideHeader}>
+                    <Text style={styles.slideNum}>{i + 1}</Text>
+                    <Text style={styles.slideRole} numberOfLines={1}>{s.role}</Text>
+                    <TouchableOpacity disabled={i === 0} onPress={() => move(i, -1)} hitSlop={8} style={styles.arrow} accessibilityLabel="Move earlier">
+                      <ArrowUp size={18} color={i === 0 ? '#3A3A3C' : '#FFFFFF'} />
+                    </TouchableOpacity>
+                    <TouchableOpacity disabled={i === slides.length - 1} onPress={() => move(i, 1)} hitSlop={8} style={styles.arrow} accessibilityLabel="Move later">
+                      <ArrowDown size={18} color={i === slides.length - 1 ? '#3A3A3C' : '#FFFFFF'} />
+                    </TouchableOpacity>
+                  </View>
+                  {/* Full width at the post's 4:5 crop, so what you see is what gets shared. */}
                   <TouchableOpacity
-                    style={[styles.slideRow, selected === i && styles.slideRowActive]}
                     onPress={() => setSelected(selected === i ? null : i)}
-                    activeOpacity={0.8}
-                    accessibilityLabel={`Slide ${i + 1}, ${s.role}`}
+                    activeOpacity={0.9}
+                    accessibilityLabel={`Slide ${i + 1}, ${s.role}. Show similar photos`}
                   >
-                    <Image source={{ uri: s.photo.uri }} style={styles.thumb} contentFit="cover" recyclingKey={s.id} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.slideNum}>{i + 1}</Text>
-                      <Text style={styles.slideRole}>{s.role}</Text>
-                    </View>
-                    <TouchableOpacity disabled={i === 0} onPress={() => move(i, -1)} hitSlop={8} style={styles.arrow} accessibilityLabel="Move up">
-                      <ChevronUp size={20} color={i === 0 ? '#3A3A3C' : '#FFFFFF'} />
-                    </TouchableOpacity>
-                    <TouchableOpacity disabled={i === slides.length - 1} onPress={() => move(i, 1)} hitSlop={8} style={styles.arrow} accessibilityLabel="Move down">
-                      <ChevronDown size={20} color={i === slides.length - 1 ? '#3A3A3C' : '#FFFFFF'} />
-                    </TouchableOpacity>
+                    <Image source={{ uri: s.photo.uri }} style={styles.photo} contentFit="cover" recyclingKey={s.id} />
                   </TouchableOpacity>
                   {selected === i && (
                     suggestions.length ? (
@@ -165,16 +165,17 @@ const styles = StyleSheet.create({
   stepBarDone: { backgroundColor: '#FF9500' },
   stepText: { fontSize: 11, fontWeight: '700', color: '#636366' },
   stepTextActive: { color: '#FFFFFF' },
-  photos: { paddingHorizontal: 16, gap: 8 },
+  photos: { paddingHorizontal: 16, gap: 12 },
   hint: { color: '#8E8E93', fontSize: 12, marginVertical: 6 },
-  slideRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, borderRadius: 12, backgroundColor: '#1C1C1E', borderWidth: 1, borderColor: 'transparent' },
-  slideRowActive: { borderColor: '#FF9500' },
-  thumb: { width: 56, height: 70, borderRadius: 8, backgroundColor: '#2C2C2E' },
+  slideCard: { padding: 8, borderRadius: 14, backgroundColor: '#1C1C1E', borderWidth: 1, borderColor: 'transparent' },
+  slideCardActive: { borderColor: '#FF9500' },
+  slideHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 6 },
   slideNum: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-  slideRole: { color: '#8E8E93', fontSize: 11, marginTop: 2 },
-  arrow: { padding: 6 },
-  swapRow: { gap: 8, paddingVertical: 8 },
-  swapThumb: { width: 72, height: 90, borderRadius: 8, backgroundColor: '#2C2C2E' },
+  slideRole: { flex: 1, color: '#8E8E93', fontSize: 12 },
+  photo: { width: '100%', aspectRatio: 4 / 5, borderRadius: 10, backgroundColor: '#2C2C2E' },
+  arrow: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2C2C2E' },
+  swapRow: { gap: 8, paddingTop: 8 },
+  swapThumb: { width: 96, height: 120, borderRadius: 8, backgroundColor: '#2C2C2E' },
   bottomBar: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderTopWidth: 1, borderTopColor: '#1C1C1E' },
   navBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FF9500', paddingVertical: 14, borderRadius: 14 },
   backBtn: { flex: 0, paddingHorizontal: 18, backgroundColor: '#2C2C2E' },
