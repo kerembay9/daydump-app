@@ -38,6 +38,7 @@ import { NotificationService } from '../services/notificationService';
 import { GalleryService } from '../services/galleryService';
 import { LegalModal, LegalDocType } from './LegalModal';
 import { UserSubscriptionState } from '../types';
+import { EVAL_ALBUM } from '../services/galleryService';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -45,6 +46,7 @@ interface SettingsModalProps {
   onReloadSubscription: () => void;
   onTriggerOnboarding?: () => void;
   onOpenPaywall?: () => void;
+  onOpenStoriesDebug?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -53,6 +55,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onReloadSubscription,
   onTriggerOnboarding,
   onOpenPaywall,
+  onOpenStoriesDebug,
 }) => {
   const [subState, setSubState] = useState<UserSubscriptionState | null>(null);
   const [geminiKey, setGeminiKey] = useState('');
@@ -386,6 +389,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </TouchableOpacity>
             </View>
           </View>
+
+          {(__DEV__ || EVAL_ALBUM || isDevUnlocked) && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: '#FF9500' }]}>ON-DEVICE STORIES</Text>
+              <View style={[styles.card, { borderColor: '#FF9500' }]}>
+                <TouchableOpacity style={styles.row} onPress={onOpenStoriesDebug}>
+                  <Text style={styles.cardLabel}>Stories debug{EVAL_ALBUM ? ` (eval: ${EVAL_ALBUM})` : ''}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* Unlocked Developer Tools (Protected Behind 5 Taps) */}
           {isDevUnlocked && (

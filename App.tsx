@@ -19,6 +19,10 @@ import { CaptionStudio } from './src/components/CaptionStudio';
 import { PaywallModal } from './src/components/PaywallModal';
 import { SettingsModal } from './src/components/SettingsModal';
 import { OnboardingModal } from './src/components/OnboardingModal';
+import { StoryCardsRow } from './src/components/StoryCardsRow';
+import { DebugStoriesModal } from './src/components/DebugStoriesModal';
+import { indexLibrary, Library, loadLibrary } from './src/services/index/photoIndex';
+import { buildStories, markSeen, searchStory, Story, toCarousel } from './src/services/stories';
 import { GalleryService } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
 import { RevenueCatService } from './src/services/revenuecat';
@@ -28,6 +32,8 @@ import { NotificationService } from './src/services/notificationService';
 import { PremiumStatusProvider } from './src/contexts/PremiumStatusContext';
 import { CuratedCarousel, FrameStyle, UserSubscriptionState } from './src/types';
 import { PAYWALL_RESULT } from 'react-native-purchases-ui';
+
+const STORIES_SHOWN = 6;
 
 function MainApp() {
   const [subscription, setSubscription] = useState<UserSubscriptionState>({
@@ -46,6 +52,11 @@ function MainApp() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showStoriesDebug, setShowStoriesDebug] = useState<boolean>(false);
+
+  const [library, setLibrary] = useState<Library | null>(null);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [indexProgress, setIndexProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     initApp();
@@ -111,6 +122,7 @@ function MainApp() {
     try {
       const perm = await GalleryService.requestPermissions();
       setHasPhotoPermission(perm);
+      if (perm) refreshStories();
 
       // 1. Fetch today's photos
       const photos = await GalleryService.fetchTodaysPhotos(30);
@@ -136,6 +148,38 @@ function MainApp() {
     }
   };
 
+  /** Show stories from the current index right away, then index new photos and rebuild if anything changed. */
+  const refreshStories = async () => {
+    try {
+      const show = async () => {
+        const lib = await loadLibrary();
+        setLibrary(lib);
+        setStories((await buildStories(lib)).slice(0, STORIES_SHOWN));
+      };
+      await show();
+      const added = await indexLibrary((done, total) => setIndexProgress({ done, total }));
+      setIndexProgress(null);
+      if (added) await show();
+    } catch (e) {
+      setIndexProgress(null);
+      console.warn('[stories] refresh failed:', e);
+    }
+  };
+
+  const handleSelectStory = (story: Story) => {
+    const curated = toCarousel(story);
+    if (!subscription.isPro) curated.frameStyle = 'clean';
+    setIsSamplePhotos(false);
+    setCarousel(curated);
+    markSeen([story.id]);
+  };
+
+  const handleShuffleStories = async () => {
+    if (!library) return;
+    await markSeen(stories.map((s) => s.id));
+    setStories((await buildStories(library)).slice(0, STORIES_SHOWN));
+  };
+
   const handleCurateTheme = async (themeQuery: string, isCustom: boolean) => {
     // Aggressive Creator Model Paywall Gate 1: Custom theme prompts require Pro
     if (isCustom && !subscription.isPro) {
@@ -153,6 +197,20 @@ function MainApp() {
     setLoadingText(`Searching photos for "${themeQuery || 'Today'}"...`);
 
     try {
+      // On-device CLIP search when the index is available; keyword/date fallback otherwise.
+      const found = themeQuery && library?.hasClip ? await searchStory(library, themeQuery) : null;
+      if (found) {
+        const curated = toCarousel(found);
+        if (!subscription.isPro) curated.frameStyle = 'clean';
+        setIsSamplePhotos(false);
+        setCarousel(curated);
+        if (!subscription.isPro) {
+          await RevenueCatService.recordDumpGenerated();
+          await refreshSubscriptionState();
+        }
+        return;
+      }
+
       const photos = themeQuery
         ? await GalleryService.fetchPhotosForTheme(themeQuery, 35)
         : await GalleryService.fetchTodaysPhotos(30);
@@ -261,6 +319,14 @@ function MainApp() {
           onPickFromGallery={handlePickFromGallery}
         />
 
+        <StoryCardsRow
+          stories={stories}
+          progress={indexProgress}
+          activeId={carousel?.id}
+          onSelect={handleSelectStory}
+          onShuffle={handleShuffleStories}
+        />
+
         {/* Loading Overlay or Carousel Studio */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -350,7 +416,13 @@ function MainApp() {
         onReloadSubscription={refreshSubscriptionState}
         onTriggerOnboarding={() => setShowOnboarding(true)}
         onOpenPaywall={handleOpenPaywall}
+        onOpenStoriesDebug={() => {
+          setShowSettings(false);
+          setShowStoriesDebug(true);
+        }}
       />
+
+      <DebugStoriesModal visible={showStoriesDebug} onClose={() => setShowStoriesDebug(false)} />
     </SafeAreaView>
   );
 }
