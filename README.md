@@ -86,3 +86,18 @@ npm run android
 2. Toggle **"Simulate Pro Active"** on or off to immediately test free tier limits vs full Pro creator features.
 3. Tap **"Reset Daily Free Dump Limit"** to test the paywall trigger after 1 daily dump.
 4. Input your RevenueCat API key whenever you're ready to test production StoreKit / Google Play Billing.
+
+## 🧠 On-device stories (Android)
+
+Story cards ("A week in Seattle", "A red winter") come from an on-device index: TinyCLIP embeddings
+(`modules/clip-embedder`, ONNX Runtime) + GPS/dates + an offline city list. Nothing leaves the phone.
+
+1. Build the model assets once (they're gitignored, ~110 MB):
+   `python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript`
+   then `.venv/bin/python scripts/build_assets.py`
+2. Logic self-check: `npx -y tsx scripts/selfcheck.ts`
+3. **Eval mode:** put a curated, diverse set of photos in a phone album (e.g. `DayDump Eval`) and add
+   `EXPO_PUBLIC_EVAL_ALBUM=DayDump Eval` to `.env.local`. Every gallery read, the index, stories and search
+   then use only that album (separate index DB). Inspect results in Settings → On-device stories → Stories debug.
+
+Attribution: GeoNames (CC BY 4.0), Open Images V7 class names (CC BY 4.0), TinyCLIP (MIT).

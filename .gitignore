@@ -40,3 +40,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# generated ML assets (scripts/build_assets.py)
+.venv/
+scripts/.cache/
+modules/clip-embedder/android/src/main/assets/clip/
+modules/*/android/build/
