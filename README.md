@@ -96,6 +96,7 @@ Story cards ("A week in Seattle", "A red winter") come from an on-device index: 
    `python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq ftfy regex`
    then `.venv/bin/python scripts/build_assets.py`
    (`build_assets.py bench` exports the old 40M and the faster 22M vision models for the index bench and prints the adb push commands.)
+   Accuracy vs phone speed of every model tried: [MODEL_BENCHMARKS.md](MODEL_BENCHMARKS.md).
 2. Logic self-check: `npx -y tsx scripts/selfcheck.ts`
 3. **Eval mode:** put a curated, diverse set of photos in a phone album (e.g. `DayDump Eval`) and add
    `EXPO_PUBLIC_EVAL_ALBUM=DayDump Eval` to `.env.local`. Every gallery read, the index, stories and search
