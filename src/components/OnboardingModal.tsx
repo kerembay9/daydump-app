@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sparkles, ShieldCheck, Image as ImageIcon, ArrowRight, Check, Film, Layers } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { OnboardingService } from '../services/onboardingService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

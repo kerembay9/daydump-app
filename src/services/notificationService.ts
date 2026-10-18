@@ -1,20 +1,48 @@
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo, requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const NOTIF_STORAGE_KEY = '@daydump_daily_notification_enabled';
 const DAILY_NOTIF_ID = 'daydump_daily_recap_8pm';
 
-// Configure how notifications appear when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+type NotificationsType = typeof import('expo-notifications');
+
+let cachedNotifications: NotificationsType | null | undefined;
+
+function getNotifications(): NotificationsType | null {
+  if (cachedNotifications !== undefined) {
+    return cachedNotifications;
+  }
+
+  // Expo Go on Android removed native notification modules (e.g. ExpoTopicSubscriptionModule)
+  if (
+    isRunningInExpoGo() ||
+    (Platform.OS === 'android' && !requireOptionalNativeModule('ExpoTopicSubscriptionModule'))
+  ) {
+    cachedNotifications = null;
+    return null;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Notifications = require('expo-notifications') as NotificationsType;
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    cachedNotifications = Notifications;
+    return Notifications;
+  } catch (e) {
+    console.warn('[NotificationService] Notifications module unavailable:', e);
+    cachedNotifications = null;
+    return null;
+  }
+}
 
 export class NotificationService {
   /**
@@ -22,6 +50,9 @@ export class NotificationService {
    */
   static async init(): Promise<void> {
     try {
+      const Notifications = getNotifications();
+      if (!Notifications) return;
+
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('daily_dump_channel', {
           name: 'Daily Dump Reminders',
@@ -75,6 +106,9 @@ export class NotificationService {
    */
   static async requestPermissions(): Promise<boolean> {
     try {
+      const Notifications = getNotifications();
+      if (!Notifications) return false;
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== 'granted') {
@@ -93,6 +127,9 @@ export class NotificationService {
    */
   static async scheduleDailyRecap(hour: number = 20, minute: number = 0): Promise<void> {
     try {
+      const Notifications = getNotifications();
+      if (!Notifications) return;
+
       // Cancel previous schedule to prevent duplicates
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID).catch(() => {});
 
@@ -122,6 +159,9 @@ export class NotificationService {
    */
   static async cancelDailyRecap(): Promise<void> {
     try {
+      const Notifications = getNotifications();
+      if (!Notifications) return;
+
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID);
     } catch (e) {
       console.warn('[NotificationService] cancel error:', e);
@@ -132,6 +172,11 @@ export class NotificationService {
    * Trigger an instant test notification for testing & demonstration
    */
   static async sendTestNotification(): Promise<void> {
+    const Notifications = getNotifications();
+    if (!Notifications) {
+      throw new Error('Notifications require a native build and are not supported in Expo Go.');
+    }
+
     const granted = await this.requestPermissions();
     if (!granted) {
       throw new Error('Notification permission was not granted.');
