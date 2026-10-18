@@ -2,7 +2,7 @@
 
 Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq
         (needs torch + transformers already installed)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [cities]   (no args = all)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [concepts] [cities]   (no args = all)
 
 clip   - TinyCLIP 40M/32 (MIT) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> int8 text embeddings
@@ -182,6 +182,25 @@ def build_vocab():
             f.write(struct.pack("<f", s)); f.write(row.tobytes())
     (NATIVE / "vocab.json").write_text(json.dumps({"source": LICENSE_NOTE, "names": [n for n, _ in entries]}))
     print(f"  vocab.bin: {(NATIVE / 'vocab.bin').stat().st_size / 1e6:.1f} MB")
+    build_concepts()
+
+
+def build_concepts():
+    """Weightless graph: scores = q . vocab^T, then TopK per row. The app feeds the dequantized vocab as an input,
+    so this file never changes with the vocab. One ORT Gemm per batch instead of a scalar Kotlin loop."""
+    import onnx
+    from onnx import TensorProto as T, helper as h
+    g = h.make_graph(
+        [h.make_node("Gemm", ["q", "vocab"], ["scores"], transB=1),
+         h.make_node("TopK", ["scores", "k"], ["values", "indices"], axis=-1)],
+        "concepts",
+        [h.make_tensor_value_info("q", T.FLOAT, ["n", 512]), h.make_tensor_value_info("vocab", T.FLOAT, ["rows", 512]),
+         h.make_tensor_value_info("k", T.INT64, [1])],
+        [h.make_tensor_value_info("values", T.FLOAT, ["n", "k"]), h.make_tensor_value_info("indices", T.INT64, ["n", "k"])])
+    m = h.make_model(g, opset_imports=[h.make_opsetid("", 17)])
+    m.ir_version = 8
+    onnx.checker.check_model(m)
+    onnx.save(m, NATIVE / "concepts.onnx")
 
 
 def build_cities():
@@ -206,4 +225,4 @@ def build_cities():
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clip", "vocab", "cities"]
     for s in steps:
-        {"clip": build_clip, "vocab": build_vocab, "cities": build_cities}[s]()
+        {"clip": build_clip, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities}[s]()

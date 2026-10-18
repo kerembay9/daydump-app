@@ -61,7 +61,21 @@ class ClipEmbedderModule : Module() {
     val a = JSONObject(asset("vocab.json").decodeToString()).getJSONArray("names")
     Array(a.length()) { a.getString(it) }
   }
-  private val vocab by lazy { asset("vocab.bin") } // rows of [float32 scale][512 x int8]
+  private val concepts by lazy { session("concepts.onnx") }
+  // vocab.bin rows are [float32 scale][512 x int8]; dequantized once into a rows x 512 tensor (~7 MB).
+  private val vocabTensor by lazy {
+    val vocab = asset("vocab.bin")
+    val stride = 4 + DIM
+    val rows = vocab.size / stride
+    val bb = ByteBuffer.wrap(vocab).order(ByteOrder.LITTLE_ENDIAN)
+    val fb = ByteBuffer.allocateDirect(rows * DIM * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+    for (r in 0 until rows) {
+      val s = bb.getFloat(r * stride)
+      for (j in 0 until DIM) fb.put(vocab[r * stride + 4 + j] * s)
+    }
+    fb.rewind()
+    OnnxTensor.createTensor(env, fb, longArrayOf(rows.toLong(), DIM.toLong()))
+  }
   private var timings = mapOf<String, Any>()
 
   private fun asset(name: String) = ctx.assets.open("clip/$name").use { it.readBytes() }
@@ -173,26 +187,19 @@ class ClipEmbedderModule : Module() {
     s.run(mapOf(name to it)).use { r -> (r[0] as OnnxTensor).floatBuffer.let { b -> FloatArray(b.remaining()).also { a -> b.get(a) } } }
   }
 
+  // One ORT Gemm + TopK for the whole batch (concepts.onnx, weightless; the vocab is an input).
   private fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
-    val stride = 4 + DIM
-    val bb = ByteBuffer.wrap(vocab).order(ByteOrder.LITTLE_ENDIAN)
-    val rows = vocab.size / stride
-    val scale = FloatArray(rows) { bb.getFloat(it * stride) }
-    val ids = ArrayList<Int>()
-    val out = ArrayList<Double>()
-    val scores = FloatArray(rows)
-    for (q in 0 until qs.size / DIM) {
-      val qo = q * DIM
-      for (r in 0 until rows) {
-        val off = r * stride + 4
-        var dot = 0f
-        for (j in 0 until DIM) dot += qs[qo + j] * vocab[off + j]
-        scores[r] = dot * scale[r]
+    val n = qs.size / DIM
+    if (n == 0) return mapOf("ids" to emptyList<Int>(), "scores" to emptyList<Double>())
+    OnnxTensor.createTensor(env, FloatBuffer.wrap(qs), longArrayOf(n.toLong(), DIM.toLong())).use { q ->
+      OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(k.toLong())), longArrayOf(1)).use { kt ->
+        concepts.run(mapOf("q" to q, "vocab" to vocabTensor, "k" to kt)).use { r ->
+          val v = (r[0] as OnnxTensor).floatBuffer
+          val i = (r[1] as OnnxTensor).longBuffer
+          return mapOf("ids" to List(i.remaining()) { i.get(it).toInt() }, "scores" to List(v.remaining()) { v.get(it).toDouble() })
+        }
       }
-      // ponytail: full sort per query (~20k); a k-sized heap if this shows up in profiles
-      scores.indices.sortedByDescending { scores[it] }.take(k).forEach { ids.add(it); out.add(scores[it].toDouble()) }
     }
-    return mapOf("ids" to ids, "scores" to out)
   }
 
   private fun encode(v: FloatArray): String {
