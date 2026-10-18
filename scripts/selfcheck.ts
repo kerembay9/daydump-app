@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { placeFor } from '../src/services/index/cityLookup';
 import type { IndexedPhoto } from '../src/services/index/photoIndex';
+import { suggestSwaps } from '../src/services/stories/swaps';
 import { findTopics } from '../src/services/stories/topics';
 import { findTrips, tripTitle } from '../src/services/stories/trips';
 import { dateRange, topicTitle } from '../src/services/stories/titles';
@@ -62,4 +63,15 @@ assert.equal(merged.length, 1);
 assert.deepEqual(merged[0].related, ['pastry']);
 
 assert.equal(dateRange(new Date(2025, 0, 1).getTime(), new Date(2025, 5, 1).getTime()), 'Jan–Jun 2025');
+// swaps: set = beach photos (axis 0); a near-copy of a slide is skipped, other beach photos beat dogs (axis 1)
+const vec = (...xs: number[]) => { const v = new Float32Array(512); xs.forEach((x, j) => (v[j] = x)); const m = Math.hypot(...v); return v.map((x) => x / m); };
+const sv = [vec(1, 0, 0.1), vec(1, 0, -0.1), vec(1, 0.01, 0.1), vec(0.9, 0.3), vec(0.1, 1), vec(0, 1, 1)];
+const sp = sv.map((_, i) => photo(base + i * D));
+const swapLib = { photos: sp, vecs: new Float32Array(sv.length * 512), conceptNames: [], hasClip: true };
+sv.forEach((v, i) => swapLib.vecs.set(v, i * 512));
+assert.deepEqual(suggestSwaps(swapLib, [sp[0], sp[1]], sp[0]).map((p) => p.id), [sp[3].id, sp[4].id, sp[5].id]);
+// no embeddings: nearest in time
+const noVec = { ...swapLib, vecs: new Float32Array(sv.length * 512) };
+assert.deepEqual(suggestSwaps(noVec, [sp[0]], sp[0], 2).map((p) => p.id), [sp[1].id, sp[2].id]);
+
 console.log('selfcheck ok');
