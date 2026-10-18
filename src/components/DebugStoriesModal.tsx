@@ -3,6 +3,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 import { Image } from 'expo-image';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { EVAL_ALBUM } from '../services/galleryService';
+import { ModelBench } from './ModelBench';
 import { conceptsForVector, indexLibrary, IndexedPhoto, Library, loadLibrary } from '../services/index/photoIndex';
 import { b64ToFloats, DIM } from '../services/index/vectors';
 import { buildStories, searchRanked, Story } from '../services/stories';
@@ -94,6 +95,9 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
           <Btn label="Self-check" onPress={selfCheck} />
         </View>
         {!!status && <Text style={styles.mono}>{status}</Text>}
+
+        <Text style={styles.h2}>Model benchmark (CLIP · ML Kit · Gemma 4 E2B)</Text>
+        <ModelBench lib={lib} />
 
         <Text style={styles.h2}>Topic knobs</Text>
         {(['minPhotos', 'minDays', 'maxShare', 'topK', 'windowDays'] as const).map((k) => {

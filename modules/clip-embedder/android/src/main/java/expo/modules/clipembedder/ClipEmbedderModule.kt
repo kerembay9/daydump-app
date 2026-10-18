@@ -86,7 +86,7 @@ class ClipEmbedderModule : Module() {
     val px = IntArray(PLANE)
     uris.forEachIndexed { i, uri ->
       try {
-        val bmp = loadBitmap(uri)
+        val bmp = decodeScaled(ctx, uri, SIZE)
         bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
         bmp.recycle()
         val base = i * 3 * PLANE
@@ -116,29 +116,6 @@ class ClipEmbedderModule : Module() {
 
   private fun run(s: OrtSession, name: String, t: OnnxTensor): FloatArray = t.use {
     s.run(mapOf(name to it)).use { r -> (r[0] as OnnxTensor).floatBuffer.let { b -> FloatArray(b.remaining()).also { a -> b.get(a) } } }
-  }
-
-  /** Decoded so the shortest side is exactly SIZE (EXIF orientation applied on API 28+). */
-  private fun loadBitmap(uri: String): Bitmap {
-    val u = Uri.parse(uri)
-    val isFile = u.scheme == null || u.scheme == "file"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      val src = if (isFile) ImageDecoder.createSource(File(u.path!!)) else ImageDecoder.createSource(ctx.contentResolver, u)
-      return ImageDecoder.decodeBitmap(src) { dec, info, _ ->
-        val s = SIZE.toFloat() / min(info.size.width, info.size.height)
-        dec.setTargetSize(max(SIZE, (info.size.width * s).roundToInt()), max(SIZE, (info.size.height * s).roundToInt()))
-        dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-      }
-    }
-    // ponytail: pre-Android 9 path ignores EXIF rotation; add androidx.exifinterface if those devices matter.
-    fun open() = if (isFile) File(u.path!!).inputStream() else ctx.contentResolver.openInputStream(u)!!
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    open().use { BitmapFactory.decodeStream(it, null, bounds) }
-    var sample = 1
-    while (min(bounds.outWidth, bounds.outHeight) / (sample * 2) >= SIZE) sample *= 2
-    val raw = open().use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }!!
-    val s = SIZE.toFloat() / min(raw.width, raw.height)
-    return Bitmap.createScaledBitmap(raw, max(SIZE, (raw.width * s).roundToInt()), max(SIZE, (raw.height * s).roundToInt()), true)
   }
 
   private fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
@@ -173,4 +150,27 @@ class ClipEmbedderModule : Module() {
     val fb = ByteBuffer.wrap(Base64.decode(s, Base64.DEFAULT)).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
     return FloatArray(fb.remaining()).also { fb.get(it) }
   }
+}
+
+/** Decoded so the shortest side is exactly `side` (EXIF orientation applied on API 28+). */
+internal fun decodeScaled(ctx: Context, uri: String, side: Int): Bitmap {
+  val u = Uri.parse(uri)
+  val isFile = u.scheme == null || u.scheme == "file"
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    val src = if (isFile) ImageDecoder.createSource(File(u.path!!)) else ImageDecoder.createSource(ctx.contentResolver, u)
+    return ImageDecoder.decodeBitmap(src) { dec, info, _ ->
+      val s = side.toFloat() / min(info.size.width, info.size.height)
+      dec.setTargetSize(max(side, (info.size.width * s).roundToInt()), max(side, (info.size.height * s).roundToInt()))
+      dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+    }
+  }
+  // ponytail: pre-Android 9 path ignores EXIF rotation; add androidx.exifinterface if those devices matter.
+  fun open() = if (isFile) File(u.path!!).inputStream() else ctx.contentResolver.openInputStream(u)!!
+  val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+  open().use { BitmapFactory.decodeStream(it, null, bounds) }
+  var sample = 1
+  while (min(bounds.outWidth, bounds.outHeight) / (sample * 2) >= side) sample *= 2
+  val raw = open().use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }!!
+  val s = side.toFloat() / min(raw.width, raw.height)
+  return Bitmap.createScaledBitmap(raw, max(side, (raw.width * s).roundToInt()), max(side, (raw.height * s).roundToInt()), true)
 }
