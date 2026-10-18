@@ -1,10 +1,11 @@
 """Build on-device ML/geo assets. Outputs are gitignored (big) except cities.json + clipGolden.json.
 
-Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq ftfy regex
+Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq ftfy regex litert-torch ai-edge-quantizer
         (needs torch + torchvision + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
+gpu    - the same vision tower -> fp16-weight LiteRT vision.tflite for the GPU (the ONNX one stays as CPU fallback)
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> int8 text embeddings
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
@@ -185,6 +186,49 @@ def build_clip():
     (JS / "clipGolden.json").write_text(json.dumps(golden))
 
 
+def build_gpu():
+    """Vision tower for the Mali GPU delegate (LiteRT CompiledModel), batch 1, same weights with the forward rewritten:
+    the delegate rejects TinyCLIP's 3D class-token concat and 2D broadcasts, and fails "Unrecognized Write selector" on
+    any batch > 1 (tried NLD, batch-first 4D and all-2D graphs). Output is NOT L2-normalized (the converter turns that
+    into L2_NORMALIZATION, CPU-only); Kotlin does it. int8 weights don't compile on the GPU, so fp16 (cosine 1.0 vs fp32)."""
+    import numpy as np, torch, torch.nn.functional as F, litert_torch
+    from ai_edge_quantizer import quantizer, recipe_manager, algorithm_manager
+    from ai_edge_quantizer.qtyping import TFLOperationName
+    from ai_edge_litert.interpreter import Interpreter
+    m = load_model()[0].eval()
+    v = next(x for x in m.modules() if hasattr(x, "class_embedding"))
+
+    class Vision(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            tok = v.positional_embedding.detach().clone()
+            tok[0] += v.class_embedding.detach()
+            self.tok = torch.nn.Parameter(tok[None], requires_grad=False)  # [1, 50, D]: pos, with cls folded into row 0
+        def forward(self, px):
+            x = v.conv1(px).flatten(2).transpose(1, 2)  # [1, 49, D]
+            x = F.pad(x, (0, 0, 1, 0)) + self.tok  # empty row 0 becomes cls + pos
+            x = v.transformer(v.ln_pre(x).permute(1, 0, 2)).permute(1, 0, 2)
+            return (v.ln_post(x[:, :1]) @ v.proj).flatten(1)  # 3D through ln_post: its 2D broadcasts fall off the GPU
+
+    x = torch.from_numpy(preprocess(GOLDEN_IMAGE))
+    with torch.no_grad():
+        ref = Towers(m).vision(x).numpy()[0]
+    f32 = CACHE / "fp32" / "vision.tflite"; f32.parent.mkdir(parents=True, exist_ok=True)
+    litert_torch.convert(Vision().eval(), (x,)).export(str(f32))
+    rm = recipe_manager.RecipeManager()
+    rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
+                              algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
+    q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rm.get_quantization_recipe())
+    out = NATIVE / "vision.tflite"
+    out.write_bytes(q.quantize().quantized_model)
+    it = Interpreter(model_path=str(out)); it.allocate_tensors()
+    it.set_tensor(it.get_input_details()[0]["index"], x.numpy()); it.invoke()
+    e = it.get_tensor(it.get_output_details()[0]["index"])[0]
+    cos = float(ref @ e / np.linalg.norm(e))
+    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, vs torch cosine {cos:.5f}")
+    assert cos > 0.999, "LiteRT export drifted"
+
+
 def build_bench():
     """Vision towers of the non-shipped models. The bench loads files/models/vision_<name>.onnx when present."""
     import torch
@@ -276,6 +320,6 @@ def build_cities():
 
 
 if __name__ == "__main__":
-    steps = sys.argv[1:] or ["clip", "vocab", "cities"]
+    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities"]
     for s in steps:
-        {"clip": build_clip, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench}[s]()
+        {"clip": build_clip, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench}[s]()

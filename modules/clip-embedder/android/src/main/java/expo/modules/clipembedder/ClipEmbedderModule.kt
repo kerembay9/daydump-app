@@ -4,6 +4,8 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
+import com.google.ai.edge.litert.Accelerator
+import com.google.ai.edge.litert.CompiledModel
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -17,12 +19,14 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlin.math.sqrt
 import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
@@ -41,7 +45,8 @@ private val MEAN = floatArrayOf(0.48145466f, 0.4578275f, 0.40821073f)
 private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
 /**
- * TinyCLIP image/text embeddings via ONNX Runtime. Vectors cross the bridge as base64
+ * TinyCLIP image/text embeddings. Images: LiteRT on the GPU (vision.tflite, batch 1, see scripts/build_assets.py),
+ * falling back to ONNX Runtime on the CPU (vision.onnx). Text: ONNX Runtime. Vectors cross the bridge as base64
  * little-endian Float32 (n * 512), L2-normalized. A photo that fails to decode yields a zero vector.
  */
 class ClipEmbedderModule : Module() {
@@ -50,10 +55,14 @@ class ClipEmbedderModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
   private var visionSession: OrtSession? = null
   private val vision get() = visionSession ?: makeVision().also { visionSession = it }
-  // Bench knobs (configure): parallel batch decode, XNNPACK EP, optional alternative vision model file.
+  // Bench knobs (configure): parallel batch decode, engine (gpu: LiteRT; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
   private var parallel = true
-  private var xnnpack = false
+  private var engine = "gpu"
   private var visionFile: String? = null
+  // LiteRT model, created on liteThread (GPU contexts are thread-bound); null = not loaded yet or not usable here.
+  private val liteThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+  private var lite: CompiledModel? = null
+  private var liteFailed = false
   private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
   private val text by lazy { session("text.onnx") }
   private val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
@@ -83,9 +92,30 @@ class ClipEmbedderModule : Module() {
   private fun session(name: String): OrtSession =
     env.createSession(asset(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
 
+  private val useLite get() = engine == "gpu"
+
+  // Batch 1: the Mali GPU delegate rejects batched graphs. Compiled GPU programs are cached (~3 s compile on first load).
+  private fun makeLite(): CompiledModel {
+    val key = "$engine-" + (visionFile?.let { File(it).run { "$name-${length()}" } } ?: "bundled-${ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime}")
+    val opts = CompiledModel.Options(Accelerator.GPU).apply {
+      gpuOptions = CompiledModel.GpuOptions(
+        serializationDir = File(ctx.cacheDir, "litert").apply { mkdirs() }.path, modelCacheKey = key, serializeProgramCache = true,
+      )
+    }
+    return visionFile?.let { CompiledModel.create(it, opts) } ?: CompiledModel.create(ctx.assets, "clip/vision.tflite", opts)
+  }
+
+  // Call on liteThread. null when this device can't run it (no GPU driver, ...): callers fall back to ONNX Runtime.
+  private fun liteModel(): CompiledModel? {
+    if (lite == null && !liteFailed) {
+      lite = runCatching(::makeLite).onFailure { liteFailed = true; Log.w("ClipEmbedder", "LiteRT $engine unavailable, using ONNX Runtime", it) }.getOrNull()
+    }
+    return lite
+  }
+
   private fun makeVision(): OrtSession {
     val opts = OrtSession.SessionOptions().apply {
-      if (xnnpack) {
+      if (engine == "xnnpack") {
         // ORT guidance for XNNPACK: threads go to the EP, session pool stays at 1 without spinning.
         addXnnpack(mapOf("intra_op_num_threads" to "4"))
         setIntraOpNumThreads(1)
@@ -105,17 +135,19 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { encode(embedImages(uris, thumb ?: 0)) }
     }
 
-    // model: use filesDir/models/vision_<model>.onnx (pushed by hand, see build_assets.py bench) instead of the bundled one.
-    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, useXnnpack: Boolean, model: String? ->
+    // model: use filesDir/models/vision_<model>.onnx|.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
+    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, eng: String, model: String? ->
       withContext(Dispatchers.Default) {
         parallel = parallelDecode
-        xnnpack = useXnnpack
-        visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.onnx") }?.takeIf { it.exists() }?.path
+        engine = eng
+        val ext = if (useLite) "tflite" else "onnx"
+        visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.$ext") }?.takeIf { it.exists() }?.path
         visionSession?.close()
         visionSession = null
         val t0 = SystemClock.elapsedRealtime()
-        vision.inputNames // force the session to load so loadMs is measured here
-        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null))
+        // Load now so loadMs is measured here.
+        val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else { vision.inputNames; true }
+        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
       }
     }
 
@@ -167,11 +199,45 @@ class ClipEmbedderModule : Module() {
       Log.w("ClipEmbedder", "decode failed: ${uris[i]}", e)
       null
     }
+    val model = if (useLite) withContext(liteThread) { liteModel() } else null
+    if (model != null) return embedLite(model, n, input, t0) { fill(it) }
     val sizes = if (parallel) coroutineScope { (0 until n).map { i -> async(decodePool) { fill(i) } }.awaitAll() } else (0 until n).map(::fill)
     val t1 = SystemClock.elapsedRealtime()
     val out = run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(n.toLong(), 3, SIZE.toLong(), SIZE.toLong())))
     timings = mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (SystemClock.elapsedRealtime() - t1).toDouble(), "size" to (sizes.firstOrNull() ?: ""))
     for (i in 0 until n) if (sizes[i] == null) out.fill(0f, i * DIM, (i + 1) * DIM)
+    return out
+  }
+
+  // Pipelined: photos decode on decodePool while the model embeds them one at a time, in order. decodeMs = time the
+  // model waited on decode. ponytail: the pipeline drains at the end of each call; overlap across calls if batches get small.
+  private suspend fun embedLite(model: CompiledModel, n: Int, input: FloatArray, t0: Long, fill: (Int) -> String?): FloatArray {
+    val out = FloatArray(n * DIM)
+    var modelMs = 0L
+    val sizes = coroutineScope {
+      val jobs = (0 until n).map { i -> async(decodePool, if (parallel) CoroutineStart.DEFAULT else CoroutineStart.LAZY) { fill(i) } }
+      withContext(liteThread) {
+        val inBuf = model.createInputBuffers()
+        val outBuf = model.createOutputBuffers()
+        try {
+          jobs.mapIndexed { i, job ->
+            job.await()?.also {
+              val t = SystemClock.elapsedRealtime()
+              inBuf[0].writeFloat(input.copyOfRange(i * 3 * PLANE, (i + 1) * 3 * PLANE))
+              model.run(inBuf, outBuf)
+              val e = outBuf[0].readFloat() // not normalized: the GPU has no L2_NORMALIZATION op
+              val norm = sqrt(e.fold(0f) { a, x -> a + x * x })
+              for (j in 0 until DIM) out[i * DIM + j] = e[j] / norm
+              modelMs += SystemClock.elapsedRealtime() - t
+            }
+          }
+        } finally {
+          (inBuf + outBuf).forEach { it.close() }
+        }
+      }
+    }
+    val wall = SystemClock.elapsedRealtime() - t0
+    timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "size" to (sizes.firstOrNull() ?: ""))
     return out
   }
 

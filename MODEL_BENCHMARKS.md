@@ -48,7 +48,8 @@ Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw capt
 
 | Setting | Total ms/photo | Model ms |
 |---|---|---|
-| Parallel decode, CPU EP (shipped) | 98 | 67 |
+| **LiteRT GPU (Mali-G68, OpenCL), fp16 weights, decode pipelined (shipped)** | **66** | **53** |
+| Parallel decode, ORT CPU EP (shipped before the GPU; still the fallback) | 95 | 66 |
 | Serial decode, CPU EP | 138 | 61 |
 | Parallel decode, XNNPACK EP | 240 | 209 |
 | MediaStore thumbnails instead of full decode | decode 83 → 23–47 ms | top concept changed for ~40% of photos: not used |
@@ -63,11 +64,25 @@ Thread and core tests (2026-10-19, 128 photos, wall time per photo; the shipped 
 | Pipelined, decode pinned to little cores (cpu0–3), model to big (cpu4–7) | 92 | Little cores decode ~4× slower (90 vs 23 ms/photo), so decode becomes the bottleneck; model also slows 60 → 75 ms |
 | Same, ORT spinning off | 103 | Spinning off adds wake-up latency |
 
+GPU tests (2026-10-19, 64 photos, LiteRT 2.3 CompiledModel; vs ORT CPU: cosine ≥ 0.998, same top concept 100%):
+
+| Setting | Result |
+|---|---|
+| fp32 weights (180 MB) | 68 ms/photo: no faster than fp16 (90 MB), so fp16 ships |
+| int8 weights (46 MB) | Doesn't compile on the GPU delegate |
+| fp32 GPU math | 93 ms/photo, no accuracy gain |
+| Batch > 1 | GPU delegate fails ("Unrecognized Write selector") for every graph layout tried |
+| Load | 3.4 s first compile, 0.5 s with the program cache |
+| LiteRT CPU (XNNPACK, 4 threads) | 120 ms/photo: slower than ORT |
+| NNAPI (ORT EP) | 289–299 ms/photo: falls back to nnapi-reference; the NPU-only compile hangs |
+
+The GPU delegate also rejects 3D concatenation, rank-mismatched broadcasts and L2_NORMALIZATION, so `build_assets.py gpu` rewrites the forward pass (same weights) and Kotlin normalizes.
+
 Full reindex of 3,942 photos with the 45M took 7.6 min (116 ms/photo, with the app UI running).
 
 ## Reproducing
 
-1. Shipped model: `.venv/bin/python scripts/build_assets.py clip vocab`
+1. Shipped model: `.venv/bin/python scripts/build_assets.py clip gpu vocab`
 2. Bench-only models: `.venv/bin/python scripts/build_assets.py bench`
 3. Push them with the adb commands that step 2 prints.
 4. Phone: Settings → Stories debug → **TinyCLIP index bench**. A model whose file wasn't pushed shows "skipped".

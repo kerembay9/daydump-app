@@ -1,15 +1,20 @@
 import { requireOptionalNativeModule } from 'expo';
 
+export type ClipEngine = 'gpu' | 'ort' | 'xnnpack';
+
 type ClipEmbedderModule = {
   /**
    * base64 little-endian Float32, uris.length * 512, L2-normalized; zero rows = undecodable photo.
    * thumb > 0: uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
    */
   embedImages(uris: string[], thumb?: number): Promise<string>;
-  /** decode vs model time of the last embedImages call; size = first decoded bitmap */
+  /** decode vs model time of the last embedImages call (LiteRT engines: decodeMs = time the model waited on decode); size = first decoded bitmap */
   lastEmbedTimings(): { decodeMs: number; modelMs: number; size: string };
-  /** Benchmark knobs; rebuilds the vision session. model: files/models/vision_<model>.onnx on the device, null = bundled. */
-  configure(parallelDecode: boolean, xnnpack: boolean, model: string | null): Promise<{ loadMs: number; found: boolean }>;
+  /**
+   * Benchmark knobs; rebuilds the vision model. engine: gpu (default; LiteRT, vision.tflite) | ort | xnnpack (ONNX Runtime, vision.onnx).
+   * model: files/models/vision_<model>.tflite|.onnx on the device, null = bundled. ok = false: LiteRT can't run here, ONNX Runtime is used.
+   */
+  configure(parallelDecode: boolean, engine: ClipEngine, model: string | null): Promise<{ loadMs: number; found: boolean; ok: boolean }>;
   embedTexts(texts: string[]): Promise<string>;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
