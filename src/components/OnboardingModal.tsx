@@ -40,10 +40,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onFin
     },
     {
       id: 'privacy',
-      badge: 'ON-DEVICE NEURAL ENGINE',
-      title: '100% Private.\nZero Cloud Uploads.',
+      badge: 'ON-DEVICE CURATION',
+      title: 'Picked on Your Phone,\nNot in the Cloud.',
       description:
-        'Powered by local on-device AI running directly on your phone’s GPU. Your photos never leave your device, and are never sent to external servers.',
+        'Stories, search and photo picks run on a small vision model on your phone. DayDump does not upload your photos to curate them.',
       icon: ShieldCheck,
       color: '#30D158',
     },
@@ -157,11 +157,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onFin
                   <View style={styles.featureBox}>
                     <View style={styles.featureRow}>
                       <Check size={14} color="#30D158" />
-                      <Text style={styles.featureRowText}>Processed locally with Gemma E2B</Text>
+                      <Text style={styles.featureRowText}>Stories and search run on-device (CLIP)</Text>
                     </View>
                     <View style={styles.featureRow}>
                       <Check size={14} color="#30D158" />
-                      <Text style={styles.featureRowText}>No accounts or photo tracking required</Text>
+                      <Text style={styles.featureRowText}>Optional Gemini key in Settings sends photos to Google</Text>
                     </View>
                   </View>
                 )}

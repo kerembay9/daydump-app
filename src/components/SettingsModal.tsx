@@ -339,7 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </Text>
               </View>
               <Text style={styles.cardSublabel}>
-                DayDump scans photos on-device to curate your carousels. Photos never leave your phone.
+                DayDump curates your photos on-device. Nothing is uploaded unless you add a Gemini key below.
               </Text>
 
               {!hasPhotoPermission && (
@@ -489,6 +489,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChangeText={setGeminiKey}
                     autoCapitalize="none"
                   />
+                  <Text style={styles.cardSublabel}>With a key set, photos for daily dumps and picks are sent to Google Gemini.</Text>
 
                   <Text style={[styles.inputLabel, { marginTop: 8 }]}>RevenueCat Android Key</Text>
                   <TextInput
@@ -515,7 +516,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             activeOpacity={0.9}
           >
             <Text style={styles.versionText}>DayDump for Android • v1.0.0 (Build 1)</Text>
-            <Text style={styles.copyrightText}>100% On-Device AI • Private by Design</Text>
+            <Text style={styles.copyrightText}>On-Device Curation • Private by Default</Text>
           </TouchableOpacity>
         </ScrollView>
 

@@ -55,12 +55,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({ visible, type, onClose }
         >
           {isPrivacy ? (
             <>
-              <Text style={styles.sectionHeader}>1. 100% On-Device Processing</Text>
+              <Text style={styles.sectionHeader}>1. On-Device Processing</Text>
               <Text style={styles.paragraph}>
-                DayDump operates on a local-first, privacy-by-design architecture. Your photos,
-                camera roll scans, and metadata are processed locally on your phone hardware.
-                They are never uploaded to remote servers, sold to advertisers, or used to train
-                public machine learning models.
+                DayDump curates on your phone: photo indexing, stories and search run locally,
+                and your photos are not uploaded to DayDump servers, sold to advertisers, or used
+                to train public machine learning models. If you add your own Google Gemini API key
+                in Settings, the photos being curated are sent to Google’s Gemini API under
+                Google’s terms.
               </Text>
 
               <Text style={styles.sectionHeader}>2. Photo Library Permissions</Text>
