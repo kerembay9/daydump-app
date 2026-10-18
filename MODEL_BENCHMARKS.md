@@ -23,6 +23,24 @@ Measured 2026-10-18 on a Samsung Galaxy A54 (Android, ONNX Runtime CPU) for the 
 
 Decode (~25 ms/photo) is a fixed cost, so a smaller model shortens indexing by less than its model-time gain.
 
+## Photo search (text → photo)
+
+Closer to the app than ImageNet: type a description, find the photo. COCO 5k test (Karpathy split), 5,000 everyday Flickr photos. Run on PC with `scripts/eval_retrieval.py`.
+
+- **COCO R@K:** 25,000 human captions. A hit means the caption's own photo is in the top K. This undercounts, because "a dog on a beach" fits many photos but only one counts as correct.
+- **ECCV Caption** (Chun et al., ECCV 2022): 1,332 of those captions, with every matching photo checked by humans (8.5 per caption on average). This is the better ground truth.
+  - *mAP@R* rewards ranking all true matches first.
+  - *ECCV R@1* is the share of searches whose top photo is a true match: what a user sees first.
+
+| Model | COCO R@1 | R@5 | R@10 | ECCV mAP@R | ECCV R@1 |
+|---|---|---|---|---|---|
+| **TinyCLIP 45M (shipped)** | **37.0** | **62.8** | **73.2** | **36.4** | **76.6** |
+| TinyCLIP 45M, int8 ONNX (the exact phone file) | 36.9 | 62.6 | 73.1 | 36.4 | 76.4 |
+| TinyCLIP 40M (old) | 33.3 | 59.1 | 69.9 | 34.8 | 72.4 |
+| TinyCLIP 22M | 28.3 | 53.2 | 64.4 | 30.8 | 67.2 |
+
+Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw caption text, as the app sends them.
+
 ## Runtime settings (shipped 45M)
 
 | Setting | Total ms/photo | Model ms |
@@ -40,3 +58,4 @@ Full reindex of 3,942 photos with the 45M took 7.6 min (116 ms/photo, with the a
 2. Bench-only models: `.venv/bin/python scripts/build_assets.py bench`
 3. Push them with the adb commands that step 2 prints.
 4. Phone: Settings → Stories debug → **TinyCLIP index bench**. A model whose file wasn't pushed shows "skipped".
+5. Photo search table: `.venv/bin/python scripts/eval_retrieval.py` (downloads ~830 MB once; ~15 min on CPU).
