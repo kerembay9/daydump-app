@@ -50,7 +50,7 @@ type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: Ml
 
 const sample = (lib: Library, n = N) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, n);
 // TinyCLIP photos per embedImages call in "Run random photos"; the indexer ships with 16.
-const BATCHES = [1, 16, 64];
+const BATCHES = [1, 4, 8, 16, 64];
 const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : NaN);
 const timed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
   const t0 = Date.now();
@@ -81,8 +81,8 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [busy, setBusy] = useState('');
   const [opt, setOpt] = useState<OptRow[]>([]);
   const [idx, setIdx] = useState<string[]>([]);
-  const [batch, setBatch] = useState(1);
-  const count = batch === 1 ? N : batch;
+  const [batch, setBatch] = useState(16); // same as the indexer
+  const count = batch === 1 ? N : Math.max(16, batch); // small batches still time 16 photos, in several calls
 
   const refresh = () => EdgeBench?.gemmaFile().then(setFile);
   useEffect(() => {
@@ -144,10 +144,13 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     if (!out.length) return;
     await clip.embedImages([out[0].p.uri]); // untimed warm-up: model load isn't per-photo cost
     if (batch > 1) {
-      // One call for the whole batch, like the indexer; per-photo time = total / n.
-      const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages(out.map((r) => r.p.uri)), 3));
-      out.forEach((r, i) => (r.clip = { ms: Math.round(ms / out.length), words: c.ids.slice(i * 3, i * 3 + 3).map((id) => lib.conceptNames[id]) }));
-      setRows([...out]);
+      // One call per `batch` photos, like the indexer; per-photo time = call time / photos in it.
+      for (let j = 0; j < out.length; j += batch) {
+        const chunk = out.slice(j, j + batch);
+        const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages(chunk.map((r) => r.p.uri)), 3));
+        chunk.forEach((r, i) => (r.clip = { ms: Math.round(ms / chunk.length), words: c.ids.slice(i * 3, i * 3 + 3).map((id) => lib.conceptNames[id]) }));
+        setRows([...out]);
+      }
     }
     for (let i = 0; i < out.length; i++) {
       const r = out[i];
