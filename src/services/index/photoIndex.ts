@@ -6,6 +6,8 @@ import { EVAL_ALBUM, GalleryService } from '../galleryService';
 import { b64ToFloats, DIM, floatsToB64 } from './vectors';
 
 const BATCH = 16;
+/** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py). */
+const MODEL = (require('./clipGolden.json') as { model: string }).model;
 const TOP_CONCEPTS = 10;
 
 export type IndexedPhoto = PhotoAsset & {
@@ -25,7 +27,13 @@ function db() {
   return (dbPromise ??= SQLite.openDatabaseAsync(EVAL_ALBUM ? 'photo-index-eval.db' : 'photo-index.db').then(async (d) => {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY, uri TEXT NOT NULL, created INTEGER NOT NULL, w INTEGER, h INTEGER,
-      lat REAL, lon REAL, emb BLOB, concepts TEXT)`);
+      lat REAL, lon REAL, emb BLOB, concepts TEXT);
+      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`);
+    // Another model's vectors live in a different space: drop them so run() re-embeds every photo.
+    if ((await d.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'model'"))?.v !== MODEL) {
+      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
+      await d.runAsync("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)", [MODEL]);
+    }
     return d;
   }));
 }

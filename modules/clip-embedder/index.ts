@@ -8,8 +8,8 @@ type ClipEmbedderModule = {
   embedImages(uris: string[], thumb?: number): Promise<string>;
   /** decode vs model time of the last embedImages call; size = first decoded bitmap */
   lastEmbedTimings(): { decodeMs: number; modelMs: number; size: string };
-  /** Benchmark knobs; rebuilds the vision session. fp32 needs files/models/vision_fp32.onnx on the device. */
-  configure(parallelDecode: boolean, xnnpack: boolean, fp32: boolean): Promise<{ loadMs: number; fp32: boolean }>;
+  /** Benchmark knobs; rebuilds the vision session. model: files/models/vision_<model>.onnx on the device, null = bundled. */
+  configure(parallelDecode: boolean, xnnpack: boolean, model: string | null): Promise<{ loadMs: number; found: boolean }>;
   embedTexts(texts: string[]): Promise<string>;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */

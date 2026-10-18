@@ -38,12 +38,13 @@ type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number
 const IDX_N = 64;
 const IDX_BATCH = 16;
 // Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
-const IDX_MODES = [
-  { name: 'serial · CPU EP · int8', parallel: false, xnnpack: false, fp32: false },
-  { name: 'parallel · CPU EP · int8', parallel: true, xnnpack: false, fp32: false },
-  { name: 'parallel · XNNPACK · int8', parallel: true, xnnpack: true, fp32: false },
-  { name: 'parallel · CPU EP · fp32', parallel: true, xnnpack: false, fp32: true },
-  { name: 'parallel · XNNPACK · fp32', parallel: true, xnnpack: true, fp32: true },
+// model: other TinyCLIP vision towers (scripts/build_assets.py bench pushes them to files/models); null = shipped 45M.
+const IDX_MODES: { name: string; parallel: boolean; xnnpack: boolean; model: string | null }[] = [
+  { name: 'serial · CPU EP · 45M', parallel: false, xnnpack: false, model: null },
+  { name: 'parallel · CPU EP · 45M', parallel: true, xnnpack: false, model: null },
+  { name: 'parallel · XNNPACK · 45M', parallel: true, xnnpack: true, model: null },
+  { name: 'parallel · CPU EP · 40M (old)', parallel: true, xnnpack: false, model: '40m' },
+  { name: 'parallel · CPU EP · 22M', parallel: true, xnnpack: false, model: '22m' },
 ];
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
@@ -192,7 +193,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     const lines: string[] = [];
     const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
     // Untimed pass with the shipped config: warms the file cache (fair to every mode) and gives the reference vectors.
-    await clip.configure(false, false, false);
+    await clip.configure(false, false, null);
     const pass = async () => {
       const t = { info: 0, decode: 0, model: 0, concepts: 0 };
       let size = '';
@@ -216,9 +217,9 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     };
     const ref = await pass();
     for (const m of IDX_MODES) {
-      const cfg = await clip.configure(m.parallel, m.xnnpack, m.fp32);
-      if (m.fp32 && !cfg.fp32) {
-        lines.push(`${m.name}: skipped (no files/models/vision_fp32.onnx)`);
+      const cfg = await clip.configure(m.parallel, m.xnnpack, m.model);
+      if (!cfg.found) {
+        lines.push(`${m.name}: skipped (no files/models/vision_${m.model}.onnx)`);
         continue;
       }
       const { t, size, vecs, top1 } = await pass();
@@ -229,11 +230,12 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         return d;
       });
       const same = top1.filter((id, k) => id === ref.top1[k]).length;
-      const vs = `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
+      // Another model's vectors live in a different space: only its timings mean anything.
+      const vs = m.model ? '' : `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
       lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)} · src ${size}${vs}`);
       setIdx([...lines]);
     }
-    await clip.configure(true, false, false); // back to shipped defaults
+    await clip.configure(true, false, null); // back to shipped defaults
   });
 
   const have = file.bytes > 0;

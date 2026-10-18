@@ -1,21 +1,31 @@
 """Build on-device ML/geo assets. Outputs are gitignored (big) except cities.json + clipGolden.json.
 
-Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq
-        (needs torch + transformers already installed)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [concepts] [cities]   (no args = all)
+Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq ftfy regex
+        (needs torch + torchvision + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
 
-clip   - TinyCLIP 40M/32 (MIT) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
+clip   - TinyCLIP (MIT, see MODELS) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> int8 text embeddings
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
+bench  - int8 vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
 """
-import csv, io, json, os, struct, sys, urllib.request, zipfile
+import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NATIVE = ROOT / "modules/clip-embedder/android/src/main/assets/clip"
 JS = ROOT / "src/services/index"
 CACHE = ROOT / "scripts/.cache"  # downloads; gitignored
-MODEL = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"
+# name -> (open_clip arch, pretrained tag). ImageNet top-1 on a 4.7k-image val subset, one prompt; vision ms/photo on a Galaxy A54.
+MODELS = {
+    "45m": ("TinyCLIP-auto-ViT-45M-32-Text-18M", "LAIONYFCC400M"),  # 61.4%, 73 ms
+    # HF port, exported exactly as shipped until Oct 2026: open_clip's export of it leaves its Linears as fp32 Gemm.
+    "40m": ("hf", "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"),  # 57.5%, 64 ms
+    "22m": ("TinyCLIP-auto-ViT-22M-32-Text-10M", "LAION400M"),  # 52.0%, 38 ms
+}
+SHIPPED = "45m"
+TOKENIZER = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"  # OpenAI CLIP BPE, shared by every TinyCLIP model
+TINYCLIP = CACHE / "tinyclip"
 CTX = 77
 EOT = 49407
 GOLDEN_PHRASES = ["a photo of a dog", "cinnamon bun", "wearing red", "A week in Seattle!", "café crème brûlée 123"]
@@ -58,11 +68,24 @@ def fetch(url, name):
     return p
 
 
-def load_model():
-    from transformers import CLIPModel, CLIPTokenizerFast
-    m = CLIPModel.from_pretrained(MODEL).eval()
+def load_model(name=SHIPPED):
+    """open_clip model (encode_image / encode_text) from the TinyCLIP fork: the "auto" models need its pruning loader."""
+    repo = TINYCLIP / "TinyCLIP"
+    if not repo.exists():
+        subprocess.run(["git", "clone", "https://github.com/wkcn/TinyCLIP", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "checkout", "ad981bf"], check=True)
+    sys.path.insert(0, str(repo / "src"))
+    import open_clip
+    from transformers import CLIPTokenizerFast
     from huggingface_hub import hf_hub_download
-    tok_file = hf_hub_download(MODEL, "tokenizer.json")
+    arch, tag = MODELS[name]
+    if arch == "hf":
+        from transformers import CLIPModel
+        m = CLIPModel.from_pretrained(tag).eval().requires_grad_(False)
+        m.encode_image, m.encode_text = m.get_image_features, m.get_text_features
+    else:
+        m = open_clip.create_model(arch, pretrained=tag, cache_dir=str(TINYCLIP)).eval().requires_grad_(False)
+    tok_file = hf_hub_download(TOKENIZER, "tokenizer.json")
     return m, CLIPTokenizerFast(tokenizer_file=tok_file), tok_file
 
 
@@ -88,61 +111,91 @@ def preprocess(path):  # path or PIL image
     return a.transpose(2, 0, 1)[None].astype(np.float32)
 
 
-def build_clip():
-    import numpy as np, torch, onnx, onnxruntime as ort, shutil
+class Towers:
+    """L2-normalized vision (pixel_values) and text (input_ids) towers of an open_clip model, as exportable modules."""
+    def __init__(self, m):
+        import torch
+
+        class Vision(torch.nn.Module):
+            def __init__(self): super().__init__(); self.m = m
+            def forward(self, pixel_values):
+                e = self.m.encode_image(pixel_values)
+                return e / e.norm(dim=-1, keepdim=True)
+
+        class Text(torch.nn.Module):
+            def __init__(self): super().__init__(); self.m = m
+            def forward(self, input_ids):
+                e = self.m.encode_text(input_ids)
+                return e / e.norm(dim=-1, keepdim=True)
+
+        self.vision, self.text = Vision(), Text()
+
+
+def const_to_init(m):
+    """Pruned TinyCLIP weights export as Constant nodes; the quantizer only touches initializers."""
+    import onnx
+    keep = []
+    for n in m.graph.node:
+        if n.op_type == "Constant" and n.attribute[0].name == "value" and onnx.numpy_helper.to_array(n.attribute[0].t).size > 64:
+            t = onnx.TensorProto(); t.CopyFrom(n.attribute[0].t); t.name = n.output[0]; m.graph.initializer.append(t)
+        else:
+            keep.append(n)
+    del m.graph.node[:]; m.graph.node.extend(keep)
+    return m
+
+
+def export_int8(mod, x, inp, out):
+    """fp32 ONNX -> weight-only int8, checked against torch. Returns the int8 outputs for x."""
+    import torch, onnx, onnxruntime as ort, shutil
     from onnxruntime.quantization import quantize_dynamic, QuantType
     from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer
-    m, tok, tok_file = load_model()
-    m.requires_grad_(False)
-
-    class Vision(torch.nn.Module):
-        def __init__(self): super().__init__(); self.m = m
-        def forward(self, pixel_values):
-            e = self.m.get_image_features(pixel_values=pixel_values)
-            return e / e.norm(dim=-1, keepdim=True)
-
-    class Text(torch.nn.Module):
-        def __init__(self): super().__init__(); self.m = m
-        def forward(self, input_ids):
-            e = self.m.get_text_features(input_ids=input_ids)
-            return e / e.norm(dim=-1, keepdim=True)
-
-    NATIVE.mkdir(parents=True, exist_ok=True)
     tmp = CACHE / "fp32"; tmp.mkdir(parents=True, exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    f32 = tmp / f"{out.stem}.onnx"
+    torch.onnx.export(mod, (x,), f32, input_names=[inp], output_names=["embeds"], opset_version=17,
+                      dynamic_axes={inp: {0: "n"}, "embeds": {0: "n"}}, dynamo=False)
+    # Weight-only int8 MatMuls (activations stay fp32): full int8 dynamic quant dropped text cosine to ~0.8.
+    q = MatMulNBitsQuantizer(const_to_init(onnx.load(f32)), bits=8, block_size=32, is_symmetric=True); q.process()
+    q.model.save_model_to_file(str(tmp / f"{out.stem}.nbits.onnx"), False)
+    if inp == "input_ids":  # the 49408x512 token embedding is most of the text tower: int8 Gather
+        quantize_dynamic(tmp / f"{out.stem}.nbits.onnx", out, weight_type=QuantType.QInt8, op_types_to_quantize=["Gather"])
+    else:
+        shutil.copy(tmp / f"{out.stem}.nbits.onnx", out)
+    with torch.no_grad():
+        ref = mod(x).numpy()
+    got = ort.InferenceSession(str(out)).run(None, {inp: x.numpy()})[0]
+    cos = (ref * got).sum(-1)
+    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, int8 vs fp32 cosine min {cos.min():.4f}")
+    assert cos.min() > 0.98, "int8 quantization drifted too far"
+    return got
+
+
+def build_clip():
+    import torch, shutil
+    m, tok, tok_file = load_model()
+    t = Towers(m)
     pix = torch.from_numpy(preprocess(GOLDEN_IMAGE))
     ids = torch.tensor(token_ids(tok, GOLDEN_PHRASES), dtype=torch.long)
-    for name, mod, x, inp in [("vision", Vision(), pix, "pixel_values"), ("text", Text(), ids, "input_ids")]:
-        f32 = tmp / f"{name}.onnx"
-        torch.onnx.export(mod, (x,), f32, input_names=[inp], output_names=["embeds"], opset_version=17,
-                          dynamic_axes={inp: {0: "n"}, "embeds": {0: "n"}}, dynamo=False)
-        # Weight-only int8 MatMuls (activations stay fp32): full int8 dynamic quant dropped text cosine to ~0.8.
-        q = MatMulNBitsQuantizer(onnx.load(f32), bits=8, block_size=32, is_symmetric=True); q.process()
-        out = NATIVE / f"{name}.onnx"
-        q.model.save_model_to_file(str(tmp / f"{name}.nbits.onnx"), False)
-        if name == "text":  # the 49408x512 token embedding is most of the text tower: int8 Gather
-            quantize_dynamic(tmp / f"{name}.nbits.onnx", out, weight_type=QuantType.QInt8, op_types_to_quantize=["Gather"])
-        else:
-            shutil.copy(tmp / f"{name}.nbits.onnx", out)
-
-    def run(path, inp, x):
-        return ort.InferenceSession(str(path)).run(None, {inp: x})[0]
-
-    with torch.no_grad():
-        ref_t, ref_v = Text()(ids).numpy(), Vision()(pix).numpy()
-    q_t = run(NATIVE / "text.onnx", "input_ids", ids.numpy())
-    q_v = run(NATIVE / "vision.onnx", "pixel_values", pix.numpy())
-    cos_t = (ref_t * q_t).sum(-1)
-    cos_v = float((ref_v * q_v).sum())
-    print("int8 vs fp32 cosine  text:", cos_t.round(4), " image:", round(cos_v, 4))
-    assert cos_t.min() > 0.98 and cos_v > 0.98, "int8 quantization drifted too far"
-
+    q_v = export_int8(t.vision, pix, "pixel_values", NATIVE / "vision.onnx")
+    q_t = export_int8(t.text, ids, "input_ids", NATIVE / "text.onnx")
     shutil.copy(tok_file, NATIVE / "tokenizer.json")
     JS.mkdir(parents=True, exist_ok=True)
-    golden = {"phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
+    golden = {"model": "-".join(MODELS[SHIPPED]), "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
               "image": {"file": GOLDEN_IMAGE.name, "vec": q_v[0].round(5).tolist()}}
     (JS / "clipGolden.json").write_text(json.dumps(golden))
-    for f in NATIVE.iterdir():
-        print(f"  {f.name}: {f.stat().st_size / 1e6:.1f} MB")
+
+
+def build_bench():
+    """Vision towers of the non-shipped models. The bench loads files/models/vision_<name>.onnx when present."""
+    import torch
+    pix = torch.from_numpy(preprocess(GOLDEN_IMAGE))
+    for name in MODELS:
+        if name == SHIPPED:
+            continue
+        f = CACHE / "bench" / f"vision_{name}.onnx"
+        export_int8(Towers(load_model(name)[0]).vision, pix, "pixel_values", f)
+        print(f"  adb push {f} /data/local/tmp/ && adb shell \"run-as com.daydump.app sh -c 'mkdir -p files/models && "
+              f"cat /data/local/tmp/{f.name} > files/models/{f.name}'\"")
 
 
 def build_vocab():
@@ -170,7 +223,7 @@ def build_vocab():
     with torch.no_grad():
         for i in range(0, len(entries), 512):
             ids = torch.tensor(token_ids(tok, [p for _, p in entries[i:i + 512]]), dtype=torch.long)
-            e = m.get_text_features(input_ids=ids)
+            e = m.encode_text(ids)
             vecs.append((e / e.norm(dim=-1, keepdim=True)).numpy())
     v = np.concatenate(vecs).astype(np.float32)
     # Row layout: float32 scale + 512 int8. Per-row scale keeps every concept at full int8 resolution.
@@ -225,4 +278,4 @@ def build_cities():
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clip", "vocab", "cities"]
     for s in steps:
-        {"clip": build_clip, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities}[s]()
+        {"clip": build_clip, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench}[s]()

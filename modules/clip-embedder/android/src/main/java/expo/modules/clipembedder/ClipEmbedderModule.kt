@@ -50,7 +50,7 @@ class ClipEmbedderModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
   private var visionSession: OrtSession? = null
   private val vision get() = visionSession ?: makeVision().also { visionSession = it }
-  // Bench knobs (configure): parallel batch decode, XNNPACK EP, optional fp32 vision model file.
+  // Bench knobs (configure): parallel batch decode, XNNPACK EP, optional alternative vision model file.
   private var parallel = true
   private var xnnpack = false
   private var visionFile: String? = null
@@ -105,17 +105,17 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { encode(embedImages(uris, thumb ?: 0)) }
     }
 
-    // fp32: use filesDir/models/vision_fp32.onnx (pushed by hand for benchmarking) instead of the bundled int8 model.
-    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, useXnnpack: Boolean, fp32: Boolean ->
+    // model: use filesDir/models/vision_<model>.onnx (pushed by hand, see build_assets.py bench) instead of the bundled one.
+    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, useXnnpack: Boolean, model: String? ->
       withContext(Dispatchers.Default) {
         parallel = parallelDecode
         xnnpack = useXnnpack
-        visionFile = File(ctx.filesDir, "models/vision_fp32.onnx").takeIf { fp32 && it.exists() }?.path
+        visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.onnx") }?.takeIf { it.exists() }?.path
         visionSession?.close()
         visionSession = null
         val t0 = SystemClock.elapsedRealtime()
         vision.inputNames // force the session to load so loadMs is measured here
-        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "fp32" to (visionFile != null))
+        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null))
       }
     }
 
