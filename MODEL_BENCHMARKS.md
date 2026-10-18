@@ -4,22 +4,25 @@ Measured 2026-10-18 on a Samsung Galaxy A54 (Android, ONNX Runtime CPU) for the 
 
 ## Image models
 
-- **Accuracy:** ImageNet top-1 on a 4,660-image val subset (every 7th image of shard 0, plus the first part of shards 1–7), one prompt `a photo of a {class}.`, int8 models, run on PC.
+- **Search:** share of text searches whose top photo is correct (ECCV R@1, see [Photo search](#photo-search-text--photo)). Closest to real app use.
+- **ImageNet:** top-1 on a 4,660-image val subset (every 7th image of shard 0, plus the first part of shards 1–7), one prompt `a photo of a {class}.`, int8 models, run on PC.
 - **Phone timings:** Stories debug → **TinyCLIP index bench**. 64 random photos, batches of 16, parallel decode, CPU EP.
   - *Model* = vision tower only.
   - *Total* = asset info + decode + model + concept lookup, per photo.
   - Ranges come from separate runs; differences under ~8 ms are run-to-run noise.
 
-| Model | Accuracy | Vision file | PC ms/img | Phone model ms | Phone total ms/photo | Status |
-|---|---|---|---|---|---|---|
-| **TinyCLIP 45M (LAION+YFCC), int8** | **61.4%** | 58 MB | 12.3 | 67–73 | 98–103 | **Shipped** |
-| TinyCLIP 45M (LAION), int8 | 59.6% | 58 MB | 13.2 | 73 | 103 | Same speed, lower accuracy |
-| TinyCLIP 40M, int8 | 57.5% | 50 MB | 10.3 | 52–64 | 79–102 | Shipped before 2026-10-18, in bench |
-| TinyCLIP 40M, fp32 | ~57.5% | 159 MB | — | 48–51 | 77–79 | No faster in practice, 3× the size |
-| TinyCLIP 22M, int8 | 52.0% | 29 MB | 6.3 | 32–38 | 63–71 | Fastest, in bench |
-| TinyCLIP 8M/16, int8 | 41.1% | 12 MB | 9.9 | — | — | Rejected: no faster than 40M on PC, much worse |
-| ML Kit image labeling | — (labels only, no text search) | Play services | — | — | 95–129 (median) | Bench only |
-| Gemma 4 E2B, describe 1 photo | — (writes text) | 2.6 GB | — | — | ~16,100 | Bench only, far too slow to index |
+| Model | Search | ImageNet | Vision file | PC ms/img | Phone model ms | Phone total ms/photo | Status |
+|---|---|---|---|---|---|---|---|
+| **TinyCLIP 45M (LAION+YFCC), int8** | **76.4%** | **61.4%** | 58 MB | 12.3 | 67–73 | 98–103 | **Shipped** |
+| TinyCLIP 45M (LAION), int8 | — | 59.6% | 58 MB | 13.2 | 73 | 103 | Same speed, lower accuracy |
+| TinyCLIP 40M, int8 | 72.4%¹ | 57.5% | 50 MB | 10.3 | 52–64 | 79–102 | Shipped before 2026-10-18, in bench |
+| TinyCLIP 40M, fp32 | 72.4% | ~57.5% | 159 MB | — | 48–51 | 77–79 | No faster in practice, 3× the size |
+| TinyCLIP 22M, int8 | 67.2%¹ | 52.0% | 29 MB | 6.3 | 32–38 | 63–71 | Fastest, in bench |
+| TinyCLIP 8M/16, int8 | — | 41.1% | 12 MB | 9.9 | — | — | Rejected: no faster than 40M on PC, much worse |
+| ML Kit image labeling | — (labels only, no text search) | — | Play services | — | — | 95–129 (median) | Bench only |
+| Gemma 4 E2B, describe 1 photo | — (writes text) | — | 2.6 GB | — | — | ~16,100 | Bench only, far too slow to index |
+
+¹ Measured in fp32; int8 differs by ≤ 0.2 points (checked on the 45M).
 
 Decode (~25 ms/photo) is a fixed cost, so a smaller model shortens indexing by less than its model-time gain.
 
@@ -32,12 +35,12 @@ Closer to the app than ImageNet: type a description, find the photo. COCO 5k tes
   - *mAP@R* rewards ranking all true matches first.
   - *ECCV R@1* is the share of searches whose top photo is a true match: what a user sees first.
 
-| Model | COCO R@1 | R@5 | R@10 | ECCV mAP@R | ECCV R@1 |
+| Model | Top hit correct (ECCV R@1) | All matches ranked first (ECCV mAP@R) | Own photo #1 (COCO R@1) | Own photo in top 5 (R@5) | Own photo in top 10 (R@10) |
 |---|---|---|---|---|---|
-| **TinyCLIP 45M (shipped)** | **37.0** | **62.8** | **73.2** | **36.4** | **76.6** |
-| TinyCLIP 45M, int8 ONNX (the exact phone file) | 36.9 | 62.6 | 73.1 | 36.4 | 76.4 |
-| TinyCLIP 40M (old) | 33.3 | 59.1 | 69.9 | 34.8 | 72.4 |
-| TinyCLIP 22M | 28.3 | 53.2 | 64.4 | 30.8 | 67.2 |
+| **TinyCLIP 45M (shipped)** | **76.6%** | **36.4** | **37.0%** | **62.8%** | **73.2%** |
+| TinyCLIP 45M, int8 ONNX (the exact phone file) | 76.4% | 36.4 | 36.9% | 62.6% | 73.1% |
+| TinyCLIP 40M (old) | 72.4% | 34.8 | 33.3% | 59.1% | 69.9% |
+| TinyCLIP 22M | 67.2% | 30.8 | 28.3% | 53.2% | 64.4% |
 
 Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw caption text, as the app sends them.
 
