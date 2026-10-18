@@ -99,5 +99,7 @@ Story cards ("A week in Seattle", "A red winter") come from an on-device index: 
 3. **Eval mode:** put a curated, diverse set of photos in a phone album (e.g. `DayDump Eval`) and add
    `EXPO_PUBLIC_EVAL_ALBUM=DayDump Eval` to `.env.local`. Every gallery read, the index, stories and search
    then use only that album (separate index DB). Inspect results in Settings → On-device stories → Stories debug.
+   Only on a dedicated test phone: album copies keep their dates, so they show up twice in the gallery
+   timeline. `scripts/make_eval_album.py push --test-phone` builds one; `... clean` removes it.
 
 Attribution: GeoNames (CC BY 4.0), Open Images V7 class names (CC BY 4.0), TinyCLIP (MIT).

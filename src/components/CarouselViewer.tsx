@@ -174,16 +174,14 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
+      // Never save the raw photo: that's a same-dated duplicate in the user's gallery timeline.
       const activeRef = slideRefs.current[activeIndex];
-      let targetUri = carousel.slides[activeIndex]?.photo?.uri;
-
-      if (activeRef) {
-        targetUri = await captureRef(activeRef, {
-          format: 'jpg',
-          quality: 0.95,
-          result: 'tmpfile',
-        });
-      }
+      if (!activeRef) throw new Error('slide not rendered');
+      const targetUri = await captureRef(activeRef, {
+        format: 'jpg',
+        quality: 0.95,
+        result: 'tmpfile',
+      });
 
       const success = await ShareService.saveSlideToGallery(targetUri);
       if (success) {
@@ -225,11 +223,9 @@ export const CarouselViewer: React.FC<CarouselViewerProps> = ({
             });
             capturedUris.push(uri);
           } catch (e) {
-            console.warn(`Failed to capture slide ${i}, falling back to raw uri:`, e);
-            capturedUris.push(carousel.slides[i].photo.uri);
+            // Skip rather than save the raw photo, which would duplicate it in the user's gallery.
+            console.warn(`Failed to capture slide ${i}, skipping:`, e);
           }
-        } else {
-          capturedUris.push(carousel.slides[i].photo.uri);
         }
       }
 

@@ -1,11 +1,16 @@
 """Curate a diverse eval album from the phone's Camera roll (wireless/USB adb) for EXPO_PUBLIC_EVAL_ALBUM.
 
-Run:  .venv/bin/python scripts/make_eval_album.py [pull] [pick] [push]   (no args = all)
+Run:  .venv/bin/python scripts/make_eval_album.py [pull] [pick]   (no args = pull pick; read-only on the phone)
+      .venv/bin/python scripts/make_eval_album.py push --test-phone      (writes to the phone)
+      .venv/bin/python scripts/make_eval_album.py clean                  (removes the album again)
 
 pull - stream the first 64 KB of every DCIM/Camera JPEG (EXIF date, GPS, embedded thumbnail) to scripts/.cache
 pick - TinyCLIP on the thumbnails: whole trips (GPS runs away from home) + recurring subjects (clusters seen on
        many days) + a k-center diversity fill. Writes scripts/.cache/eval_manifest.json with the expected stories.
 push - on-device `cp` (originals untouched) into Pictures/<album>, plus the golden self-check image, then a media scan.
+       The copies keep their dates, so every picked photo shows up TWICE in the phone's gallery timeline.
+       Only on a dedicated test phone, never someone's daily phone; `clean` undoes it.
+clean - delete Pictures/<album> (copies only, DCIM/Camera untouched) and rescan.
 Personal photos never enter the repo; everything lands in the gitignored cache.
 """
 import io, json, math, subprocess, sys
@@ -209,17 +214,30 @@ def pick():
     print(f"  {sum(v.startswith('diverse') for v in why.values()):3d}  diverse fill")
 
 
+def scan():
+    adb("shell", "content", "call", "--uri", "content://media", "--method", "scan_volume", "--arg", "external_primary",
+        stdout=subprocess.DEVNULL)
+
+
 def push():
+    if "--test-phone" not in sys.argv:
+        sys.exit("push duplicates photos in the phone's gallery; pass --test-phone if this is a dedicated test device")
     paths = [p["path"] for p in json.loads(MANIFEST.read_text())["photos"]]
     script = f'mkdir -p "{DST}" && cd "{SRC}" && cp -p ' + " ".join(f'"{Path(p).name}"' for p in paths) + f' "{DST}/"'
     adb("shell", script)
     adb("push", str(GOLDEN_IMAGE), f"{DST}/{GOLDEN_IMAGE.name}", stdout=subprocess.DEVNULL)
-    adb("shell", "content", "call", "--uri", "content://media", "--method", "scan_volume", "--arg", "external_primary",
-        stdout=subprocess.DEVNULL)
+    scan()
     n = adb("shell", f'ls "{DST}" | wc -l', capture_output=True, text=True).stdout.strip()
-    print(f"{n} files in {DST}")
+    print(f"{n} files in {DST}  (undo: make_eval_album.py clean)")
+
+
+def clean():
+    adb("shell", f'rm -r "{DST}"')
+    scan()
+    print(f"removed {DST}")
 
 
 if __name__ == "__main__":
-    for s in sys.argv[1:] or ["pull", "pick", "push"]:
-        {"pull": pull, "pick": pick, "push": push}[s]()
+    steps = [a for a in sys.argv[1:] if not a.startswith("--")] or ["pull", "pick"]
+    for s in steps:
+        {"pull": pull, "pick": pick, "push": push, "clean": clean}[s]()
