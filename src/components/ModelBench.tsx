@@ -42,13 +42,12 @@ const IDX_BATCH = 128;
 // other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = ORT CPU, the shipped engine before the GPU.
 // batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
 const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; batch?: number; other?: boolean }[] = [
-  { name: 'parallel · ORT CPU · 45M int8', parallel: true, engine: 'ort', model: null },
-  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
-  { name: 'parallel · GPU + CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
-  { name: 'parallel · GPU + CPU helps · 45M · batch 16', parallel: true, engine: 'gpu', model: null, batch: 16 },
-  { name: 'parallel · GPU + CPU helps · 45M · batch 32', parallel: true, engine: 'gpu', model: null, batch: 32 },
-  { name: 'parallel · GPU + CPU helps · 45M · batch 64', parallel: true, engine: 'gpu', model: null, batch: 64 },
-  { name: 'parallel · ORT CPU · 22M', parallel: true, engine: 'ort', model: '22m', other: true },
+  // Alternating, so heat hits both hybrids the same.
+  { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
+  { name: 'parallel · GPU + ORT CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
+  { name: 'parallel · LiteRT CPU int8 (dw8) · 45M', parallel: true, engine: 'cpu8', model: null },
+  { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
+  { name: 'parallel · GPU + ORT CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
 ];
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
@@ -244,7 +243,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       lines.push(`${m.name}: ${per(total)} ms/photo · ${Math.round((3.6e6 * n) / total).toLocaleString()} photos/h (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''} · src ${size}${vs}`);
       setIdx([...lines]);
     }
-    await clip.configure(true, 'gpu', null); // back to shipped defaults
+    await clip.configure(true, 'gpu-cpu8', null); // back to shipped defaults
   });
 
   const have = file.bytes > 0;

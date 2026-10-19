@@ -48,7 +48,9 @@ Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw capt
 
 | Setting | Total ms/photo | Model ms |
 |---|---|---|
-| **LiteRT GPU + ORT CPU helping, 128 photos per call (shipped)** | **52** (~69k photos/h) | **47** (GPU busy) |
+| **LiteRT GPU + LiteRT CPU dynamic int8 (dw8) helping, 128 per call (shipped)** | **36–51, median ~40** (~90k photos/h) | 31–43 (GPU busy); CPU took 48–99 of 256 |
+| LiteRT GPU + ORT CPU helping, 128 photos per call (shipped before dw8; ORT helps if XNNPACK fails to load) | 52 (~69k photos/h) | 47 (GPU busy) |
+| LiteRT CPU dynamic int8 (dw8) alone, XNNPACK 4 threads | 48–58 | 43–52 (20 with serial decode) |
 | Same, 64 per call | 59 | 50 |
 | Same, 32 per call | 62 (51 on a cooler phone) | 51 |
 | Same, 16 per call | 67 | 51 |
@@ -77,12 +79,14 @@ GPU tests (2026-10-19, 64 photos, LiteRT 2.3 CompiledModel; vs ORT CPU: cosine �
 | fp32 GPU math | 93 ms/photo, no accuracy gain |
 | Batch > 1 | GPU delegate fails ("Unrecognized Write selector") for every graph layout tried |
 | Load | 3.4 s first compile, 0.5 s with the program cache |
-| LiteRT CPU (XNNPACK, 4 threads) | 120 ms/photo: slower than ORT |
+| LiteRT CPU (XNNPACK, 4 threads), fp16 weights | 120 ms/photo: slower than ORT (int8 dw8: see below) |
 | NNAPI (ORT EP) | 289–299 ms/photo: falls back to nnapi-reference; the NPU-only compile hangs |
 
 The GPU delegate also rejects 3D concatenation, rank-mismatched broadcasts and L2_NORMALIZATION, so `build_assets.py gpu` rewrites the forward pass (same weights) and Kotlin normalizes.
 
 GPU + CPU (2026-10-19, 64 photos): photos decode on 4 CPU threads while the GPU embeds them front to back. Once all are decoded, ORT on the CPU takes photos from the back until the two meet. The CPU took 10–12 of 64 photos; cosine vs ORT CPU ≥ 0.997, same top concept 98–100%. Bigger calls help because each call's tail (GPU waiting on the last decodes) is amortized over more photos. Batch sizes were compared on 256 photos in one run (2026-10-19); modes run in a fixed order, so later ones run on a hotter phone, and 128 still won. Its input buffer is 128 × 600 KB = 77 MB.
+
+dw8 (2026-10-19, 256 photos per mode, 4 runs; GPU + ORT scored 48–56 in the same runs): `vision_dw8.tflite` (`build_assets.py gpu`), int8 weights with fp32 math (ai-edge-quantizer dynamic_wi8_afp32, 46 MB). `benchmark_model` runs it in 16–18 ms on XNNPACK, but in the app it takes 43–52 ms because decode threads share the 4 big cores. Decoding the whole call first cut model time to 28 ms but lost the overlap: 58 ms/photo vs 48 pipelined, so it was dropped. As the CPU helper it takes 2–3× as many photos as ORT. Accuracy vs ORT int8: top concept same 93% (hybrid) and 85–89% (dw8 alone) vs 96–97% for GPU + ORT; cosine min 0.958–0.988. dw8 costs 0.2 points of COCO R@1 (`scripts/.cache/npu/NOTES.md`).
 
 NPU (Exynos 1380): not usable. Samsung's NNAPI driver rejects TRANSPOSE and LayerNorm, which are in every CLIP block. The ops it does accept run on the Mali GPU, not the NPU. LiteRT's Samsung NPU path supports only Exynos 2500/2600, and Samsung's own SDK is closed to third parties. Details: `scripts/.cache/npu/NOTES.md`.
 

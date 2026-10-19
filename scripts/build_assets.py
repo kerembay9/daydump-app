@@ -5,7 +5,8 @@ Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onn
 Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
-gpu    - the same vision tower -> fp16-weight LiteRT vision.tflite for the GPU (the ONNX one stays as CPU fallback)
+gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vision_dw8.tflite (int8 weights, CPU helper);
+         the ONNX one stays as the fallback when the GPU can't run
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> int8 text embeddings
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
@@ -192,7 +193,7 @@ def build_gpu():
     any batch > 1 (tried NLD, batch-first 4D and all-2D graphs). Output is NOT L2-normalized (the converter turns that
     into L2_NORMALIZATION, CPU-only); Kotlin does it. int8 weights don't compile on the GPU, so fp16 (cosine 1.0 vs fp32)."""
     import numpy as np, torch, torch.nn.functional as F, litert_torch
-    from ai_edge_quantizer import quantizer, recipe_manager, algorithm_manager
+    from ai_edge_quantizer import quantizer, recipe, recipe_manager, algorithm_manager
     from ai_edge_quantizer.qtyping import TFLOperationName
     from ai_edge_litert.interpreter import Interpreter
     m = load_model()[0].eval()
@@ -218,15 +219,17 @@ def build_gpu():
     rm = recipe_manager.RecipeManager()
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
-    q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rm.get_quantization_recipe())
-    out = NATIVE / "vision.tflite"
-    out.write_bytes(q.quantize().quantized_model)
-    it = Interpreter(model_path=str(out)); it.allocate_tensors()
-    it.set_tensor(it.get_input_details()[0]["index"], x.numpy()); it.invoke()
-    e = it.get_tensor(it.get_output_details()[0]["index"])[0]
-    cos = float(ref @ e / np.linalg.norm(e))
-    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, vs torch cosine {cos:.5f}")
-    assert cos > 0.999, "LiteRT export drifted"
+    # vision_dw8: int8 weights, fp32 math (XNNPACK quantizes activations per run), for the CPU helping the GPU.
+    for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", recipe.dynamic_wi8_afp32(), 0.98)]:
+        q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rp)
+        out = NATIVE / f"{name}.tflite"
+        out.write_bytes(q.quantize().quantized_model)
+        it = Interpreter(model_path=str(out)); it.allocate_tensors()
+        it.set_tensor(it.get_input_details()[0]["index"], x.numpy()); it.invoke()
+        e = it.get_tensor(it.get_output_details()[0]["index"])[0]
+        cos = float(ref @ e / np.linalg.norm(e))
+        print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, vs torch cosine {cos:.5f}")
+        assert cos > floor, "LiteRT export drifted"
 
 
 def build_bench():

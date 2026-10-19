@@ -6,6 +6,7 @@ import ai.onnxruntime.OrtSession
 import android.content.Context
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
+import com.google.ai.edge.litert.TensorBuffer
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -45,8 +46,8 @@ private val MEAN = floatArrayOf(0.48145466f, 0.4578275f, 0.40821073f)
 private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
 /**
- * TinyCLIP image/text embeddings. Images: LiteRT on the GPU (vision.tflite, batch 1, see scripts/build_assets.py),
- * falling back to ONNX Runtime on the CPU (vision.onnx). Text: ONNX Runtime. Vectors cross the bridge as base64
+ * TinyCLIP image/text embeddings. Images: LiteRT on the GPU (vision.tflite, batch 1, see scripts/build_assets.py) with
+ * LiteRT on the CPU (vision_dw8.tflite) helping, falling back to ONNX Runtime on the CPU (vision.onnx). Text: ONNX Runtime. Vectors cross the bridge as base64
  * little-endian Float32 (n * 512), L2-normalized. A photo that fails to decode yields a zero vector.
  */
 class ClipEmbedderModule : Module() {
@@ -55,14 +56,17 @@ class ClipEmbedderModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
   private var visionSession: OrtSession? = null
   private val vision get() = visionSession ?: makeVision().also { visionSession = it }
-  // Bench knobs (configure): parallel batch decode, engine (gpu: LiteRT GPU + ORT CPU helping, gpu-only; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
+  // Bench knobs (configure): parallel batch decode, engine (gpu-cpu8: LiteRT GPU + cpu8 helping, gpu: GPU + ORT CPU
+  // helping, gpu-only, cpu8: LiteRT CPU dynamic int8; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
   private var parallel = true
-  private var engine = "gpu"
+  private var engine = "gpu-cpu8"
   private var visionFile: String? = null
   // LiteRT model, created on liteThread (GPU contexts are thread-bound); null = not loaded yet or not usable here.
   private val liteThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
   private var lite: CompiledModel? = null
   private var liteFailed = false
+  private var helper: CompiledModel? = null // gpu-cpu8: the CPU's model
+  private var helperFailed = false
   private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
   private val text by lazy { session("text.onnx") }
   private val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
@@ -92,19 +96,38 @@ class ClipEmbedderModule : Module() {
   private fun session(name: String): OrtSession =
     env.createSession(asset(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
 
-  private val useLite get() = engine == "gpu" || engine == "gpu-only"
+  private val useLite get() = engine == "gpu" || engine == "gpu-only" || engine == "cpu8" || engine == "gpu-cpu8"
   // Serial decode (lazy jobs) would all start at once when the helper awaits them; a bench visionFile is a .tflite, not ONNX.
-  private val cpuHelps get() = engine == "gpu" && parallel && visionFile == null
+  private val helps get() = parallel && visionFile == null
+  // ORT helps the GPU (engine gpu, or gpu-cpu8 when XNNPACK failed to load); call after helperModel().
+  private val cpuHelps get() = helps && (engine == "gpu" || (engine == "gpu-cpu8" && helperFailed))
 
   // Batch 1: the Mali GPU delegate rejects batched graphs. Compiled GPU programs are cached (~3 s compile on first load).
   private fun makeLite(): CompiledModel {
-    val key = "$engine-" + (visionFile?.let { File(it).run { "$name-${length()}" } } ?: "bundled-${ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime}")
+    if (engine == "cpu8") return makeCpu8()
+    val key = "$engine-" + (visionFile?.let { File(it).run { "$name-${length()}" } } ?: "bundled-$installed")
     val opts = CompiledModel.Options(Accelerator.GPU).apply {
       gpuOptions = CompiledModel.GpuOptions(
         serializationDir = File(ctx.cacheDir, "litert").apply { mkdirs() }.path, modelCacheKey = key, serializeProgramCache = true,
       )
     }
     return visionFile?.let { CompiledModel.create(it, opts) } ?: CompiledModel.create(ctx.assets, "clip/vision.tflite", opts)
+  }
+
+  private val installed get() = ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime
+
+  // Dynamic int8 (weights int8, activations quantized per run) on XNNPACK, 4 threads. In the app it runs 43-52 ms/photo
+  // (16-18 alone): decode threads share the big cores. Packed weights cached next to the GPU cache.
+  private fun makeCpu8(): CompiledModel {
+    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("dw8-$installed.xnnpack").path
+    return CompiledModel.create(ctx.assets, "clip/vision_dw8.tflite", CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) })
+  }
+
+  private fun helperModel(): CompiledModel? {
+    if (helper == null && !helperFailed && engine == "gpu-cpu8" && helps) {
+      helper = runCatching(::makeCpu8).onFailure { helperFailed = true; Log.w("ClipEmbedder", "LiteRT CPU unavailable, ORT helps instead", it) }.getOrNull()
+    }
+    return helper
   }
 
   // Call on liteThread. null when this device can't run it (no GPU driver, ...): callers fall back to ONNX Runtime.
@@ -149,6 +172,10 @@ class ClipEmbedderModule : Module() {
         val t0 = SystemClock.elapsedRealtime()
         // Load now so loadMs is measured here.
         val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else true
+        helper?.close()
+        helper = null
+        helperFailed = false
+        helperModel()
         if (!useLite || cpuHelps) vision.inputNames
         mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
       }
@@ -227,15 +254,22 @@ class ClipEmbedderModule : Module() {
     val sizes = coroutineScope {
       val jobs = (0 until n).map { i -> async(decodePool, if (parallel) CoroutineStart.DEFAULT else CoroutineStart.LAZY) { fill(i) } }
       val cpu = async(Dispatchers.Default) {
-        if (!cpuHelps) return@async 0
+        val h = helperModel()
+        if (!cpuHelps && h == null) return@async 0
         jobs.awaitAll()
         var c = 0
-        while (true) {
-          val i = take(cpu = true).takeIf { it >= 0 } ?: break
-          if (jobs[i].await() == null) continue
-          val e = run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input, i * 3 * PLANE, 3 * PLANE).slice(), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())))
-          e.copyInto(out, i * DIM)
-          c++
+        val hIn = h?.createInputBuffers()
+        val hOut = h?.createOutputBuffers()
+        try {
+          while (true) {
+            val i = take(cpu = true).takeIf { it >= 0 } ?: break
+            if (jobs[i].await() == null) continue
+            if (h != null) runLite(h, hIn!!, hOut!!, input, i, out)
+            else run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input, i * 3 * PLANE, 3 * PLANE).slice(), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong()))).copyInto(out, i * DIM)
+            c++
+          }
+        } finally {
+          (hIn.orEmpty() + hOut.orEmpty()).forEach { it.close() }
         }
         c
       }
@@ -247,11 +281,7 @@ class ClipEmbedderModule : Module() {
             val i = take(cpu = false).takeIf { it >= 0 } ?: break
             jobs[i].await()?.also {
               val t = SystemClock.elapsedRealtime()
-              inBuf[0].writeFloat(input.copyOfRange(i * 3 * PLANE, (i + 1) * 3 * PLANE))
-              model.run(inBuf, outBuf)
-              val e = outBuf[0].readFloat() // not normalized: the GPU has no L2_NORMALIZATION op
-              val norm = sqrt(e.fold(0f) { a, x -> a + x * x })
-              for (j in 0 until DIM) out[i * DIM + j] = e[j] / norm
+              runLite(model, inBuf, outBuf, input, i, out)
               modelMs += SystemClock.elapsedRealtime() - t
             }
           }
@@ -265,6 +295,15 @@ class ClipEmbedderModule : Module() {
     val wall = SystemClock.elapsedRealtime() - t0
     timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "cpuPhotos" to cpuPhotos.toDouble(), "size" to (sizes.firstOrNull() ?: ""))
     return out
+  }
+
+  // Photo i of input -> out[i], L2-normalized here: the GPU has no L2_NORMALIZATION op, so the .tflite outputs raw vectors.
+  private fun runLite(model: CompiledModel, inBuf: List<TensorBuffer>, outBuf: List<TensorBuffer>, input: FloatArray, i: Int, out: FloatArray) {
+    inBuf[0].writeFloat(input.copyOfRange(i * 3 * PLANE, (i + 1) * 3 * PLANE))
+    model.run(inBuf, outBuf)
+    val e = outBuf[0].readFloat()
+    val norm = sqrt(e.fold(0f) { a, x -> a + x * x })
+    for (j in 0 until DIM) out[i * DIM + j] = e[j] / norm
   }
 
   private fun embedTexts(texts: List<String>): FloatArray {
