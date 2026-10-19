@@ -90,7 +90,7 @@ dw8 (2026-10-19, 256 photos per mode, 4 runs; GPU + ORT scored 48–56 in the sa
 
 NPU (Exynos 1380): not usable. Samsung's NNAPI driver rejects TRANSPOSE and LayerNorm, which are in every CLIP block. The ops it does accept run on the Mali GPU, not the NPU. LiteRT's Samsung NPU path supports only Exynos 2500/2600, and Samsung's own SDK is closed to third parties. Details: `scripts/.cache/npu/NOTES.md`.
 
-Full reindex of 3,942 photos with the 45M took 7.6 min (116 ms/photo, with the app UI running).
+Full reindex (2026-10-19, GPU + dw8, 3,957 photos, on the charger, starting cool): 172 s from the home screen (44 ms/photo, with story rebuilds running). Camera photos took 51 ms each and the smaller chat images 39 ms. Per batch: embed + concepts 47–53 ms/photo, DB writes 3–7, waiting on asset info (GPS) ~0, so reading GPS natively would save nothing. Thermal status reached 1–2 (light to moderate) with no clear slowdown. The same reindex from Stories debug ran at 64 ms/photo. A story rebuild takes ~2.2 s at 4k photos (DB load ~1 s); trips + topics scale near-linearly (PC: 70 ms at 4k, 100 ms at 32k). Listing 4k photos takes 1.1 s. Before the GPU: 7.6 min (116 ms/photo).
 
 ## Reproducing
 

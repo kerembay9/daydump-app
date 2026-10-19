@@ -5,8 +5,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RefreshCw } from 'lucide-react-native';
 import { Story } from '../services/stories';
 
-/** etaSec is null until enough photos are done for a stable rate. */
-export type IndexProgress = { done: number; total: number; etaSec: number | null };
+/** etaSec is null until enough photos are done for a stable rate. since/camera describe the photo just indexed. */
+export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; camera: boolean };
+
+const ago = (t: number) => {
+  const d = (Date.now() - t) / 864e5;
+  return d < 14 ? `${Math.max(1, Math.round(d))} days` : d < 60 ? `${Math.round(d / 7)} weeks` : d < 730 ? `${Math.round(d / 30)} months` : `${Math.round(d / 365)} years`;
+};
+/** What the stories can draw on so far. Indexing goes camera newest-first, then the rest. Undated photos (1970) come last. */
+const coverage = (p: IndexProgress) =>
+  !p.camera ? 'All camera photos done. Now adding chats, downloads and other albums.'
+  : p.since < 1e12 ? 'Almost done with camera photos.'
+  : `Stories now cover your camera photos from the last ${ago(p.since)}.`;
 
 const eta = (s: number | null) => (s == null ? 'estimating…' : s < 60 ? 'under a minute left' : `~${Math.round(s / 60)} min left`);
 
@@ -39,7 +49,7 @@ export const StoryCardsRow: React.FC<StoryCardsRowProps> = ({ stories, progress,
             Reading your library · {progress.done.toLocaleString()} of {progress.total.toLocaleString()} · {eta(progress.etaSec)}
           </Text>
           <Text style={styles.hint}>
-            {stories.length ? 'Newest photos first. More stories appear as it goes.' : 'Newest photos first. Your first stories appear in a few seconds.'}
+            {stories.length ? `${coverage(progress)} More stories appear as it goes.` : 'Newest photos first. Your first stories appear in a few seconds.'}
           </Text>
         </View>
       )}

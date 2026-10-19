@@ -81,6 +81,12 @@ export const SAMPLE_AESTHETIC_PHOTOS: PhotoAsset[] = [
 /** Validation mode: EXPO_PUBLIC_EVAL_ALBUM="DayDump Eval" restricts every gallery read to that album. */
 export const EVAL_ALBUM = process.env.EXPO_PUBLIC_EVAL_ALBUM || null;
 
+/**
+ * Shot with the phone's camera: Android keeps those under DCIM (Samsung also puts screenshots there).
+ * ponytail: path heuristic, Android only; iOS ph:// URIs never match, so iOS indexes plain newest-first.
+ */
+export const isCameraPhoto = (uri: string) => /\/DCIM\/(?!Screenshots\/)/i.test(uri);
+
 export class GalleryService {
   private static async evalAlbum(): Promise<MediaLibrary.Album | undefined> {
     if (!EVAL_ALBUM) return undefined;
@@ -89,8 +95,8 @@ export class GalleryService {
     return album;
   }
 
-  /** Newest-first library photos (pruned), the input to the on-device index. */
-  static async listLibraryPhotos(max = 5000): Promise<PhotoAsset[]> {
+  /** Every library photo (pruned), the input to the on-device index: camera shots newest first, then everything else newest first. */
+  static async listLibraryPhotos(): Promise<PhotoAsset[]> {
     const album = await this.evalAlbum();
     const raw: MediaLibrary.Asset[] = [];
     let after: string | undefined;
@@ -99,13 +105,14 @@ export class GalleryService {
         album,
         mediaType: MediaLibrary.MediaType.photo,
         sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-        first: 500,
+        first: 1000,
         after,
       });
       raw.push(...page.assets);
-      after = page.hasNextPage && raw.length < max ? page.endCursor : undefined;
+      after = page.hasNextPage ? page.endCursor : undefined;
     } while (after);
-    return this.pruneAndCleanAssets(raw.slice(0, max));
+    const all = this.pruneAndCleanAssets(raw);
+    return [...all.filter((p) => isCameraPhoto(p.uri)), ...all.filter((p) => !isCameraPhoto(p.uri))];
   }
 
   /**

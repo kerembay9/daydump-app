@@ -45,13 +45,18 @@ let running: Promise<number> | null = null;
  * Returns how many photos changed (newly indexed or retagged), so callers know to rebuild stories.
  * ponytail: foreground only, runs on app open; WorkManager backfill when big libraries make first open slow.
  */
-export function indexLibrary(onProgress?: (done: number, total: number) => void): Promise<number> {
+/** onProgress's last = the photo just indexed: order is camera newest-first, then the rest newest-first. */
+export type IndexProgressFn = (done: number, total: number, last: PhotoAsset) => void;
+
+export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
   return (running ??= run(onProgress).finally(() => (running = null)));
 }
 
-async function run(onProgress?: (done: number, total: number) => void): Promise<number> {
+async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
+  const tl = Date.now();
   const assets = await GalleryService.listLibraryPhotos();
+  console.log(`[photoIndex] listed ${assets.length} photos in ${Date.now() - tl} ms`);
   const rows = await d.getAllAsync<{ id: string; hasEmb: number }>('SELECT id, emb IS NOT NULL AS hasEmb FROM photos');
   const have = new Map(rows.map((r) => [r.id, !!r.hasEmb]));
   const live = new Set(assets.map((a) => a.id));
@@ -69,15 +74,19 @@ async function run(onProgress?: (done: number, total: number) => void): Promise<
   let nextInfos = infosOf(todo.slice(0, BATCH));
   for (let i = 0; i < todo.length; i += BATCH) {
     const batch = todo.slice(i, i + BATCH);
+    const tb = Date.now();
     const infos = await nextInfos;
+    const infoWait = Date.now() - tb;
     nextInfos = infosOf(todo.slice(i + BATCH, i + 2 * BATCH)); // GPS + local uri of the next batch while this one embeds
     let vecs: Float32Array | null = null;
     let concepts: { ids: number[]; scores: number[] } | null = null;
+    const te = Date.now();
     if (ClipEmbedder) {
       const b64 = await ClipEmbedder.embedImages(batch.map((a, j) => infos[j]?.localUri ?? a.uri));
       vecs = b64ToFloats(b64);
       concepts = await ClipEmbedder.topConcepts(b64, TOP_CONCEPTS);
     }
+    const tw = Date.now();
     await d.withTransactionAsync(async () => {
       for (let j = 0; j < batch.length; j++) {
         const a = batch[j];
@@ -91,10 +100,22 @@ async function run(onProgress?: (done: number, total: number) => void): Promise<
         ]);
       }
     });
-    onProgress?.(Math.min(i + BATCH, todo.length), todo.length);
+    onProgress?.(Math.min(i + BATCH, todo.length), todo.length, batch[batch.length - 1]);
+    const per = (ms: number) => (ms / batch.length).toFixed(0);
+    console.log(`[photoIndex] ${Math.min(i + BATCH, todo.length)}/${todo.length}: ${per(Date.now() - tb)} ms/photo = info wait ${per(infoWait)} + embed+concepts ${per(tw - te)} + db ${per(Date.now() - tw)}`);
   }
   if (todo.length) console.log(`[photoIndex] indexed ${todo.length} photos in ${Date.now() - t0} ms (${((Date.now() - t0) / todo.length).toFixed(0)} ms/photo)`);
   return todo.length + retagged;
+}
+
+/** Debug: forget every vector so the next indexLibrary() re-embeds the whole library (sustained-speed bench). */
+export async function clearEmbeddings() {
+  await (await db()).execAsync('UPDATE photos SET emb = NULL, concepts = NULL');
+}
+
+/** Debug: drop every indexed photo, so the app looks like a first install to the indexer. */
+export async function resetIndex() {
+  await (await db()).execAsync('DELETE FROM photos');
 }
 
 let names: string[] | null = null;

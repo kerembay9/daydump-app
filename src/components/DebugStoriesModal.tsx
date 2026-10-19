@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ClipEmbedder, EdgeBench } from '../../modules/clip-embedder';
 import { EVAL_ALBUM } from '../services/galleryService';
 import { ModelBench } from './ModelBench';
-import { conceptsForVector, indexLibrary, IndexedPhoto, Library, loadLibrary } from '../services/index/photoIndex';
+import { clearEmbeddings, conceptsForVector, indexLibrary, IndexedPhoto, Library, loadLibrary, resetIndex } from '../services/index/photoIndex';
 import { b64ToFloats, DIM } from '../services/index/vectors';
 import { buildStories, searchRanked, Story } from '../services/stories';
 import { DEFAULT_TOPIC_OPTIONS, TopicOptions } from '../services/stories/topics';
@@ -33,10 +33,12 @@ const titlePrompt = (s: Story, words: string[]) =>
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** Debug: called after the index is wiped, to rerun the home screen's first-index flow. */
+  onResetIndex: () => void;
 }
 
 /** Eval/debug view of the on-device index: every story with its words and scores, plus raw search. */
-export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
+export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIndex }) => {
   // Android Modals draw edge to edge, and SafeAreaView inside one measures zero insets: use the root's.
   const insets = useSafeAreaInsets();
   const [lib, setLib] = useState<Library | null>(null);
@@ -59,7 +61,8 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
     if (visible) rebuild(opts);
   }, [visible, opts]);
 
-  const reindex = async () => {
+  const reindex = async (all = false) => {
+    if (all) await clearEmbeddings();
     const t0 = Date.now();
     const n = await indexLibrary((d, t) => setStatus(`indexing ${d}/${t}`));
     setStatus(`${n} photos indexed or retagged in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -142,7 +145,9 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
           {lib?.photos.length ?? 0} photos · {embedded} embedded · {geo} geotagged
         </Text>
         <View style={styles.row}>
-          <Btn label="Reindex" onPress={reindex} />
+          <Btn label="Reindex" onPress={() => reindex()} />
+          <Btn label="Re-embed all" onPress={() => reindex(true)} />
+          <Btn label="Reset index" onPress={() => resetIndex().then(() => { onClose(); onResetIndex(); })} />
           <Btn label="Self-check" onPress={selfCheck} />
         </View>
         {!!status && <Text style={styles.mono}>{status}</Text>}
@@ -215,7 +220,7 @@ const styles = StyleSheet.create({
   meta: { color: '#8E8E93', fontSize: 12, lineHeight: 17 },
   mono: { color: '#C7C7CC', fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
   link: { color: '#FF9500', fontWeight: '700' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginVertical: 4 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 2 },
   btn: { backgroundColor: '#2C2C2E', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   btnText: { color: '#fff', fontWeight: '700' },

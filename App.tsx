@@ -23,7 +23,7 @@ import { IndexProgress, StoryCardsRow } from './src/components/StoryCardsRow';
 import { DebugStoriesModal } from './src/components/DebugStoriesModal';
 import { indexLibrary, Library, loadLibrary } from './src/services/index/photoIndex';
 import { buildStories, markSeen, searchStory, Story, toCarousel } from './src/services/stories';
-import { GalleryService } from './src/services/galleryService';
+import { GalleryService, isCameraPhoto } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
 import { RevenueCatService } from './src/services/revenuecat';
 import { OnboardingService } from './src/services/onboardingService';
@@ -151,20 +151,26 @@ function MainApp() {
   /** Show stories from the current index right away, then index new photos and rebuild if anything changed. */
   const refreshStories = async () => {
     try {
+      let showCost = 0;
       const show = async () => {
+        const t = Date.now();
         const lib = await loadLibrary();
+        const tl = Date.now() - t;
         setLibrary(lib);
         setStories((await buildStories(lib)).slice(0, STORIES_SHOWN));
+        showCost = Date.now() - t;
+        console.log(`[stories] rebuilt from ${lib.photos.length} photos in ${showCost} ms (load ${tl} ms)`);
       };
       await show();
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
+      // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free.
       const t0 = Date.now();
       let lastShow = t0;
       let showing = false;
-      const added = await indexLibrary((done, total) => {
+      const added = await indexLibrary((done, total, last) => {
         const elapsed = Date.now() - t0;
-        setIndexProgress({ done, total, etaSec: done >= 32 ? ((total - done) * elapsed) / done / 1000 : null });
-        if (!showing && Date.now() - lastShow > 15000) {
+        setIndexProgress({ done, total, etaSec: done >= 32 ? ((total - done) * elapsed) / done / 1000 : null, since: last.creationTime, camera: isCameraPhoto(last.uri) });
+        if (!showing && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
           showing = true;
           show().catch((e) => console.warn('[stories] rebuild failed:', e)).finally(() => { showing = false; lastShow = Date.now(); });
         }
@@ -431,7 +437,7 @@ function MainApp() {
         }}
       />
 
-      <DebugStoriesModal visible={showStoriesDebug} onClose={() => setShowStoriesDebug(false)} />
+      <DebugStoriesModal visible={showStoriesDebug} onClose={() => setShowStoriesDebug(false)} onResetIndex={refreshStories} />
     </SafeAreaView>
   );
 }
