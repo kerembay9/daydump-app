@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RefreshCw } from 'lucide-react-native';
@@ -51,6 +51,10 @@ export const StoryCardsRow: React.FC<StoryCardsRowProps> = ({ stories, progress,
           <Text style={styles.hint}>
             {stories.length ? `${coverage(progress)} More stories appear as it goes.` : 'Newest photos first. Your first stories appear in a few seconds.'}
           </Text>
+          {/* BackgroundIndex.kt picks up where this left off; only worth saying when there's a wait */}
+          {Platform.OS === 'android' && (progress.etaSec ?? 0) > 60 && (
+            <Text style={styles.hint}>You can leave the app: it keeps going while your phone charges.</Text>
+          )}
         </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>

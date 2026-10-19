@@ -20,6 +20,11 @@ type ClipEmbedderModule = {
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
   conceptNames(): Promise<string[]>;
+  /** Background indexing while charging (BackgroundIndex.kt): replaces the worker's todo and schedules it. */
+  scheduleBackgroundIndex(ids: string[], uris: string[], model: string): Promise<void>;
+  cancelBackgroundIndex(): Promise<void>;
+  /** Removes and returns up to limit photos the worker finished; concepts is the JSON photoIndex.ts stores. */
+  takeBackgroundResults(limit: number): Promise<{ model: string | null; rows: { id: string; emb: string; concepts: string; lat: number | null; lon: number | null }[] }>;
 };
 
 /** null on iOS / Expo Go: callers fall back to non-CLIP behavior. */

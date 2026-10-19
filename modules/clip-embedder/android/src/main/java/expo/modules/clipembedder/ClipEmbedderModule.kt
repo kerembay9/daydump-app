@@ -26,6 +26,8 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
 import org.json.JSONObject
@@ -41,7 +43,7 @@ import kotlin.math.roundToInt
 
 private const val SIZE = 224
 private const val PLANE = SIZE * SIZE
-private const val DIM = 512
+internal const val DIM = 512
 private val MEAN = floatArrayOf(0.48145466f, 0.4578275f, 0.40821073f)
 private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
@@ -53,6 +55,59 @@ private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 class ClipEmbedderModule : Module() {
   private val ctx: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+  private val clip get() = ClipEngine.get(ctx)
+
+  override fun definition() = ModuleDefinition {
+    Name("ClipEmbedder")
+
+    // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
+    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
+      withContext(Dispatchers.Default) { encode(clip.embedImages(uris, thumb ?: 0)) }
+    }
+
+    // model: use filesDir/models/vision_<model>.onnx|.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
+    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, eng: String, model: String? ->
+      withContext(Dispatchers.Default) { clip.configure(parallelDecode, eng, model) }
+    }
+
+    // Split of the last embedImages call: decode vs model ms, plus the first decoded bitmap's size.
+    Function("lastEmbedTimings") { clip.timings }
+
+    AsyncFunction("embedTexts") Coroutine { texts: List<String> ->
+      withContext(Dispatchers.Default) { encode(clip.embedTexts(texts)) }
+    }
+
+    AsyncFunction("tokenize") Coroutine { s: String ->
+      withContext(Dispatchers.Default) { clip.tokenizer.encode(s).map { it.toInt() } }
+    }
+
+    // Top-k vocabulary concepts per vector (n*512 base64) -> flat n*k ids/scores, best first.
+    AsyncFunction("topConcepts") Coroutine { vecsB64: String, k: Int ->
+      withContext(Dispatchers.Default) { clip.topConcepts(decode(vecsB64), k) }
+    }
+
+    AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
+
+    AsyncFunction("scheduleBackgroundIndex") Coroutine { ids: List<String>, uris: List<String>, model: String ->
+      withContext(Dispatchers.IO) { BackgroundIndex.schedule(ctx, ids, uris, model) }
+    }
+
+    AsyncFunction("cancelBackgroundIndex") { BackgroundIndex.cancel(ctx) }
+
+    AsyncFunction("takeBackgroundResults") Coroutine { limit: Int ->
+      withContext(Dispatchers.IO) { BackgroundIndex.take(ctx, limit) }
+    }
+  }
+}
+
+/** One per process: shared by the JS module and the background indexing worker (embeds are serialized). */
+class ClipEngine private constructor(private val ctx: Context) {
+  companion object {
+    @Volatile private var inst: ClipEngine? = null
+    fun get(ctx: Context) = inst ?: synchronized(this) { inst ?: ClipEngine(ctx.applicationContext).also { inst = it } }
+  }
+
+  private val mutex = Mutex()
   private val env by lazy { OrtEnvironment.getEnvironment() }
   private var visionSession: OrtSession? = null
   private val vision get() = visionSession ?: makeVision().also { visionSession = it }
@@ -69,8 +124,8 @@ class ClipEmbedderModule : Module() {
   private var helperFailed = false
   private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
   private val text by lazy { session("text.onnx") }
-  private val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
-  private val vocabNames by lazy {
+  val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
+  val vocabNames by lazy {
     val a = JSONObject(asset("vocab.json").decodeToString()).getJSONArray("names")
     Array(a.length()) { a.getString(it) }
   }
@@ -89,7 +144,8 @@ class ClipEmbedderModule : Module() {
     fb.rewind()
     OnnxTensor.createTensor(env, fb, longArrayOf(rows.toLong(), DIM.toLong()))
   }
-  private var timings = mapOf<String, Any>()
+  var timings = mapOf<String, Any>()
+    private set
 
   private fun asset(name: String) = ctx.assets.open("clip/$name").use { it.readBytes() }
 
@@ -152,55 +208,27 @@ class ClipEmbedderModule : Module() {
     return visionFile?.let { env.createSession(it, opts) } ?: env.createSession(asset("vision.onnx"), opts)
   }
 
-  override fun definition() = ModuleDefinition {
-    Name("ClipEmbedder")
-
-    // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
-    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
-      withContext(Dispatchers.Default) { encode(embedImages(uris, thumb ?: 0)) }
-    }
-
-    // model: use filesDir/models/vision_<model>.onnx|.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
-    AsyncFunction("configure") Coroutine { parallelDecode: Boolean, eng: String, model: String? ->
-      withContext(Dispatchers.Default) {
-        parallel = parallelDecode
-        engine = eng
-        val ext = if (useLite) "tflite" else "onnx"
-        visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.$ext") }?.takeIf { it.exists() }?.path
-        visionSession?.close()
-        visionSession = null
-        val t0 = SystemClock.elapsedRealtime()
-        // Load now so loadMs is measured here.
-        val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else true
-        helper?.close()
-        helper = null
-        helperFailed = false
-        helperModel()
-        if (!useLite || cpuHelps) vision.inputNames
-        mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
-      }
-    }
-
-    // Split of the last embedImages call: decode vs model ms, plus the first decoded bitmap's size.
-    Function("lastEmbedTimings") { timings }
-
-    AsyncFunction("embedTexts") Coroutine { texts: List<String> ->
-      withContext(Dispatchers.Default) { encode(embedTexts(texts)) }
-    }
-
-    AsyncFunction("tokenize") Coroutine { s: String ->
-      withContext(Dispatchers.Default) { tokenizer.encode(s).map { it.toInt() } }
-    }
-
-    // Top-k vocabulary concepts per vector (n*512 base64) -> flat n*k ids/scores, best first.
-    AsyncFunction("topConcepts") Coroutine { vecsB64: String, k: Int ->
-      withContext(Dispatchers.Default) { topConcepts(decode(vecsB64), k) }
-    }
-
-    AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { vocabNames.toList() } }
+  suspend fun configure(parallelDecode: Boolean, eng: String, model: String?) = mutex.withLock {
+    parallel = parallelDecode
+    engine = eng
+    val ext = if (useLite) "tflite" else "onnx"
+    visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.$ext") }?.takeIf { it.exists() }?.path
+    visionSession?.close()
+    visionSession = null
+    val t0 = SystemClock.elapsedRealtime()
+    // Load now so loadMs is measured here.
+    val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else true
+    helper?.close()
+    helper = null
+    helperFailed = false
+    helperModel()
+    if (!useLite || cpuHelps) vision.inputNames
+    mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
   }
 
-  private suspend fun embedImages(uris: List<String>, thumb: Int): FloatArray {
+  suspend fun embedImages(uris: List<String>, thumb: Int) = mutex.withLock { embedImagesLocked(uris, thumb) }
+
+  private suspend fun embedImagesLocked(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
     val n = uris.size
     val input = FloatArray(n * 3 * PLANE)
@@ -306,7 +334,7 @@ class ClipEmbedderModule : Module() {
     for (j in 0 until DIM) out[i * DIM + j] = e[j] / norm
   }
 
-  private fun embedTexts(texts: List<String>): FloatArray {
+  fun embedTexts(texts: List<String>): FloatArray {
     if (texts.isEmpty()) return FloatArray(0)
     val ids = LongBuffer.allocate(texts.size * ClipTokenizer.CTX)
     texts.forEach { ids.put(tokenizer.encode(it)) }
@@ -319,7 +347,7 @@ class ClipEmbedderModule : Module() {
   }
 
   // One ORT Gemm + TopK for the whole batch (concepts.onnx, weightless; the vocab is an input).
-  private fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
+  fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
     val n = qs.size / DIM
     if (n == 0) return mapOf("ids" to emptyList<Int>(), "scores" to emptyList<Double>())
     OnnxTensor.createTensor(env, FloatBuffer.wrap(qs), longArrayOf(n.toLong(), DIM.toLong())).use { q ->
@@ -332,17 +360,16 @@ class ClipEmbedderModule : Module() {
       }
     }
   }
+}
 
-  private fun encode(v: FloatArray): String {
-    val bb = ByteBuffer.allocate(v.size * 4).order(ByteOrder.LITTLE_ENDIAN)
-    bb.asFloatBuffer().put(v)
-    return Base64.encodeToString(bb.array(), Base64.NO_WRAP)
-  }
+internal fun floatBytes(v: FloatArray): ByteArray =
+  ByteBuffer.allocate(v.size * 4).order(ByteOrder.LITTLE_ENDIAN).also { it.asFloatBuffer().put(v) }.array()
 
-  private fun decode(s: String): FloatArray {
-    val fb = ByteBuffer.wrap(Base64.decode(s, Base64.DEFAULT)).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-    return FloatArray(fb.remaining()).also { fb.get(it) }
-  }
+private fun encode(v: FloatArray): String = Base64.encodeToString(floatBytes(v), Base64.NO_WRAP)
+
+private fun decode(s: String): FloatArray {
+  val fb = ByteBuffer.wrap(Base64.decode(s, Base64.DEFAULT)).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+  return FloatArray(fb.remaining()).also { fb.get(it) }
 }
 
 /** Decoded so the shortest side is exactly `side` (EXIF orientation applied on API 28+). */

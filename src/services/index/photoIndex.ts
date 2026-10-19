@@ -1,4 +1,5 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
+import { AppState } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import { ClipEmbedder } from '../../../modules/clip-embedder';
 import { PhotoAsset } from '../../types';
@@ -43,10 +44,14 @@ let running: Promise<number> | null = null;
 /**
  * Incremental: indexes photos not yet in the DB (plus un-embedded rows once CLIP is available), drops deleted ones.
  * Returns how many photos changed (newly indexed or retagged), so callers know to rebuild stories.
- * ponytail: foreground only, runs on app open; WorkManager backfill when big libraries make first open slow.
+ * Android: leaving the foreground hands the rest to a WorkManager job that runs while charging; the next run merges it.
  */
 /** onProgress's last = the photo just indexed: order is camera newest-first, then the rest newest-first. */
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset) => void;
+
+let handedOff = false;
+/** True once a run handed its todo to the background worker: call indexLibrary() again on return to pick it up. */
+export const wasHandedOff = () => handedOff;
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
   return (running ??= run(onProgress).finally(() => (running = null)));
@@ -54,9 +59,12 @@ export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
 
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
+  handedOff = false;
+  await ClipEmbedder?.cancelBackgroundIndex();
   const tl = Date.now();
   const assets = await GalleryService.listLibraryPhotos();
   console.log(`[photoIndex] listed ${assets.length} photos in ${Date.now() - tl} ms`);
+  const merged = await mergeBackgroundResults(d, assets);
   const rows = await d.getAllAsync<{ id: string; hasEmb: number }>('SELECT id, emb IS NOT NULL AS hasEmb FROM photos');
   const have = new Map(rows.map((r) => [r.id, !!r.hasEmb]));
   const live = new Set(assets.map((a) => a.id));
@@ -72,7 +80,15 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   const t0 = Date.now();
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
   let nextInfos = infosOf(todo.slice(0, BATCH));
-  for (let i = 0; i < todo.length; i += BATCH) {
+  let i = 0;
+  for (; i < todo.length; i += BATCH) {
+    if (ClipEmbedder && AppState.currentState !== 'active') {
+      const rest = todo.slice(i);
+      await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL);
+      handedOff = true;
+      console.log(`[photoIndex] app left the foreground: ${rest.length} photos handed to the background worker`);
+      break;
+    }
     const batch = todo.slice(i, i + BATCH);
     const tb = Date.now();
     const infos = await nextInfos;
@@ -104,8 +120,32 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
     const per = (ms: number) => (ms / batch.length).toFixed(0);
     console.log(`[photoIndex] ${Math.min(i + BATCH, todo.length)}/${todo.length}: ${per(Date.now() - tb)} ms/photo = info wait ${per(infoWait)} + embed+concepts ${per(tw - te)} + db ${per(Date.now() - tw)}`);
   }
-  if (todo.length) console.log(`[photoIndex] indexed ${todo.length} photos in ${Date.now() - t0} ms (${((Date.now() - t0) / todo.length).toFixed(0)} ms/photo)`);
-  return todo.length + retagged;
+  if (i) console.log(`[photoIndex] indexed ${Math.min(i, todo.length)} photos in ${Date.now() - t0} ms (${((Date.now() - t0) / Math.min(i, todo.length)).toFixed(0)} ms/photo)`);
+  return merged + Math.min(i, todo.length) + retagged;
+}
+
+/** Moves what the background worker embedded into the index; asset metadata comes from the live listing. */
+async function mergeBackgroundResults(d: SQLite.SQLiteDatabase, assets: PhotoAsset[]): Promise<number> {
+  if (!ClipEmbedder) return 0;
+  const byId = new Map(assets.map((a) => [a.id, a]));
+  let n = 0;
+  for (;;) {
+    const { model, rows } = await ClipEmbedder.takeBackgroundResults(512);
+    if (!rows.length) break;
+    if (model !== MODEL) continue; // another model's vectors: drop, run() re-embeds them
+    await d.withTransactionAsync(async () => {
+      for (const r of rows) {
+        const a = byId.get(r.id);
+        if (!a) continue; // deleted since
+        await d.runAsync('INSERT OR REPLACE INTO photos (id, uri, created, w, h, lat, lon, emb, concepts) VALUES (?,?,?,?,?,?,?,?,?)', [
+          a.id, a.uri, a.creationTime, a.width, a.height, r.lat, r.lon, new Uint8Array(b64ToFloats(r.emb).buffer), r.concepts,
+        ]);
+        n++;
+      }
+    });
+  }
+  if (n) console.log(`[photoIndex] merged ${n} photos from the background worker`);
+  return n;
 }
 
 /** Debug: forget every vector so the next indexLibrary() re-embeds the whole library (sustained-speed bench). */

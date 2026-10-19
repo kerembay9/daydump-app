@@ -9,6 +9,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Linking,
+  AppState,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -21,7 +22,7 @@ import { SettingsModal } from './src/components/SettingsModal';
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { IndexProgress, StoryCardsRow } from './src/components/StoryCardsRow';
 import { DebugStoriesModal } from './src/components/DebugStoriesModal';
-import { indexLibrary, Library, loadLibrary } from './src/services/index/photoIndex';
+import { indexLibrary, Library, loadLibrary, wasHandedOff } from './src/services/index/photoIndex';
 import { buildStories, markSeen, searchStory, Story, toCarousel } from './src/services/stories';
 import { GalleryService, isCameraPhoto } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
@@ -182,6 +183,13 @@ function MainApp() {
       console.warn('[stories] refresh failed:', e);
     }
   };
+
+  // Indexing handed to the background worker when the app left: back in front, merge its results and finish here.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active' && wasHandedOff()) refreshStories(); });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshStories only touches state setters
+  }, []);
 
   const handleSelectStory = (story: Story) => {
     const curated = toCarousel(story);
