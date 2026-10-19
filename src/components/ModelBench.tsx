@@ -35,8 +35,8 @@ const modeName = (m: { gpu: boolean; visionGpu: boolean }) => `LLM ${m.gpu ? 'GP
 type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
 
 /** Indexer path (batches of 16: asset info for GPS, embed, top concepts) with full decode vs MediaStore thumbnails. */
-const IDX_N = 64;
-const IDX_BATCH = 32;
+const IDX_N = 256; // ≥ the biggest batch below, or that mode measures a smaller one
+const IDX_BATCH = 128;
 // Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
 // model: files/models/vision_<model>.tflite|.onnx pushed by hand (scripts/build_assets.py bench); null = bundled 45M.
 // other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = ORT CPU, the shipped engine before the GPU.
@@ -46,6 +46,7 @@ const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: s
   { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
   { name: 'parallel · GPU + CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
   { name: 'parallel · GPU + CPU helps · 45M · batch 16', parallel: true, engine: 'gpu', model: null, batch: 16 },
+  { name: 'parallel · GPU + CPU helps · 45M · batch 32', parallel: true, engine: 'gpu', model: null, batch: 32 },
   { name: 'parallel · GPU + CPU helps · 45M · batch 64', parallel: true, engine: 'gpu', model: null, batch: 64 },
   { name: 'parallel · ORT CPU · 22M', parallel: true, engine: 'ort', model: '22m', other: true },
 ];
@@ -219,8 +220,10 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       }
       return { t, size, vecs, top1 };
     };
+    setBusy('index bench: warm-up');
     const ref = await pass();
-    for (const m of IDX_MODES) {
+    for (const [k, m] of IDX_MODES.entries()) {
+      setBusy(`index bench ${k + 1}/${IDX_MODES.length}: ${m.name}`);
       const cfg = await clip.configure(m.parallel, m.engine, m.model).catch((e) => ({ found: false, ok: false, loadMs: 0, error: String(e) }));
       if (!cfg.found || !cfg.ok) {
         lines.push(`${m.name}: skipped (${'error' in cfg ? cfg.error : !cfg.found ? `no files/models/vision_${m.model}` : 'LiteRT failed to load, see logcat'})`);
@@ -237,7 +240,8 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       const same = top1.filter((id, k) => id === ref.top1[k]).length;
       // Another model's vectors live in a different space: only its timings mean anything.
       const vs = m.other ? '' : `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
-      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''} · src ${size}${vs}`);
+      const total = t.info + t.decode + t.model + t.concepts;
+      lines.push(`${m.name}: ${per(total)} ms/photo · ${Math.round((3.6e6 * n) / total).toLocaleString()} photos/h (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''} · src ${size}${vs}`);
       setIdx([...lines]);
     }
     await clip.configure(true, 'gpu', null); // back to shipped defaults
@@ -283,12 +287,12 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         </Text>
       ))}
 
-      <Text style={s.mono}>
+      {rows.length > 0 && <Text style={s.mono}>
         TinyCLIP {stat('clip')}{'\n'}
         ML Kit   {stat('mlkit')}{'\n'}
         Gemma    {stat('gemma')}
         {g.length ? `\n         ttft ${median(g.map((x) => x.ttftMs)).toFixed(0)} ms · ${median(g.map((x) => x.prefillTokens))} prefill tok · decode ${median(g.map((x) => x.decodeTps)).toFixed(1)} tok/s` : ''}
-      </Text>
+      </Text>}
 
       {rows.map((r) => (
         <View key={r.p.id} style={s.result}>

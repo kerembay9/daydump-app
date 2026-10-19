@@ -5,7 +5,7 @@ import { PhotoAsset } from '../../types';
 import { EVAL_ALBUM, GalleryService } from '../galleryService';
 import { b64ToFloats, DIM, floatsToB64 } from './vectors';
 
-const BATCH = 32; // 51 ms/photo vs 61 at 16 (GPU + CPU, MODEL_BENCHMARKS.md); 64 gains 2 ms for 2× the input memory
+const BATCH = 128; // 52 ms/photo vs 62 at 32 and 67 at 16 (GPU + CPU, MODEL_BENCHMARKS.md); input buffer 128 × 600 KB = 77 MB
 /** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py). */
 const MODEL = (require('./clipGolden.json') as { model: string }).model;
 const TOP_CONCEPTS = 10;

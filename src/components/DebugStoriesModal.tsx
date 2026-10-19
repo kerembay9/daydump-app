@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { EVAL_ALBUM } from '../services/galleryService';
 import { ModelBench } from './ModelBench';
@@ -20,6 +21,8 @@ interface Props {
 
 /** Eval/debug view of the on-device index: every story with its words and scores, plus raw search. */
 export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
+  // Android Modals draw edge to edge, and SafeAreaView inside one measures zero insets: use the root's.
+  const insets = useSafeAreaInsets();
   const [lib, setLib] = useState<Library | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [opts, setOpts] = useState<TopicOptions>(DEFAULT_TOPIC_OPTIONS);
@@ -81,7 +84,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+      <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingTop: 16 + insets.top, paddingBottom: 60 + insets.bottom }}>
         <View style={styles.rowBetween}>
           <Text style={styles.h1}>Stories debug</Text>
           <TouchableOpacity onPress={onClose}><Text style={styles.link}>Close</Text></TouchableOpacity>
