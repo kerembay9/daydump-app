@@ -88,11 +88,14 @@ class ClipEmbedderModule : Module() {
 
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
 
-    AsyncFunction("scheduleBackgroundIndex") Coroutine { ids: List<String>, uris: List<String>, model: String ->
-      withContext(Dispatchers.IO) { BackgroundIndex.schedule(ctx, ids, uris, model) }
+    AsyncFunction("scheduleBackgroundIndex") Coroutine { ids: List<String>, uris: List<String>, model: String, fast: Boolean ->
+      withContext(Dispatchers.IO) { BackgroundIndex.schedule(ctx, ids, uris, model, fast) }
     }
 
     AsyncFunction("cancelBackgroundIndex") { BackgroundIndex.cancel(ctx) }
+    AsyncFunction("pauseBackgroundIndex") Coroutine { -> withContext(Dispatchers.IO) { BackgroundIndex.pause(ctx) } }
+    AsyncFunction("resumeBackgroundIndex") Coroutine { -> withContext(Dispatchers.IO) { BackgroundIndex.resume(ctx) } }
+    AsyncFunction("backgroundIndexStatus") Coroutine { -> withContext(Dispatchers.IO) { BackgroundIndex.status(ctx) } }
 
     AsyncFunction("takeBackgroundResults") Coroutine { limit: Int ->
       withContext(Dispatchers.IO) { BackgroundIndex.take(ctx, limit) }

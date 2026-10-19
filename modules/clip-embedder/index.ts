@@ -20,9 +20,21 @@ type ClipEmbedderModule = {
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
   conceptNames(): Promise<string[]>;
-  /** Background indexing while charging (BackgroundIndex.kt): replaces the worker's todo and schedules it. */
-  scheduleBackgroundIndex(ids: string[], uris: string[], model: string): Promise<void>;
+  /**
+   * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service
+   * with a progress notification (call while the app is on screen). Otherwise once the phone charges.
+   */
+  scheduleBackgroundIndex(ids: string[], uris: string[], model: string, fast: boolean): Promise<void>;
   cancelBackgroundIndex(): Promise<void>;
+  /** Stops a fast run; the rest continues on the next charge or resumeBackgroundIndex(). */
+  pauseBackgroundIndex(): Promise<void>;
+  /** Fast mode for the paused todo. Call while the app is on screen. */
+  resumeBackgroundIndex(): Promise<void>;
+  /** idle = nothing queued. batteryPct: what the rest costs in fast mode (null while charging). canFast: fast mode would keep running (charging, or battery above 20% and notifications allowed). */
+  backgroundIndexStatus(): Promise<{
+    state: 'running' | 'slow' | 'paused' | 'lowbattery' | 'done' | 'idle';
+    total: number; left: number; charging: boolean; notify: boolean; batteryPct: number | null; msPerPhoto: number | null; canFast: boolean;
+  }>;
   /** Removes and returns up to limit photos the worker finished; concepts is the JSON photoIndex.ts stores. */
   takeBackgroundResults(limit: number): Promise<{ model: string | null; rows: { id: string; emb: string; concepts: string; lat: number | null; lon: number | null }[] }>;
 };

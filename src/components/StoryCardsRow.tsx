@@ -5,8 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RefreshCw } from 'lucide-react-native';
 import { Story } from '../services/stories';
 
-/** etaSec is null until enough photos are done for a stable rate. since/camera describe the photo just indexed. */
-export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; camera: boolean };
+/**
+ * etaSec is null until enough photos are done for a stable rate. since/camera describe the photo just indexed.
+ * batteryPct: set while the native fast mode runs (keeps going after the user leaves); null = charging, no cost.
+ */
+export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; camera: boolean; batteryPct?: number | null };
 
 const ago = (t: number) => {
   const d = (Date.now() - t) / 864e5;
@@ -18,6 +21,8 @@ const coverage = (p: IndexProgress) =>
   : p.since < 1e12 ? 'Almost done with camera photos.'
   : `Stories now cover your camera photos from the last ${ago(p.since)}.`;
 
+const battery = (pct: number | null) => (pct == null ? 'charging, no battery cost' : pct >= 1 ? `uses ~${pct}% battery` : 'uses a little battery');
+
 const eta = (s: number | null) => (s == null ? 'estimating…' : s < 60 ? 'under a minute left' : `~${Math.round(s / 60)} min left`);
 
 interface StoryCardsRowProps {
@@ -26,10 +31,14 @@ interface StoryCardsRowProps {
   activeId?: string;
   onSelect: (story: Story) => void;
   onShuffle: () => void;
+  /** A fast run the user paused: shown with Resume until it continues (Resume, or the next charge). */
+  paused: { done: number; total: number } | null;
+  onPause: () => void;
+  onResume: () => void;
 }
 
-export const StoryCardsRow: React.FC<StoryCardsRowProps> = ({ stories, progress, activeId, onSelect, onShuffle }) => {
-  if (!stories.length && !progress) return null;
+export const StoryCardsRow: React.FC<StoryCardsRowProps> = ({ stories, progress, activeId, onSelect, onShuffle, paused, onPause, onResume }) => {
+  if (!stories.length && !progress && !paused) return null;
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
@@ -51,10 +60,34 @@ export const StoryCardsRow: React.FC<StoryCardsRowProps> = ({ stories, progress,
           <Text style={styles.hint}>
             {stories.length ? `${coverage(progress)} More stories appear as it goes.` : 'Newest photos first. Your first stories appear in a few seconds.'}
           </Text>
-          {/* BackgroundIndex.kt picks up where this left off; only worth saying when there's a wait */}
-          {Platform.OS === 'android' && (progress.etaSec ?? 0) > 60 && (
-            <Text style={styles.hint}>You can leave the app: it keeps going while your phone charges.</Text>
+          {progress.batteryPct !== undefined ? (
+            // Same facts as its notification (BackgroundIndex.kt), and the same Pause
+            <View style={styles.line}>
+              <Text style={styles.hint}>Keeps going if you leave · {battery(progress.batteryPct)}</Text>
+              <TouchableOpacity onPress={onPause} hitSlop={10} accessibilityRole="button">
+                <Text style={styles.action}>Pause</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // BackgroundIndex.kt's charging-only job picks up where this left off; only worth saying when there's a wait
+            Platform.OS === 'android' && (progress.etaSec ?? 0) > 60 && (
+              <Text style={styles.hint}>You can leave the app: it keeps going while your phone charges.</Text>
+            )
           )}
+        </View>
+      )}
+      {!progress && paused && (
+        <View style={styles.status}>
+          <View style={styles.bar}>
+            <View style={[styles.fill, styles.fillPaused, { width: `${(100 * paused.done) / Math.max(1, paused.total)}%` }]} />
+          </View>
+          <View style={styles.line}>
+            <Text style={styles.progress}>Paused at {paused.done.toLocaleString()} of {paused.total.toLocaleString()}</Text>
+            <TouchableOpacity onPress={onResume} hitSlop={10} accessibilityRole="button">
+              <Text style={styles.action}>Resume</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.hint}>Continues by itself next time you charge.</Text>
         </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -88,6 +121,9 @@ const styles = StyleSheet.create({
   fill: { height: '100%', backgroundColor: '#FF9500' },
   progress: { fontSize: 11, color: '#C7C7CC' },
   hint: { fontSize: 10, color: '#8E8E93', marginTop: 2 },
+  line: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  action: { fontSize: 11, fontWeight: '700', color: '#FF9500' },
+  fillPaused: { backgroundColor: '#636366' },
   row: { paddingHorizontal: 16, gap: 10 },
   card: { width: 132, height: 176, borderRadius: 14, overflow: 'hidden', backgroundColor: '#1C1C1E', borderWidth: 2, borderColor: 'transparent' },
   cardActive: { borderColor: '#FF9500' },

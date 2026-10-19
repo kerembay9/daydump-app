@@ -10,6 +10,8 @@ const BATCH = 128; // 52 ms/photo vs 62 at 32 and 67 at 16 (GPU + CPU, MODEL_BEN
 /** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py). */
 const MODEL = (require('./clipGolden.json') as { model: string }).model;
 const TOP_CONCEPTS = 10;
+/** ~2 min of indexing in the app: worth the notification that lets it keep going once the user leaves (BackgroundIndex.kt fast mode). */
+const FAST_MIN = 2500;
 
 export type IndexedPhoto = PhotoAsset & {
   /** top vocab concept ids (best first) and their cosine scores; empty without CLIP */
@@ -44,13 +46,17 @@ let running: Promise<number> | null = null;
 /**
  * Incremental: indexes photos not yet in the DB (plus un-embedded rows once CLIP is available), drops deleted ones.
  * Returns how many photos changed (newly indexed or retagged), so callers know to rebuild stories.
- * Android: leaving the foreground hands the rest to a WorkManager job that runs while charging; the next run merges it.
+ * Android, FAST_MIN+ photos: a native foreground service indexes them (notification with progress, keeps going after the
+ * user leaves, pausable) while this follows along. Smaller todos run here; leaving hands the rest to a charging-only job.
  */
-/** onProgress's last = the photo just indexed: order is camera newest-first, then the rest newest-first. */
-export type IndexProgressFn = (done: number, total: number, last: PhotoAsset) => void;
+/**
+ * onProgress's last = the photo just indexed: order is camera newest-first, then the rest newest-first.
+ * bg: set while the native fast mode runs (batteryPct null = charging).
+ */
+export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
 let handedOff = false;
-/** True once a run handed its todo to the background worker: call indexLibrary() again on return to pick it up. */
+/** True once a run left work to the background worker: call indexLibrary() again on return to pick it up. */
 export const wasHandedOff = () => handedOff;
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
@@ -60,11 +66,14 @@ export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
   handedOff = false;
-  await ClipEmbedder?.cancelBackgroundIndex();
+  const bg = await ClipEmbedder?.backgroundIndexStatus();
+  // A fast or paused run is the user's to stop; a charging-only job just yields to the app.
+  if (bg && bg.state !== 'running' && bg.state !== 'paused') await ClipEmbedder!.cancelBackgroundIndex();
   const tl = Date.now();
   const assets = await GalleryService.listLibraryPhotos();
   console.log(`[photoIndex] listed ${assets.length} photos in ${Date.now() - tl} ms`);
-  const merged = await mergeBackgroundResults(d, assets);
+  const byId = new Map(assets.map((a, i) => [a.id, [a, i] as const]));
+  const merged = (await mergeBackgroundResults(d, byId)).n;
   const rows = await d.getAllAsync<{ id: string; hasEmb: number }>('SELECT id, emb IS NOT NULL AS hasEmb FROM photos');
   const have = new Map(rows.map((r) => [r.id, !!r.hasEmb]));
   const live = new Set(assets.map((a) => a.id));
@@ -75,8 +84,17 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   }
 
   const retagged = await retagIfVocabChanged(d);
+  if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
+  if (bg?.state === 'paused') { // waits for Resume or the next charge
+    handedOff = true;
+    return merged + retagged;
+  }
 
   const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
+  if (ClipEmbedder && bg?.canFast && todo.length >= FAST_MIN) {
+    await ClipEmbedder.scheduleBackgroundIndex(todo.map((a) => a.id), todo.map((a) => a.uri), MODEL, true);
+    return merged + retagged + (await follow(d, byId, onProgress));
+  }
   const t0 = Date.now();
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
   let nextInfos = infosOf(todo.slice(0, BATCH));
@@ -84,7 +102,7 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   for (; i < todo.length; i += BATCH) {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);
-      await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL);
+      await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL, false);
       handedOff = true;
       console.log(`[photoIndex] app left the foreground: ${rest.length} photos handed to the background worker`);
       break;
@@ -124,19 +142,44 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   return merged + Math.min(i, todo.length) + retagged;
 }
 
-/** Moves what the background worker embedded into the index; asset metadata comes from the live listing. */
-async function mergeBackgroundResults(d: SQLite.SQLiteDatabase, assets: PhotoAsset[]): Promise<number> {
-  if (!ClipEmbedder) return 0;
-  const byId = new Map(assets.map((a) => [a.id, a]));
+type ById = Map<string, readonly [PhotoAsset, number]>;
+
+/**
+ * Follows a fast run until it ends (done, paused, or stopped): merges results as they land, so stories grow while it
+ * runs, and reports progress. JS timers sleep while the app is in the background; the loop catches up on return.
+ */
+async function follow(d: SQLite.SQLiteDatabase, byId: ById, onProgress?: IndexProgressFn): Promise<number> {
   let n = 0;
+  let last: PhotoAsset | null = null;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const s = await ClipEmbedder!.backgroundIndexStatus(); // before merging, so the final rows land after 'done'
+    const m = await mergeBackgroundResults(d, byId);
+    n += m.n;
+    last = m.last ?? last;
+    if (last) onProgress?.(s.total - s.left, s.total, last, { batteryPct: s.batteryPct, etaSec: s.msPerPhoto == null ? null : (s.left * s.msPerPhoto) / 1000 });
+    if (s.state !== 'running') {
+      handedOff = s.state !== 'done';
+      return n;
+    }
+  }
+}
+
+/** Moves what the background worker embedded into the index; asset metadata comes from the live listing. last = latest in index order. */
+async function mergeBackgroundResults(d: SQLite.SQLiteDatabase, byId: ById): Promise<{ n: number; last: PhotoAsset | null }> {
+  let n = 0;
+  let last: readonly [PhotoAsset, number] | null = null;
+  if (!ClipEmbedder) return { n, last: null };
   for (;;) {
     const { model, rows } = await ClipEmbedder.takeBackgroundResults(512);
     if (!rows.length) break;
     if (model !== MODEL) continue; // another model's vectors: drop, run() re-embeds them
     await d.withTransactionAsync(async () => {
       for (const r of rows) {
-        const a = byId.get(r.id);
-        if (!a) continue; // deleted since
+        const hit = byId.get(r.id);
+        if (!hit) continue; // deleted since
+        const a = hit[0];
+        if (!last || hit[1] > last[1]) last = hit;
         await d.runAsync('INSERT OR REPLACE INTO photos (id, uri, created, w, h, lat, lon, emb, concepts) VALUES (?,?,?,?,?,?,?,?,?)', [
           a.id, a.uri, a.creationTime, a.width, a.height, r.lat, r.lon, new Uint8Array(b64ToFloats(r.emb).buffer), r.concepts,
         ]);
@@ -145,8 +188,17 @@ async function mergeBackgroundResults(d: SQLite.SQLiteDatabase, assets: PhotoAss
     });
   }
   if (n) console.log(`[photoIndex] merged ${n} photos from the background worker`);
-  return n;
+  return { n, last: last?.[0] ?? null };
 }
+
+/** A fast run the user paused (notification or home page): it waits for resumeIndexing() or the next charge. */
+export async function pausedIndex(): Promise<{ done: number; total: number } | null> {
+  const s = await ClipEmbedder?.backgroundIndexStatus();
+  return s?.state === 'paused' && s.left ? { done: s.total - s.left, total: s.total } : null;
+}
+export const pauseIndexing = async () => ClipEmbedder?.pauseBackgroundIndex();
+/** Call while the app is on screen (Android only starts the foreground service then), then indexLibrary() to follow it. */
+export const resumeIndexing = async () => ClipEmbedder?.resumeBackgroundIndex();
 
 /** Debug: forget every vector so the next indexLibrary() re-embeds the whole library (sustained-speed bench). */
 export async function clearEmbeddings() {
@@ -155,6 +207,7 @@ export async function clearEmbeddings() {
 
 /** Debug: drop every indexed photo, so the app looks like a first install to the indexer. */
 export async function resetIndex() {
+  await ClipEmbedder?.cancelBackgroundIndex(); // also clears a paused run
   await (await db()).execAsync('DELETE FROM photos');
 }
 

@@ -22,7 +22,7 @@ import { SettingsModal } from './src/components/SettingsModal';
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { IndexProgress, StoryCardsRow } from './src/components/StoryCardsRow';
 import { DebugStoriesModal } from './src/components/DebugStoriesModal';
-import { indexLibrary, Library, loadLibrary, wasHandedOff } from './src/services/index/photoIndex';
+import { indexLibrary, Library, loadLibrary, pausedIndex, pauseIndexing, resumeIndexing, wasHandedOff } from './src/services/index/photoIndex';
 import { buildStories, markSeen, searchStory, Story, toCarousel } from './src/services/stories';
 import { GalleryService, isCameraPhoto } from './src/services/galleryService';
 import { GeminiService } from './src/services/geminiService';
@@ -58,6 +58,7 @@ function MainApp() {
   const [library, setLibrary] = useState<Library | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [indexProgress, setIndexProgress] = useState<IndexProgress | null>(null);
+  const [indexPaused, setIndexPaused] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     initApp();
@@ -168,15 +169,17 @@ function MainApp() {
       const t0 = Date.now();
       let lastShow = t0;
       let showing = false;
-      const added = await indexLibrary((done, total, last) => {
+      const added = await indexLibrary((done, total, last, bg) => {
         const elapsed = Date.now() - t0;
-        setIndexProgress({ done, total, etaSec: done >= 32 ? ((total - done) * elapsed) / done / 1000 : null, since: last.creationTime, camera: isCameraPhoto(last.uri) });
+        const etaSec = bg ? bg.etaSec : done >= 32 ? ((total - done) * elapsed) / done / 1000 : null;
+        setIndexProgress({ done, total, etaSec, since: last.creationTime, camera: isCameraPhoto(last.uri), batteryPct: bg ? bg.batteryPct : undefined });
         if (!showing && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
           showing = true;
           show().catch((e) => console.warn('[stories] rebuild failed:', e)).finally(() => { showing = false; lastShow = Date.now(); });
         }
       });
       setIndexProgress(null);
+      setIndexPaused(await pausedIndex());
       if (added) await show();
     } catch (e) {
       setIndexProgress(null);
@@ -333,6 +336,13 @@ function MainApp() {
           activeId={carousel?.id}
           onSelect={handleSelectStory}
           onShuffle={handleShuffleStories}
+          paused={indexPaused}
+          onPause={() => pauseIndexing()}
+          onResume={async () => {
+            setIndexPaused(null);
+            await resumeIndexing();
+            refreshStories();
+          }}
         />
 
         {/* Loading Overlay or Carousel Studio */}

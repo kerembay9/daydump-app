@@ -1,7 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
   <application>
     <!-- LiteRT-LM GPU backend (OpenCL) -->
     <uses-native-library android:name="libvndksupport.so" android:required="false" />
     <uses-native-library android:name="libOpenCL.so" android:required="false" />
+    <!-- BackgroundIndex.kt fast mode: keeps indexing on battery after the app leaves the screen -->
+    <service android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType="dataSync" tools:node="merge" />
+    <receiver android:name="expo.modules.clipembedder.PauseReceiver" android:exported="false" />
   </application>
 </manifest>
