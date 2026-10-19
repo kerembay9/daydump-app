@@ -1,6 +1,6 @@
 import { requireOptionalNativeModule } from 'expo';
 
-export type ClipEngine = 'gpu' | 'ort' | 'xnnpack';
+export type ClipEngine = 'gpu' | 'gpu-only' | 'ort' | 'xnnpack';
 
 type ClipEmbedderModule = {
   /**
@@ -8,10 +8,10 @@ type ClipEmbedderModule = {
    * thumb > 0: uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
    */
   embedImages(uris: string[], thumb?: number): Promise<string>;
-  /** decode vs model time of the last embedImages call (LiteRT engines: decodeMs = time the model waited on decode); size = first decoded bitmap */
-  lastEmbedTimings(): { decodeMs: number; modelMs: number; size: string };
+  /** decode vs model time of the last embedImages call (LiteRT engines: modelMs = GPU busy, decodeMs = the rest of the wall time, cpuPhotos = photos ORT took); size = first decoded bitmap */
+  lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; size: string };
   /**
-   * Benchmark knobs; rebuilds the vision model. engine: gpu (default; LiteRT, vision.tflite) | ort | xnnpack (ONNX Runtime, vision.onnx).
+   * Benchmark knobs; rebuilds the vision model. engine: gpu (default; LiteRT GPU, vision.tflite, with ORT on the CPU taking photos once decoding is done) | gpu-only | ort | xnnpack (ONNX Runtime, vision.onnx).
    * model: files/models/vision_<model>.tflite|.onnx on the device, null = bundled. ok = false: LiteRT can't run here, ONNX Runtime is used.
    */
   configure(parallelDecode: boolean, engine: ClipEngine, model: string | null): Promise<{ loadMs: number; found: boolean; ok: boolean }>;

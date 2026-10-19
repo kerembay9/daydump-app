@@ -36,13 +36,17 @@ type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number
 
 /** Indexer path (batches of 16: asset info for GPS, embed, top concepts) with full decode vs MediaStore thumbnails. */
 const IDX_N = 64;
-const IDX_BATCH = 16;
+const IDX_BATCH = 32;
 // Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
 // model: files/models/vision_<model>.tflite|.onnx pushed by hand (scripts/build_assets.py bench); null = bundled 45M.
 // other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = ORT CPU, the shipped engine before the GPU.
-const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; other?: boolean }[] = [
+// batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
+const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; batch?: number; other?: boolean }[] = [
   { name: 'parallel · ORT CPU · 45M int8', parallel: true, engine: 'ort', model: null },
-  { name: 'parallel · LiteRT GPU · 45M fp16', parallel: true, engine: 'gpu', model: null },
+  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
+  { name: 'parallel · GPU + CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
+  { name: 'parallel · GPU + CPU helps · 45M · batch 16', parallel: true, engine: 'gpu', model: null, batch: 16 },
+  { name: 'parallel · GPU + CPU helps · 45M · batch 64', parallel: true, engine: 'gpu', model: null, batch: 64 },
   { name: 'parallel · ORT CPU · 22M', parallel: true, engine: 'ort', model: '22m', other: true },
 ];
 
@@ -193,19 +197,20 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
     // Untimed pass with the shipped config: warms the file cache (fair to every mode) and gives the reference vectors.
     await clip.configure(true, 'ort', null);
-    const pass = async () => {
-      const t = { info: 0, decode: 0, model: 0, concepts: 0 };
+    const pass = async (B = IDX_BATCH) => {
+      const t = { info: 0, decode: 0, model: 0, concepts: 0, cpu: 0 };
       let size = '';
       const vecs = new Float32Array(n * DIM);
       const top1: number[] = [];
-      for (let i = 0; i < n; i += IDX_BATCH) {
-        const batch = photos.slice(i, i + IDX_BATCH);
+      for (let i = 0; i < n; i += B) {
+        const batch = photos.slice(i, i + B);
         const [, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
         t.info += infoMs;
-        const b64 = await clip.embedImages(uris.slice(i, i + IDX_BATCH));
+        const b64 = await clip.embedImages(uris.slice(i, i + B));
         const lt = clip.lastEmbedTimings();
         t.decode += lt.decodeMs;
         t.model += lt.modelMs;
+        t.cpu += lt.cpuPhotos ?? 0;
         size ||= lt.size;
         const [c, cMs] = await timed(() => clip.topConcepts(b64, 10));
         t.concepts += cMs;
@@ -222,7 +227,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         setIdx([...lines]);
         continue;
       }
-      const { t, size, vecs, top1 } = await pass();
+      const { t, size, vecs, top1 } = await pass(m.batch);
       const per = (x: number) => (x / n).toFixed(0);
       const cos = photos.map((_, k) => {
         let d = 0;
@@ -232,7 +237,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
       const same = top1.filter((id, k) => id === ref.top1[k]).length;
       // Another model's vectors live in a different space: only its timings mean anything.
       const vs = m.other ? '' : `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
-      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)} · src ${size}${vs}`);
+      lines.push(`${m.name}: ${per(t.info + t.decode + t.model + t.concepts)} ms/photo (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''} · src ${size}${vs}`);
       setIdx([...lines]);
     }
     await clip.configure(true, 'gpu', null); // back to shipped defaults

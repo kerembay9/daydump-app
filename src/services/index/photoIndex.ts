@@ -5,7 +5,7 @@ import { PhotoAsset } from '../../types';
 import { EVAL_ALBUM, GalleryService } from '../galleryService';
 import { b64ToFloats, DIM, floatsToB64 } from './vectors';
 
-const BATCH = 16;
+const BATCH = 32; // 51 ms/photo vs 61 at 16 (GPU + CPU, MODEL_BENCHMARKS.md); 64 gains 2 ms for 2× the input memory
 /** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py). */
 const MODEL = (require('./clipGolden.json') as { model: string }).model;
 const TOP_CONCEPTS = 10;
@@ -65,9 +65,12 @@ async function run(onProgress?: (done: number, total: number) => void): Promise<
 
   const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
   const t0 = Date.now();
+  const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
+  let nextInfos = infosOf(todo.slice(0, BATCH));
   for (let i = 0; i < todo.length; i += BATCH) {
     const batch = todo.slice(i, i + BATCH);
-    const infos = await Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
+    const infos = await nextInfos;
+    nextInfos = infosOf(todo.slice(i + BATCH, i + 2 * BATCH)); // GPS + local uri of the next batch while this one embeds
     let vecs: Float32Array | null = null;
     let concepts: { ids: number[]; scores: number[] } | null = null;
     if (ClipEmbedder) {

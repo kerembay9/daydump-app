@@ -48,7 +48,10 @@ Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw capt
 
 | Setting | Total ms/photo | Model ms |
 |---|---|---|
-| **LiteRT GPU (Mali-G68, OpenCL), fp16 weights, decode pipelined (shipped)** | **66** | **53** |
+| **LiteRT GPU + ORT CPU helping, 32 photos per call (shipped)** | **51** | **44** (GPU busy) |
+| Same, 64 per call | 49 | 43 |
+| Same, 16 per call | 61 | 48 |
+| LiteRT GPU only (Mali-G68, OpenCL), fp16 weights, decode pipelined | 66–70 | 53–55 |
 | Parallel decode, ORT CPU EP (shipped before the GPU; still the fallback) | 95 | 66 |
 | Serial decode, CPU EP | 138 | 61 |
 | Parallel decode, XNNPACK EP | 240 | 209 |
@@ -77,6 +80,10 @@ GPU tests (2026-10-19, 64 photos, LiteRT 2.3 CompiledModel; vs ORT CPU: cosine �
 | NNAPI (ORT EP) | 289–299 ms/photo: falls back to nnapi-reference; the NPU-only compile hangs |
 
 The GPU delegate also rejects 3D concatenation, rank-mismatched broadcasts and L2_NORMALIZATION, so `build_assets.py gpu` rewrites the forward pass (same weights) and Kotlin normalizes.
+
+GPU + CPU (2026-10-19, 64 photos): photos decode on 4 CPU threads while the GPU embeds them front to back. Once all are decoded, ORT on the CPU takes photos from the back until the two meet. The CPU took 10–12 of 64 photos; cosine vs ORT CPU ≥ 0.997, same top concept 98–100%. Bigger calls help because each call's tail (GPU waiting on the last decodes) is amortized over more photos.
+
+NPU (Exynos 1380): not usable. Samsung's NNAPI driver rejects TRANSPOSE and LayerNorm, which are in every CLIP block. The ops it does accept run on the Mali GPU, not the NPU. LiteRT's Samsung NPU path supports only Exynos 2500/2600, and Samsung's own SDK is closed to third parties. Details: `scripts/.cache/npu/NOTES.md`.
 
 Full reindex of 3,942 photos with the 45M took 7.6 min (116 ms/photo, with the app UI running).
 

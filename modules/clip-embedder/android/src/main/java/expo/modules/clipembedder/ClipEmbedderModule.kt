@@ -55,7 +55,7 @@ class ClipEmbedderModule : Module() {
   private val env by lazy { OrtEnvironment.getEnvironment() }
   private var visionSession: OrtSession? = null
   private val vision get() = visionSession ?: makeVision().also { visionSession = it }
-  // Bench knobs (configure): parallel batch decode, engine (gpu: LiteRT; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
+  // Bench knobs (configure): parallel batch decode, engine (gpu: LiteRT GPU + ORT CPU helping, gpu-only; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
   private var parallel = true
   private var engine = "gpu"
   private var visionFile: String? = null
@@ -92,7 +92,9 @@ class ClipEmbedderModule : Module() {
   private fun session(name: String): OrtSession =
     env.createSession(asset(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
 
-  private val useLite get() = engine == "gpu"
+  private val useLite get() = engine == "gpu" || engine == "gpu-only"
+  // Serial decode (lazy jobs) would all start at once when the helper awaits them; a bench visionFile is a .tflite, not ONNX.
+  private val cpuHelps get() = engine == "gpu" && parallel && visionFile == null
 
   // Batch 1: the Mali GPU delegate rejects batched graphs. Compiled GPU programs are cached (~3 s compile on first load).
   private fun makeLite(): CompiledModel {
@@ -146,7 +148,8 @@ class ClipEmbedderModule : Module() {
         visionSession = null
         val t0 = SystemClock.elapsedRealtime()
         // Load now so loadMs is measured here.
-        val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else { vision.inputNames; true }
+        val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else true
+        if (!useLite || cpuHelps) vision.inputNames
         mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
       }
     }
@@ -209,19 +212,40 @@ class ClipEmbedderModule : Module() {
     return out
   }
 
-  // Pipelined: photos decode on decodePool while the model embeds them one at a time, in order. decodeMs = time the
-  // model waited on decode. ponytail: the pipeline drains at the end of each call; overlap across calls if batches get small.
+  // Pipelined: photos decode on decodePool while the GPU embeds them front to back. Once every photo is decoded the CPU
+  // is idle, so (engine gpu) ORT takes photos from the back until the two meet. decodeMs = wall time the GPU wasn't busy.
+  // ponytail: the pipeline drains at the end of each call; overlap across calls if batches get small.
   private suspend fun embedLite(model: CompiledModel, n: Int, input: FloatArray, t0: Long, fill: (Int) -> String?): FloatArray {
     val out = FloatArray(n * DIM)
     var modelMs = 0L
+    var cpuPhotos = 0
+    var lo = 0
+    var hi = n
+    val lock = Any()
+    // The CPU (~66 ms/photo) leaves the last photo to the GPU (~53 ms): taking it would only make the batch end later.
+    fun take(cpu: Boolean) = synchronized(lock) { if (lo >= hi || (cpu && hi - lo < 2)) -1 else if (cpu) --hi else lo++ }
     val sizes = coroutineScope {
       val jobs = (0 until n).map { i -> async(decodePool, if (parallel) CoroutineStart.DEFAULT else CoroutineStart.LAZY) { fill(i) } }
+      val cpu = async(Dispatchers.Default) {
+        if (!cpuHelps) return@async 0
+        jobs.awaitAll()
+        var c = 0
+        while (true) {
+          val i = take(cpu = true).takeIf { it >= 0 } ?: break
+          if (jobs[i].await() == null) continue
+          val e = run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input, i * 3 * PLANE, 3 * PLANE).slice(), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())))
+          e.copyInto(out, i * DIM)
+          c++
+        }
+        c
+      }
       withContext(liteThread) {
         val inBuf = model.createInputBuffers()
         val outBuf = model.createOutputBuffers()
         try {
-          jobs.mapIndexed { i, job ->
-            job.await()?.also {
+          while (true) {
+            val i = take(cpu = false).takeIf { it >= 0 } ?: break
+            jobs[i].await()?.also {
               val t = SystemClock.elapsedRealtime()
               inBuf[0].writeFloat(input.copyOfRange(i * 3 * PLANE, (i + 1) * 3 * PLANE))
               model.run(inBuf, outBuf)
@@ -235,9 +259,11 @@ class ClipEmbedderModule : Module() {
           (inBuf + outBuf).forEach { it.close() }
         }
       }
+      cpuPhotos = cpu.await()
+      jobs.awaitAll()
     }
     val wall = SystemClock.elapsedRealtime() - t0
-    timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "size" to (sizes.firstOrNull() ?: ""))
+    timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "cpuPhotos" to cpuPhotos.toDouble(), "size" to (sizes.firstOrNull() ?: ""))
     return out
   }
 
