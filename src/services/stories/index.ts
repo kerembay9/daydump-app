@@ -18,6 +18,8 @@ export type Story = {
   /** the 6 slides, near-duplicates removed, time-ordered */
   picks: IndexedPhoto[];
   concepts: string[];
+  /** trips: "City, CC" */
+  place?: string;
   start: number;
   end: number;
   score: number;
@@ -44,6 +46,7 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
       photos: t.photos as IndexedPhoto[],
       picks: pick(t.photos as IndexedPhoto[], lib, row, () => 0),
       concepts: [],
+      place: `${t.place}, ${t.country}`,
       start: t.start, end: t.end,
       score: s,
       debug: { home: t.homeCity, days: t.days, photos: t.photos.length },

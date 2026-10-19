@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ClipEmbedder } from '../../modules/clip-embedder';
+import { ClipEmbedder, EdgeBench } from '../../modules/clip-embedder';
 import { EVAL_ALBUM } from '../services/galleryService';
 import { ModelBench } from './ModelBench';
 import { conceptsForVector, indexLibrary, IndexedPhoto, Library, loadLibrary } from '../services/index/photoIndex';
@@ -13,6 +13,22 @@ import { DEFAULT_TOPIC_OPTIONS, TopicOptions } from '../services/stories/topics'
 const golden = require('../services/index/clipGolden.json') as {
   phrases: string[]; ids: number[][]; text: number[][]; image: { file: string; vec: number[] };
 };
+
+/** What the photos show: a topic's own words, else the most common top-3 concepts across a trip's photos. */
+const storyWords = (s: Story, names: string[]) => {
+  if (s.concepts.length) return s.concepts.slice(0, 6);
+  const n = new Map<number, number>();
+  s.photos.forEach((p) => p.concepts.slice(0, 3).forEach((c) => n.set(c, (n.get(c) ?? 0) + 1)));
+  return [...n].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c]) => names[c]);
+};
+
+const titlePrompt = (s: Story, words: string[]) =>
+  [
+    "Write a title for a photo story from someone's camera roll: 2 to 6 words, warm and specific, no seasons or dates, no emoji, no quotes.",
+    `Photos show: ${words.join(', ')}`,
+    s.place && `Place: ${s.place}`,
+    'Reply with the title only.',
+  ].filter(Boolean).join('\n');
 
 interface Props {
   visible: boolean;
@@ -30,6 +46,8 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
   const [query, setQuery] = useState('');
   const [minScore, setMinScore] = useState(0.2);
   const [hits, setHits] = useState<{ p: IndexedPhoto; s: number }[]>([]);
+  const [gemma, setGemma] = useState<Record<string, { text: string; ms: number }>>({});
+  const gemmaBusy = useRef(false); // a second tap would load a second 2.6 GB engine: the app gets OOM-killed
 
   const rebuild = (o: TopicOptions) =>
     loadLibrary().then(async (l) => {
@@ -76,6 +94,36 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
       lines.push(`image cos ${golden.image.vec.reduce((a, v, j) => a + v * lib.vecs[i * DIM + j], 0).toFixed(3)}`);
     } else lines.push(`image: put ${golden.image.file} in the library to check`);
     setStatus(lines.join('\n'));
+  };
+
+  // Text only (no photos sent), Gemma 4 E2B on the GPU. Downloaded from the model bench above.
+  const gemmaTitles = async () => {
+    if (!EdgeBench || !lib) return setStatus('Gemma titles: needs the Android dev build');
+    if (gemmaBusy.current) return;
+    if (!(await EdgeBench.gemmaFile()).bytes) return setStatus('Gemma titles: download Gemma 4 E2B in the model bench first');
+    gemmaBusy.current = true;
+    try {
+      await runGemmaTitles(EdgeBench, lib);
+    } catch (e) {
+      setStatus(`Gemma titles failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      gemmaBusy.current = false;
+    }
+  };
+
+  const runGemmaTitles = async (bench: NonNullable<typeof EdgeBench>, l: Library) => {
+    setStatus('Gemma titles: loading model…');
+    const loadMs = await bench.loadGemma(true, true);
+    const t0 = Date.now();
+    const out: typeof gemma = {};
+    for (const [i, s] of stories.entries()) {
+      setStatus(`Gemma titles ${i + 1}/${stories.length}`);
+      const r = await bench.gemmaDescribe([], titlePrompt(s, storyWords(s, l.conceptNames)), 0, 16, null);
+      out[s.id] = { text: r.text.replace(/^["“']|["”']$/g, ''), ms: r.ms };
+      setGemma({ ...out });
+    }
+    const ms = Object.values(out).map((x) => x.ms).sort((a, b) => a - b);
+    setStatus(`Gemma titles: ${ms.length} in ${((Date.now() - t0) / 1000).toFixed(1)} s, median ${((ms[ms.length >> 1] ?? 0) / 1000).toFixed(1)} s (load ${(loadMs / 1000).toFixed(1)} s)`);
   };
 
   const step = (k: keyof TopicOptions, d: number) => setOpts((o) => ({ ...o, [k]: Math.max(0, +(o[k] + d).toFixed(2)) }));
@@ -128,10 +176,14 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose }) => {
           ))}
         </View>
 
-        <Text style={styles.h2}>Stories ({stories.length})</Text>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Stories ({stories.length})</Text>
+          <Btn label="Gemma titles" onPress={gemmaTitles} />
+        </View>
         {stories.map((s) => (
           <View key={s.id} style={styles.story}>
             <Text style={styles.storyTitle}>{s.title} <Text style={styles.meta}>[{s.kind}] score {s.score.toFixed(2)}</Text></Text>
+            {gemma[s.id] && <Text style={styles.gemma}>Gemma: {gemma[s.id].text} <Text style={styles.meta}>{(gemma[s.id].ms / 1000).toFixed(1)} s</Text></Text>}
             <Text style={styles.meta}>{s.subtitle}</Text>
             {!!s.concepts.length && <Text style={styles.meta}>words: {s.concepts.join(', ')}</Text>}
             <Text style={styles.mono}>{JSON.stringify(s.debug)}</Text>
@@ -170,6 +222,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, backgroundColor: '#1C1C1E', color: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   story: { backgroundColor: '#1C1C1E', borderRadius: 12, padding: 10, marginBottom: 10 },
+  gemma: { color: '#FF9500', fontSize: 14, fontWeight: '700', marginTop: 2 },
   storyTitle: { color: '#fff', fontSize: 15, fontWeight: '800' },
   thumb: { width: 72, height: 72, borderRadius: 6, overflow: 'hidden', backgroundColor: '#2C2C2E', marginRight: 4, marginTop: 6 },
   thumbLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, textAlign: 'center' },
