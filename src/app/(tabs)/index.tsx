@@ -54,7 +54,7 @@ function Tile({ s, kind, rotate, onPress, style }: { s: Story; kind: StackKind; 
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-function Bento({ block, onPick }: { block: Story[]; onPick: (s: Story) => void }) {
+const Bento = React.memo(function Bento({ block, onPick }: { block: Story[]; onPick: (s: Story) => void }) {
   const [a, b, c, d] = block;
   const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => onPick(s)} style={style} />;
   return (
@@ -70,7 +70,7 @@ function Bento({ block, onPick }: { block: Story[]; onPick: (s: Story) => void }
       {block.length === 1 ? tile(a, 'wide', 0) : d ? tile(d, 'wide', 0, { marginTop: 2 }) : null}
     </View>
   );
-}
+});
 
 /** Tape-topped card for the empty and no-permission states. */
 function TapedNote({ title, body, action, onAction }: { title: string; body: string; action: string; onAction: () => void }) {
@@ -137,6 +137,7 @@ export default function Discover() {
     setHeroId(s.id);
     list.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} onPick={pick} />, [pick]);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
@@ -191,7 +192,7 @@ export default function Discover() {
         ref={list}
         data={blocks}
         keyExtractor={(b) => b[0].id}
-        renderItem={({ item }) => <Bento block={item} onPick={pick} />}
+        renderItem={renderBento}
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}
