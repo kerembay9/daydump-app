@@ -131,6 +131,11 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("takeBackgroundResults") Coroutine { limit: Int ->
       withContext(Dispatchers.IO) { BackgroundIndex.take(ctx, limit) }
     }
+
+    AsyncFunction("scheduleDailyRecap") { DailyRecap.schedule(ctx) }
+    AsyncFunction("cancelDailyRecap") { DailyRecap.cancel(ctx) }
+    AsyncFunction("postDailyRecap") Coroutine { -> withContext(Dispatchers.IO) { DailyRecap.post(ctx, test = true) } }
+    Function("setRecapCover") { uri: String -> DailyRecap.setCover(ctx, uri) }
   }
 }
 

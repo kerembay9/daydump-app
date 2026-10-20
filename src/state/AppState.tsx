@@ -70,7 +70,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const limit = useRef(STORY_PAGE);
   /** what Discover shows now: a gallery sync keeps its order (keepOrder) */
   const shown = useRef<Story[]>([]);
-  const setStories = ({ stories: s, available: a }: { stories: Story[]; available: number }) => { shown.current = s; setStoryList(s); setAvailable(a); };
+  const setStories = ({ stories: s, available: a }: { stories: Story[]; available: number }) => {
+    shown.current = s; setStoryList(s); setAvailable(a);
+    // tonight's 8 PM recap shows this cover (DailyRecap.kt)
+    const cover = s.find((x) => x.kind === 'today')?.picks[0]?.uri;
+    if (cover) ClipEmbedder?.setRecapCover(cover);
+  };
   const build = async (lib: Library) => buildStories(lib, undefined, limit.current, (await getProfile()).hideSensitive);
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);

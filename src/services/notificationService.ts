@@ -1,6 +1,7 @@
 import { isRunningInExpoGo, requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ClipEmbedder } from '../../modules/clip-embedder';
 
 const NOTIF_STORAGE_KEY = '@daydump_daily_notification_enabled';
 const DAILY_NOTIF_ID = 'daydump_daily_recap_8pm';
@@ -135,6 +136,12 @@ export class NotificationService {
       // Cancel previous schedule to prevent duplicates
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID).catch(() => {});
 
+      // Android: native job, so the recap can show today's cover photo (expo-notifications has no local images there)
+      if (ClipEmbedder) {
+        await ClipEmbedder.scheduleDailyRecap();
+        return;
+      }
+
       await Notifications.scheduleNotificationAsync({
         identifier: DAILY_NOTIF_ID,
         content: {
@@ -182,6 +189,7 @@ export class NotificationService {
       if (!Notifications) return;
 
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID);
+      await ClipEmbedder?.cancelDailyRecap();
     } catch (e) {
       console.warn('[NotificationService] cancel error:', e);
     }
@@ -200,6 +208,7 @@ export class NotificationService {
     if (!granted) {
       throw new Error('Notification permission was not granted.');
     }
+    if (ClipEmbedder) return ClipEmbedder.postDailyRecap();
 
     await Notifications.scheduleNotificationAsync({
       content: {

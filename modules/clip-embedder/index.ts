@@ -41,6 +41,13 @@ type ClipEmbedderModule = {
   }>;
   /** Removes and returns up to limit photos the worker finished; concepts is the JSON photoIndex.ts stores. */
   takeBackgroundResults(limit: number): Promise<{ model: string | null; rows: { id: string; emb: string; concepts: string; lat: number | null; lon: number | null }[] }>;
+  /** The 8 PM recap (DailyRecap.kt): a job re-enqueued daily, posting today's cover photo once 3+ camera photos exist. */
+  scheduleDailyRecap(): Promise<void>;
+  cancelDailyRecap(): Promise<void>;
+  /** Posts the recap now, even with under 3 photos today (test button). */
+  postDailyRecap(): Promise<void>;
+  /** Today's dump cover, shown in tonight's recap; kept only for the day it was set. */
+  setRecapCover(uri: string): void;
   /** Multi-image share (ACTION_SEND_MULTIPLE); file:// uris go through a FileProvider. Resolves with the package that got it, or 'chooser'. */
   shareImages(uris: string[], caption: string, target: ShareTarget | null): Promise<string>;
   /** Images the app was opened with (share / Open with), once per intent; null otherwise. */
