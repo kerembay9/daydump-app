@@ -239,6 +239,12 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   private val installed get() = ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime
 
+  // Caches are keyed by install time, so each app update would leave the old set (~75 MB) behind. Runs before any model loads.
+  init {
+    val now = installed.toString()
+    File(ctx.cacheDir, "litert").listFiles()?.forEach { if (Regex("""\d{12,}""").containsMatchIn(it.name) && now !in it.name) it.deleteRecursively() }
+  }
+
   // Dynamic int8 (weights int8, activations quantized per run) on XNNPACK, 4 threads. In the app it runs 43-52 ms/photo
   // (16-18 alone): decode threads share the big cores. Packed weights cached next to the GPU cache.
   private fun makeCpu8(): CompiledModel {
