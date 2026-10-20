@@ -10,6 +10,8 @@ import { display, label, ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
 import { Tape } from './ui/Tape';
 import { Tap } from './ui/Tap';
+import { IconButton } from './ui/TopHeader';
+import { Icons } from './ui/Icons';
 
 type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
@@ -93,27 +95,7 @@ export function OnboardingModal({ visible, onFinish }: { visible: boolean; onFin
 
         <ScrollView ref={scroll} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}>
           {SLIDES.map((s, i) => (
-            <View key={s.id} style={{ width, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{ marginBottom: 26 }}>
-                <FrameCard radius={22} rotate={i % 2 ? 2 : -2} style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
-                  <s.icon size={40} color={t.ink} strokeWidth={1.6} />
-                </FrameCard>
-                <Tape rotate={-6} style={{ top: -8 }} />
-              </View>
-              <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{s.badge}</Text>
-              <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>
-              <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{s.description}</Text>
-              {s.points && (
-                <FrameCard radius={16} padding={14} style={{ alignSelf: 'stretch', gap: 10 }}>
-                  {s.points.map((pt) => (
-                    <View key={pt.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <pt.icon size={15} color={t.ink} strokeWidth={1.75} />
-                      <Text style={[ui(12.5, 500), { color: t.ink, flexShrink: 1 }]}>{pt.text}</Text>
-                    </View>
-                  ))}
-                </FrameCard>
-              )}
-            </View>
+            <SlideBody key={s.id} s={s} i={i} width={width} />
           ))}
         </ScrollView>
 
@@ -128,6 +110,52 @@ export function OnboardingModal({ visible, onFinish }: { visible: boolean; onFin
             <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & start' : 'Continue'}</Text>
           </Tap>
           <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>You can change photo access anytime in Android settings.</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
+  const { t } = useTheme();
+  return (
+    <View style={{ width, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ marginBottom: 26 }}>
+        <FrameCard radius={22} rotate={i % 2 ? 2 : -2} style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
+          <s.icon size={40} color={t.ink} strokeWidth={1.6} />
+        </FrameCard>
+        <Tape rotate={-6} style={{ top: -8 }} />
+      </View>
+      <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{s.badge}</Text>
+      <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>
+      <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{s.description}</Text>
+      {s.points && (
+        <FrameCard radius={16} padding={14} style={{ alignSelf: 'stretch', gap: 10 }}>
+          {s.points.map((pt) => (
+            <View key={pt.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <pt.icon size={15} color={t.ink} strokeWidth={1.75} />
+              <Text style={[ui(12.5, 500), { color: t.ink, flexShrink: 1 }]}>{pt.text}</Text>
+            </View>
+          ))}
+        </FrameCard>
+      )}
+    </View>
+  );
+}
+
+/** Profile → Data privacy: the onboarding's on-device slide again. */
+export function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 }}>
+        <View style={{ paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <IconButton label="Close" onPress={onClose}><Icons.close size={16} /></IconButton>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <SlideBody s={SLIDES.find((x) => x.id === 'privacy')!} i={1} width={width} />
         </View>
       </View>
     </Modal>

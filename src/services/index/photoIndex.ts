@@ -46,7 +46,7 @@ let running: Promise<number> | null = null;
 
 /**
  * Incremental: indexes photos not yet in the DB (plus un-embedded rows once CLIP is available), drops deleted ones.
- * Returns how many photos changed (newly indexed or retagged), so callers know to rebuild stories.
+ * Returns how many photos changed (newly indexed, retagged or deleted), so callers know to rebuild stories.
  * Android, FAST_MIN+ photos: a native foreground service indexes them (notification with progress, keeps going after the
  * user leaves, pausable) while this follows along. Smaller todos run here; leaving hands the rest to a charging-only job.
  */
@@ -90,7 +90,8 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   if (undated.length) await d.withTransactionAsync(async () => {
     for (const [id, t] of undated) await d.runAsync('UPDATE photos SET created = ? WHERE id = ?', [t!, id]);
   });
-  const retagged = (await retagIfVocabChanged(d)) + undated.length;
+  // deleted photos count as a change too: their stories must go
+  const retagged = (await retagIfVocabChanged(d)) + undated.length + gone.length;
   if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
   if (bg?.state === 'paused') { // waits for Resume or the next charge
     handedOff = true;

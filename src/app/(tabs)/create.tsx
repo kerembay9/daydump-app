@@ -259,6 +259,7 @@ export default function Create() {
 
   const order = useMemo(() => new Map(basket.map((p, i) => [p.id, i])), [basket]);
   const shownTarget = Math.max(basket.length, target);
+  const canSuggest = basket.length > 0 && basket.length < shownTarget;
   const finishes = useFinishes({ lib: lib ?? null, basket, total: shownTarget, change, bumpTotal: setTarget, title: dumpTitle(query) });
   const suggestedN = basket.filter((p) => p.suggested).length;
   const toggle = (p: DumpPhoto) => {
@@ -419,10 +420,11 @@ export default function Create() {
                 (You <Text style={[ui(9.5, 700), { color: t.ink }]}>{basket.length - suggestedN}</Text> · App <Text style={[ui(9.5, 700), { color: t.ink }]}>+{shownTarget - basket.length + suggestedN}</Text>)
               </Text>
             </View>
-            <Tap onPress={basket.length ? finishes.suggest : () => ToastAndroid.show('Pick a photo first, then Suggest fills', ToastAndroid.SHORT)}
-              accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel={finishes.again ? 'Suggest again' : 'Suggest fills'}
-              accessibilityHint={basket.length ? 'Shows 2 ways to finish this dump' : 'Pick a photo first'} hitSlop={6}
-              style={{ height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: basket.length ? 1 : 0.4 }}>
+            {/* nothing to suggest without picks, or when they already fill the Total */}
+            <Tap onPress={canSuggest ? finishes.suggest : () => ToastAndroid.show(basket.length ? 'Raise Total to get suggestions' : 'Pick a photo first, then Suggest fills', ToastAndroid.SHORT)}
+              accessibilityRole="button" accessibilityState={{ disabled: !canSuggest }} accessibilityLabel={finishes.again ? 'Suggest again' : 'Suggest fills'}
+              accessibilityHint={canSuggest ? 'Shows 2 ways to finish this dump' : basket.length ? 'Raise Total first' : 'Pick a photo first'} hitSlop={6}
+              style={{ height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: canSuggest ? 1 : 0.4 }}>
               <Icons.sparkle size={11} color={t.bgScreen} />
               <Text style={[ui(10, 600), { color: t.bgScreen }]}>{finishes.again ? 'Suggest again' : 'Suggest fills'}</Text>
             </Tap>

@@ -6,7 +6,7 @@ import { isDumpId } from './dumpLabels';
 
 export type PostDeps = {
   /** dump -> rendered slide JPGs (file://), in order */
-  exportSlides(d: Dump): Promise<string[]>;
+  exportSlides(d: Dump, hd?: boolean): Promise<string[]>;
   /** into the "DayDump" album */
   saveToAlbum(uris: string[]): Promise<void>;
   copy(text: string): Promise<void>;
@@ -23,8 +23,8 @@ export type PostDeps = {
  * An album failure doesn't stop the post (saved = false); nor does a draft/mark failure after the share opened
  * (marked = false). A failure before the share throws and nothing is marked.
  */
-export async function postDump(x: PostDeps, d: Dump, caption: string, tags: string[], target: ShareTarget) {
-  const uris = await x.exportSlides(d);
+export async function postDump(x: PostDeps, d: Dump, caption: string, tags: string[], target: ShareTarget, hd?: boolean) {
+  const uris = await x.exportSlides(d, hd);
   const saved = await x.saveToAlbum(uris).then(() => true, (e) => (console.warn('[post] album save failed:', e), false));
   await x.copy(clipText(caption, tags));
   const to = await x.share(uris, caption, target);
@@ -38,8 +38,8 @@ export async function postDump(x: PostDeps, d: Dump, caption: string, tags: stri
 }
 
 /** Save only: render and save to the album; not posted. Returns the slide count. */
-export async function saveOnly(x: Pick<PostDeps, 'exportSlides' | 'saveToAlbum'>, d: Dump) {
-  const uris = await x.exportSlides(d);
+export async function saveOnly(x: Pick<PostDeps, 'exportSlides' | 'saveToAlbum'>, d: Dump, hd?: boolean) {
+  const uris = await x.exportSlides(d, hd);
   await x.saveToAlbum(uris);
   return uris.length;
 }

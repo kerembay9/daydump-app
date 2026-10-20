@@ -105,7 +105,7 @@ export function previewImage(uri: string, boxW: number, boxH: number) {
  * layout, Border/Bleed and filters baked in. Returns file:// uris in slide order. Each call replaces the last export.
  */
 export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): Promise<string[]> {
-  const highRes = opts.highRes ?? (await getProfile()).highRes;
+  const highRes = opts.highRes ?? (await getProfile()).exportHD;
   const { width, height } = exportSize(d.ratio, highRes);
   const fit = fitOf(d.fit);
   const filter = filterOf(d.filter);

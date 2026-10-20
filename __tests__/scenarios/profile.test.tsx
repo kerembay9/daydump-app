@@ -61,8 +61,28 @@ test('Connect rows say Soon', async () => {
   }
 }, 30000);
 
+test('Profile: Go Pro says coming soon; no Done, no bio', async () => {
+  await bootApp('/profile');
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  expect(screen.getByText('DayDump Pro')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Go Pro' }));
+  expect(toasts()).toContain('DayDump Pro is coming soon');
+  expect(screen.queryByText('Done')).toBeNull();
+  expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
+}, 30000);
+
+test('a renewing subscription shows its renewal date and Manage', async () => {
+  await AsyncStorage.setItem('@daydump_fake_sub', JSON.stringify({ plan: 'Yearly', until: Date.UTC(2027, 4, 12, 12), renews: true }));
+  await bootApp('/profile');
+  expect(await screen.findByText(/^Yearly · renews .*2027/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.getByText('Manage')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Go Pro' })).toBeNull();
+  await AsyncStorage.removeItem('@daydump_fake_sub');
+}, 30000);
+
+// Profile has the Pro card (above); everywhere else stays paywall-free
 test('no paywall or crown anywhere', async () => {
-  for (const url of ['/', '/create', '/library', '/profile']) {
+  for (const url of ['/', '/create', '/library']) {
     await bootApp(url);
     await screen.findAllByLabelText('Profile and settings', {}, { timeout: 10000 }).catch(() => screen.findByText('Profile & Settings'));
     expect(dump().filter((s) => PAYWALL.test(s))).toEqual([]);

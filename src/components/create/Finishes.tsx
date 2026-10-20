@@ -54,18 +54,20 @@ export function useFinishes({ lib, basket, total, change, bumpTotal, title }: {
   const stale = !!sets && (keyOf(x) !== sets.xKey || total !== sets.total);
   const added = (k: number) => !!sets && sets.ys[k].length > 0 && sets.ys[k].every((p) => inBasket.has(p.id));
 
-  /** Y size = Total − |X|; when X already fills the Total, 2 (and Use this bumps the Total). xs / tot: the picks and Total about to be. */
+  /** Y size = Total − |X|; none when X fills the Total. xs / tot: the picks and Total about to be. */
   const run = (regen: boolean, xs = x, tot = total) => {
     if (busy) return;
     if (!lib) return toast('Still reading your photos, try again in a moment');
     if (!xs.length) return toast('Pick a photo first, then Suggest fills');
+    // the picks already fill the Total: nothing to suggest (the ways of an older round would be wrong now)
+    if (xs.length >= tot) { setSets(null); return toast('Raise Total to get suggestions'); }
     if (!own.length) setPlaced(new Set());
     setBusy(true);
     setOpen(true);
     // a frame for the spinner first; finishSets is synchronous (≈5–10 ms in node on 4k photos)
     setTimeout(() => {
       try {
-        const size = tot > xs.length ? tot - xs.length : 2;
+        const size = tot - xs.length;
         const exclude = regen ? new Set(offered.current) : new Set<string>();
         const { ys, ms } = finishSets(lib, xs.map((p) => p.id), size, exclude);
         console.log(`[xy] ${xs.length} yours + ${size}: ${ys[0].length}/${ys[1].length} in ${ms} ms${regen ? `, excluding ${exclude.size}` : ''}`);
@@ -138,24 +140,27 @@ export function useFinishes({ lib, basket, total, change, bumpTotal, title }: {
     }
   };
 
-  return { sets, open, setOpen, busy, stale, picks: x.length, saved, added, again, suggest, regenerate: () => run(true), refresh: () => run(false), use, addPicked, undo, undoAdd, save };
+  return { sets, open, setOpen, busy, stale, picks: x.length, saved, added, again, suggest, refresh: () => run(false), use, addPicked, undo, undoAdd, save };
 }
 
 export type Finishes = ReturnType<typeof useFinishes>;
 
 /**
  * The mock's fan, for any count: [0] centred on top, then alternating left / right, each step further out and tilted
- * more; every photo shows (no "+N").
+ * more; every photo shows (no "+N"). Prints keep the mock's size (by h) and spread over the whole width w, so the
+ * more there are, the more they overlap.
  */
 function Fan({ photos, w, h, sparkle }: { photos: DumpPhoto[]; w: number; h: number; sparkle?: boolean }) {
   const { t } = useTheme();
-  const pw = Math.round(w * 0.56), ph = Math.round(h * 0.84), r = Math.max(6, Math.round(w * 0.08));
+  const ph = Math.round(h * 0.84), pw = Math.min(Math.round(ph * 1.6), w), r = Math.max(6, Math.round(pw * 0.1));
   const steps = Math.ceil((photos.length - 1) / 2), mid = (w - pw) / 2;
+  // a few photos sit side by side (slight overlap); many share the width
+  const step = steps ? Math.min(pw * 0.85, mid / steps) : 0;
   return (
     <View style={{ width: w, height: h }}>
       {photos.map((p, i) => {
         const k = Math.ceil(i / 2), side = i % 2 ? -1 : 1, f = steps ? k / steps : 0;
-        return { p, i, left: Math.round(mid + side * f * mid), top: Math.round(h * (i ? 0.06 + 0.04 * f : 0)), rotate: i ? side * (3 + 4 * f) : -1.5 };
+        return { p, left: Math.round(mid + side * k * step), top: Math.round(h * (i ? 0.06 + 0.04 * f : 0)), rotate: i ? side * (2 + 3 * f) : -1.5 };
       }).reverse().map(({ p, left, top, rotate }) => (
         <Print key={p.id} uri={p.uri} w={pw} h={ph} r={r} rotate={rotate} border={1.5} borderColor={fixed.printBorder} style={{ position: 'absolute', left, top }} />
       ))}
@@ -195,7 +200,7 @@ export function FinishSection({ f }: { f: Finishes }) {
   const page = pg.round === sets?.round ? pg.i : 0;
   if (!sets && !f.busy) return null;
 
-  // mock: card 212 of a 282 column, X fan 128x52, Y fan 176x76; prints at the mock's size at most (pinned area, grid needs room)
+  // mock: card 212 of a 282 column, X fan 52 tall, Y fan 76 (a little taller here); both fans use the card's full width
   const cardW = Math.round((win.width - 32) * 0.75);
   const k = Math.min(cardW / 212, 1);
   const ways = sets ? sets.ys.map((y, i) => ({ y, i })).filter((w) => w.y.length) : [];
@@ -218,9 +223,7 @@ export function FinishSection({ f }: { f: Finishes }) {
           <Text style={[label(9.5, 0.11), { color: t.inkMuted }]} numberOfLines={1}>2 ways to finish</Text>
           <View style={{ transform: [{ rotate: f.open ? '90deg' : '0deg' }] }}><Icons.chevron size={13} color={t.inkMuted} /></View>
         </Tap>
-        <FrameCard radius={12} onPress={f.busy ? undefined : f.regenerate} label="New suggestions" style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-          {f.busy ? <ActivityIndicator size={12} color={t.ink} /> : <Icons.refresh size={12} color={t.ink} />}
-        </FrameCard>
+        {f.busy ? <ActivityIndicator size={12} color={t.ink} /> : null}
       </View>
 
       {!f.open ? null : !sets ? (
@@ -240,11 +243,11 @@ export function FinishSection({ f }: { f: Finishes }) {
                   <FrameCard key={i} radius={18} style={[{ width: cardW, paddingHorizontal: 10, paddingTop: 12, paddingBottom: 8, alignItems: 'center' },
                     on ? { boxShadow: `0 0 0 2px ${t.ink}, ${t.shadowCard}` } : null]}>
                     <Tap onPress={() => setPeek({ j, ids: new Set() })} accessibilityRole="button" accessibilityLabel={`Preview way ${j + 1}`} style={{ alignItems: 'center' }}>
-                      <Fan photos={sets.x} w={Math.round(128 * k)} h={Math.round(52 * k)} />
+                      <Fan photos={sets.x} w={cardW - 20} h={Math.round(56 * k)} />
                       <View style={{ width: 18, height: 18, borderRadius: 9, marginVertical: -2, zIndex: 10, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, alignItems: 'center', justifyContent: 'center' }}>
                         <Text style={[ui(12, 600), { color: t.ink, lineHeight: 14 }]}>+</Text>
                       </View>
-                      <Fan photos={y} w={Math.round(176 * k)} h={Math.round(76 * k)} sparkle />
+                      <Fan photos={y} w={cardW - 20} h={Math.round(80 * k)} sparkle />
                     </Tap>
                     <View style={{ alignSelf: 'stretch', marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text onPress={() => setPeek({ j, ids: new Set() })} style={[ui(9.5), { color: t.inkMuted, flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>

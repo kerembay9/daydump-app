@@ -24,7 +24,7 @@ export async function saveToAlbum(uris: string[]): Promise<void> {
 
 /** Real deps for postDump / saveOnly; stories resolve a story preview to its draft. */
 export const postDeps = (stories: Story[]): PostDeps => ({
-  exportSlides: (d) => exportSlides(d),
+  exportSlides: (d, hd) => exportSlides(d, { highRes: hd }),
   saveToAlbum,
   copy: async (text) => { await Clipboard.setStringAsync(text); },
   share: shareImages,

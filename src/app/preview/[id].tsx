@@ -8,7 +8,7 @@ import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../servic
 import { captionIdeas, captionInput, hashtags } from '../../services/captions';
 import { filterOf } from '../../services/filters';
 import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
-import { getProfile, setProfile } from '../../services/profile';
+import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
 import type { Library } from '../../services/index/photoIndex';
@@ -71,7 +71,9 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [profile, setProf] = useState({ name: '', handle: '', bio: '', avatar: '' });
-  useEffect(() => { getProfile().then(setProf); }, []);
+  // export quality for this dump only: starts at the Profile default (HD unless changed)
+  const [hd, setHd] = useState(profileNow().exportHD);
+  useEffect(() => { getProfile().then((p) => { setProf(p); setHd(p.exportHD); }); }, []);
 
   // caption: the one copied in Edit first, then the template ideas; the refresh button steps through them
   const input = useMemo(() => captionInput(dump, story), [dump, story]);
@@ -124,7 +126,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
     try {
       if (what === 'post') {
-        const r = await postDump(deps, dump, caption, tags, target);
+        const r = await postDump(deps, dump, caption, tags, target, hd);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted', caption }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
@@ -133,7 +135,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           note: `Caption copied${r.saved ? ` · ${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the DayDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`,
         });
       } else {
-        const k = await saveOnly(deps, dump);
+        const k = await saveOnly(deps, dump, hd);
         setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the DayDump album.` });
       }
     } catch (e) {
@@ -184,9 +186,14 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
           <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
         </Tap>
-        <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the DayDump album" style={{ paddingTop: 8, paddingBottom: 2 }}>
-          <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
-        </Tap>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 8, paddingBottom: 2 }}>
+          <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the DayDump album">
+            <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
+          </Tap>
+          <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump">
+            <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>Quality: <Text style={{ color: t.ink, fontWeight: '600' }}>{hd ? 'HD' : 'Standard'}</Text></Text>
+          </Tap>
+        </View>
       </View>
       <DoneSheet done={done} onClose={() => setDone(null)} />
     </View>

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Modal, Platform, ScrollView, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { Linking, Modal, Platform, ScrollView, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { File, Paths } from 'expo-file-system';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../components/ui/Screen';
 import { FrameCard } from '../components/ui/FrameCard';
@@ -16,6 +17,8 @@ import { Confirm, ConfirmSpec } from '../components/ui/Sheet';
 import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
+import { PrivacyModal } from '../components/OnboardingModal';
+import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp } from '../state/AppState';
 import { display, label, ui } from '../theme/type';
@@ -25,6 +28,7 @@ import { ratioOf } from '../services/layouts';
 import { resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { GeminiService } from '../services/geminiService';
+import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
@@ -37,7 +41,7 @@ const DEV_TAPS = 5;
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[profile]', m));
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-/** Profile & Settings (ph7.png minus Subscription; plus accounts, daily recap, photo library, about and dev tools). */
+/** Profile & Settings (ph7.png; plus accounts, daily recap, photo library, about and dev tools). */
 export default function Profile() {
   // the theme is picked here: repaint this screen at once, the screens under it later
   return <ThemeNow><ProfileBody /></ThemeNow>;
@@ -55,37 +59,42 @@ function ProfileBody() {
   const [debug, setDebug] = useState(false);
   const [bench, setBench] = useState(false);
   const [gemini, setGemini] = useState('');
+  const [privacy, setPrivacy] = useState(false);
+  const [avatarSheet, setAvatarSheet] = useState(false);
+  const [sub, setSub] = useState<Sub | null>(null);
   const taps = useRef<number[]>([]);
 
   // Leaving while a field is still focused: Android may not fire onEndEditing, so save typed text on the way out.
-  const typed = useRef({ name: p.name, handle: p.handle, bio: p.bio });
-  useEffect(() => { typed.current = { name: p.name.trim(), handle: p.handle, bio: p.bio.trim() }; }, [p.name, p.handle, p.bio]);
+  const typed = useRef({ name: p.name, handle: p.handle });
+  useEffect(() => { typed.current = { name: p.name.trim(), handle: p.handle }; }, [p.name, p.handle]);
   useFocusEffect(useCallback(() => {
     getProfile().then(setP);
     const flushTyped = () => {
       const v = typed.current, cur = profileNow();
-      if (v.name !== cur.name || v.handle !== cur.handle || v.bio !== cur.bio) setProfile(v).catch(() => {});
+      if (v.name !== cur.name || v.handle !== cur.handle) setProfile(v).catch(() => {});
     };
     list().then((d) => setDumps(d.length), () => {});
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
     GeminiService.getApiKey().then((k) => setGemini(k ?? ''), () => {});
+    getSubscription().then(setSub);
     return flushTyped;
   }, []));
 
-  /** Saves a change; the field edits (name, handle, bio) save when editing ends, so one write per edit. */
+  /** Saves a change; the field edits (name, handle) save when editing ends, so one write per edit. */
   const save = (patch: Partial<ProfileT>) => {
     setP((x) => ({ ...x, ...patch }));
     setProfile(patch).catch((e) => console.warn('[profile] save failed:', e));
   };
 
-  const pickAvatar = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
-    if (r.canceled || !r.assets[0]) return;
+  /** Our own small copy: the picker's file lives in the cache, and a library photo can be deleted. */
+  const setAvatarFrom = async (src: string) => {
     try {
-      // The picker's file lives in the cache; keep our own copy.
+      const img = await ImageManipulator.manipulate(src).resize({ width: 512 }).renderAsync();
+      const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+      img.release();
       const dest = new File(Paths.document, `avatar-${Date.now()}.jpg`);
-      new File(r.assets[0].uri).copy(dest);
+      new File(out.uri).copy(dest);
       dropAvatarFile(p.avatar);
       save({ avatar: dest.uri });
     } catch (e) {
@@ -93,13 +102,10 @@ function ProfileBody() {
       toast('Couldn’t use that photo');
     }
   };
-  const avatarPress = () => p.avatar
-    ? Alert.alert('Profile photo', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => { dropAvatarFile(p.avatar); save({ avatar: '' }); } },
-      { text: 'Choose photo', onPress: pickAvatar },
-    ])
-    : pickAvatar();
+  const pickAvatar = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+    if (!r.canceled && r.assets[0]) await setAvatarFrom(r.assets[0].uri);
+  };
 
   const toggleRecap = async () => {
     const want = !recap;
@@ -144,14 +150,12 @@ function ProfileBody() {
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
         <Text style={[display(20), { color: t.ink }]}>Profile &amp; Settings</Text>
-        <FrameCard radius={16} onPress={back} label="Done" style={{ height: 32, paddingHorizontal: 12, justifyContent: 'center' }}>
-          <Text style={[ui(11.5, 600), { color: t.ink }]}>Done</Text>
-        </FrameCard>
+        <View style={{ width: 36 }} />
       </View>
 
       <FrameCard radius={20} padding={12} style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Tap onPress={avatarPress} accessibilityRole="button" accessibilityLabel="Change profile photo">
+          <Tap onPress={() => setAvatarSheet(true)} accessibilityRole="button" accessibilityLabel="Change profile photo">
             <FrameCard radius={27} style={{ width: 54, height: 54, padding: 2 }}>
               <View style={{ flex: 1, borderRadius: 25, overflow: 'hidden', backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
                 {p.avatar ? <Image source={{ uri: p.avatar }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -173,9 +177,6 @@ function ProfileBody() {
                 placeholder="your_account" placeholderTextColor={t.inkMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="done" maxLength={30}
                 style={[ui(11.5, 500), { color: t.inkMuted, padding: 0, flex: 1 }]} />
             </View>
-            <TextInput value={p.bio} onChangeText={(bio) => setP((x) => ({ ...x, bio }))} onEndEditing={() => save({ bio: p.bio.trim() })}
-              placeholder="Add a short bio" placeholderTextColor={t.inkMuted} returnKeyType="done" maxLength={80} numberOfLines={1}
-              style={[ui(10.5), { color: t.inkMuted, padding: 0, marginTop: 2 }]} />
           </View>
         </View>
         <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.borderSubtle, marginTop: 10, paddingTop: 10 }}>
@@ -184,6 +185,8 @@ function ProfileBody() {
           <Stat n={dumps} label="Library" onPress={() => router.navigate('/library')} />
         </View>
       </FrameCard>
+
+      <SubCard sub={sub} />
 
       <Section title="Connected accounts">
         <Row label="Connect Instagram" right={<Soon />} />
@@ -195,7 +198,8 @@ function ProfileBody() {
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
         <Row label="Default Frame Style" onPress={() => save({ fit: p.fit === 'border' ? 'bleed' : 'border' })}
           right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.fit === 'border' ? 'Cashmere Border' : 'Full Bleed Crop'}</Text>} />
-        <Row label="High-Res Export (No Compression)" onPress={() => save({ highRes: !p.highRes })} toggle={p.highRes} last />
+        <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
+          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? 'HD (2160 px)' : 'Standard (1080 px)'}</Text>} last />
       </Section>
 
       <Section title="Appearance & theme" pad>
@@ -214,6 +218,10 @@ function ProfileBody() {
             );
           })}
         </View>
+      </Section>
+
+      <Section title="Data privacy">
+        <Row label="Everything happens on your phone" sub="How DayDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
       </Section>
 
       <Section title="Daily recap">
@@ -246,6 +254,7 @@ function ProfileBody() {
           <Row label="Stories debug" onPress={() => setDebug(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="Model bench" onPress={() => setBench(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <View style={{ paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderColor: t.borderSubtle }}>
             <Text style={[ui(12, 500), { color: t.ink }]}>Gemini API key</Text>
@@ -257,6 +266,9 @@ function ProfileBody() {
         </Section>
       )}
 
+      <PrivacyModal visible={privacy} onClose={() => setPrivacy(false)} />
+      <AvatarSheet visible={avatarSheet} onClose={() => setAvatarSheet(false)} hasAvatar={!!p.avatar} onUse={setAvatarFrom} onGallery={pickAvatar}
+        onRemove={() => { dropAvatarFile(p.avatar); save({ avatar: '' }); }} />
       <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       <DebugStoriesModal visible={debug} onClose={() => setDebug(false)} onResetIndex={app.refreshStories} />
       <BenchModal visible={bench} onClose={() => setBench(false)} />
@@ -268,6 +280,33 @@ function ProfileBody() {
 function dropAvatarFile(uri: string) {
   if (!uri) return;
   try { new File(uri).delete(); } catch { /* already gone */ }
+}
+
+const date = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** DayDump Pro: a Go Pro call to action (store not wired yet: coming soon), or the plan and when it renews / ends. */
+function SubCard({ sub }: { sub: Sub | null }) {
+  const { t } = useTheme();
+  return (
+    <FrameCard radius={20} padding={12} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
+        <Icons.sparkle size={16} color={t.accentFabText} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[display(17), { color: t.ink }]}>DayDump Pro</Text>
+        <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
+          {!sub ? 'Extra features for DayDump, coming soon.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+        </Text>
+      </View>
+      {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />
+        : (
+          <Tap onPress={() => toast('DayDump Pro is coming soon')} accessibilityRole="button" accessibilityLabel="Go Pro"
+            style={{ height: 30, paddingHorizontal: 14, borderRadius: 15, backgroundColor: t.ink, justifyContent: 'center' }}>
+            <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Go Pro</Text>
+          </Tap>
+        )}
+    </FrameCard>
+  );
 }
 
 function Stat({ n, label: l, onPress }: { n: number; label: string; onPress: () => void }) {

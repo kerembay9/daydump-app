@@ -58,7 +58,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [stories, setStoryList] = useState<Story[]>([]);
   const [available, setAvailable] = useState(0);
   const limit = useRef(STORY_PAGE);
-  const setStories = ({ stories: s, available: a }: { stories: Story[]; available: number }) => { setStoryList(s); setAvailable(a); };
+  /** what Discover shows now: a gallery sync keeps its order (keepOrder) */
+  const shown = useRef<Story[]>([]);
+  const setStories = ({ stories: s, available: a }: { stories: Story[]; available: number }) => { shown.current = s; setStoryList(s); setAvailable(a); };
   const build = async (lib: Library) => buildStories(lib, undefined, limit.current, (await getProfile()).hideSensitive);
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
@@ -69,8 +71,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   /** photos in the last loaded index: the expected total right after a Reindex empties it */
   const known = useRef(0);
 
-  /** Show stories from the current index right away, then index new photos and rebuild if anything changed. */
-  const refreshStories = useCallback(async () => {
+  /**
+   * Show stories from the current index right away, then index new photos and rebuild if anything changed.
+   * sync (back in front): skip the first show and keep Discover's order, so only added / gone photos move things.
+   */
+  const refreshStories = useCallback(async (sync = false) => {
     try {
       let showCost = 0;
       let empty = false;
@@ -82,12 +87,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         setLibrary(lib);
         empty = !lib.photos.length;
         known.current = lib.photos.length || known.current;
-        if (!(keep && empty)) setStories(await build(lib));
+        if (!(keep && empty)) {
+          const b = await build(lib);
+          setStories(sync ? { ...b, stories: keepOrder(shown.current, b.stories) } : b);
+        }
         setLoaded(true);
         showCost = Date.now() - t;
         console.log(`[stories] rebuilt from ${lib.photos.length} photos in ${showCost} ms (load ${tl} ms)`);
       };
-      await show();
+      if (!sync) await show();
       // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
       if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
@@ -129,9 +137,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [start]);
 
-  // Indexing handed to the background worker when the app left: back in front, merge its results and finish here.
+  // Back in front: pick up photos taken / deleted meanwhile (a quick diff when nothing changed). Indexing handed to the
+  // background worker when the app left: merge its results and finish here, as a full refresh.
   useEffect(() => {
-    const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active' && wasHandedOff()) refreshStories(); });
+    const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active') refreshStories(!wasHandedOff()); });
     return () => sub.remove();
   }, [refreshStories]);
 
@@ -179,4 +188,12 @@ export function useApp(): AppStateValue {
   const v = useContext(Ctx);
   if (!v) throw new Error('useApp outside AppStateProvider');
   return v;
+}
+
+/** next's stories in prev's order; new ones go in at their rank in next (a gallery sync shouldn't reshuffle Discover). */
+export function keepOrder<S extends { id: string }>(prev: S[], next: S[]): S[] {
+  const at = new Map(prev.map((s, i) => [s.id, i]));
+  const out = next.filter((s) => at.has(s.id)).sort((a, b) => at.get(a.id)! - at.get(b.id)!);
+  next.forEach((s, i) => { if (!at.has(s.id)) out.splice(Math.min(i, out.length), 0, s); });
+  return out;
 }
