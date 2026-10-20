@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Linking, RefreshControl, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,9 +54,9 @@ function Tile({ s, kind, rotate, onPress, style }: { s: Story; kind: StackKind; 
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-const Bento = React.memo(function Bento({ block, onPick }: { block: Story[]; onPick: (s: Story) => void }) {
+const Bento = React.memo(function Bento({ block }: { block: Story[] }) {
   const [a, b, c, d] = block;
-  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => onPick(s)} style={style} />;
+  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => preview(s.id)} style={style} />;
   return (
     <View style={{ gap: 8, marginBottom: 8 }}>
       {block.length === 2 ? (
@@ -122,29 +122,22 @@ export default function Discover() {
   const insets = useSafeAreaInsets();
   const { stories, loaded, permission, progress, paused, coverageSince, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
   const [loadingMore, setLoadingMore] = useState(false);
-  const [heroId, setHeroId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const list = useRef<FlatList<Story[]>>(null);
 
   useFocusEffect(useCallback(() => { getProfile().then((p) => setName(p.name.trim().split(/\s+/)[0] ?? '')); }, []));
 
-  const hero = stories.find((s) => s.id === heroId) ?? stories[0];
+  const hero = stories[0];
   const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
-  const pick = useCallback((s: Story) => {
-    setHeroId(s.id);
-    list.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
-  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} onPick={pick} />, [pick]);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} />, []);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
     setRefreshing(true);
     try {
       await shuffleStories([hero, ...others.slice(0, 4)].filter(Boolean).map((s) => s.id));
-      setHeroId(null);
     } finally {
       setRefreshing(false);
     }
@@ -189,7 +182,6 @@ export default function Discover() {
   return (
     <View style={{ flex: 1 }}>
       <FlatList
-        ref={list}
         data={blocks}
         keyExtractor={(b) => b[0].id}
         renderItem={renderBento}

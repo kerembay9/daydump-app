@@ -1,4 +1,4 @@
-# Preview: IG post / grid / TikTok mocks, like + save, another caption, HD toggle; the handle edited here shows in Profile.
+# Preview: IG post / grid / TikTok mocks, like + save, HD toggle; the handle edited here shows in Profile.
 appId: com.daydump.app
 name: 15 preview mocks + handle
 ---
@@ -9,7 +9,6 @@ name: 15 preview mocks + handle
 - assertVisible: "Unlike"
 - tapOn: "Save"
 - assertVisible: "Unsave"
-- tapOn: "Another caption"
 - tapOn: "HD export for this dump"
 - assertVisible: "Quality: Standard"
 - tapOn: "IG Profile Grid"

@@ -12,9 +12,8 @@ beforeAll(() => seedWorld());
 
 test('Post shares to the chosen app and marks the dump Posted; Library shows it; Reuse makes "{title} (2)"', async () => {
   const app = await bootApp('/');
-  // the Seattle trip is the hero; tap the long topic's tile to bring it up
+  // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText(`Preview ${LONG}`));
   await screen.findByLabelText('Post on Instagram or TikTok');
   expect(screen.getByRole('tab', { name: 'IG Post', selected: true })).toBeTruthy();
 
@@ -68,9 +67,8 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
 
 test('Save only shows the done sheet; Start a new dump opens Create', async () => {
   const app = await bootApp('/');
-  // the Seattle trip is the hero; tap the long topic's tile to bring it up
+  // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText(`Preview ${LONG}`));
   await fireEvent.press(await screen.findByLabelText('Save only, to the DayDump album'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
   expect(screen.getByText('6 slides saved to the DayDump album.')).toBeTruthy();

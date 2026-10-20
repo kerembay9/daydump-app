@@ -1,4 +1,4 @@
-# Discover: hero Edit chip, a bento tile becomes the hero, pull-to-refresh shuffle.
+# Discover: hero Edit chip, a bento tile opens its preview, pull-to-refresh shuffle.
 appId: com.daydump.app
 name: 07 discover hero, tiles, shuffle
 ---
@@ -9,14 +9,12 @@ name: 07 discover hero, tiles, shuffle
 - assertVisible: "Sizes · Filter % · Captions"
 - tapOn: "Back"
 - assertVisible: "Other dumps"
-- copyTextFrom: "Preview .+"
-- evalScript: ${output.hero = maestro.copiedText}
 - tapOn:
     text: ".+, .+"
     below: "Other dumps"
-- extendedWaitUntil:
-    notVisible: ${output.hero}
-    timeout: 5000
+- assertVisible: "Post on Instagram or TikTok"
+- tapOn: "Back"
+- assertVisible: "Other dumps"
 - swipe:
     start: 50%, 25%
     end: 50%, 75%

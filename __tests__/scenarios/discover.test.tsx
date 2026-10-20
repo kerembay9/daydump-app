@@ -8,7 +8,7 @@ const META = /^\d+ photos · \S.*$/;
 
 beforeAll(() => seedWorld());
 
-test('stories show "{N} photos · {range}" and long titles in full; tapping a tile makes it the hero', async () => {
+test('stories show "{N} photos · {range}" and long titles in full; tapping a tile opens its preview', async () => {
   await bootApp('/');
   await screen.findByText('Other dumps', {}, { timeout: 10000 });
 
@@ -18,18 +18,18 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
     expect(screen.getAllByText(meta).length).toBeGreaterThan(0);
     expect(meta).toMatch(META);
   }
-  // the 7-day trip outranks the weekly topics; tapping a tile makes it the hero and the old hero a tile
+  // the 7-day trip outranks the weekly topics
   expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`));
-  expect(await screen.findByLabelText(`Preview ${LONG}`)).toBeTruthy();
-  expect(screen.getByLabelText('A week in Seattle, 6 photos · Aug 4–9, 2025')).toBeTruthy();
-  expect(screen.queryByLabelText(`Preview ${LONG}, 6 photos · Sep 22–Oct 22, 2025`)).toBeNull();
 
   // The long title is the whole string, shrunk to fit on two lines rather than cut with an ellipsis.
-  const hero = screen.getAllByText(LONG).find((x) => x.props.adjustsFontSizeToFit)!;
-  expect(hero.props.numberOfLines).toBe(2);
-  expect(hero.props.ellipsizeMode).toBeUndefined();
+  const tile = screen.getAllByText(LONG).find((x) => x.props.adjustsFontSizeToFit)!;
+  expect(tile.props.numberOfLines).toBe(2);
+  expect(tile.props.ellipsizeMode).toBeUndefined();
   expect(screen.queryByText(/…$/)).toBeNull();
+
+  // tapping a tile opens its preview; the hero stays
+  await fireEvent.press(screen.getByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`));
+  expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
 }, 30000);
 
 test('indexing strip: fast-mode progress with Pause; paused shows Resume', async () => {

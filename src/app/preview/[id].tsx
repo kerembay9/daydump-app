@@ -75,15 +75,10 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [hd, setHd] = useState(profileNow().exportHD);
   useEffect(() => { getProfile().then((p) => { setProf(p); setHd(p.exportHD); }); }, []);
 
-  // caption: the one copied in Edit first, then the template ideas; the refresh button steps through them
+  // caption: the one copied in Edit, else the first template idea
   const input = useMemo(() => captionInput(dump, story), [dump, story]);
   const tags = useMemo(() => hashtags(input), [input]);
-  const captions = useMemo(() => {
-    const ideas = captionIdeas(input);
-    return dump.caption ? [dump.caption, ...ideas.filter((c) => c !== dump.caption)] : ideas;
-  }, [input, dump.caption]);
-  const [pick, setPick] = useState(0);
-  const caption = captions[pick % captions.length];
+  const caption = useMemo(() => dump.caption || captionIdeas(input)[0], [input, dump.caption]);
 
   // grid: your Posted dumps' covers, then your top Discover dumps' covers; never raw recent photos (often
   // screenshots and documents) nor this dump's own photos. Fewer than 8 → the rest stay empty tiles.
@@ -161,7 +156,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
             <Text style={[display(19, 1.15), { color: t.ink }]}>{dump.status === 'posted' ? 'Posted Preview' : 'Preview'}</Text>
             <Text style={[ui(10), { color: t.inkMuted }]}>{ratio.key} · {layout.label} layout</Text>
           </View>
-          <IconButton label="Another caption" onPress={() => setPick((p) => p + 1)}><Icons.refresh size={16} /></IconButton>
+          <View style={{ width: 36 }} />
         </View>
 
         <FrameCard radius={20} padding={4} style={{ flexDirection: 'row', marginBottom: 10 }}>
