@@ -20,6 +20,8 @@ type ClipEmbedderModule = {
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
   conceptNames(): Promise<string[]>;
+  /** YuNet 320 faces per photo (bundled), best first; embed adds SFace vectors (~10 ms/face more, and a sharper decode). */
+  faces(uris: string[], minScore: number, embed: boolean): Promise<FaceScan[]>;
   /**
    * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service
    * with a progress notification (call while the app is on screen). Otherwise once the phone charges.
@@ -60,6 +62,11 @@ export const addShareIntentListener = (cb: (e: ShareIntent) => void) => ClipEmbe
 export const ClipEmbedder = requireOptionalNativeModule<ClipEmbedderModule>('ClipEmbedder');
 
 export type GemmaResult = { ms: number; prepMs: number; text: string; ttftMs: number; prefillTokens: number; prefillTps: number; decodeTokens: number; decodeTps: number };
+/** Box as fractions of the photo; vec: L2-normalized SFace feature (base64 Float32 x 128), same person when dot > 0.363. */
+export type Face = { score: number; x: number; y: number; w: number; h: number; vec?: string };
+/** aspect: the photo's width / height after EXIF rotation. */
+export type FaceScan = { aspect: number; faces: Face[] };
+export type FaceResult = { decodeMs: number; modelMs: number; faces: Face[] };
 export type MlkitResult = { ms: number; labels: { text: string; conf: number }[] };
 
 type EdgeBenchModule = {
@@ -77,8 +84,10 @@ type EdgeBenchModule = {
   /** Requests the model download; resolves true once usable (false after a 2 min timeout). */
   mlkitInstall(): Promise<boolean>;
   mlkitLabels(uri: string, side: number): Promise<MlkitResult>;
+  /** YuNet faces per photo (files/models/yunet_<size>.tflite when pushed, else the bundled 320). Boxes are fractions of the photo, best first. */
+  yunetFaces(uris: string[], size: number, minScore: number): Promise<FaceResult[]>;
   addListener(event: 'onDownload', cb: (e: { bytes: number; total: number }) => void): { remove(): void };
 };
 
-/** Gemma 4 E2B (LiteRT-LM) + ML Kit labeling, for the benchmark screen only. Null on iOS / Expo Go. */
+/** Gemma 4 E2B (LiteRT-LM), ML Kit labeling and YuNet faces, for the benchmark screen only. Null on iOS / Expo Go. */
 export const EdgeBench = requireOptionalNativeModule<EdgeBenchModule>('EdgeBench');

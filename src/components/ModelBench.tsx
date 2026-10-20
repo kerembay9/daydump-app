@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { ClipEmbedder, ClipEngine, EdgeBench, GemmaResult, MlkitResult } from '../../modules/clip-embedder';
+import { ClipEmbedder, ClipEngine, EdgeBench, FaceResult, GemmaResult, MlkitResult } from '../../modules/clip-embedder';
 import { IndexedPhoto, Library } from '../services/index/photoIndex';
 import { b64ToFloats, DIM } from '../services/index/vectors';
+import { findSelfies, selfieFace } from '../services/selfie';
 
 const GEMMA_URL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm';
 const PROMPT = 'Give 5 short tags and a one-line caption for this photo.\nFormat:\ntags: a, b, c, d, e\ncaption: ...';
@@ -50,6 +51,13 @@ const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: s
   { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
 ];
 
+/** YuNet face bench: files/models/yunet_<size>.tflite (scripts/build_assets.py yunet), on the selfie candidates + random photos. */
+const FACE_SIZES = [320, 640];
+const FACE_MIN = 0.6; // OpenCV's default score threshold
+const FACE_RANDOM = 64;
+type FaceRow = { p: IndexedPhoto; clipRank: number; bySize: Record<number, FaceResult> };
+const faceArea = (r?: FaceResult) => (r?.faces.length ? r.faces[0].w * r.faces[0].h : 0);
+
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
 
 const sample = (lib: Library, n = N) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, n);
@@ -85,6 +93,7 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
   const [busy, setBusy] = useState('');
   const [opt, setOpt] = useState<OptRow[]>([]);
   const [idx, setIdx] = useState<string[]>([]);
+  const [faces, setFaces] = useState<{ lines: string[]; rows: FaceRow[] }>({ lines: [], rows: [] });
   const [batch, setBatch] = useState(16); // same as the indexer
   const count = batch === 1 ? N : Math.max(16, batch); // small batches still time 16 photos, in several calls
 
@@ -246,6 +255,26 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     await clip.configure(true, 'gpu-cpu8', null); // back to shipped defaults
   });
 
+  const runFaces = guard('face bench', async () => {
+    if (!lib) return;
+    const cands = await findSelfies(lib);
+    const random = sample(lib, FACE_RANDOM);
+    const rows: FaceRow[] = cands.map((c, i) => ({ p: c.p, clipRank: i + 1, bySize: {} }));
+    const lines: string[] = [];
+    for (const size of FACE_SIZES) {
+      setBusy(`face bench: YuNet ${size}`);
+      const r = await bench.yunetFaces([random[0].uri], size, FACE_MIN).catch((e) => String(e)); // untimed warm-up (model load)
+      if (typeof r === 'string') { lines.push(`YuNet ${size}: skipped (${r})`); continue; }
+      const sel = await bench.yunetFaces(cands.map((c) => c.p.uri), size, FACE_MIN);
+      const rnd = await bench.yunetFaces(random.map((p) => p.uri), size, FACE_MIN);
+      sel.forEach((f, i) => (rows[i].bySize[size] = f));
+      const all = [...sel, ...rnd];
+      lines.push(`YuNet ${size}: model ${median(all.map((f) => f.modelMs))} ms · decode+letterbox ${median(all.map((f) => f.decodeMs))} ms (median, n=${all.length})\n` +
+        `   random photos with a face: ${rnd.filter((f) => f.faces.length).length}/${rnd.length} · selfie candidates with 1 face ≥ 10%: ${sel.filter((f) => selfieFace(f.faces) > 0).length}/${sel.length}`);
+      setFaces({ lines: [...lines], rows: [...rows] });
+    }
+  });
+
   const have = file.bytes > 0;
   const stat = (k: 'clip' | 'mlkit' | 'gemma') => {
     const ms = rows.flatMap((r) => (r[k] ? [r[k]!.ms] : []));
@@ -272,8 +301,26 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         <Btn label={`Run ${count} random photos${loadMs == null ? ' (no Gemma)' : count > N ? ` (Gemma on ${N})` : ''}`} onPress={run} />
         {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
         <Btn label="TinyCLIP index bench" onPress={runIndexBench} />
+        <Btn label="Face bench (YuNet)" onPress={runFaces} />
       </View>
       {idx.length > 0 && <Text style={s.mono}>{idx.join('\n')}</Text>}
+      {faces.lines.length > 0 && <Text style={s.mono}>{faces.lines.join('\n')}{'\n'}Selfie candidates in findSelfies order (rank in #; it uses YuNet 320):</Text>}
+      {faces.rows.map((r) => (
+        <View key={r.p.id} style={s.result}>
+          <Image source={{ uri: r.p.uri }} style={s.thumb} contentFit="cover" />
+          <View style={{ flex: 1 }}>
+            {FACE_SIZES.map((size) => {
+              const f = r.bySize[size];
+              return (
+                <Text key={size} style={s.line}>
+                  <Text style={s.k}>#{r.clipRank} YuNet {size} </Text>
+                  {f ? `${f.faces.length} face${f.faces.length === 1 ? '' : 's'}${f.faces.length ? ` · top face ${(100 * faceArea(f)).toFixed(0)}% of photo · score ${f.faces[0].score.toFixed(2)}` : ''} · ${f.modelMs} ms` : '…'}
+                </Text>
+              );
+            })}
+          </View>
+        </View>
+      ))}
 
       {opt.map((o, i) => (
         <Text key={i} style={s.line}>

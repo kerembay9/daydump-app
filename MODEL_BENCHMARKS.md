@@ -94,6 +94,19 @@ Full reindex (2026-10-19, GPU + dw8, 3,957 photos, on the charger, starting cool
 
 Background indexing (2026-10-19, on the charger, `BackgroundIndex.kt`): leaving the app hands the rest of the todo to a WorkManager job. The job ran 2,805 photos in 7.7 min (165 ms/photo, ~22k/h), and ~120 ms/photo in a fresh process after the app was killed. That's 2.5–3.5× slower than the foreground because Android moves background processes to the background cgroup. A 30k library needs about 1–1.5 h of charging. Compared with the JS indexer on the same photos: GPS matched 373/373, median cosine 1.000, same top concept 96% (GPU/CPU split noise, as above). Merging 2,805 results on reopen takes ~5 s. Android 14 sometimes held the job for 5+ min with every constraint met (seen after a kill-triggered backoff; a fresh hand-off started within 1 s). Fast mode (2026-10-19): for todos of 2,500+ photos the app starts the job itself while it's on screen, as a dataSync foreground service with a progress notification. Android allows that start; starting from the background is refused (`ForegroundServiceStartNotAllowedException`), so the charging-only job above stays the fallback. On battery after Home it ran ~80 ms/photo (1.5–2× the plain background job): Samsung puts foreground-service processes in the `/moderate` cpuset (CPUs 0–2), so CPU work stays slow, but the GPU runs at full speed. Battery: ~11.4 µAh/photo (45 mAh for 3,961, ~1% of the A54's 5,000 mAh), used for the notification's and home page's battery estimate. On Android 14 the notification can be swiped away; that pauses the run (deleteIntent), as does its Pause button. It also pauses itself at ≤ 20% battery or in power-save mode.
 
+## Face detection (YuNet)
+
+YuNet 2023mar (OpenCV Zoo, MIT), converted to LiteRT with `build_assets.py yunet` (0.27 MB at 320, 0.35 MB at 640). Its boxes match OpenCV's `FaceDetectorYN` on the same input. A54, LiteRT CPU 4 threads, score ≥ 0.6, NMS IoU 0.3, 2026-10-20, n=84 (the 20 selfie candidates plus 64 random photos):
+
+| Input | Model | Decode + letterbox | Random photos with a face | Selfie candidates with 1 face ≥ 10% of photo |
+|---|---|---|---|---|
+| 320 | 4 ms | 59 ms | 19/64 | 12/20 |
+| 640 | 17 ms | 66 ms | 20/64 | 11/20 |
+
+320 is enough: the model costs 4 ms, and decoding the photo dominates. Re-ranking the CLIP selfie candidates by "1 face, biggest area × score" puts clean single-face selfies first (68%, 43% and 32% of the photo). The skin/fur close-up at CLIP #7 has 0 faces and drops out. Misses: a small face (6% of photo, CLIP #5) that only 640 finds at score 0.64, and a photo of a printed photo (CLIP #19). Shipped (2026-10-20): `findSelfies` bundles yunet_320 and ranks one-big-face photos first.
+
+Recognition (2026-10-20): SFace 2021dec (OpenCV Zoo, Apache 2.0) via `build_assets.py sface`, 23.5 MB with `dynamic_wi8c_hr_afp32`. Plain int8 weights (9.9 MB) drop one real face to cosine 0.955 vs OpenCV; this recipe and fp32 give 1.000. YuNet's landmarks and the Kotlin alignment (least-squares similarity onto OpenCV's 112×112 template) match `FaceRecognizerSF.alignCrop` exactly. Same person when cosine > 0.363. `findSelfies` now takes CLIP's top 30, groups their faces into people, and puts the selfies of the person in the most candidate photos first. On the A54 the owner was in 15 of 30 photos and the next person in 13. That takes 7.3 s cold, including model loads and decoding at 720 px for sharper crops. A full People experiment scan runs at ~85 ms/photo (3,981 photos in ~5.5 min).
+
 ## Reproducing
 
 1. Shipped model: `.venv/bin/python scripts/build_assets.py clip gpu vocab`
@@ -101,3 +114,4 @@ Background indexing (2026-10-19, on the charger, `BackgroundIndex.kt`): leaving 
 3. Push them with the adb commands that step 2 prints.
 4. Phone: Settings → Stories debug → **TinyCLIP index bench**. A model whose file wasn't pushed shows "skipped".
 5. Photo search table: `.venv/bin/python scripts/eval_retrieval.py` (downloads ~830 MB once; ~15 min on CPU).
+6. Face bench: `.venv/bin/python scripts/build_assets.py yunet sface`, push with the printed adb commands, then Model bench → **Face bench (YuNet)**.

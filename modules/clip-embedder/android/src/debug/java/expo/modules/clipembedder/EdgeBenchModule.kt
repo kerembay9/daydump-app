@@ -31,8 +31,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Benchmark-only engines to compare against CLIP: Gemma 4 E2B (LiteRT-LM, downloaded at runtime) and
- * ML Kit image labeling (Play services; its model downloads once, on request). Every timing includes decoding the photo, like CLIP's embedImages.
+ * Benchmark-only engines to compare against CLIP: Gemma 4 E2B (LiteRT-LM, downloaded at runtime),
+ * ML Kit image labeling (Play services; its model downloads once, on request) and the YuNet face detector at other sizes. Every timing includes decoding the photo, like CLIP's embedImages.
  */
 @OptIn(ExperimentalApi::class)
 class EdgeBenchModule : Module() {
@@ -41,6 +41,8 @@ class EdgeBenchModule : Module() {
   private val model get() = File(ctx.filesDir, "models/gemma-4-E2B-it.litertlm")
   private val labeler by lazy { ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS) }
   private var engine: Engine? = null
+  private var yunet: YuNet? = null
+  private var yunetSize = 0
 
   override fun definition() = ModuleDefinition {
     Name("EdgeBench")
@@ -99,6 +101,10 @@ class EdgeBenchModule : Module() {
       }
     }
 
+    AsyncFunction("yunetFaces") Coroutine { uris: List<String>, size: Int, minScore: Double ->
+      withContext(Dispatchers.Default) { yunetFaces(uris, size, minScore) }
+    }
+
     AsyncFunction("mlkitReady") Coroutine { ->
       withContext(Dispatchers.IO) { Tasks.await(ModuleInstall.getClient(ctx).areModulesAvailable(labeler)).areModulesAvailable() }
     }
@@ -125,6 +131,18 @@ class EdgeBenchModule : Module() {
         mapOf("ms" to (SystemClock.elapsedRealtime() - t0).toDouble(), "labels" to labels.map { mapOf("text" to it.text, "conf" to it.confidence.toDouble()) })
       }
     }
+  }
+
+  /** YuNet faces per photo: files/models/yunet_<size>.tflite when pushed, else the bundled yunet_320. */
+  private fun yunetFaces(uris: List<String>, size: Int, minScore: Double): List<Map<String, Any>> {
+    if (yunetSize != size) {
+      yunet?.close(); yunet = null
+      val f = File(ctx.filesDir, "models/yunet_$size.tflite").takeIf { it.exists() }?.path
+      if (f == null && size != 320) throw IllegalStateException("no files/models/yunet_$size.tflite")
+      yunet = YuNet(ctx, f, size)
+      yunetSize = size
+    }
+    return uris.map { yunet!!.detect(ctx, it, minScore) }
   }
 
   /** Resumable download to filesDir/models (a .part file until complete); emits onDownload progress. */

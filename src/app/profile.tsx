@@ -254,6 +254,7 @@ function ProfileBody() {
           <Row label="Stories debug" onPress={() => setDebug(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Model bench" onPress={() => setBench(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <View style={{ paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderColor: t.borderSubtle }}>

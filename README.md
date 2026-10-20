@@ -104,4 +104,4 @@ Story cards ("A week in Seattle", "A red winter") come from an on-device index: 
    Only on a dedicated test phone: album copies keep their dates, so they show up twice in the gallery
    timeline. `scripts/make_eval_album.py push --test-phone` builds one; `... clean` removes it.
 
-Attribution: GeoNames (CC BY 4.0), Open Images V7 class names (CC BY 4.0), TinyCLIP (MIT).
+Attribution: GeoNames (CC BY 4.0), Open Images V7 class names (CC BY 4.0), TinyCLIP (MIT), YuNet face detector (OpenCV Zoo, MIT), SFace face recognition (OpenCV Zoo, Apache 2.0).

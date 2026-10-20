@@ -2,7 +2,7 @@
 
 Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision
         (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU), tokenizer.json, golden vectors
 gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vision_dw8.tflite (int8 weights, CPU helper
@@ -10,6 +10,8 @@ gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vis
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
+yunet  - YuNet face detector (OpenCV Zoo, MIT) -> LiteRT yunet_320.tflite (bundled, findSelfies) + yunet_640 for the face bench (prints the adb commands)
+sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
 import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
@@ -63,8 +65,8 @@ LICENSE_NOTE = "Open Images V7 class names (CC BY 4.0, Google LLC) + hand-writte
 
 
 def fetch(url, name):
-    CACHE.mkdir(parents=True, exist_ok=True)
     p = CACHE / name
+    p.parent.mkdir(parents=True, exist_ok=True)
     if not p.exists():
         print("downloading", url)
         urllib.request.urlretrieve(url, p)
@@ -234,6 +236,132 @@ def build_bench():
               f"cat /data/local/tmp/{f.name} > files/models/{f.name}'\"")
 
 
+YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+YUNET_SIZES = (320, 640)
+
+
+def yunet_input(path, size):
+    """Letterbox as the app does: longest side -> size, padded bottom/right with black. Returns ([1,size,size,3] RGB 0-255, scale)."""
+    import numpy as np
+    from PIL import Image, ImageOps
+    im = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+    k = size / max(im.size)
+    im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.BILINEAR)
+    x = np.zeros((1, size, size, 3), np.float32)
+    x[0, :im.height, :im.width] = np.asarray(im, np.float32)
+    return x, k
+
+
+def build_yunet():
+    """YuNet 2023mar, any input size (its reshapes are -1 and its upsampling is by scale). The graph takes [1,S,S,3] RGB 0-255
+    and returns [N,15] rows of (score, cx, cy, w, h, then 5 landmarks as x, y) in input pixels, decoded as OpenCV's
+    FaceDetectorYN does, so the app only thresholds and merges overlaps."""
+    import shutil
+    import numpy as np, onnx, onnxruntime, torch, litert_torch
+    from onnx2torch import convert
+    from ai_edge_litert.interpreter import Interpreter
+    src = fetch(YUNET_URL, "yunet/face_detection_yunet_2023mar.onnx")
+
+    class Up2(torch.nn.Module):
+        def forward(self, x, *_):
+            return torch.nn.functional.interpolate(x, scale_factor=2, mode="nearest")
+
+    class Fixed(torch.nn.Module):
+        def __init__(self, shape):
+            super().__init__(); self.shape = shape
+
+        def forward(self, x, *_):
+            return x.reshape(self.shape)
+
+    class YuNet(torch.nn.Module):
+        def __init__(self, size):
+            super().__init__()
+            self.net = convert(onnx.load(str(src)))
+            # onnx2torch's Resize and Reshape read their constant scale / shape at runtime, which export can't trace: bake them in
+            for node in self.net.graph.nodes:
+                kind = type(getattr(self.net, node.target, None)).__name__ if node.op == "call_module" else ""
+                if kind == "OnnxResize":
+                    setattr(self.net, node.target, Up2())
+                elif kind == "OnnxReshape":
+                    shape = node.args[1]
+                    setattr(self.net, node.target, Fixed(tuple(self.net.get_buffer(shape.target).tolist()
+                                                               if shape.op == "get_attr" else shape)))
+            pri = []  # (col, row, stride) per output cell, strides 8 / 16 / 32 in output order
+            for st in (8, 16, 32):
+                n = size // st
+                r, c = torch.meshgrid(torch.arange(n), torch.arange(n), indexing="ij")
+                pri.append(torch.stack([c.flatten(), r.flatten(), torch.full((n * n,), st)], 1))
+            self.register_buffer("pri", torch.cat(pri).float())
+
+        def forward(self, x):
+            o = self.net(x.permute(0, 3, 1, 2).flip(1))  # the model wants BGR NCHW, 0-255
+            cls, obj, box = (torch.cat(o[i:i + 3], 1)[0] for i in (0, 3, 6))
+            score = (cls.clamp(0, 1) * obj.clamp(0, 1)).sqrt()[:, 0]
+            st = self.pri[:, 2]
+            kps = torch.cat(o[9:12], 1)[0]  # 5 landmarks (right eye, left eye, nose, right / left mouth corner) as cell offsets
+            kx = (kps[:, 0::2] + self.pri[:, 0:1]) * st[:, None]
+            ky = (kps[:, 1::2] + self.pri[:, 1:2]) * st[:, None]
+            return torch.cat([torch.stack([score, (self.pri[:, 0] + box[:, 0]) * st, (self.pri[:, 1] + box[:, 1]) * st,
+                                           box[:, 2].exp() * st, box[:, 3].exp() * st], 1),
+                              torch.stack([kx, ky], 2).flatten(1)], 1)
+
+    face = ROOT / ".maestro/.cache/photos/dd_005.jpg"  # a close-up face from the e2e photo set
+    for size in YUNET_SIZES:
+        x, _ = yunet_input(face if face.exists() else GOLDEN_IMAGE, size)
+        mod = YuNet(size).eval()
+        out = CACHE / "bench" / f"yunet_{size}.tflite"; out.parent.mkdir(parents=True, exist_ok=True)
+        litert_torch.convert(mod, (torch.from_numpy(x),)).export(str(out))
+        # the raw ONNX model's scores (any size works in ORT too) vs the exported graph's
+        m = onnx.load(str(src))
+        for d in m.graph.input[0].type.tensor_type.shape.dim[2:]:
+            d.dim_param = "s"
+        sess = onnxruntime.InferenceSession(m.SerializeToString())
+        raw = sess.run(None, {"input": np.ascontiguousarray(x.transpose(0, 3, 1, 2)[:, ::-1])})
+        ref = np.sqrt(np.clip(np.concatenate(raw[0:3], 1), 0, 1) * np.clip(np.concatenate(raw[3:6], 1), 0, 1))[0, :, 0]
+        it = Interpreter(model_path=str(out)); it.allocate_tensors()
+        it.set_tensor(it.get_input_details()[0]["index"], x); it.invoke()
+        got = it.get_tensor(it.get_output_details()[0]["index"])
+        err = np.abs(got[:, 0] - ref).max()
+        print(f"  {out.name}: {out.stat().st_size / 1e6:.2f} MB, best face score {got[:, 0].max():.3f}, max score diff vs ONNX {err:.4f}")
+        assert err < 1e-3, f"{out.name}: export drifted"
+        if size == 320:
+            shutil.copy(out, NATIVE / out.name)
+        print(f"  adb push {out} /data/local/tmp/ && adb shell \"run-as com.daydump.app sh -c 'mkdir -p files/models && "
+              f"cat /data/local/tmp/{out.name} > files/models/{out.name}'\"")
+
+
+SFACE_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
+# OpenCV's FaceRecognizerSF alignment target: the 5 YuNet landmarks in a 112x112 crop
+SFACE_TEMPLATE = [(38.2946, 51.6963), (73.5318, 51.5014), (56.0252, 71.7366), (41.5493, 92.3655), (70.7299, 92.2041)]
+
+
+def build_sface():
+    """SFace 2021dec. The graph takes [1,112,112,3] RGB 0-255 (a face aligned to SFACE_TEMPLATE, as FaceRecognizerSF.alignCrop
+    does) and returns the L2-normalized 128-d feature: same person when cosine > 0.363 (OpenCV's threshold)."""
+    import numpy as np, onnx, onnxruntime, torch
+    from onnx2torch import convert
+    from ai_edge_quantizer import recipe
+    src = fetch(SFACE_URL, "sface/face_recognition_sface_2021dec.onnx")
+
+    class SFace(torch.nn.Module):
+        def __init__(self):
+            super().__init__(); self.net = convert(onnx.load(str(src)))
+
+        def forward(self, x):
+            f = self.net(x.permute(0, 3, 1, 2))
+            return f / (f * f).sum(-1, keepdim=True).sqrt()  # no L2_NORMALIZATION op: keeps the graph plain
+
+    rng = np.random.default_rng(0)
+    x = torch.from_numpy(rng.uniform(0, 255, (4, 112, 112, 3)).astype(np.float32))
+    out = NATIVE / "sface.tflite"
+    # plain int8 weights drift to cosine 0.955 on a real face vs OpenCV; this recipe (23.5 MB) stays at 1.000
+    got = export_tflite(SFace().eval(), x, out, recipe.dynamic_wi8c_hr_afp32(), floor=0.999)
+    sess = onnxruntime.InferenceSession(str(src))
+    ref = np.concatenate([sess.run(None, {"data": r[None].transpose(0, 3, 1, 2)})[0] for r in x.numpy()])
+    ref /= np.linalg.norm(ref, axis=-1, keepdims=True)
+    print(f"  vs ONNX cosine min {(ref * got).sum(-1).min():.4f}")
+
+
 def build_vocab():
     import numpy as np, torch
     m, tok, _ = load_model()
@@ -315,6 +443,6 @@ def build_cities():
 
 
 if __name__ == "__main__":
-    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities"]
+    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface"]
     for s in steps:
-        {"clip": build_clip, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench}[s]()
+        {"clip": build_clip, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface}[s]()

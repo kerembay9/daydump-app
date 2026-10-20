@@ -56,6 +56,8 @@ class ClipEmbedderModule : Module() {
   private val ctx: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
   private val clip get() = ClipEngine.get(ctx)
+  private val yunet by lazy { YuNet(ctx, null, 320) }
+  private val sface by lazy { SFace(ctx) }
 
   override fun definition() = ModuleDefinition {
     Name("ClipEmbedder")
@@ -102,6 +104,13 @@ class ClipEmbedderModule : Module() {
     // Top-k vocabulary concepts per vector (n*512 base64) -> flat n*k ids/scores, best first.
     AsyncFunction("topConcepts") Coroutine { vecsB64: String, k: Int ->
       withContext(Dispatchers.Default) { clip.topConcepts(decode(vecsB64), k) }
+    }
+
+    // YuNet faces per photo, best first (+ SFace vectors with embed); a photo that fails to decode has none.
+    AsyncFunction("faces") Coroutine { uris: List<String>, minScore: Double, embed: Boolean ->
+      withContext(Dispatchers.Default) {
+        uris.map { u -> runCatching { yunet.detect(ctx, u, minScore, if (embed) sface else null) }.getOrElse { mapOf("aspect" to 1.0, "faces" to emptyList<Any>()) } }
+      }
     }
 
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
@@ -406,7 +415,7 @@ class ClipEngine private constructor(private val ctx: Context) {
 internal fun floatBytes(v: FloatArray): ByteArray =
   ByteBuffer.allocate(v.size * 4).order(ByteOrder.LITTLE_ENDIAN).also { it.asFloatBuffer().put(v) }.array()
 
-private fun encode(v: FloatArray): String = Base64.encodeToString(floatBytes(v), Base64.NO_WRAP)
+internal fun encode(v: FloatArray): String = Base64.encodeToString(floatBytes(v), Base64.NO_WRAP)
 
 private fun decode(s: String): FloatArray {
   val fb = ByteBuffer.wrap(Base64.decode(s, Base64.DEFAULT)).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
