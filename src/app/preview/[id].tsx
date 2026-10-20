@@ -135,7 +135,8 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           note: `Caption copied${r.saved ? ` · ${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the DayDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`,
         });
       } else {
-        const k = await saveOnly(deps, dump, hd);
+        const { slides: k, id } = await saveOnly(deps, dump, hd);
+        setDump((d) => ({ ...d, id }));
         setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the DayDump album.` });
       }
     } catch (e) {

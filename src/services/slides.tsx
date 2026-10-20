@@ -123,7 +123,8 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): P
     }
     const img = await drawAsImage(<SlideDrawing layout={s.layout} fit={fit} width={width} height={height} photos={photos} />, { width, height });
     if (!img) throw new Error(`slide ${i + 1} did not render`);
-    const file = new File(dir, `${d.id}-${stamp}-${i + 1}.jpg`);
+    // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
+    const file = new File(dir, `${d.id.replace(/[^\w-]/g, '_')}-${stamp}-${i + 1}.jpg`);
     file.write(img.encodeToBytes(ImageFormat.JPEG, highRes ? 100 : 92));
     out.push(file.uri);
     img.dispose();

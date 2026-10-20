@@ -37,9 +37,10 @@ export async function postDump(x: PostDeps, d: Dump, caption: string, tags: stri
   return { to, saved, marked, slides: uris.length, id };
 }
 
-/** Save only: render and save to the album; not posted. Returns the slide count. */
-export async function saveOnly(x: Pick<PostDeps, 'exportSlides' | 'saveToAlbum'>, d: Dump, hd?: boolean) {
+/** Save only: render and save to the album; not posted. A story preview gets its draft, so it shows in Drafts. */
+export async function saveOnly(x: Pick<PostDeps, 'exportSlides' | 'saveToAlbum' | 'persist'>, d: Dump, hd?: boolean) {
   const uris = await x.exportSlides(d, hd);
   await x.saveToAlbum(uris);
-  return uris.length;
+  const id = isDumpId(d.id) ? d.id : (await x.persist(d)).id;
+  return { slides: uris.length, id };
 }

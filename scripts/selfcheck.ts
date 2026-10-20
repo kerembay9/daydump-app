@@ -317,9 +317,11 @@ async function posting() {
   r = await postDump(fake({ markFail: true }), draft, 'c', [], 'instagram');
   assert.equal(r.marked, false);
   calls.splice(0);
-  // Save only: export + album, never share or mark
-  assert.equal(await saveOnly(fake(), draft), 2);
+  // Save only: export + album, never share or mark; a story preview gets its draft
+  assert.deepEqual(await saveOnly(fake(), draft), { slides: 2, id: 'd_1' });
   assert.deepEqual(calls.splice(0), ['export d_1', 'album 2']);
+  assert.deepEqual(await saveOnly(fake(), dump({ id: 'topic:2740:1749039660000' })), { slides: 2, id: 'd_new' });
+  assert.deepEqual(calls.splice(0), ['export topic:2740:1749039660000', 'album 2', 'persist topic:2740:1749039660000']);
 }
 
 /** Settles once every check ran; __tests__/selfcheck.test.ts awaits it under jest. */

@@ -52,32 +52,37 @@ function SearchBar({ query, onQuery, onCommit, recents, suggestions, onRemoveRec
   useEffect(() => { const k = Keyboard.addListener('keyboardDidHide', () => input.current?.blur()); return () => k.remove(); }, []);
   const pick = (q: string) => { onQuery(q); last.current = q; input.current?.blur(); Keyboard.dismiss(); };
   const rows = recents.length ? recents.slice(0, 4) : suggestions;
+  // the dropdown is the field's sibling, not its child: Android leaves views outside their parent's bounds out of the
+  // accessibility tree (TalkBack, Maestro), so it hangs off the screen root at the field's y + 44
+  const [top, setTop] = useState(0);
   return (
-    <View style={{ marginBottom: 8, zIndex: 30 }}>
-      <FrameCard radius={16} style={[{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
-        <Icons.search size={16} color={t.inkMuted} />
-        <TextInput
-          ref={input}
-          value={query}
-          onChangeText={onQuery}
-          onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); onCommit(last.current); }}
-          onSubmitEditing={() => onCommit(query)}
-          placeholder="Search keyword, place, date..."
-          placeholderTextColor={t.inkMuted}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={[ui(12, 500), { flex: 1, color: t.ink, padding: 0 }]}
-        />
-        {query ? (
-          <Tap onPress={() => onQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
-            <Icons.close size={12} color={t.inkMuted} />
-          </Tap>
-        ) : null}
-      </FrameCard>
+    <>
+      <View onLayout={(e) => setTop(e.nativeEvent.layout.y + 44)} style={{ marginHorizontal: 16, marginBottom: 8, zIndex: 30 }}>
+        <FrameCard radius={16} style={[{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
+          <Icons.search size={16} color={t.inkMuted} />
+          <TextInput
+            ref={input}
+            value={query}
+            onChangeText={onQuery}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); onCommit(last.current); }}
+            onSubmitEditing={() => onCommit(query)}
+            placeholder="Search keyword, place, date..."
+            placeholderTextColor={t.inkMuted}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={[ui(12, 500), { flex: 1, color: t.ink, padding: 0 }]}
+          />
+          {query ? (
+            <Tap onPress={() => onQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+              <Icons.close size={12} color={t.inkMuted} />
+            </Tap>
+          ) : null}
+        </FrameCard>
+      </View>
       {focused && rows.length ? (
-        <FrameCard radius={16} padding={8} style={{ position: 'absolute', top: 44, left: 0, right: 0, borderColor: t.borderStrong, boxShadow: `${t.shadowCard}, 0 10px 15px -3px rgba(0,0,0,0.1)` }}>
+        <FrameCard radius={16} padding={8} style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 30, borderColor: t.borderStrong, boxShadow: `${t.shadowCard}, 0 10px 15px -3px rgba(0,0,0,0.1)` }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 6, paddingBottom: 4 }}>
             <Text style={[label(9.5, 0.12), { color: t.inkMuted }]}>{recents.length ? 'Last searches' : 'Try'}</Text>
             <Tap onPress={() => { input.current?.blur(); Keyboard.dismiss(); }} hitSlop={8} accessibilityRole="button">
@@ -97,7 +102,7 @@ function SearchBar({ query, onQuery, onCommit, recents, suggestions, onRemoveRec
           ))}
         </FrameCard>
       ) : null}
-    </View>
+    </>
   );
 }
 
@@ -356,9 +361,9 @@ export default function Create() {
     <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
       <View style={{ paddingHorizontal: 16, zIndex: 10 }}>
         <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
-        <SearchBar query={query} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
-          onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
       </View>
+      <SearchBar query={query} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
+        onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
 
       <FlatList
         data={gridRows}
