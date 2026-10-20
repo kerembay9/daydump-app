@@ -8,7 +8,7 @@ import { FrameCard } from '../components/ui/FrameCard';
 import { IconButton } from '../components/ui/TopHeader';
 import { Icons } from '../components/ui/Icons';
 import { Pill } from '../components/ui/Pill';
-import { FaceCircle } from '../components/FaceCircle';
+import { FaceThumb } from '../components/FaceCircle';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 import { useApp } from '../state/AppState';
@@ -20,7 +20,7 @@ import { faceVec, groupFaces } from '../services/faces';
  * saved because grouping takes seconds (cleared by a scan, redone once after it).
  */
 type Saved = { scans: Record<string, FaceScan>; names: Record<string, string>; groups?: Record<string, number> };
-type Shot = { key: string; uri: string; aspect: number; f: Face };
+type Shot = { key: string; uri: string; f: Face };
 type Person = { shots: Shot[]; photos: number; name: string };
 
 const file = () => new File(Paths.document, 'people-experiment.json');
@@ -34,7 +34,7 @@ async function load(): Promise<Saved> {
 const save = (s: Saved) => { try { file().write(JSON.stringify(s)); } catch (e) { console.warn('[people] save failed:', e); } };
 
 const shotsOf = (s: Saved): Shot[] => Object.entries(s.scans).flatMap(([uri, sc]) =>
-  sc.faces.flatMap((f, i) => (f.vec && f.h >= MIN_FACE ? [{ key: `${uri}#${i}`, uri, aspect: sc.aspect, f }] : [])));
+  sc.faces.flatMap((f, i) => (f.vec && f.h >= MIN_FACE ? [{ key: `${uri}#${i}`, uri, f }] : [])));
 
 /** Face key -> person for every face. ponytail: 4 s for 1,784 faces in JS on the A54; native grouping if it grows. */
 function groupAll(s: Saved): Record<string, number> {
@@ -48,7 +48,7 @@ function groupAll(s: Saved): Record<string, number> {
 /** The saved groups as people, most photos first; a person's name is the one given to most of their faces. */
 function people(s: Saved, groups: Record<string, number>): Person[] {
   const by = new Map<number, Shot[]>();
-  shotsOf(s).forEach((x) => { const g = groups[x.key]; if (g !== undefined) by.set(g, [...(by.get(g) ?? []), x]); });
+  shotsOf(s).forEach((x) => { const g = groups[x.key]; if (g !== undefined) (by.get(g) ?? by.set(g, []).get(g)!).push(x); });
   return [...by.values()]
     .map((sh) => {
       const votes = new Map<string, number>();
@@ -146,7 +146,7 @@ export default function People() {
           return (
             <FrameCard radius={18} padding={12} style={{ marginTop: 10 }} onPress={() => setOpen(open === key ? null : key)}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <FaceCircle uri={p.shots[0].uri} box={p.shots[0].f} aspect={p.shots[0].aspect} size={56} />
+                <FaceThumb uri={p.shots[0].uri} box={p.shots[0].f} size={56} />
                 <View style={{ flex: 1 }}>
                   <TextInput defaultValue={p.name} onEndEditing={(e) => rename(p, e.nativeEvent.text.trim())} placeholder="Who is this?"
                     placeholderTextColor={t.inkMuted} returnKeyType="done" style={[display(17), { color: t.ink, paddingVertical: 4 }]} />
@@ -155,7 +155,7 @@ export default function People() {
               </View>
               {open === key && (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                  {p.shots.slice(0, 24).map((x) => <FaceCircle key={x.key} uri={x.uri} box={x.f} aspect={x.aspect} size={44} />)}
+                  {p.shots.slice(0, 24).map((x) => <FaceThumb key={x.key} uri={x.uri} box={x.f} size={44} />)}
                 </View>
               )}
             </FrameCard>
