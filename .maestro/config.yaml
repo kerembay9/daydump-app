@@ -1,0 +1,4 @@
+# Every NN_*.yaml is independent (01/02 start from wiped data, the rest via subflows/ready.yaml),
+# so they can run in any order or split across emulators by e2e.py.
+flows:
+  - "*.yaml"

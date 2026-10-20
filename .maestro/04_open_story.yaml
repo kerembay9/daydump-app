@@ -1,0 +1,9 @@
+appId: com.daydump.app
+name: 04 a dump opens
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Preview"
+- assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
+- assertVisible: "Save only"
+- tapOn: "Back"
+- assertVisible: "Discover"

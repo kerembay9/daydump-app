@@ -1,0 +1,19 @@
+# Startup for every flow except 01: launch with photo access granted, skip onboarding if it shows,
+# wait until the whole library is indexed (strip gone) and Discover has a dump.
+appId: com.daydump.app
+---
+- launchApp:
+    permissions:
+      all: allow
+- runFlow:
+    when:
+      visible: "Skip"
+    commands:
+      - tapOn: "Skip"
+- tapOn: "Discover"
+- extendedWaitUntil:
+    visible: "Preview"
+    timeout: 300000
+- extendedWaitUntil:
+    notVisible: "Reading your library.*"
+    timeout: 600000

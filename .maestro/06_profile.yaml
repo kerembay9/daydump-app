@@ -1,0 +1,15 @@
+appId: com.daydump.app
+name: 06 profile screen
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- assertVisible: "Profile & Settings"
+- assertVisible: "Connected accounts"
+- assertVisible: "100, Total Photos"
+- waitForAnimationToEnd
+- takeScreenshot: vr_profile
+- scrollUntilVisible:
+    element: "Daily recap"
+    direction: DOWN
+- tapOn: "Back"
+- assertVisible: "Discover"

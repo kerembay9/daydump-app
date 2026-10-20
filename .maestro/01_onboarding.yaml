@@ -1,0 +1,31 @@
+# Cold launch with wiped app data: onboarding slides, then the real photo-permission dialog.
+# clearState wipes DayDump's data on the device (fine on emulators; careful on a phone).
+appId: com.daydump.app
+name: 01 onboarding + photo permission
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+- extendedWaitUntil:
+    visible: "Allow DayDump to send you notifications\\?|Turn camera roll chaos into dumps"
+    timeout: 30000
+- runFlow: subflows/dismiss_notifications.yaml
+- extendedWaitUntil:
+    visible: "Turn camera roll chaos into dumps"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: vr_onboarding_1
+- tapOn: "Continue"
+- assertVisible: "Picked on your phone, not in the cloud"
+- waitForAnimationToEnd
+- takeScreenshot: vr_onboarding_2
+- tapOn: "Continue"
+- assertVisible: "Ready for your first dump\\?"
+- waitForAnimationToEnd
+- takeScreenshot: vr_onboarding_3
+- tapOn: "Allow photos & start"
+- runFlow: subflows/grant_photos.yaml
+- runFlow: subflows/dismiss_notifications.yaml
+- assertNotVisible: "Allow photos & start"
+- assertVisible: "Discover"

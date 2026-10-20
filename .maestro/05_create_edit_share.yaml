@@ -1,0 +1,24 @@
+# Pick 2 photos -> Edit -> Preview, stopping at the share/export step
+# (doesn't tap Post / Save only: those leave the app or write to the photo album).
+appId: com.daydump.app
+name: 05 create -> edit -> share step
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- extendedWaitUntil:
+    visible: "Photo from .*"
+    timeout: 60000
+- tapOn:
+    text: "Photo from .*"
+    index: 0
+- tapOn:
+    text: "Photo from .*"
+    index: 1
+- tapOn: "Continue with .*"
+- assertVisible: "Sizes · Filter % · Captions"
+- waitForAnimationToEnd
+- takeScreenshot: vr_edit
+- tapOn: "Preview"
+- assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
+- assertVisible: "Save only"
+- assertVisible: "Quality: .*"

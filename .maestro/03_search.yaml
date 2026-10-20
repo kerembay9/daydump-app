@@ -1,0 +1,18 @@
+# Text search on Create. Other query: maestro test -e QUERY=beach 03_search.yaml
+appId: com.daydump.app
+name: 03 search returns results
+env:
+  QUERY: sky
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- tapOn: "Search keyword, place, date..."
+- inputText: ${QUERY}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Matches for .*"
+    timeout: 30000
+- assertNotVisible: "No matches"
+- assertVisible: "Photo from .*"
+- waitForAnimationToEnd
+- takeScreenshot: vr_search_${QUERY}
