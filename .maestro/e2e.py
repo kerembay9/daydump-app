@@ -19,7 +19,10 @@ SDK = Path(os.environ.get('ANDROID_HOME', Path.home() / 'Android/Sdk'))
 ADB, EMU = str(SDK / 'platform-tools/adb'), str(SDK / 'emulator/emulator')
 AVDMANAGER = str(SDK / 'cmdline-tools/latest/bin/avdmanager')
 MAESTRO = shutil.which('maestro') or str(Path.home() / '.maestro/bin/maestro')
-ENV = {**os.environ, 'ANDROID_HOME': str(SDK), 'JAVA_HOME': os.environ.get('JAVA_HOME', '/usr/lib/jvm/java-17-openjdk-amd64')}
+ENV = {**os.environ, 'ANDROID_HOME': str(SDK), 'JAVA_HOME': os.environ.get('JAVA_HOME', '/usr/lib/jvm/java-17-openjdk-amd64'),
+       # emulator overlays (~1 GB each) and Maestro's temp files on disk, not in /tmp: tmpfs eats RAM,
+       # a crashed emulator leaves its overlay behind, and a full /tmp stops Maestro from starting
+       'ANDROID_TMP': str(CACHE / 'tmp'), 'TMPDIR': str(CACHE / 'tmp'), 'JAVA_TOOL_OPTIONS': f'-Djava.io.tmpdir={CACHE / "tmp"}'}
 AVD, IMAGE, SNAP, PKG = 'daydump-e2e', 'system-images;android-35;google_apis;x86_64', 'seeded', 'com.daydump.app'
 APK = {'e2e': APP / 'android/app/build/outputs/apk/e2e/app-e2e.apk',
        'debug': APP / 'android/app/build/outputs/apk/debug/app-debug.apk'}
@@ -49,6 +52,7 @@ def photo_set():
         lst = json.load(urllib.request.urlopen(f'https://picsum.photos/v2/list?page=1&limit={N_PHOTOS}', timeout=30))
         ids_file.write_text(json.dumps([p['id'] for p in lst]))
     ids = json.loads(ids_file.read_text())
+    ids[5] = '1027'  # list page 1 has no faces; a close-up portrait (day 1, portrait slot) for the avatar selfie finder
 
     def dms(x):
         m, s = divmod(abs(x) * 3600, 60)
@@ -107,8 +111,11 @@ def boot(port, headed=False, gpu='swiftshader_indirect', seeded=True, delay=0):
     if not headed:
         args.append('-no-window')
     OUT.mkdir(parents=True, exist_ok=True)
+    Path(ENV['ANDROID_TMP']).mkdir(parents=True, exist_ok=True)
     for attempt in range(2):
-        proc = sp.Popen([str(x) for x in args], env=ENV, stdout=open(OUT / f'{serial}.emulator.log', 'a'), stderr=sp.STDOUT, start_new_session=True)
+        # niced so the desktop stays responsive while emulators run
+        proc = sp.Popen([str(x) for x in args], env=ENV, stdout=open(OUT / f'{serial}.emulator.log', 'a'), stderr=sp.STDOUT, start_new_session=True,
+                        preexec_fn=lambda: os.nice(10))
         t0 = time.time()
         while time.time() - t0 < 240 and proc.poll() is None:
             # boot_completed fires before shared storage is mounted
@@ -139,6 +146,9 @@ def setup(a):
         for k in ('window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'):
             adb(serial, 'shell', 'settings', 'put', 'global', k, '0')
         adb(serial, 'shell', 'settings', 'put', 'secure', 'show_ime_with_hard_keyboard', '0')
+        # pin gesture navigation: a cold boot sometimes comes up with no nav bar, 60 px taller, shifting every baseline
+        adb(serial, 'shell', 'cmd', 'overlay', 'enable-exclusive', '--category', 'com.android.internal.systemui.navbar.gestural')
+        time.sleep(5)
         adb(serial, 'shell', 'mkdir', '-p', '/sdcard/Pictures/DayDumpE2E')
         adb(serial, 'push', *sorted(map(str, photos.glob('*.jpg'))), '/sdcard/Pictures/DayDumpE2E/')
         adb(serial, 'shell', 'content', 'call', '--uri', 'content://media', '--method', 'scan_volume', '--arg', 'external_primary', check=False)
@@ -200,6 +210,8 @@ def run_flows(a):
     if not apk.exists():
         raise SystemExit(f'no APK at {apk}; run ./e2e.py build{" --debug" if a.debug else ""}')
     flows = [HERE / f for f in a.flows] if a.flows else sorted(HERE.glob('[0-9]*.yaml'))
+    if sp.run(['pgrep', '-f', f'-avd {AVD}'], capture_output=True).returncode:  # none of ours running: drop old overlays
+        shutil.rmtree(ENV['ANDROID_TMP'], ignore_errors=True)
     n = min(a.n, len(flows))
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -286,7 +298,7 @@ def main():
     b.set_defaults(fn=build)
     r = sub.add_parser('run')
     r.add_argument('flows', nargs='*', help='flow files in .maestro/ (default: all NN_*.yaml)')
-    r.add_argument('-n', type=int, default=4, help='parallel emulators (default 4; ~3 GB RAM + 2 cores each)')
+    r.add_argument('-n', type=int, default=3, help='parallel emulators (default 3; ~3 GB RAM + 2 cores each, keep n x 4 GB below free RAM)')
     r.add_argument('--headed', action='store_true', help='show emulator windows')
     r.add_argument('--debug', action='store_true', help='debug APK + Metro on :8081 (JS logs, slower)')
     r.add_argument('--apk', help='install this APK instead')

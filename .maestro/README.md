@@ -10,10 +10,10 @@ Scripted pass over the main flows on as many parallel Android emulators as the P
 .maestro/e2e.py run -n 4       # all flows on 4 headless emulators
 ```
 
-Measured: emulators boot from the snapshot in about 20 s. Each flow takes 25–90 s, including wiping app data and re-indexing the 100 photos (about 15 s). The 25 flows add up to about 25 min, so about 5 min on 6 emulators.
+Measured: emulators boot from the snapshot in about 20 s. Each flow takes 25–90 s, including wiping app data and re-indexing the 100 photos (about 15 s). The 26 flows add up to about 26 min, so about 9 min on the default 3 emulators.
 
 - `--headed` shows the emulator windows; leave it off for headless.
-- `-n N` sets the number of emulators. Each takes about 3 GB of RAM and 2 cores; the flows are split across them.
+- `-n N` sets the number of emulators (default 3). Each takes about 3 GB of RAM plus a ~1 GB disk overlay in `.cache/tmp`, and 2 cores (niced); keep N × 4 GB under your free RAM or the PC swaps and freezes.
 - `run 03_search.yaml 06_profile.yaml` runs only those flows.
 - `--keep` leaves the emulators running so you can poke at them; kill them with `adb -s emulator-5560 emu kill`.
 - Results go to `.maestro/out/<emulator>/`: `maestro.log`, `junit.xml`, the full `logcat.txt` (`ReactNativeJS` lines are the JS console), screenshots, and `*.diff.png` for failed screen diffs.
@@ -38,7 +38,7 @@ How they stay out of the way:
 
 ## Photo set
 
-`.maestro/.cache/photos/` holds 100 fixed Lorem Picsum photos (list page 1). There are 10 per "day" every 3 days from 1 June 2025, and the days rotate GPS between Istanbul, Paris, Lisbon, Madrid and none. The photos are baked into the snapshot under `/sdcard/Pictures/DayDumpE2E`. After changing the photo logic in `e2e.py`, delete `.cache/photos` and re-run `setup`.
+`.maestro/.cache/photos/` holds 100 fixed Lorem Picsum photos (list page 1), except `dd_005`: Picsum 1027, a close-up face for the avatar selfie finder. There are 10 per "day" every 3 days from 1 June 2025, and the days rotate GPS between Istanbul, Paris, Lisbon, Madrid and none. The photos are baked into the snapshot under `/sdcard/Pictures/DayDumpE2E`. After changing the photo logic in `e2e.py`, delete `.cache/photos` and re-run `setup`.
 
 Android only fills MediaStore's `datetaken` when EXIF has `OffsetTimeOriginal`. Without it, every photo falls back to the push time and all the dumps land on one day. The file mtime is set as well.
 
@@ -56,12 +56,13 @@ Every `NN_*.yaml` is independent, so any subset runs in any order on any emulato
 | Preview + share | `15` IG / grid / TikTok mocks, like, save, caption, HD, handle; `16` Save only → Drafts; `17` Post → Posted → Reuse |
 | Library | `18` drafts: search, delete with confirm, empty state |
 | Navigation | `19` tab bar + Android Back, `25` deep links (`daydump://preview/today` and unknown ids) |
-| Profile | `06` overview, `20` name, handle and defaults reach a new dump, `21` dark theme, `22` Terms/Privacy + developer tools, `23` recap/sensitive switches + Reindex |
+| Profile | `06` overview, `20` name, handle and defaults reach a new dump, `21` dark theme, `26` avatar selfie finder, `22` Terms/Privacy + developer tools, `23` recap/sensitive switches + Reindex |
 
 - Flows marked `writes-album` (`16`, `17`) really export slides to the emulator's DayDump album. `e2e.py` runs them last on each emulator, because the new photos change counts and screens. On a phone they leave files in the gallery.
 - `17` posts through the share chooser, since the emulator has no Instagram or TikTok.
-- Not covered: photos shared into DayDump from another app (Maestro can't send a share intent), purchases, and the avatar selfie finder (the test photos contain no faces).
+- Not covered: photos shared into DayDump from another app (Maestro can't send a share intent), purchases,.
 - The app asks for notification permission at first launch, before onboarding (`NotificationService.init()` in `AppState.tsx`). `subflows/dismiss_notifications.yaml` taps "Don't allow" whenever that prompt shows.
+- `26`: the finder's first pick is a cat nose; the face (`dd_005`) ranks #5 of 20. `vr_avatar_selfie` records that until `src/services/selfie.ts` checks for a real face.
 - Known failure: `16` fails until the app is fixed. Save only can't export a topic dump: the export file name contains `:` (from the dump id), so `MediaLibrary.createAlbumAsync` can't tell its MIME type (`src/services/slides.tsx`, `exportSlides`).
 - Rare launch crashes seen on the emulator, both right after `clearState`: a `SQLITE_IOERR_FSYNC` in AsyncStorage, and a SIGSEGV in React Native Fabric (`MountingCoordinator::pullTransaction`). A re-run passes.
 - `--debug` mode hasn't been run yet. Headless and `--headed` both pass.

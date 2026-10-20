@@ -6,7 +6,12 @@ appId: com.daydump.app
     clearState: true
     permissions:
       all: allow
-# onboarding always shows after clearState, sometimes late on a cold emulator
+# onboarding always shows after clearState, sometimes late on a cold emulator; the notification
+# prompt can still come first (the "all: allow" grant sometimes lands after launch) and hides it
+- extendedWaitUntil:
+    visible: "Skip|Allow DayDump to send you notifications\\?"
+    timeout: 60000
+- runFlow: dismiss_notifications.yaml
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 60000

@@ -1,0 +1,27 @@
+# Profile photo: the selfie finder (CLIP) offers "Is this you?", Use sets it, Remove clears it.
+# Known weak spot: the close-up face (dd_005) ranks only #5 of 20; #1 is a cat nose, so vr_avatar_selfie shows the cat.
+# When a face detector lands, re-record with --update: the baseline should then show dd_005.
+appId: com.daydump.app
+name: 26 avatar selfie finder
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- tapOn: "Change profile photo"
+- extendedWaitUntil:
+    visible: "Is this you\\?"
+    timeout: 60000
+- assertVisible: "Found on your phone\\. It never left your device\\."
+- waitForAnimationToEnd
+- takeScreenshot: vr_avatar_selfie
+- tapOn: "Use this photo"
+- assertNotVisible: "Is this you\\?"
+- tapOn: "Change profile photo"
+- extendedWaitUntil:
+    visible: "Remove photo"
+    timeout: 30000
+- tapOn: "Remove photo"
+- tapOn: "Change profile photo"
+- extendedWaitUntil:
+    visible: "Is this you\\?"
+    timeout: 60000
+- assertNotVisible: "Remove photo"
