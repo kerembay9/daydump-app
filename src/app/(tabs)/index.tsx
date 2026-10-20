@@ -15,7 +15,7 @@ import { PhotoStack, StackKind } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
-import { IndexStrip } from '../../components/IndexStrip';
+import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const edit = (id: string) => router.push({ pathname: '/edit/[id]', params: { id } });
@@ -120,7 +120,8 @@ function Hero({ s }: { s: Story }) {
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, progress, paused, pause, resume, shuffleStories } = useApp();
+  const { stories, loaded, permission, progress, paused, coverageSince, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const [loadingMore, setLoadingMore] = useState(false);
   const [heroId, setHeroId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -151,7 +152,13 @@ export default function Discover() {
   const header = (
     <>
       <TopHeader title={name ? `Hi, ${name}` : 'Hi there'} right={<AvatarButton onPress={() => router.push('/profile')} />} />
-      <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} onPause={pause} onResume={resume} />
+      <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} coverageSince={coverageSince} onPause={pause} onResume={resume} />
+      {(progress || paused) && hero && permission !== false && (
+        <Text style={[ui(11, 400), { color: t.inkMuted, marginTop: 2, paddingHorizontal: 2 }]}>
+          {/* the strip shows the reach unless it's busy with the battery line or paused */}
+          {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
+        </Text>
+      )}
       {permission === false ? (
         <TapedNote
           title="Let DayDump see your photos"
@@ -186,6 +193,12 @@ export default function Discover() {
         keyExtractor={(b) => b[0].id}
         renderItem={({ item }) => <Bento block={item} onPick={pick} />}
         ListHeaderComponent={header}
+        ListFooterComponent={moreStories ? (
+          <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}
+            label="Discover more dumps" style={{ height: 44, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[ui(13, 600), { color: t.ink }]}>{loadingMore ? 'Making more dumps…' : 'Discover more dumps'}</Text>
+          </FrameCard>
+        ) : null}
         showsVerticalScrollIndicator={false}
         initialNumToRender={2}
         windowSize={5}

@@ -1,26 +1,36 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState as RNAppState } from 'react-native';
 import { indexLibrary, Library, loadLibrary, pausedIndex, pauseIndexing, resumeIndexing, wasHandedOff } from '../services/index/photoIndex';
 import { buildStories, markSeen, Story } from '../services/stories';
-import { GalleryService, isCameraPhoto } from '../services/galleryService';
+import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
 import { addShareIntentListener, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
 
-export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; camera: boolean; batteryPct?: number | null };
+/** since = creation time of the photo just indexed (camera newest-first, then the rest newest-first) */
+export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; batteryPct?: number | null };
 
 /** Stories marked seen by a shuffle (the ones on screen). */
 const SHUFFLE_SEEN = 6;
+/** Older than this = undated (1970 rows sort first): not a real coverage edge. */
+const DATED = 1e12;
+/** Discover builds this many stories, and this many more per "Show more" (building a story's picks is the costly part). */
+export const STORY_PAGE = 30;
 
 type AppStateValue = {
   library: Library | null;
-  /** every story, best first */
+  /** the top stories, best first (STORY_PAGE at a time) */
   stories: Story[];
+  /** ranked stories not built yet ("Show more" on Discover) */
+  moreStories: number;
+  showMoreStories: () => Promise<void>;
   /** stories have been built from the saved index once (so an empty list really means none yet) */
   loaded: boolean;
   /** indexing in progress (foreground or the background worker's fast mode); null = idle */
   progress: IndexProgress | null;
+  /** creation time of the oldest dated photo indexed so far (how far back dumps reach); null = none yet */
+  coverageSince: number | null;
   /** indexing paused with work left */
   paused: { done: number; total: number } | null;
   /** photo permission; null = not asked yet */
@@ -30,6 +40,8 @@ type AppStateValue = {
   incoming: ShareIntent | null;
   clearIncoming: () => void;
   refreshStories: () => Promise<void>;
+  /** Rebuilds from the loaded index, after a setting the stories depend on changed (Hide sensitive photos). */
+  rebuildStories: () => Promise<void>;
   /** Marks the given (default: top) stories seen and rebuilds, so others surface. */
   shuffleStories: (seenIds?: string[]) => Promise<void>;
   pause: () => Promise<void>;
@@ -43,29 +55,41 @@ const Ctx = createContext<AppStateValue | null>(null);
 /** Library, stories and indexing state for the whole app (was MainApp in App.tsx). */
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [library, setLibrary] = useState<Library | null>(null);
-  const [stories, setStories] = useState<Story[]>([]);
+  const [stories, setStoryList] = useState<Story[]>([]);
+  const [available, setAvailable] = useState(0);
+  const limit = useRef(STORY_PAGE);
+  const setStories = ({ stories: s, available: a }: { stories: Story[]; available: number }) => { setStoryList(s); setAvailable(a); };
+  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, (await getProfile()).hideSensitive);
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [paused, setPaused] = useState<{ done: number; total: number } | null>(null);
   const [permission, setPermission] = useState<boolean | null>(null);
   const [onboarding, setOnboarding] = useState(false);
   const [incoming, setIncoming] = useState<ShareIntent | null>(getInitialShareIntent);
+  /** photos in the last loaded index: the expected total right after a Reindex empties it */
+  const known = useRef(0);
 
   /** Show stories from the current index right away, then index new photos and rebuild if anything changed. */
   const refreshStories = useCallback(async () => {
     try {
       let showCost = 0;
-      const show = async () => {
+      let empty = false;
+      // keep = an empty index doesn't clear what's up (Reindex: the old dumps stay while it reads, board 11)
+      const show = async (keep = true) => {
         const t = Date.now();
         const lib = await loadLibrary();
         const tl = Date.now() - t;
         setLibrary(lib);
-        setStories(await buildStories(lib));
+        empty = !lib.photos.length;
+        known.current = lib.photos.length || known.current;
+        if (!(keep && empty)) setStories(await build(lib));
         setLoaded(true);
         showCost = Date.now() - t;
         console.log(`[stories] rebuilt from ${lib.photos.length} photos in ${showCost} ms (load ${tl} ms)`);
       };
       await show();
+      // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
+      if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
       // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free.
       const t0 = Date.now();
@@ -74,7 +98,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       const added = await indexLibrary((done, total, last, bg) => {
         const elapsed = Date.now() - t0;
         const etaSec = bg ? bg.etaSec : done >= 32 ? ((total - done) * elapsed) / done / 1000 : null;
-        setProgress({ done, total, etaSec, since: last.creationTime, camera: isCameraPhoto(last.uri), batteryPct: bg ? bg.batteryPct : undefined });
+        setProgress({ done, total, etaSec, since: last.creationTime, batteryPct: bg ? bg.batteryPct : undefined });
         if (!showing && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
           showing = true;
           show().catch((e) => console.warn('[stories] rebuild failed:', e)).finally(() => { showing = false; lastShow = Date.now(); });
@@ -82,7 +106,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       });
       setProgress(null);
       setPaused(await pausedIndex());
-      if (added) await show();
+      if (added || empty) await show(false);
     } catch (e) {
       setProgress(null);
       setLoaded(true);
@@ -116,13 +140,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, []);
 
+  // photos sort by created, so the first dated one is the oldest; progress.since is fresher than the 15 s rebuilds
+  const oldest = useMemo(() => library?.photos.find((p) => p.creationTime >= DATED)?.creationTime ?? Infinity, [library]);
+  const edge = Math.min(oldest, progress && progress.since >= DATED ? progress.since : Infinity);
+
   const value = useMemo<AppStateValue>(() => ({
-    library, stories, loaded, progress, paused, permission, onboarding, incoming, refreshStories,
+    library, stories, loaded, progress, coverageSince: edge === Infinity ? null : edge, moreStories: Math.max(0, available - stories.length),
+    showMoreStories: async () => {
+      if (!library?.photos.length) return; // mid-Reindex: keep the old dumps
+      limit.current += STORY_PAGE;
+      setStories(await build(library));
+    }, paused, permission, onboarding, incoming, refreshStories,
     clearIncoming: () => setIncoming(null),
+    rebuildStories: async () => { if (library) setStories(await build(library)); },
     shuffleStories: async (seenIds) => {
-      if (!library) return;
+      if (!library?.photos.length) return;
       await markSeen(seenIds ?? stories.slice(0, SHUFFLE_SEEN).map((s) => s.id));
-      setStories(await buildStories(library));
+      setStories(await build(library));
     },
     pause: async () => { await pauseIndexing(); },
     resume: async () => {
@@ -136,7 +170,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       await start();
     },
     showOnboarding: () => setOnboarding(true),
-  }), [library, stories, loaded, progress, paused, permission, onboarding, incoming, refreshStories, start]);
+  }), [library, stories, available, loaded, progress, edge, paused, permission, onboarding, incoming, refreshStories, start]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

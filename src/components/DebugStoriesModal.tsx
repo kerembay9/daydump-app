@@ -9,6 +9,7 @@ import { clearEmbeddings, conceptsForVector, indexLibrary, IndexedPhoto, Library
 import { b64ToFloats, DIM } from '../services/index/vectors';
 import { buildStories, searchRanked, Story } from '../services/stories';
 import { DEFAULT_TOPIC_OPTIONS, TopicOptions } from '../services/stories/topics';
+import { profileNow } from '../services/profile';
 
 const golden = require('../services/index/clipGolden.json') as {
   phrases: string[]; ids: number[][]; text: number[][]; image: { file: string; vec: number[] };
@@ -54,7 +55,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
   const rebuild = (o: TopicOptions) =>
     loadLibrary().then(async (l) => {
       setLib(l);
-      setStories(await buildStories(l, o));
+      setStories((await buildStories(l, o, undefined, profileNow().hideSensitive)).stories);
     });
 
   useEffect(() => {
@@ -187,7 +188,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
         </View>
         {stories.map((s) => (
           <View key={s.id} style={styles.story}>
-            <Text style={styles.storyTitle}>{s.title} <Text style={styles.meta}>[{s.kind}] score {s.score.toFixed(2)}</Text></Text>
+            <Text style={styles.storyTitle}>{s.title} <Text style={styles.meta}>[{s.kind}] score {s.score.toFixed(2)} · {s.group} · worth {s.worth.toFixed(2)}</Text></Text>
             {gemma[s.id] && <Text style={styles.gemma}>Gemma: {gemma[s.id].text} <Text style={styles.meta}>{(gemma[s.id].ms / 1000).toFixed(1)} s</Text></Text>}
             <Text style={styles.meta}>{s.subtitle}</Text>
             {!!s.concepts.length && <Text style={styles.meta}>words: {s.concepts.join(', ')}</Text>}

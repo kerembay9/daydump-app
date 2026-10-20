@@ -22,6 +22,7 @@ import { Icons } from '../../components/ui/Icons';
 import { Tap } from '../../components/ui/Tap';
 import { usePreviewImages } from '../../components/edit/SlidePager';
 import { IgGrid, IgPost, PostView, TikTok } from '../../components/preview/PostMocks';
+import { Done, DoneSheet } from '../../components/preview/DoneSheet';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.LONG) : console.log('[preview]', m));
@@ -111,6 +112,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   // Post / Save only: one run at a time (a ref, so a fast double tap can't start two)
   const running = useRef(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [done, setDone] = useState<Done | null>(null);
   const deps = useMemo(() => postDeps(stories), [stories]);
   const n = slides.length;
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
@@ -124,10 +126,15 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
       if (what === 'post') {
         const r = await postDump(deps, dump, caption, tags, target);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted', caption }));
-        toast(`${r.to === 'chooser' ? `${app} isn't installed, so pick an app.` : `Paste your caption in ${app}.`} Caption copied${r.saved ? `, ${slidesWord} saved to the DayDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`);
+        // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
+        setDone({
+          title: r.to === 'chooser' ? 'Shared' : `Posted to ${app}`,
+          tab: r.marked ? 'posted' : 'draft',
+          note: `Caption copied${r.saved ? ` · ${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the DayDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`,
+        });
       } else {
         const k = await saveOnly(deps, dump);
-        toast(`Saved ${k} slide${k === 1 ? '' : 's'} to the DayDump album`);
+        setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the DayDump album.` });
       }
     } catch (e) {
       console.warn(`[preview] ${what} failed:`, e);
@@ -181,6 +188,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
         </Tap>
       </View>
+      <DoneSheet done={done} onClose={() => setDone(null)} />
     </View>
   );
 }

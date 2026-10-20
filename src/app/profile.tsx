@@ -108,6 +108,11 @@ function ProfileBody() {
     if (!ok) { setRecap(false); toast('Notifications are off for DayDump in Android settings'); }
   };
 
+  const toggleSensitive = () => {
+    setP((x) => ({ ...x, hideSensitive: !x.hideSensitive }));
+    setProfile({ hideSensitive: !p.hideSensitive }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
+  };
+
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
     title: 'Reindex your library?',
@@ -190,7 +195,7 @@ function ProfileBody() {
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
         <Row label="Default Frame Style" onPress={() => save({ fit: p.fit === 'border' ? 'bleed' : 'border' })}
           right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.fit === 'border' ? 'Cashmere Border' : 'Full Bleed Crop'}</Text>} />
-        <Row label="High-Res Export (No Compression)" onPress={() => save({ highRes: !p.highRes })} right={<Toggle on={p.highRes} />} last />
+        <Row label="High-Res Export (No Compression)" onPress={() => save({ highRes: !p.highRes })} toggle={p.highRes} last />
       </Section>
 
       <Section title="Appearance & theme" pad>
@@ -212,7 +217,7 @@ function ProfileBody() {
       </Section>
 
       <Section title="Daily recap">
-        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} right={<Toggle on={recap} />} last />
+        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} toggle={recap} last />
       </Section>
 
       <Section title="Photo library">
@@ -220,6 +225,7 @@ function ProfileBody() {
           ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
+        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleSensitive} toggle={p.hideSensitive} />
         <Row label="Index" sub={indexLine} last right={
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={app.pause} />}
@@ -286,7 +292,8 @@ function Section({ title, note, pad, children }: { title: string; note?: string;
   );
 }
 
-function Row({ label: l, sub, right, onPress, last }: { label: string; sub?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean }) {
+/** `toggle` set: the row is one switch to accessibility (the Toggle drawn on the right is visual only). */
+function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; sub?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; toggle?: boolean }) {
   const { t } = useTheme();
   const body = (
     <View style={{ paddingHorizontal: 14, paddingVertical: 9, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottomWidth: last ? 0 : 1, borderColor: t.borderSubtle }}>
@@ -294,18 +301,17 @@ function Row({ label: l, sub, right, onPress, last }: { label: string; sub?: str
         <Text style={[ui(12, 500), { color: t.ink }]}>{l}</Text>
         {sub ? <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>{sub}</Text> : null}
       </View>
-      {right}
+      {toggle === undefined ? right : <Toggle on={toggle} />}
     </View>
   );
-  return onPress ? <Tap onPress={onPress} accessibilityRole="button">{body}</Tap> : body;
+  return onPress ? <Tap onPress={onPress} accessibilityRole={toggle === undefined ? 'button' : 'switch'} accessibilityState={toggle === undefined ? undefined : { checked: toggle }}>{body}</Tap> : body;
 }
 
 /** Mock toggle: 36x20 track (ink on, 18% black off), 16px screen-coloured knob. */
 function Toggle({ on }: { on: boolean }) {
   const { t } = useTheme();
   return (
-    <View accessibilityRole="switch" accessibilityState={{ checked: on }}
-      style={{ width: 36, height: 20, borderRadius: 10, padding: 2, backgroundColor: on ? t.ink : t.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)' }}>
+    <View style={{ width: 36, height: 20, borderRadius: 10, padding: 2, backgroundColor: on ? t.ink : t.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)' }}>
       <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: t.bgScreen, transform: [{ translateX: on ? 16 : 0 }] }} />
     </View>
   );

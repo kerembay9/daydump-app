@@ -4,11 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Local profile and settings until Instagram / TikTok can be connected (decisions.md "Identity"). Edited in Profile.
  * avatar: file uri of a chosen photo ('' = initial letter). ratio / fit: what new dumps start with.
  * highRes: export slides at 2160 px instead of 1080. dev: developer tools unlocked (5 taps on the version).
+ * hideSensitive: IDs, bank cards and medical papers stay out of stories (stories/curate.ts).
  */
-export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; fit: 'bleed' | 'border'; highRes: boolean; dev: boolean };
+export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; fit: 'bleed' | 'border'; highRes: boolean; dev: boolean; hideSensitive: boolean };
 
 const KEY = '@daydump_profile';
-const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', fit: 'bleed', highRes: false, dev: false };
+const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', fit: 'bleed', highRes: false, dev: false, hideSensitive: true };
 
 let last = EMPTY;
 /** The profile as last read or written (sync, for code that can't wait; EMPTY before the first read). */

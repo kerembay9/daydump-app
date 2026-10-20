@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Dump, DumpStatus, duplicate, list, remove } from '../../services/dumps';
 import { kindLabel, matches, metaLines } from '../../services/dumpLabels';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -104,6 +104,9 @@ export default function Library() {
 
   const load = useCallback(() => { list().then(setAll, (e) => { console.warn('[library] load failed:', e); setAll([]); }); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  // ?tab=draft from the Done sheet after Save only; cleared so a later visit keeps the user's own tab
+  const { tab: want } = useLocalSearchParams<{ tab?: DumpStatus }>();
+  useFocusEffect(useCallback(() => { if (want) { setTab(want); router.setParams({ tab: undefined }); } }, [want]));
 
   const items = (all ?? []).filter((d) => d.status === tab);
   const shown = items.filter((d) => matches(d, query));

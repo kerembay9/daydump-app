@@ -21,10 +21,11 @@ test('search, pick 3, Suggest fills, use / swap / save a way, then a selection c
   expect(screen.getByText('3/6')).toBeTruthy();
   expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(3);
 
-  // Suggest fills: two ways to finish, each 3 yours + 3 suggested
+  // Suggest fills (in the dock): two ways to finish, each 3 yours + 3 suggested; the button now reads Suggest again
   await fireEvent.press(screen.getByLabelText('Suggest fills'));
   expect(await screen.findAllByLabelText('Use these suggestions')).toHaveLength(2);
-  expect(screen.getAllByText('3 yours + 3 suggested')).toHaveLength(2);
+  expect(screen.getAllByText(/^3 yours \+ 3 suggested/)).toHaveLength(2);
+  expect(screen.getByLabelText('Suggest again')).toBeTruthy();
 
   // Use this: the 3 ✨ photos join the basket
   await fireEvent.press(screen.getAllByLabelText('Use these suggestions')[0]);
@@ -59,16 +60,76 @@ test('search, pick 3, Suggest fills, use / swap / save a way, then a selection c
   expect(screen.getByLabelText('Seattle, draft')).toBeTruthy();
   expect(screen.getByText('Drafts (2)')).toBeTruthy();
 
-  // Back in Create: picking one more photo makes the suggestions stale
+  // Back in Create: picking one more photo fades the ways under one big Refresh (3C, no auto-refresh)
   await fireEvent.press(screen.getByLabelText('Create'));
   await screen.findByText('Matches for "seattle" (21)');
   await fireEvent.press(screen.getAllByLabelText(/^Photo from Aug \d+, 2025$/)[0]);
-  const refresh = await screen.findByLabelText('Selection changed. Refresh suggestions');
-  await fireEvent.press(screen.getAllByLabelText('Save this way as a draft')[0]);
-  expect(toasts()).toContain('Selection changed. Tap Refresh first');
-  await fireEvent.press(refresh);
-  expect(await screen.findAllByText('4 yours + 3 suggested')).toHaveLength(2);
-  expect(screen.queryByLabelText('Selection changed. Refresh suggestions')).toBeNull();
+  await settle();
+  expect(screen.getAllByText(/^3 yours \+ 3 suggested/)).toHaveLength(2);
+  await fireEvent.press(await screen.findByLabelText('Refresh for 4 picks'));
+  expect(await screen.findAllByText(/^4 yours \+ 3 suggested/)).toHaveLength(2);
+  expect(screen.queryByLabelText('Refresh for 4 picks')).toBeNull();
+}, 30000);
+
+test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for N picks', async () => {
+  await bootApp('/create');
+  await screen.findByText(/^Your gallery/, {}, { timeout: 10000 });
+  await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+  await fireEvent.press(await screen.findByText(/^Start a new dump/));
+  await settle();
+  await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');
+  await screen.findByText('Matches for "seattle" (21)');
+  for (const c of screen.getAllByLabelText(/^Photo from Aug \d+, 2025$/).slice(0, 2)) await fireEvent.press(c);
+
+  // picked 2 of 6: each way shows 2 yours + 4 suggested; folding the section gives back Suggest fills
+  await fireEvent.press(screen.getByLabelText('Suggest fills'));
+  expect(await screen.findAllByText(/^2 yours \+ 4 suggested/)).toHaveLength(2);
+  await fireEvent.press(screen.getByLabelText('2 ways to finish'));
+  expect(screen.queryByLabelText('Use these suggestions')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('Suggest fills'));
+  expect(await screen.findAllByLabelText('Use these suggestions')).toHaveLength(2);
+
+  // preview: way 1 of 2, arrows switch, 2 yours tagged, 4 pick circles; Add 0 picked does nothing
+  await fireEvent.press(screen.getByLabelText('Preview way 1'));
+  expect(await screen.findByText('Way 1 of 2')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Next way'));
+  expect(screen.getByText('Way 2 of 2')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Previous way'));
+  expect(screen.getAllByText('Yours')).toHaveLength(2);
+  expect(screen.getAllByLabelText('Pick this suggested photo')).toHaveLength(4);
+  expect(screen.getByText('Use this (6)')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Add 0 picked'));
+  expect(screen.getByText('2/6')).toBeTruthy();
+
+  // circle 2, Add 2 picked: they join as picks, the toast offers Undo, the ways redraw for 4 picks (board 9)
+  for (const c of screen.getAllByLabelText('Pick this suggested photo').slice(0, 2)) await fireEvent.press(c);
+  await fireEvent.press(screen.getByText('Add 2 picked'));
+  expect(screen.getByText('4/6')).toBeTruthy();
+  expect(screen.getByText(/^Added 2 photos/)).toBeTruthy();
+  // picked from a way = the user's own, in the dock as in the ways
+  expect(screen.getByText('(You 4 · App +2)')).toBeTruthy();
+  expect(await screen.findAllByText(/^4 yours \+ 2 suggested/)).toHaveLength(2);
+  expect(screen.queryByLabelText('Refresh for 4 picks')).toBeNull();
+  // Undo puts the basket and the ways back as they were
+  await fireEvent.press(screen.getByLabelText('Undo'));
+  expect(screen.getByText('2/6')).toBeTruthy();
+  expect(screen.getAllByText(/^2 yours \+ 4 suggested/)).toHaveLength(2);
+  expect(screen.queryByLabelText('Refresh for 2 picks')).toBeNull();
+
+  // Use this (6) takes the whole way; Undo would put it back
+  await fireEvent.press(screen.getByLabelText('Preview way 1'));
+  await fireEvent.press(await screen.findByText('Use this (6)'));
+  expect(screen.getByText('6/6')).toBeTruthy();
+  expect(screen.getByText(/^Added 4 photos/)).toBeTruthy();
+  expect(screen.getByLabelText('Added. Tap to take these out')).toBeTruthy();
+  await settle(5000);
+  expect(screen.queryByText(/^Added 4 photos/)).toBeNull();
+
+  // one more pick: Refresh for 3 picks rebuilds the ways for 3 yours
+  const free = screen.getAllByLabelText(/^Photo from Aug \d+, 2025$/).find((c) => !c.props.accessibilityState?.selected)!;
+  await fireEvent.press(free);
+  await fireEvent.press(await screen.findByLabelText('Refresh for 3 picks'));
+  expect(await screen.findAllByText(/^3 yours \+ 4 suggested/)).toHaveLength(2);
 }, 30000);
 
 test('an untitled draft is named by its dates; emptying the basket keeps a draft worked on in Edit, drops a bare one', async () => {

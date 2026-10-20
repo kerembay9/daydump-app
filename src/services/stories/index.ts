@@ -6,6 +6,7 @@ import { DEFAULT_TOPIC_OPTIONS, findTopics, TopicOptions } from './topics';
 import { capitalize, dateRange, disambiguate, topicTitle } from './titles';
 import { isCameraPhoto } from '../galleryService';
 import { findTrips, tripTitle } from './trips';
+import { boost, curate, EVENT_GROUPS, isSensitive, photoWorth, tagGroup, tagWorth, worthFits } from './curate';
 
 export type Story = {
   id: string;
@@ -24,57 +25,80 @@ export type Story = {
   start: number;
   end: number;
   score: number;
+  /** curation: the topic tag's group ('trip', 'today', 'search' for those) and dump-worthiness 0-1 (curate.ts) */
+  group: string;
+  worth: number;
   debug: Record<string, string | number>;
 };
 
 const SLIDES = 6;
 const MIN_TODAY = 3;
+/** Trips and today scored like a topic: sqrt(photos) x days x this (topics also multiply by cosine x log(1/share), ~1-1.5). */
+const TRIP_K = 1.2;
 const SEEN_KEY = '@daydump_seen_stories';
 const DAY = 86_400_000;
 
-export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS): Promise<Story[]> {
+/**
+ * Ranked stories, best first: the top `limit` get their 6 picks (the costly part: embeddings + near-duplicate checks),
+ * the rest are only counted (`available`) so Discover can offer "Show more" without building them.
+ * With CLIP tags the order is curated (curate.ts): worth folded into the score, group caps per page, and with
+ * hideSensitive no sensitive topic or photo anywhere.
+ */
+export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS, limit = Infinity, hideSensitive = true): Promise<{ stories: Story[]; available: number }> {
   const row = new Map(lib.photos.map((p, i) => [p.id, i]));
   const seen = await getSeen();
   const now = Date.now();
   const recency = (end: number) => Math.exp(-(now - end) / (180 * DAY));
+  // no CLIP = no tags to judge by
+  const curated = lib.hasClip && worthFits(lib.conceptNames.length);
+  const photos = curated && hideSensitive ? lib.photos.filter((p) => !isSensitive(p)) : lib.photos;
+  const pw = new Map(curated ? photos.map((p) => [p.id, photoWorth(p)]) : []);
+  const meanWorth = (ps: IndexedPhoto[]) => ps.reduce((a, p) => a + (pw.get(p.id) ?? 0.5), 0) / ps.length;
 
-  const trips = findTrips(lib.photos, placeFor).map((t): Story => {
-    const s = 3 + Math.log(t.photos.length) * 0.5 + 2 * recency(t.end);
+  const trips = findTrips(photos, placeFor).map((t): Story => {
+    const worth = meanWorth(t.photos as IndexedPhoto[]);
+    // same scale as a topic's sqrt(n) * days score (topics.ts), else trips sink below every topic
+    const s = boost(TRIP_K * Math.sqrt(t.photos.length) * Math.min(t.days, 5) + 2 * recency(t.end), worth);
     return {
       id: `trip:${t.place}:${t.start}`,
       kind: 'trip',
       title: tripTitle(t),
       subtitle: '',
       photos: t.photos as IndexedPhoto[],
-      picks: pick(t.photos as IndexedPhoto[], lib, row, () => 0),
+      picks: [],
       concepts: [],
       place: `${t.place}, ${t.country}`,
       start: t.start, end: t.end,
       score: s,
+      group: 'trip', worth,
       debug: { home: t.homeCity, days: t.days, photos: t.photos.length },
     };
   });
 
   const topics = lib.hasClip
-    ? findTopics(lib.photos, lib.conceptNames, topicOpts).map((t): Story => {
-        const s = t.score + 2 * recency(t.end);
+    ? findTopics(photos, lib.conceptNames, topicOpts, curated ? (c) => EVENT_GROUPS.has(tagGroup(c)) : undefined)
+      .filter((t) => !(curated && hideSensitive && tagGroup(t.conceptId) === 'sensitive'))
+      .map((t): Story => {
+        const worth = curated ? 0.6 * tagWorth(t.conceptId) + 0.4 * meanWorth(t.photos) : 0.5;
+        const s = boost(t.score + 2 * recency(t.end), worth);
         return {
           id: `topic:${t.conceptId}:${t.start}`,
           kind: 'topic',
           title: topicTitle(t),
           subtitle: '',
           photos: t.photos,
-          picks: pick(t.photos, lib, row, (p) => p.conceptScores[p.concepts.indexOf(t.conceptId)] ?? 0),
+          picks: [],
           concepts: [t.name, ...t.related],
           start: t.start, end: t.end,
           score: s,
+          group: curated ? tagGroup(t.conceptId) : 'topic', worth,
           debug: { share: +t.share.toFixed(3), days: t.days, photos: t.photos.length, topicScore: +t.score.toFixed(2) },
         };
       })
     : [];
 
   const todayKey = new Date(now).toDateString();
-  const todays = lib.photos.filter((p) => isCameraPhoto(p.uri) && new Date(p.creationTime).toDateString() === todayKey)
+  const todays = photos.filter((p) => isCameraPhoto(p.uri) && new Date(p.creationTime).toDateString() === todayKey)
     .sort((a, b) => a.creationTime - b.creationTime);
   const today: Story[] = todays.length < MIN_TODAY ? [] : [{
     id: `today:${todayKey}`,
@@ -82,17 +106,24 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
     title: 'Today',
     subtitle: '',
     photos: todays,
-    picks: pick(todays, lib, row, () => 0),
+    picks: [],
     concepts: [],
     start: todays[0].creationTime, end: todays[todays.length - 1].creationTime,
     // same recipe as a trip: no pinning, it just tends to rank high because it's recent
-    score: 3 + Math.log(todays.length) * 0.5 + 2,
+    score: boost(TRIP_K * Math.sqrt(todays.length) * 3 + 2, meanWorth(todays)),
+    group: 'today', worth: meanWorth(todays),
     debug: { photos: todays.length },
   }];
 
-  return disambiguate([...today, ...trips, ...topics].map(withMeta))
+  const ranked = disambiguate([...today, ...trips, ...topics])
     .map((s) => (seen.has(s.id) ? { ...s, score: s.score * 0.3, debug: { ...s.debug, seen: 1 } } : s))
     .sort((a, b) => b.score - a.score);
+  const order = curated ? curate(ranked) : ranked;
+  const picked = order.slice(0, limit).map((s) => {
+    const id = s.kind === 'topic' ? Number(s.id.split(':')[1]) : null;
+    return withMeta({ ...s, picks: pick(s.photos, lib, row, id == null ? () => 0 : (p) => p.conceptScores[p.concepts.indexOf(id)] ?? 0) });
+  });
+  return { stories: picked, available: order.length };
 }
 
 /** "{N} photos · {range}", N = the dump that opens (picks), not the whole story. Trips drop the country: the title names the place. */
@@ -127,6 +158,7 @@ export async function searchStory(lib: Library, query: string, minScore = 0.2, k
     concepts: [query],
     start, end,
     score: top[0].s,
+    group: 'search', worth: 1,
     debug: { best: +top[0].s.toFixed(3), cutoff: +top[top.length - 1].s.toFixed(3) },
   });
 }

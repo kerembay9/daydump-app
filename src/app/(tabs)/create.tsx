@@ -130,7 +130,7 @@ export default function Create() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const win = useWindowDimensions();
-  const { library: lib, permission } = useApp();
+  const { library: lib, permission, progress } = useApp();
   const { shared } = useLocalSearchParams<{ shared?: string }>();
 
   const [query, setQuery] = useState('');
@@ -324,7 +324,7 @@ export default function Create() {
   const header = (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
       <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
-        {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : `Your gallery (${rows?.length ?? 0})`}
+        {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
       </Text>
       <Text style={[ui(9.5), { color: t.inkMuted }]}>Tap to add to basket</Text>
     </View>
@@ -357,25 +357,6 @@ export default function Create() {
         <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
         <SearchBar query={query} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
           onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
-        <FrameCard radius={15} style={{ paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Text style={[ui(10, 500), { color: t.inkMuted }]}>Total:</Text>
-            <Step text="−" onPress={() => setTarget(Math.max(MIN, basket.length, shownTarget - 1))} disabled={shownTarget <= Math.max(MIN, basket.length)} />
-            <Text style={[ui(11, 700), { color: t.ink, minWidth: 14, textAlign: 'center' }]}>{shownTarget}</Text>
-            <Step text="+" onPress={() => setTarget(Math.min(MAX, shownTarget + 1))} disabled={shownTarget >= MAX} />
-            {/* ✧ photos count as the App's, like the footer's "3 + 1✧"; hidden until the draft loads (no 0/6 flash) */}
-            <Text style={[ui(9.5), { color: t.inkMuted, marginLeft: 2, opacity: loaded ? 1 : 0 }]}>
-              (You <Text style={[ui(9.5, 700), { color: t.ink }]}>{basket.length - suggestedN}</Text> · App <Text style={[ui(9.5, 700), { color: t.ink }]}>+{shownTarget - basket.length + suggestedN}</Text>)
-            </Text>
-          </View>
-          <Tap onPress={basket.length ? finishes.suggest : () => ToastAndroid.show('Pick a photo first, then Suggest fills', ToastAndroid.SHORT)}
-            accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel="Suggest fills"
-            accessibilityHint={basket.length ? 'Shows 2 ways to finish this dump' : 'Pick a photo first'} hitSlop={6}
-            style={{ height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: basket.length ? 1 : 0.4 }}>
-            <Icons.sparkle size={11} color={t.bgScreen} />
-            <Text style={[ui(10, 600), { color: t.bgScreen }]}>Suggest fills</Text>
-          </Tap>
-        </FrameCard>
       </View>
 
       <FlatList
@@ -425,7 +406,27 @@ export default function Create() {
             </View>
           ) : null}
 
+          {/* the dock: "2 ways to finish" grows up out of it, above Total */}
           <FinishSection f={finishes} />
+          <FrameCard radius={15} style={{ paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={[ui(10, 500), { color: t.inkMuted }]}>Total:</Text>
+              <Step text="−" onPress={() => setTarget(Math.max(MIN, basket.length, shownTarget - 1))} disabled={shownTarget <= Math.max(MIN, basket.length)} />
+              <Text style={[ui(11, 700), { color: t.ink, minWidth: 14, textAlign: 'center' }]}>{shownTarget}</Text>
+              <Step text="+" onPress={() => setTarget(Math.min(MAX, shownTarget + 1))} disabled={shownTarget >= MAX} />
+              {/* ✧ photos count as the App's, like the footer's "3 + 1✧" */}
+              <Text style={[ui(9.5), { color: t.inkMuted, marginLeft: 2 }]}>
+                (You <Text style={[ui(9.5, 700), { color: t.ink }]}>{basket.length - suggestedN}</Text> · App <Text style={[ui(9.5, 700), { color: t.ink }]}>+{shownTarget - basket.length + suggestedN}</Text>)
+              </Text>
+            </View>
+            <Tap onPress={basket.length ? finishes.suggest : () => ToastAndroid.show('Pick a photo first, then Suggest fills', ToastAndroid.SHORT)}
+              accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel={finishes.again ? 'Suggest again' : 'Suggest fills'}
+              accessibilityHint={basket.length ? 'Shows 2 ways to finish this dump' : 'Pick a photo first'} hitSlop={6}
+              style={{ height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: basket.length ? 1 : 0.4 }}>
+              <Icons.sparkle size={11} color={t.bgScreen} />
+              <Text style={[ui(10, 600), { color: t.bgScreen }]}>{finishes.again ? 'Suggest again' : 'Suggest fills'}</Text>
+            </Tap>
+          </FrameCard>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <FrameCard radius={16} onPress={() => { setSel(null); setReview(true); }} label={`${basket.length} selected. Review`}
