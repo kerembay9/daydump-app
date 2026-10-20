@@ -5,8 +5,9 @@ Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wor
 Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU), tokenizer.json, golden vectors
-gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vision_dw8.tflite (int8 weights, CPU helper
-         and the fallback when the GPU can't run). Everything runs on LiteRT; there is no ONNX Runtime in the app.
+gpu    - the same vision tower -> LiteRT vision_dw8.tflite (int8 weights, CPU) + vision_gpu.skel (the phone rebuilds the fp16 GPU model
+         from both, see gpu_skel). vision_dw8 is the CPU helper
+         (and the fallback when the GPU can't run). Everything runs on LiteRT; there is no ONNX Runtime in the app.
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
@@ -211,16 +212,51 @@ def build_gpu():
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
     # vision_dw8: int8 weights, fp32 math (XNNPACK quantizes activations per run), for the CPU helping the GPU.
-    for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", recipe.dynamic_wi8_afp32(), 0.98)]:
-        q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rp)
-        out = NATIVE / f"{name}.tflite"
-        out.write_bytes(q.quantize().quantized_model)
+    # The fp16 vision.tflite isn't shipped: the phone builds its GPU twin from vision_dw8 (gpu_skel). It stays in the cache.
+    gpu = CACHE / "gpu"; gpu.mkdir(parents=True, exist_ok=True)
+    for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", recipe.dynamic_wi8_afp32(), 0.98),
+                            ("vision_from_dw8", None, 0.98)]:
+        out = (NATIVE if name == "vision_dw8" else gpu) / f"{name}.tflite"
+        if rp:
+            q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rp)
+            out.write_bytes(q.quantize().quantized_model)
+        else:
+            out.write_bytes(gpu_skel(gpu / "vision.tflite", NATIVE / "vision_dw8.tflite", NATIVE / "vision_gpu.skel"))
         it = Interpreter(model_path=str(out)); it.allocate_tensors()
         it.set_tensor(it.get_input_details()[0]["index"], x.numpy()); it.invoke()
         e = it.get_tensor(it.get_output_details()[0]["index"])[0]
         cos = float(ref @ e / np.linalg.norm(e))
         print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, vs torch cosine {cos:.5f}")
         assert cos > floor, "LiteRT export drifted"
+
+
+def gpu_skel(fp16, dw8, skel):
+    """The GPU model rebuilt from dw8: each fp16 weight becomes fp16(int8 * its row's scale), as VisionGpu.kt does on the
+    phone. Writes skel: int32 big-endian [b"DDG1", CRC32 of the result, n, n x (offset, count, rows, dw8 offset, dw8
+    scales offset)], then fp16 with those n weights zeroed (deflated in the APK: ~0.5 MB for 90). Saves ~84 MB of
+    download, and GPU and CPU photos share weights. COCO 5k R@1 36.9 vs 37.0 fp32 (dw8 36.8). Returns the result."""
+    import zlib, numpy as np
+    from ai_edge_litert import schema_py_generated as S
+
+    def load(p):
+        b = p.read_bytes(); m = S.Model.GetRootAs(b, 0); sg = m.Subgraphs(0)
+        return b, m, {sg.Tensors(i).Name(): sg.Tensors(i) for i in range(sg.TensorsLength())}
+    fb, f, ft = load(fp16)
+    db, d, dt = load(dw8)
+    built, zeroed, rows = bytearray(fb), bytearray(fb), []
+    for name, x in ft.items():
+        if x.Type() != S.TensorType.FLOAT16:
+            continue
+        y = dt[name]; q = y.Quantization(); bf, bd = f.Buffers(x.Buffer()), d.Buffers(y.Buffer())
+        assert y.Type() == S.TensorType.INT8 and q.QuantizedDimension() == 0 and not q.ZeroPointAsNumpy().any()
+        n, s = q.ScaleLength(), q._tab.Vector(q._tab.Offset(8))  # QuantizationParameters.scale
+        assert (np.frombuffer(db, "<f4", n, s) == q.ScaleAsNumpy()).all()
+        w = np.frombuffer(db, np.int8, bd.Size(), bd.Offset()).reshape(n, -1)
+        built[bf.Offset():bf.Offset() + bf.Size()] = (w.astype(np.float32) * q.ScaleAsNumpy()[:, None]).astype(np.float16).tobytes()
+        zeroed[bf.Offset():bf.Offset() + bf.Size()] = bytes(bf.Size())
+        rows += [bf.Offset(), w.size, n, bd.Offset(), s]
+    skel.write_bytes(b"DDG1" + struct.pack(f">Ii{len(rows)}i", zlib.crc32(built), len(rows) // 5, *rows) + zeroed)
+    return bytes(built)
 
 
 def build_bench():
@@ -354,8 +390,20 @@ def build_sface():
     rng = np.random.default_rng(0)
     x = torch.from_numpy(rng.uniform(0, 255, (4, 112, 112, 3)).astype(np.float32))
     out = NATIVE / "sface.tflite"
-    # plain int8 weights drift to cosine 0.955 on a real face vs OpenCV; this recipe (23.5 MB) stays at 1.000
-    got = export_tflite(SFace().eval(), x, out, recipe.dynamic_wi8c_hr_afp32(), floor=0.999)
+    # plain int8 weights drift to cosine 0.955 on a real face vs OpenCV; Hadamard-rotated int8 (the FCs) stays at 1.000.
+    # The rotation doesn't take convs, so they get fp16 weights (fp32 math), and so does its +-1/32 rotation matrix
+    # (exact in fp16) in a second pass: 23.5 -> 15.1 MB; 30 vs 29 flipped same-person pairs of 104k vs fp32.
+    from ai_edge_quantizer import quantizer, recipe_manager, algorithm_manager
+    from ai_edge_quantizer.qtyping import TFLOperationName
+    def fp16(regex, op):
+        rm = recipe_manager.RecipeManager()
+        rm.add_weight_only_config(regex=regex, operation_name=op, num_bits=16, algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
+        return rm.get_quantization_recipe()
+    hr = recipe.dynamic_wi8c_hr_afp32(); hr[0]["operation"] = "FULLY_CONNECTED"
+    got = export_tflite(SFace().eval(), x, out, fp16(".*", TFLOperationName.ALL_SUPPORTED) + hr, floor=0.999)
+    q = quantizer.Quantizer(str(out)); q.load_quantization_recipe(fp16(".*_rotated", TFLOperationName.FULLY_CONNECTED))
+    out.write_bytes(q.quantize().quantized_model)
+    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB with an fp16 rotation")
     sess = onnxruntime.InferenceSession(str(src))
     ref = np.concatenate([sess.run(None, {"data": r[None].transpose(0, 3, 1, 2)})[0] for r in x.numpy()])
     ref /= np.linalg.norm(ref, axis=-1, keepdims=True)

@@ -50,7 +50,7 @@ private val MEAN = floatArrayOf(0.48145466f, 0.4578275f, 0.40821073f)
 private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
 /**
- * TinyCLIP image/text embeddings, all LiteRT. Images: the GPU (vision.tflite, batch 1, see scripts/build_assets.py) with
+ * TinyCLIP image/text embeddings, all LiteRT. Images: the GPU (vision.tflite, batch 1, built from vision_dw8: VisionGpu) with
  * the CPU (vision_dw8.tflite) helping; without a usable GPU, vision_dw8 alone. Text: the CPU (text.tflite, dynamic int8). Vectors cross the bridge as base64
  * little-endian Float32 (n * 512), L2-normalized. A photo that fails to decode yields a zero vector.
  */
@@ -251,7 +251,8 @@ class ClipEngine private constructor(private val ctx: Context) {
         serializationDir = File(ctx.cacheDir, "litert").apply { mkdirs() }.path, modelCacheKey = key, serializeProgramCache = true,
       )
     }
-    return visionFile?.let { CompiledModel.create(it, opts) } ?: CompiledModel.create(ctx.assets, "clip/vision.tflite", opts)
+    // The bundled GPU model is built from vision_dw8 on first use (VisionGpu); the stale-cache sweep drops old installs'.
+    return CompiledModel.create(visionFile ?: VisionGpu.build(ctx, File(ctx.cacheDir, "litert/vision-$installed.tflite")), opts)
   }
 
   private val installed get() = ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime
