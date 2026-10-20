@@ -153,8 +153,12 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
         </View>
         {!!status && <Text style={styles.mono}>{status}</Text>}
 
-        <Text style={styles.h2}>Model benchmark (TinyCLIP · ML Kit · Gemma 4 E2B)</Text>
-        <ModelBench lib={lib} />
+        {__DEV__ && (
+          <>
+            <Text style={styles.h2}>Model benchmark (TinyCLIP · ML Kit · Gemma 4 E2B)</Text>
+            <ModelBench lib={lib} />
+          </>
+        )}
 
         <Text style={styles.h2}>Topic knobs</Text>
         {(['minPhotos', 'minDays', 'maxShare', 'topK', 'windowDays'] as const).map((k) => {
@@ -184,7 +188,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
 
         <View style={styles.rowBetween}>
           <Text style={styles.h2}>Stories ({stories.length})</Text>
-          <Btn label="Gemma titles" onPress={gemmaTitles} />
+          {__DEV__ && <Btn label="Gemma titles" onPress={gemmaTitles} />}
         </View>
         {stories.map((s) => (
           <View key={s.id} style={styles.story}>

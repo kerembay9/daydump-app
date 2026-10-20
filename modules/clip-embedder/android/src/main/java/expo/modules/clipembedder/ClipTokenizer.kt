@@ -7,8 +7,8 @@ import java.text.Normalizer
 class ClipTokenizer(tokenizerJson: String) {
   companion object {
     const val CTX = 77
-    private const val SOT = 49406L
-    private const val EOT = 49407L
+    private const val SOT = 49406
+    private const val EOT = 49407
     private val PAT = Regex("""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|\p{L}+|\p{N}|[^\s\p{L}\p{N}]+""")
     private val WS = Regex("""\s+""")
   }
@@ -30,15 +30,15 @@ class ClipTokenizer(tokenizerJson: String) {
     for (b in 0 until 256) byteChar[b] = if (b in printable) b.toChar() else (256 + n++).toChar()
   }
 
-  fun encode(text: String): LongArray {
+  fun encode(text: String): IntArray {
     val norm = WS.replace(Normalizer.normalize(text, Normalizer.Form.NFC), " ").lowercase().trim()
-    val ids = ArrayList<Long>()
+    val ids = ArrayList<Int>()
     ids.add(SOT)
     for (m in PAT.findAll(norm)) {
       val word = m.value.toByteArray(Charsets.UTF_8).map { byteChar[it.toInt() and 255] }.joinToString("")
-      for (tok in bpe(word)) encoder[tok]?.let { ids.add(it.toLong()) }
+      for (tok in bpe(word)) encoder[tok]?.let { ids.add(it) }
     }
-    val out = LongArray(CTX) { EOT }
+    val out = IntArray(CTX) { EOT }
     for (i in 0 until minOf(ids.size, CTX - 1)) out[i] = ids[i]
     return out
   }

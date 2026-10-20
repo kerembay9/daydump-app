@@ -5,7 +5,6 @@ import Purchases, {
   PURCHASES_ERROR_CODE,
   PurchasesOfferings,
 } from 'react-native-purchases';
-import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SubscriptionPlanId, UserSubscriptionState } from '../types';
 import { MAX_FREE_DAILY_DUMPS } from '../constants/plans';
@@ -286,65 +285,6 @@ export class RevenueCatService {
     } catch (err: any) {
       console.warn('[RevenueCat] Restore error:', err);
       return { success: false, isPro: false, error: err.message || 'Could not restore purchases' };
-    }
-  }
-
-  /**
-   * 7. Present RevenueCat Native Paywall (react-native-purchases-ui)
-   * Displays the remote paywall configured on the current offering.
-   */
-  static async presentNativePaywall(): Promise<{ result: PAYWALL_RESULT; isPro: boolean }> {
-    if (!this.isConfigured) await this.init();
-
-    try {
-      const result = await RevenueCatUI.presentPaywall({
-        displayCloseButton: true,
-      });
-
-      const customerInfo = await this.getCustomerInfo();
-      const isPro = this.isEntitledToPro(customerInfo);
-
-      return { result, isPro };
-    } catch (e: any) {
-      console.warn('[RevenueCatUI] presentPaywall error:', e);
-      return { result: PAYWALL_RESULT.ERROR, isPro: false };
-    }
-  }
-
-  /**
-   * 8. Present Paywall only if 'daydump_pro' entitlement is missing
-   */
-  static async presentPaywallIfNeeded(): Promise<{ result: PAYWALL_RESULT; isPro: boolean }> {
-    if (!this.isConfigured) await this.init();
-
-    try {
-      const result = await RevenueCatUI.presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: REVENUECAT_CONFIG.ENTITLEMENT_ID,
-        displayCloseButton: true,
-      });
-
-      const customerInfo = await this.getCustomerInfo();
-      const isPro = this.isEntitledToPro(customerInfo);
-
-      return { result, isPro };
-    } catch (e: any) {
-      console.warn('[RevenueCatUI] presentPaywallIfNeeded error:', e);
-      return { result: PAYWALL_RESULT.ERROR, isPro: false };
-    }
-  }
-
-  /**
-   * 9. Present RevenueCat Customer Center (react-native-purchases-ui)
-   * Allows subscribers to manage subscriptions, request refunds (iOS), view history, or contact support.
-   */
-  static async presentCustomerCenter(): Promise<void> {
-    if (!this.isConfigured) await this.init();
-
-    try {
-      await RevenueCatUI.presentCustomerCenter();
-    } catch (err: any) {
-      console.warn('[RevenueCatUI] presentCustomerCenter error:', err);
-      throw err;
     }
   }
 

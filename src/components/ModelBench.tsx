@@ -38,16 +38,16 @@ type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number
 const IDX_N = 256; // ≥ the biggest batch below, or that mode measures a smaller one
 const IDX_BATCH = 128;
 // Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
-// model: files/models/vision_<model>.tflite|.onnx pushed by hand (scripts/build_assets.py bench); null = bundled 45M.
-// other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = ORT CPU, the shipped engine before the GPU.
+// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = bundled 45M.
+// other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = GPU alone (fp16, ~fp32 vectors).
 // batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
 const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; batch?: number; other?: boolean }[] = [
   // Alternating, so heat hits both hybrids the same.
   { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
-  { name: 'parallel · GPU + ORT CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
+  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
   { name: 'parallel · LiteRT CPU int8 (dw8) · 45M', parallel: true, engine: 'cpu8', model: null },
   { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
-  { name: 'parallel · GPU + ORT CPU helps · 45M', parallel: true, engine: 'gpu', model: null },
+  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
 ];
 
 type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
@@ -195,8 +195,8 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     const n = photos.length;
     const lines: string[] = [];
     const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
-    // Untimed pass with the shipped config: warms the file cache (fair to every mode) and gives the reference vectors.
-    await clip.configure(true, 'ort', null);
+    // Untimed pass on the GPU alone: warms the file cache (fair to every mode) and gives the reference vectors.
+    await clip.configure(true, 'gpu-only', null);
     const pass = async (B = IDX_BATCH) => {
       const t = { info: 0, decode: 0, model: 0, concepts: 0, cpu: 0 };
       let size = '';

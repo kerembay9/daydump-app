@@ -1,8 +1,5 @@
 package expo.modules.clipembedder
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
@@ -39,8 +36,6 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.FloatBuffer
-import java.nio.LongBuffer
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
@@ -53,8 +48,8 @@ private val MEAN = floatArrayOf(0.48145466f, 0.4578275f, 0.40821073f)
 private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
 /**
- * TinyCLIP image/text embeddings. Images: LiteRT on the GPU (vision.tflite, batch 1, see scripts/build_assets.py) with
- * LiteRT on the CPU (vision_dw8.tflite) helping, falling back to ONNX Runtime on the CPU (vision.onnx). Text: ONNX Runtime. Vectors cross the bridge as base64
+ * TinyCLIP image/text embeddings, all LiteRT. Images: the GPU (vision.tflite, batch 1, see scripts/build_assets.py) with
+ * the CPU (vision_dw8.tflite) helping; without a usable GPU, vision_dw8 alone. Text: the CPU (text.tflite, dynamic int8). Vectors cross the bridge as base64
  * little-endian Float32 (n * 512), L2-normalized. A photo that fails to decode yields a zero vector.
  */
 class ClipEmbedderModule : Module() {
@@ -88,7 +83,7 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { encode(clip.embedImages(uris, thumb ?: 0)) }
     }
 
-    // model: use filesDir/models/vision_<model>.onnx|.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
+    // model: use filesDir/models/vision_<model>.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
     AsyncFunction("configure") Coroutine { parallelDecode: Boolean, eng: String, model: String? ->
       withContext(Dispatchers.Default) { clip.configure(parallelDecode, eng, model) }
     }
@@ -101,7 +96,7 @@ class ClipEmbedderModule : Module() {
     }
 
     AsyncFunction("tokenize") Coroutine { s: String ->
-      withContext(Dispatchers.Default) { clip.tokenizer.encode(s).map { it.toInt() } }
+      withContext(Dispatchers.Default) { clip.tokenizer.encode(s).toList() }
     }
 
     // Top-k vocabulary concepts per vector (n*512 base64) -> flat n*k ids/scores, best first.
@@ -185,11 +180,8 @@ class ClipEngine private constructor(private val ctx: Context) {
   }
 
   private val mutex = Mutex()
-  private val env by lazy { OrtEnvironment.getEnvironment() }
-  private var visionSession: OrtSession? = null
-  private val vision get() = visionSession ?: makeVision().also { visionSession = it }
-  // Bench knobs (configure): parallel batch decode, engine (gpu-cpu8: LiteRT GPU + cpu8 helping, gpu: GPU + ORT CPU
-  // helping, gpu-only, cpu8: LiteRT CPU dynamic int8; ort | xnnpack: ONNX Runtime), optional alternative vision model file.
+  // Bench knobs (configure): parallel batch decode, engine (gpu-cpu8: LiteRT GPU + cpu8 helping, gpu-only,
+  // cpu8: LiteRT CPU dynamic int8), optional alternative vision model file.
   private var parallel = true
   private var engine = "gpu-cpu8"
   private var visionFile: String? = null
@@ -200,40 +192,29 @@ class ClipEngine private constructor(private val ctx: Context) {
   private var helper: CompiledModel? = null // gpu-cpu8: the CPU's model
   private var helperFailed = false
   private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
-  private val text by lazy { session("text.onnx") }
+  // Batch 1, one phrase per run; textLock: embedTexts isn't behind the mutex. Output is L2-normalized in the model.
+  private val textLock = Any()
+  private val text by lazy { cpuModel("text") }
+  private fun cpuModel(name: String): Triple<CompiledModel, List<TensorBuffer>, List<TensorBuffer>> {
+    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$name-$installed.xnnpack").path
+    val m = CompiledModel.create(ctx.assets, "clip/$name.tflite", CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) })
+    return Triple(m, m.createInputBuffers(), m.createOutputBuffers())
+  }
   val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
   val vocabNames by lazy {
     val a = JSONObject(asset("vocab.json").decodeToString()).getJSONArray("names")
     Array(a.length()) { a.getString(it) }
   }
-  private val concepts by lazy { session("concepts.onnx") }
-  // vocab.bin rows are [float32 scale][512 x int8]; dequantized once into a rows x 512 tensor (~7 MB).
-  private val vocabTensor by lazy {
-    val vocab = asset("vocab.bin")
-    val stride = 4 + DIM
-    val rows = vocab.size / stride
-    val bb = ByteBuffer.wrap(vocab).order(ByteOrder.LITTLE_ENDIAN)
-    val fb = ByteBuffer.allocateDirect(rows * DIM * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
-    for (r in 0 until rows) {
-      val s = bb.getFloat(r * stride)
-      for (j in 0 until DIM) fb.put(vocab[r * stride + 4 + j] * s)
-    }
-    fb.rewind()
-    OnnxTensor.createTensor(env, fb, longArrayOf(rows.toLong(), DIM.toLong()))
-  }
+  // q (1 x 512) -> scores against every vocab row (fp16 weights, fp32 math), one vector per run.
+  private val conceptsLock = Any()
+  private val concepts by lazy { cpuModel("concepts") }
   var timings = mapOf<String, Any>()
     private set
 
   private fun asset(name: String) = ctx.assets.open("clip/$name").use { it.readBytes() }
 
-  private fun session(name: String): OrtSession =
-    env.createSession(asset(name), OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) })
-
-  private val useLite get() = engine == "gpu" || engine == "gpu-only" || engine == "cpu8" || engine == "gpu-cpu8"
-  // Serial decode (lazy jobs) would all start at once when the helper awaits them; a bench visionFile is a .tflite, not ONNX.
+  // Serial decode (lazy jobs) would all start at once when the helper awaits them; a bench visionFile has no dw8 twin.
   private val helps get() = parallel && visionFile == null
-  // ORT helps the GPU (engine gpu, or gpu-cpu8 when XNNPACK failed to load); call after helperModel().
-  private val cpuHelps get() = helps && (engine == "gpu" || (engine == "gpu-cpu8" && helperFailed))
 
   // Batch 1: the Mali GPU delegate rejects batched graphs. Compiled GPU programs are cached (~3 s compile on first load).
   private fun makeLite(): CompiledModel {
@@ -258,48 +239,36 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   private fun helperModel(): CompiledModel? {
     if (helper == null && !helperFailed && engine == "gpu-cpu8" && helps) {
-      helper = runCatching(::makeCpu8).onFailure { helperFailed = true; Log.w("ClipEmbedder", "LiteRT CPU unavailable, ORT helps instead", it) }.getOrNull()
+      helper = runCatching(::makeCpu8).onFailure { helperFailed = true; Log.w("ClipEmbedder", "LiteRT CPU unavailable, GPU alone", it) }.getOrNull()
     }
     return helper
   }
 
-  // Call on liteThread. null when this device can't run it (no GPU driver, ...): callers fall back to ONNX Runtime.
+  // Call on liteThread. null when LiteRT can't run here at all (GPU and CPU): no image embeddings.
   private fun liteModel(): CompiledModel? {
     if (lite == null && !liteFailed) {
-      lite = runCatching(::makeLite).onFailure { liteFailed = true; Log.w("ClipEmbedder", "LiteRT $engine unavailable, using ONNX Runtime", it) }.getOrNull()
+      lite = runCatching(::makeLite).recoverCatching {
+        // No usable GPU: the app's engine runs on its CPU half alone.
+        if (engine != "gpu-cpu8" || visionFile != null) throw it
+        Log.w("ClipEmbedder", "LiteRT GPU unavailable, using LiteRT CPU int8", it)
+        engine = "cpu8"
+        makeCpu8()
+      }.onFailure { liteFailed = true; Log.w("ClipEmbedder", "LiteRT $engine unavailable", it) }.getOrNull()
     }
     return lite
-  }
-
-  private fun makeVision(): OrtSession {
-    val opts = OrtSession.SessionOptions().apply {
-      if (engine == "xnnpack") {
-        // ORT guidance for XNNPACK: threads go to the EP, session pool stays at 1 without spinning.
-        addXnnpack(mapOf("intra_op_num_threads" to "4"))
-        setIntraOpNumThreads(1)
-        addConfigEntry("session.intra_op.allow_spinning", "0")
-      } else {
-        setIntraOpNumThreads(4)
-      }
-    }
-    return visionFile?.let { env.createSession(it, opts) } ?: env.createSession(asset("vision.onnx"), opts)
   }
 
   suspend fun configure(parallelDecode: Boolean, eng: String, model: String?) = mutex.withLock {
     parallel = parallelDecode
     engine = eng
-    val ext = if (useLite) "tflite" else "onnx"
-    visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.$ext") }?.takeIf { it.exists() }?.path
-    visionSession?.close()
-    visionSession = null
+    visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.tflite") }?.takeIf { it.exists() }?.path
     val t0 = SystemClock.elapsedRealtime()
     // Load now so loadMs is measured here.
-    val ok = if (useLite) withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null } else true
+    val ok = withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null }
     helper?.close()
     helper = null
     helperFailed = false
     helperModel()
-    if (!useLite || cpuHelps) vision.inputNames
     mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
   }
 
@@ -334,18 +303,12 @@ class ClipEngine private constructor(private val ctx: Context) {
       Log.w("ClipEmbedder", "decode failed: ${uris[i]}", e)
       null
     }
-    val model = if (useLite) withContext(liteThread) { liteModel() } else null
-    if (model != null) return embedLite(model, n, input, t0) { fill(it) }
-    val sizes = if (parallel) coroutineScope { (0 until n).map { i -> async(decodePool) { fill(i) } }.awaitAll() } else (0 until n).map(::fill)
-    val t1 = SystemClock.elapsedRealtime()
-    val out = run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(n.toLong(), 3, SIZE.toLong(), SIZE.toLong())))
-    timings = mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (SystemClock.elapsedRealtime() - t1).toDouble(), "size" to (sizes.firstOrNull() ?: ""))
-    for (i in 0 until n) if (sizes[i] == null) out.fill(0f, i * DIM, (i + 1) * DIM)
-    return out
+    val model = withContext(liteThread) { liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
+    return embedLite(model, n, input, t0) { fill(it) }
   }
 
   // Pipelined: photos decode on decodePool while the GPU embeds them front to back. Once every photo is decoded the CPU
-  // is idle, so (engine gpu) ORT takes photos from the back until the two meet. decodeMs = wall time the GPU wasn't busy.
+  // is idle, so (engine gpu-cpu8) vision_dw8 takes photos from the back until the two meet. decodeMs = wall time the GPU wasn't busy.
   // ponytail: the pipeline drains at the end of each call; overlap across calls if batches get small.
   private suspend fun embedLite(model: CompiledModel, n: Int, input: FloatArray, t0: Long, fill: (Int) -> String?): FloatArray {
     val out = FloatArray(n * DIM)
@@ -360,7 +323,7 @@ class ClipEngine private constructor(private val ctx: Context) {
       val jobs = (0 until n).map { i -> async(decodePool, if (parallel) CoroutineStart.DEFAULT else CoroutineStart.LAZY) { fill(i) } }
       val cpu = async(Dispatchers.Default) {
         val h = helperModel()
-        if (!cpuHelps && h == null) return@async 0
+        if (h == null) return@async 0
         jobs.awaitAll()
         var c = 0
         val hIn = h?.createInputBuffers()
@@ -369,8 +332,7 @@ class ClipEngine private constructor(private val ctx: Context) {
           while (true) {
             val i = take(cpu = true).takeIf { it >= 0 } ?: break
             if (jobs[i].await() == null) continue
-            if (h != null) runLite(h, hIn!!, hOut!!, input, i, out)
-            else run(vision, "pixel_values", OnnxTensor.createTensor(env, FloatBuffer.wrap(input, i * 3 * PLANE, 3 * PLANE).slice(), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong()))).copyInto(out, i * DIM)
+            runLite(h, hIn!!, hOut!!, input, i, out)
             c++
           }
         } finally {
@@ -413,29 +375,31 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   fun embedTexts(texts: List<String>): FloatArray {
     if (texts.isEmpty()) return FloatArray(0)
-    val ids = LongBuffer.allocate(texts.size * ClipTokenizer.CTX)
-    texts.forEach { ids.put(tokenizer.encode(it)) }
-    ids.rewind()
-    return run(text, "input_ids", OnnxTensor.createTensor(env, ids, longArrayOf(texts.size.toLong(), ClipTokenizer.CTX.toLong())))
-  }
-
-  private fun run(s: OrtSession, name: String, t: OnnxTensor): FloatArray = t.use {
-    s.run(mapOf(name to it)).use { r -> (r[0] as OnnxTensor).floatBuffer.let { b -> FloatArray(b.remaining()).also { a -> b.get(a) } } }
-  }
-
-  // One ORT Gemm + TopK for the whole batch (concepts.onnx, weightless; the vocab is an input).
-  fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
-    val n = qs.size / DIM
-    if (n == 0) return mapOf("ids" to emptyList<Int>(), "scores" to emptyList<Double>())
-    OnnxTensor.createTensor(env, FloatBuffer.wrap(qs), longArrayOf(n.toLong(), DIM.toLong())).use { q ->
-      OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(k.toLong())), longArrayOf(1)).use { kt ->
-        concepts.run(mapOf("q" to q, "vocab" to vocabTensor, "k" to kt)).use { r ->
-          val v = (r[0] as OnnxTensor).floatBuffer
-          val i = (r[1] as OnnxTensor).longBuffer
-          return mapOf("ids" to List(i.remaining()) { i.get(it).toInt() }, "scores" to List(v.remaining()) { v.get(it).toDouble() })
-        }
+    val out = FloatArray(texts.size * DIM)
+    synchronized(textLock) {
+      val (m, inBuf, outBuf) = text
+      texts.forEachIndexed { i, t ->
+        inBuf[0].writeInt(tokenizer.encode(t))
+        m.run(inBuf, outBuf)
+        outBuf[0].readFloat().copyInto(out, i * DIM, 0, DIM)
       }
     }
+    return out
+  }
+
+  fun topConcepts(qs: FloatArray, k: Int): Map<String, Any> {
+    val ids = ArrayList<Int>()
+    val scores = ArrayList<Double>()
+    synchronized(conceptsLock) {
+      val (m, inBuf, outBuf) = concepts
+      for (q in 0 until qs.size / DIM) {
+        inBuf[0].writeFloat(qs.copyOfRange(q * DIM, (q + 1) * DIM))
+        m.run(inBuf, outBuf)
+        val s = outBuf[0].readFloat()
+        s.indices.sortedByDescending { s[it] }.take(k).forEach { ids.add(it); scores.add(s[it].toDouble()) }
+      }
+    }
+    return mapOf("ids" to ids, "scores" to scores)
   }
 }
 

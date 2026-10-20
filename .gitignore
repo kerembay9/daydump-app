@@ -44,5 +44,5 @@ yarn-error.*
 # generated ML assets (scripts/build_assets.py)
 .venv/
 scripts/.cache/
-modules/clip-embedder/android/src/main/assets/clip/
+modules/clip-embedder/android/src/*/assets/clip/
 modules/*/android/build/

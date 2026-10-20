@@ -1,6 +1,6 @@
 import { requireOptionalNativeModule } from 'expo';
 
-export type ClipEngine = 'gpu' | 'gpu-only' | 'cpu8' | 'gpu-cpu8' | 'ort' | 'xnnpack';
+export type ClipEngine = 'gpu-only' | 'cpu8' | 'gpu-cpu8';
 
 type ClipEmbedderModule = {
   /**
@@ -11,8 +11,8 @@ type ClipEmbedderModule = {
   /** decode vs model time of the last embedImages call (LiteRT engines: modelMs = GPU busy, decodeMs = the rest of the wall time, cpuPhotos = photos the CPU took); size = first decoded bitmap */
   lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; size: string };
   /**
-   * Benchmark knobs; rebuilds the vision model. engine: gpu-cpu8 (default; LiteRT GPU, vision.tflite, with LiteRT CPU dynamic int8, vision_dw8.tflite, taking photos once decoding is done) | gpu (same, ORT on the CPU instead) | gpu-only | cpu8 (LiteRT CPU dynamic int8 alone) | ort | xnnpack (ONNX Runtime, vision.onnx).
-   * model: files/models/vision_<model>.tflite|.onnx on the device, null = bundled. ok = false: LiteRT can't run here, ONNX Runtime is used.
+   * Benchmark knobs; rebuilds the vision model. engine: gpu-cpu8 (default; LiteRT GPU, vision.tflite, with LiteRT CPU dynamic int8, vision_dw8.tflite, taking photos once decoding is done) | gpu-only | cpu8 (LiteRT CPU dynamic int8 alone; also gpu-cpu8 without a usable GPU).
+   * model: files/models/vision_<model>.tflite on the device, null = bundled. ok = false: LiteRT can't run here (embedImages will throw).
    */
   configure(parallelDecode: boolean, engine: ClipEngine, model: string | null): Promise<{ loadMs: number; found: boolean; ok: boolean }>;
   embedTexts(texts: string[]): Promise<string>;

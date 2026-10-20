@@ -1,15 +1,15 @@
 """Build on-device ML/geo assets. Outputs are gitignored (big) except cities.json + clipGolden.json.
 
-Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install onnx onnxruntime onnxscript wordfreq ftfy regex litert-torch ai-edge-quantizer
-        (needs torch + torchvision + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
+Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision
+        (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
 Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench]   (no args = all but bench)
 
-clip   - TinyCLIP (MIT, see MODELS) -> int8 ONNX vision + text towers, tokenizer.json, golden vectors
-gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vision_dw8.tflite (int8 weights, CPU helper);
-         the ONNX one stays as the fallback when the GPU can't run
-vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> int8 text embeddings
+clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU), tokenizer.json, golden vectors
+gpu    - the same vision tower -> LiteRT vision.tflite (fp16 weights, GPU) + vision_dw8.tflite (int8 weights, CPU helper
+         and the fallback when the GPU can't run). Everything runs on LiteRT; there is no ONNX Runtime in the app.
+vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
-bench  - int8 vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
+bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
 """
 import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 NATIVE = ROOT / "modules/clip-embedder/android/src/main/assets/clip"
 JS = ROOT / "src/services/index"
 CACHE = ROOT / "scripts/.cache"  # downloads; gitignored
+VOCAB = CACHE / "vocab.bin"  # concept text embeddings, rows of [float32 scale][512 x int8]; baked into concepts.tflite
 # name -> (open_clip arch, pretrained tag). ImageNet top-1 on a 4.7k-image val subset, one prompt; vision ms/photo on a Galaxy A54.
 MODELS = {
     "45m": ("TinyCLIP-auto-ViT-45M-32-Text-18M", "LAIONYFCC400M"),  # 61.4%, 73 ms
@@ -127,48 +128,35 @@ class Towers:
         class Text(torch.nn.Module):
             def __init__(self): super().__init__(); self.m = m
             def forward(self, input_ids):
-                e = self.m.encode_text(input_ids)
+                e = self.m.encode_text(input_ids.int())  # int32: LiteRT has no int64 arg_max (the EOT pick)
                 return e / e.norm(dim=-1, keepdim=True)
 
         self.vision, self.text = Vision(), Text()
 
 
-def const_to_init(m):
-    """Pruned TinyCLIP weights export as Constant nodes; the quantizer only touches initializers."""
-    import onnx
-    keep = []
-    for n in m.graph.node:
-        if n.op_type == "Constant" and n.attribute[0].name == "value" and onnx.numpy_helper.to_array(n.attribute[0].t).size > 64:
-            t = onnx.TensorProto(); t.CopyFrom(n.attribute[0].t); t.name = n.output[0]; m.graph.initializer.append(t)
-        else:
-            keep.append(n)
-    del m.graph.node[:]; m.graph.node.extend(keep)
-    return m
-
-
-def export_int8(mod, x, inp, out):
-    """fp32 ONNX -> weight-only int8, checked against torch. Returns the int8 outputs for x."""
-    import torch, onnx, onnxruntime as ort, shutil
-    from onnxruntime.quantization import quantize_dynamic, QuantType
-    from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer
-    tmp = CACHE / "fp32"; tmp.mkdir(parents=True, exist_ok=True)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    f32 = tmp / f"{out.stem}.onnx"
-    torch.onnx.export(mod, (x,), f32, input_names=[inp], output_names=["embeds"], opset_version=17,
-                      dynamic_axes={inp: {0: "n"}, "embeds": {0: "n"}}, dynamo=False)
-    # Weight-only int8 MatMuls (activations stay fp32): full int8 dynamic quant dropped text cosine to ~0.8.
-    q = MatMulNBitsQuantizer(const_to_init(onnx.load(f32)), bits=8, block_size=32, is_symmetric=True); q.process()
-    q.model.save_model_to_file(str(tmp / f"{out.stem}.nbits.onnx"), False)
-    if inp == "input_ids":  # the 49408x512 token embedding is most of the text tower: int8 Gather
-        quantize_dynamic(tmp / f"{out.stem}.nbits.onnx", out, weight_type=QuantType.QInt8, op_types_to_quantize=["Gather"])
-    else:
-        shutil.copy(tmp / f"{out.stem}.nbits.onnx", out)
+def export_tflite(mod, x, out, rp=None, floor=0.98):
+    """torch module -> LiteRT, batch 1 (exported on x[:1]), quantized with recipe rp (default: dynamic int8 weights,
+    for XNNPACK on the CPU) and checked against torch on every row of x. Returns the LiteRT outputs for x."""
+    import numpy as np, torch, litert_torch
+    from ai_edge_quantizer import quantizer, recipe
+    from ai_edge_litert.interpreter import Interpreter
     with torch.no_grad():
         ref = mod(x).numpy()
-    got = ort.InferenceSession(str(out)).run(None, {inp: x.numpy()})[0]
-    cos = (ref * got).sum(-1)
-    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, int8 vs fp32 cosine min {cos.min():.4f}")
-    assert cos.min() > 0.98, "int8 quantization drifted too far"
+    f32 = CACHE / "fp32" / f"{out.stem}.tflite"; f32.parent.mkdir(parents=True, exist_ok=True)
+    litert_torch.convert(mod.eval(), (x[:1],)).export(str(f32))
+    q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rp or recipe.dynamic_wi8_afp32())
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(q.quantize().quantized_model)
+    it = Interpreter(model_path=str(out)); it.allocate_tensors()
+    got = []
+    for row in x.numpy():
+        inp = it.get_input_details()[0]
+        it.set_tensor(inp["index"], row[None].astype(inp["dtype"])); it.invoke()  # int64 ids come in as int32
+        got.append(it.get_tensor(it.get_output_details()[0]["index"])[0].copy())
+    got = np.stack(got)
+    cos = (ref * got).sum(-1) / np.linalg.norm(ref, axis=-1) / np.linalg.norm(got, axis=-1)
+    print(f"  {out.name}: {out.stat().st_size / 1e6:.1f} MB, vs torch cosine min {cos.min():.5f}")
+    assert cos.min() > floor, f"{out.name}: LiteRT export drifted"
     return got
 
 
@@ -178,8 +166,9 @@ def build_clip():
     t = Towers(m)
     pix = torch.from_numpy(preprocess(GOLDEN_IMAGE))
     ids = torch.tensor(token_ids(tok, GOLDEN_PHRASES), dtype=torch.long)
-    q_v = export_int8(t.vision, pix, "pixel_values", NATIVE / "vision.onnx")
-    q_t = export_int8(t.text, ids, "input_ids", NATIVE / "text.onnx")
+    with torch.no_grad():
+        q_v = t.vision(pix).numpy()  # fp32 reference: the GPU's fp16 tower matches it to cosine 1.0
+    q_t = export_tflite(t.text, ids, NATIVE / "text.tflite")
     shutil.copy(tok_file, NATIVE / "tokenizer.json")
     JS.mkdir(parents=True, exist_ok=True)
     golden = {"model": "-".join(MODELS[SHIPPED]), "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
@@ -233,14 +222,14 @@ def build_gpu():
 
 
 def build_bench():
-    """Vision towers of the non-shipped models. The bench loads files/models/vision_<name>.onnx when present."""
+    """Vision towers of the non-shipped models (dynamic int8, engine cpu8). The bench loads files/models/vision_<name>.tflite."""
     import torch
     pix = torch.from_numpy(preprocess(GOLDEN_IMAGE))
     for name in MODELS:
         if name == SHIPPED:
             continue
-        f = CACHE / "bench" / f"vision_{name}.onnx"
-        export_int8(Towers(load_model(name)[0]).vision, pix, "pixel_values", f)
+        f = CACHE / "bench" / f"vision_{name}.tflite"
+        export_tflite(Towers(load_model(name)[0]).vision, pix, f)
         print(f"  adb push {f} /data/local/tmp/ && adb shell \"run-as com.daydump.app sh -c 'mkdir -p files/models && "
               f"cat /data/local/tmp/{f.name} > files/models/{f.name}'\"")
 
@@ -277,30 +266,33 @@ def build_vocab():
     scale = np.abs(v).max(1) / 127
     q = np.round(v / scale[:, None]).astype(np.int8)
     NATIVE.mkdir(parents=True, exist_ok=True)
-    with open(NATIVE / "vocab.bin", "wb") as f:
+    with open(VOCAB, "wb") as f:
         for s, row in zip(scale, q):
             f.write(struct.pack("<f", s)); f.write(row.tobytes())
     (NATIVE / "vocab.json").write_text(json.dumps({"source": LICENSE_NOTE, "names": [n for n, _ in entries]}))
-    print(f"  vocab.bin: {(NATIVE / 'vocab.bin').stat().st_size / 1e6:.1f} MB")
+    print(f"  vocab.bin: {VOCAB.stat().st_size / 1e6:.1f} MB")
     build_concepts()
 
 
 def build_concepts():
-    """Weightless graph: scores = q . vocab^T, then TopK per row. The app feeds the dequantized vocab as an input,
-    so this file never changes with the vocab. One ORT Gemm per batch instead of a scalar Kotlin loop."""
-    import onnx
-    from onnx import TensorProto as T, helper as h
-    g = h.make_graph(
-        [h.make_node("Gemm", ["q", "vocab"], ["scores"], transB=1),
-         h.make_node("TopK", ["scores", "k"], ["values", "indices"], axis=-1)],
-        "concepts",
-        [h.make_tensor_value_info("q", T.FLOAT, ["n", 512]), h.make_tensor_value_info("vocab", T.FLOAT, ["rows", 512]),
-         h.make_tensor_value_info("k", T.INT64, [1])],
-        [h.make_tensor_value_info("values", T.FLOAT, ["n", "k"]), h.make_tensor_value_info("indices", T.INT64, ["n", "k"])])
-    m = h.make_model(g, opset_imports=[h.make_opsetid("", 17)])
-    m.ir_version = 8
-    onnx.checker.check_model(m)
-    onnx.save(m, NATIVE / "concepts.onnx")
+    """scores = q . vocab^T for one vector (the app takes the top k): the vocab as fp16 weights of one FULLY_CONNECTED,
+    fp32 math. Dynamic int8 would quantize q per run and reorder close concepts."""
+    import numpy as np, torch
+    from ai_edge_quantizer import recipe_manager, algorithm_manager
+    from ai_edge_quantizer.qtyping import TFLOperationName
+    raw = np.fromfile(VOCAB, dtype=np.uint8).reshape(-1, 4 + 512)
+    v = raw[:, 4:].copy().view(np.int8).astype(np.float32) * raw[:, :4].copy().view("<f4")
+    w = torch.from_numpy(v)
+
+    class Concepts(torch.nn.Module):
+        def forward(self, q):
+            return torch.nn.functional.linear(q, w)
+
+    rm = recipe_manager.RecipeManager()
+    rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
+                              algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
+    q = torch.from_numpy(v[:8] / np.linalg.norm(v[:8], axis=-1, keepdims=True))
+    export_tflite(Concepts(), q, NATIVE / "concepts.tflite", rm.get_quantization_recipe(), floor=0.9999)
 
 
 def build_cities():
