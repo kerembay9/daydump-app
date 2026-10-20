@@ -20,6 +20,8 @@ type ClipEmbedderModule = {
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
   conceptNames(): Promise<string[]>;
+  /** Indexing pauses until ms from now (called on every touch, so scrolling stays smooth while it runs). */
+  holdIndexing(ms: number): void;
   /** YuNet 320 faces per photo (bundled), best first; embed adds SFace vectors (~10 ms/face more, and a sharper decode). */
   faces(uris: string[], minScore: number, embed: boolean): Promise<FaceScan[]>;
   /**

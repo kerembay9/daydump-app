@@ -14,6 +14,7 @@ import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
+import android.os.Process
 import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
@@ -37,6 +38,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -113,6 +115,8 @@ class ClipEmbedderModule : Module() {
       }
     }
 
+    // The app calls this on every touch: indexing waits until then (holdIndexing).
+    Function("holdIndexing") { ms: Double -> holdUntil = SystemClock.uptimeMillis() + ms.toLong() }
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
 
     AsyncFunction("scheduleBackgroundIndex") Coroutine { ids: List<String>, uris: List<String>, model: String, fast: Boolean ->
@@ -181,6 +185,14 @@ private fun ClipEmbedderModule.shareImages(uris: List<String>, caption: String, 
   return "chooser"
 }
 
+/**
+ * Indexing pauses while the user touches the screen and for a moment after (a fling): the GPU and the 8 worker threads
+ * otherwise take the frames and the big cores from the UI and JS (Discover 55% janky frames while indexing). The photo
+ * in flight finishes; the next waits. Only matters while the app is on screen, where touches come from.
+ */
+@Volatile internal var holdUntil = 0L
+private fun waitForUser() { while (SystemClock.uptimeMillis() < holdUntil) Thread.sleep(50) }
+
 /** One per process: shared by the JS module and the background indexing worker (embeds are serialized). */
 class ClipEngine private constructor(private val ctx: Context) {
   companion object {
@@ -194,13 +206,18 @@ class ClipEngine private constructor(private val ctx: Context) {
   private var parallel = true
   private var engine = "gpu-cpu8"
   private var visionFile: String? = null
+  // Indexing threads run below the UI and JS threads so scrolling stays smooth while it runs; they still get every idle
+  // core. Nice 9, not THREAD_PRIORITY_BACKGROUND (10): from 10 Android may also move the thread to the little cores.
+  // XNNPACK's workers inherit it from the thread that creates the model (so helperModel() is only called on cpuThread).
+  private val low = ThreadFactory { r -> Thread { Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND + Process.THREAD_PRIORITY_MORE_FAVORABLE); r.run() } }
   // LiteRT model, created on liteThread (GPU contexts are thread-bound); null = not loaded yet or not usable here.
-  private val liteThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+  private val liteThread = Executors.newSingleThreadExecutor(low).asCoroutineDispatcher()
+  private val cpuThread = Executors.newSingleThreadExecutor(low).asCoroutineDispatcher()
   private var lite: CompiledModel? = null
   private var liteFailed = false
   private var helper: CompiledModel? = null // gpu-cpu8: the CPU's model
   private var helperFailed = false
-  private val decodePool = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
+  private val decodePool = Executors.newFixedThreadPool(4, low).asCoroutineDispatcher()
   // Batch 1, one phrase per run; textLock: embedTexts isn't behind the mutex. Output is L2-normalized in the model.
   private val textLock = Any()
   private val text by lazy { cpuModel("text") }
@@ -280,10 +297,12 @@ class ClipEngine private constructor(private val ctx: Context) {
     val t0 = SystemClock.elapsedRealtime()
     // Load now so loadMs is measured here.
     val ok = withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null }
-    helper?.close()
-    helper = null
-    helperFailed = false
-    helperModel()
+    withContext(cpuThread) {
+      helper?.close()
+      helper = null
+      helperFailed = false
+      helperModel()
+    }
     mapOf("loadMs" to (SystemClock.elapsedRealtime() - t0).toDouble(), "found" to (model == null || visionFile != null), "ok" to ok)
   }
 
@@ -296,6 +315,7 @@ class ClipEngine private constructor(private val ctx: Context) {
     val t0 = SystemClock.elapsedRealtime()
     // Each photo writes its own disjoint slice of input; returns the decoded size or null if undecodable.
     fun fill(i: Int): String? = try {
+      waitForUser()
       val uri = uris[i]
       val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
@@ -336,7 +356,7 @@ class ClipEngine private constructor(private val ctx: Context) {
     fun take(cpu: Boolean) = synchronized(lock) { if (lo >= hi || (cpu && hi - lo < 2)) -1 else if (cpu) --hi else lo++ }
     val sizes = coroutineScope {
       val jobs = (0 until n).map { i -> async(decodePool, if (parallel) CoroutineStart.DEFAULT else CoroutineStart.LAZY) { fill(i) } }
-      val cpu = async(Dispatchers.Default) {
+      val cpu = async(cpuThread) {
         val h = helperModel()
         if (h == null) return@async 0
         jobs.awaitAll()
@@ -345,6 +365,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val hOut = h?.createOutputBuffers()
         try {
           while (true) {
+            waitForUser()
             val i = take(cpu = true).takeIf { it >= 0 } ?: break
             if (jobs[i].await() == null) continue
             runLite(h, hIn!!, hOut!!, input, i, out)
@@ -360,6 +381,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val outBuf = model.createOutputBuffers()
         try {
           while (true) {
+            waitForUser()
             val i = take(cpu = false).takeIf { it >= 0 } ?: break
             jobs[i].await()?.also {
               val t = SystemClock.elapsedRealtime()

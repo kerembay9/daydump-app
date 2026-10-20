@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import type { IndexProgress } from '../state/AppState';
 import { useTheme } from '../theme/ThemeProvider';
@@ -22,6 +22,31 @@ export const eta = (s: number | null) => {
 const n = (x: number) => x.toLocaleString();
 
 /**
+ * The count between progress reports (every 128-photo batch, or every 3 s from the fast worker): runs on at the
+ * average rate the ETA implies, a bit under it so it rarely has to wait for the next report. Never goes back.
+ */
+function useTicking(progress: IndexProgress | null) {
+  const done = progress?.done ?? 0, total = progress?.total ?? 0, etaSec = progress?.etaSec ?? null;
+  const [shown, setShown] = useState(done);
+  const from = useRef({ done, at: 0, perSec: 0 }); // set by the effect below on mount
+  useEffect(() => {
+    if (done < from.current.done) setShown(done); // a new run
+    from.current = { done, at: Date.now(), perSec: etaSec ? (total - done) / etaSec : 0 };
+  }, [done, total, etaSec]);
+  const running = !!progress && total > 0;
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => {
+      const f = from.current;
+      const v = Math.min(total, Math.floor(f.done + (0.9 * f.perSec * (Date.now() - f.at)) / 1000));
+      setShown((x) => (v > x ? v : x));
+    }, 100);
+    return () => clearInterval(id);
+  }, [running, total]);
+  return Math.min(total, Math.max(shown, done));
+}
+
+/**
  * Slim indexing status under the Discover header: progress + ETA, the native fast mode's battery line with Pause
  * (same facts as its notification, BackgroundIndex.kt), or the paused state with Resume. Nothing when idle.
  */
@@ -34,9 +59,10 @@ export function IndexStrip({ progress, paused, hasStories, coverageSince = null,
   onResume: () => void;
 }) {
   const { t } = useTheme();
+  const ticking = useTicking(progress);
   if (!progress && !paused) return null;
   const fast = progress?.batteryPct !== undefined;
-  const done = progress?.done ?? paused!.done, total = progress?.total ?? paused!.total;
+  const done = progress ? ticking : paused!.done, total = progress?.total ?? paused!.total;
 
   // total 0 = the placeholder before the first listing (first run): no count yet
   const line1 = progress ? `Reading your library…${total ? ` ${n(done)}/${n(total)}` : ''} · ${eta(progress.etaSec)}` : `Paused at ${n(done)} of ${n(total)}`;

@@ -6,7 +6,7 @@ import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
-import { addShareIntentListener, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
+import { addShareIntentListener, ClipEmbedder, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
 
 /** since = creation time of the photo just indexed (camera newest-first, then the rest newest-first) */
 export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; batteryPct?: number | null };
@@ -51,6 +51,16 @@ type AppStateValue = {
 };
 
 const Ctx = createContext<AppStateValue | null>(null);
+
+/**
+ * Finger on the screen, or lifted < 2 s ago (a fling still moving): the root view feeds it (_layout). Indexing pauses
+ * meanwhile, natively too: its GPU runs and worker threads otherwise take frames and the big cores (Discover janked).
+ */
+const touch = { down: false, at: 0 };
+const lift = () => { touch.down = false; touch.at = Date.now(); ClipEmbedder?.holdIndexing?.(2000); };
+// ponytail: a press held over 60 s lets indexing run again under it
+export const onTouch = { onTouchStart: () => { touch.down = true; ClipEmbedder?.holdIndexing?.(60000); }, onTouchEnd: lift, onTouchCancel: lift };
+const touching = () => touch.down || Date.now() - touch.at < 2000;
 
 /** Library, stories and indexing state for the whole app (was MainApp in App.tsx). */
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
@@ -99,7 +109,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
       if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
-      // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free.
+      // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free,
+      // and wait while the user scrolls or taps: a 2 s stall mid-scroll is the jank people notice.
       const t0 = Date.now();
       let lastShow = t0;
       let showing = false;
@@ -107,7 +118,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         const elapsed = Date.now() - t0;
         const etaSec = bg ? bg.etaSec : done >= 32 ? ((total - done) * elapsed) / done / 1000 : null;
         setProgress({ done, total, etaSec, since: last.creationTime, batteryPct: bg ? bg.batteryPct : undefined });
-        if (!showing && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
+        if (!showing && !touching() && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
           showing = true;
           show().catch((e) => console.warn('[stories] rebuild failed:', e)).finally(() => { showing = false; lastShow = Date.now(); });
         }

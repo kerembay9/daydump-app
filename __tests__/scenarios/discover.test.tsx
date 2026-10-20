@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from 'expo-router/testing-library';
-import { bootApp } from '../../jest/app';
+import { bootApp, settle } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
 import { coverageLine, eta } from '../../src/components/IndexStrip';
 
@@ -36,8 +36,14 @@ test('indexing strip: fast-mode progress with Pause; paused shows Resume', async
   // The native worker is mid-run (fast mode, on battery): the app follows it and offers Pause.
   world.bg = { state: 'running', total: 3000, left: 2000, batteryPct: 12, msPerPhoto: 50 };
   await bootApp('/');
-  const progress = await screen.findByText('Reading your library… 1,000/3,000 · About 2 min left', {}, { timeout: 10000 });
+  const line = /^Reading your library… 1,(\d{3})\/3,000 · About 2 min left$/;
+  const progress = await screen.findByText(line, {}, { timeout: 10000 });
   const strip = progress.parent!.parent!.parent!;
+  // between the worker's 3 s reports the count runs on at ~0.9 × its rate (20 photos/s here)
+  const count = () => +within(strip).getByText(line).props.children.match(line)[1];
+  const c0 = count();
+  await settle(1000);
+  expect(count() - c0).toBeGreaterThanOrEqual(15);
   expect(within(strip).getByText('Keeps going if you leave · uses ~12% battery')).toBeTruthy();
   // the dumps built so far stay, with how far back they reach
   expect(screen.getByText(/^Dumps from your last (\d+ )?(month|year)s? so far\. Dumps get better once your whole library is read\.$/)).toBeTruthy();

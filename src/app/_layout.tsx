@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme, useThemeNow } from '../theme/ThemeProvider';
-import { AppStateProvider, useApp } from '../state/AppState';
+import { AppStateProvider, onTouch, useApp } from '../state/AppState';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { NotificationService } from '../services/notificationService';
 import { currentCreateDraft, discardShared, DumpPhoto, receiveShared, sharedPhotos } from '../services/dumps';
@@ -73,7 +73,7 @@ function Root() {
   useEffect(() => (navReady ? NotificationService.onOpen((url) => router.push(url as never)) : undefined), [navReady]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: now.bgScreen, experimental_backgroundImage: now.bgGrad ?? undefined }}>
+    <View {...onTouch} style={{ flex: 1, backgroundColor: now.bgScreen, experimental_backgroundImage: now.bgGrad ?? undefined }}>
       <NavThemeProvider value={navTheme}>
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
           {/* listed screens come first, so the tabs stay the initial route */}
