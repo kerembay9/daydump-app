@@ -25,7 +25,8 @@ export type Library = { photos: IndexedPhoto[]; vecs: Float32Array; conceptNames
 type Row = { id: string; uri: string; created: number; w: number; h: number; lat: number | null; lon: number | null; emb: Uint8Array | null; concepts: string | null };
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
-function db() {
+/** Also holds the dumps table (services/dumps.ts); resetIndex only clears photos, so dumps survive a reindex. */
+export function db() {
   // Separate DB in eval mode so the validation index never mixes with the real library.
   return (dbPromise ??= SQLite.openDatabaseAsync(EVAL_ALBUM ? 'photo-index-eval.db' : 'photo-index.db').then(async (d) => {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
@@ -83,7 +84,13 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
     await d.runAsync(`DELETE FROM photos WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
   }
 
-  const retagged = await retagIfVocabChanged(d);
+  // Rows indexed before the listing fell back to modification time (WhatsApp images) have created = 0: date them.
+  const undated = (await d.getAllAsync<{ id: string }>('SELECT id FROM photos WHERE created = 0'))
+    .map((r) => [r.id, byId.get(r.id)?.[0].creationTime] as const).filter(([, t]) => t);
+  if (undated.length) await d.withTransactionAsync(async () => {
+    for (const [id, t] of undated) await d.runAsync('UPDATE photos SET created = ? WHERE id = ?', [t!, id]);
+  });
+  const retagged = (await retagIfVocabChanged(d)) + undated.length;
   if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
   if (bg?.state === 'paused') { // waits for Resume or the next charge
     handedOff = true;

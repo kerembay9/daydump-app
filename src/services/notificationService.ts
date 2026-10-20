@@ -57,7 +57,7 @@ export class NotificationService {
         await Notifications.setNotificationChannelAsync('daily_dump_channel', {
           name: 'Daily Dump Reminders',
           importance: Notifications.AndroidImportance.HIGH,
-          sound: 'default',
+          // no `sound`: a channel's sound is a custom file name ('default' raised a LogBox); omitted = system default
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#FF9500',
         });
@@ -87,15 +87,17 @@ export class NotificationService {
    * Toggle daily notification on or off
    */
   static async setEnabled(enabled: boolean): Promise<boolean> {
-    await AsyncStorage.setItem(NOTIF_STORAGE_KEY, enabled ? 'true' : 'false');
     if (enabled) {
+      // stored only once permission is there, so a refused ask doesn't read back as "on"
       const granted = await this.requestPermissions();
+      await AsyncStorage.setItem(NOTIF_STORAGE_KEY, granted ? 'true' : 'false');
       if (granted) {
         await this.scheduleDailyRecap(20, 0);
         return true;
       }
       return false;
     } else {
+      await AsyncStorage.setItem(NOTIF_STORAGE_KEY, 'false');
       await this.cancelDailyRecap();
       return true;
     }
@@ -139,7 +141,7 @@ export class NotificationService {
           title: 'Your DayDump is ready 🎞️',
           body: 'Review 6 curated shots from today before heading to bed.',
           sound: 'default',
-          data: { screen: 'today_dump' },
+          data: { url: '/preview/today' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -152,6 +154,23 @@ export class NotificationService {
     } catch (e) {
       console.warn('[NotificationService] Failed to schedule daily recap:', e);
     }
+  }
+
+  /**
+   * Calls onOpen with the route a tapped notification links to: once for the tap that cold-started the app, then for
+   * every later tap. Returns the unsubscribe.
+   */
+  static onOpen(onOpen: (url: string) => void): () => void {
+    const Notifications = getNotifications();
+    if (!Notifications) return () => {};
+    const handle = (r: import('expo-notifications').NotificationResponse | null) => {
+      const url = r?.notification.request.content.data?.url;
+      if (typeof url === 'string') onOpen(url);
+    };
+    handle(Notifications.getLastNotificationResponse());
+    Notifications.clearLastNotificationResponse();
+    const sub = Notifications.addNotificationResponseReceivedListener(handle);
+    return () => sub.remove();
   }
 
   /**

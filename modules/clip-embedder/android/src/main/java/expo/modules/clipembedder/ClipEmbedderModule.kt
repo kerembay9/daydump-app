@@ -3,7 +3,12 @@ package expo.modules.clipembedder
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.TensorBuffer
@@ -60,6 +65,24 @@ class ClipEmbedderModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ClipEmbedder")
 
+    // "Open with DayDump" / share-to-DayDump (intent filters in app.json): images handed to the app.
+    Events("onShareIntent")
+    Function("getInitialShareIntent") { appContext.currentActivity?.intent?.let { takeShare(it) } }
+    OnNewIntent { intent -> takeShare(intent)?.let { sendEvent("onShareIntent", it) } }
+
+    // Edge-to-edge: drop the system scrim behind the 3-button nav bar (the tab bar paints bg-card there) and
+    // set the button colour to match the app theme (light = dark buttons).
+    Function("setNavigationBarStyle") { light: Boolean ->
+      appContext.currentActivity?.let { a ->
+        a.runOnUiThread {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) a.window.isNavigationBarContrastEnforced = false
+          WindowInsetsControllerCompat(a.window, a.window.decorView).isAppearanceLightNavigationBars = light
+        }
+      }
+    }
+    // Multi-image share (ACTION_SEND_MULTIPLE). target: "instagram" | "tiktok" | null; returns the package that got it or "chooser".
+    AsyncFunction("shareImages") { uris: List<String>, caption: String, target: String? -> shareImages(uris, caption, target) }
+
     // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
     AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
       withContext(Dispatchers.Default) { encode(clip.embedImages(uris, thumb ?: 0)) }
@@ -101,6 +124,57 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.IO) { BackgroundIndex.take(ctx, limit) }
     }
   }
+}
+
+private val SHARE_ACTIONS = setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_VIEW, Intent.ACTION_EDIT)
+private val TARGETS = mapOf(
+  "instagram" to listOf("com.instagram.android"),
+  "tiktok" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
+)
+private var lastShareIntent: Intent? = null
+
+/** Image uris an incoming share/view intent carries, once per intent (a JS reload does not replay it).
+ *  Only content:// / file:// with an image (or unset) type: daydump:// deep links stay with expo-router. */
+private fun takeShare(intent: Intent): Map<String, Any>? {
+  if (intent.action !in SHARE_ACTIONS || intent === lastShareIntent) return null
+  if (intent.type?.startsWith("image/") == false) return null
+  val uris = mutableListOf<Uri>()
+  intent.data?.let { uris.add(it) }
+  @Suppress("DEPRECATION")
+  when (intent.action) {
+    Intent.ACTION_SEND -> (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let { uris.add(it) }
+    Intent.ACTION_SEND_MULTIPLE -> intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
+  }
+  intent.clipData?.let { c -> for (i in 0 until c.itemCount) c.getItemAt(i).uri?.let { uris.add(it) } }
+  val list = uris.filter { it.scheme == "content" || it.scheme == "file" }.map { it.toString() }.distinct()
+  if (list.isEmpty()) return null
+  lastShareIntent = intent
+  return mapOf("action" to intent.action!!.substringAfterLast('.'), "uris" to list, "mimeType" to (intent.type ?: "image/*"))
+}
+
+private fun ClipEmbedderModule.shareImages(uris: List<String>, caption: String, target: String?): String {
+  val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
+  // file:// (rendered slides in cache) go through expo-sharing's FileProvider; content:// pass as is.
+  val authority = "${activity.packageName}.SharingFileProvider"
+  val list = ArrayList(uris.map { u ->
+    val uri = Uri.parse(u)
+    if (uri.scheme == "file" || uri.scheme == null) FileProvider.getUriForFile(activity, authority, File(uri.path!!)) else uri
+  })
+  val send = Intent(if (list.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE).apply {
+    type = "image/*"
+    if (list.size == 1) putExtra(Intent.EXTRA_STREAM, list[0]) else putParcelableArrayListExtra(Intent.EXTRA_STREAM, list)
+    if (caption.isNotEmpty()) putExtra(Intent.EXTRA_TEXT, caption)
+    clipData = ClipData.newRawUri(null, list[0]).also { c -> list.drop(1).forEach { c.addItem(ClipData.Item(it)) } }
+    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+  }
+  for (pkg in TARGETS[target].orEmpty()) {
+    try {
+      activity.startActivity(Intent(send).setPackage(pkg))
+      return pkg
+    } catch (_: ActivityNotFoundException) {}
+  }
+  activity.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+  return "chooser"
 }
 
 /** One per process: shared by the JS module and the background indexing worker (embeds are serialized). */

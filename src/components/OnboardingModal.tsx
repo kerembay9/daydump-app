@@ -1,377 +1,135 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Dimensions,
-  TouchableOpacity,
-  ScrollView,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-  Animated,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Sparkles, ShieldCheck, Image as ImageIcon, ArrowRight, Check, Film, Layers } from 'lucide-react-native';
+import React, { useRef, useState } from 'react';
+import { Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Check, Film, Image as ImageIcon, Layers, LucideIcon, ShieldCheck, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { OnboardingService } from '../services/onboardingService';
+import { useTheme } from '../theme/ThemeProvider';
+import { display, label, ui } from '../theme/type';
+import { FrameCard } from './ui/FrameCard';
+import { Tape } from './ui/Tape';
+import { Tap } from './ui/Tap';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
-interface OnboardingModalProps {
-  visible: boolean;
-  onFinish: (triggerPaywallHook?: boolean) => void;
-}
+const SLIDES: Slide[] = [
+  {
+    id: 'hook',
+    badge: 'Effortless photo dumps',
+    title: 'Turn camera roll chaos into dumps',
+    description: 'Say goodbye to scrolling through 200 shots. DayDump picks the best photos of your days and trips, paced with flow and ready-made captions.',
+    icon: Sparkles,
+    points: [
+      { icon: Film, text: 'Film looks, borders and IG / TikTok sizes' },
+      { icon: Layers, text: 'Collage layouts, one swipe at a time' },
+    ],
+  },
+  {
+    id: 'privacy',
+    badge: 'On-device curation',
+    title: 'Picked on your phone, not in the cloud',
+    description: 'Stories, search and photo picks run on a small vision model on your phone. DayDump does not upload your photos to curate them.',
+    icon: ShieldCheck,
+    points: [
+      { icon: Check, text: 'Stories and search run on-device' },
+      { icon: Check, text: 'Your photos stay on your phone' },
+    ],
+  },
+  {
+    id: 'permissions',
+    badge: 'Photo library access',
+    title: 'Ready for your first dump?',
+    description: 'Allow photo library access so DayDump can find your standout moments and turn them into dumps for Instagram and TikTok.',
+    icon: ImageIcon,
+  },
+];
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onFinish }) => {
-  const [currentPage, setCurrentPage] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+/** First-run slides in the app's theme. The last one asks for photo access; there is no paywall step. */
+export function OnboardingModal({ visible, onFinish }: { visible: boolean; onFinish: () => void }) {
+  const { t } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const [page, setPage] = useState(0);
+  const scroll = useRef<ScrollView>(null);
+  const last = page === SLIDES.length - 1;
 
-  const slides = [
-    {
-      id: 'hook',
-      badge: 'EFFORTLESS CREATOR DROPS',
-      title: 'Turn Camera Roll Chaos Into Editorial Drops',
-      description:
-        'Say goodbye to scrolling through 200 shots. DayDump picks the 6 best photos of your day, paced with cinematic flow and instant captions.',
-      icon: Sparkles,
-      color: '#FF9500',
-    },
-    {
-      id: 'privacy',
-      badge: 'ON-DEVICE CURATION',
-      title: 'Picked on Your Phone,\nNot in the Cloud.',
-      description:
-        'Stories, search and photo picks run on a small vision model on your phone. DayDump does not upload your photos to curate them.',
-      icon: ShieldCheck,
-      color: '#30D158',
-    },
-    {
-      id: 'permissions',
-      badge: 'CAMERA ROLL ACCESS',
-      title: 'Ready to Curate Your First Dump?',
-      description:
-        'Enable photo library access so DayDump can automatically surface your standout moments from today and format them for Instagram.',
-      icon: ImageIcon,
-      color: '#FF9500',
-    },
-  ];
-
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / SCREEN_WIDTH);
-    if (page !== currentPage && page >= 0 && page < slides.length) {
-      setCurrentPage(page);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const p = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (p !== page && p >= 0 && p < SLIDES.length) {
+      setPage(p);
       Haptics.selectionAsync();
     }
   };
 
-  const goToNextPage = () => {
-    if (currentPage < slides.length - 1) {
-      scrollRef.current?.scrollTo({ x: (currentPage + 1) * SCREEN_WIDTH, animated: true });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+  const next = () => {
+    scroll.current?.scrollTo({ x: (page + 1) * width, animated: true });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleGrantPermissionAndFinish = async () => {
+  const finish = async (ask: boolean) => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      // Explicitly request photo access (avoiding audio prompt issues on Android 13+)
-      await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+      // Photo only, so Android 13+ doesn't reject the request over the undeclared audio permission.
+      if (ask) await MediaLibrary.requestPermissionsAsync(false, ['photo']);
     } catch (e) {
-      console.warn('Permission request error during onboarding:', e);
+      console.warn('[onboarding] permission request failed:', e);
     } finally {
       await OnboardingService.setOnboardingCompleted();
-      // Onboarding complete: pass true to trigger high-converting 3-day trial paywall
-      onFinish(true);
+      onFinish();
     }
-  };
-
-  const handleSkip = async () => {
-    await OnboardingService.setOnboardingCompleted();
-    onFinish(false);
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={false} statusBarTranslucent>
-      <SafeAreaView style={styles.container}>
-        {/* Top Header with Skip */}
-        <View style={styles.topBar}>
-          <View style={styles.logoRow}>
-            <View style={styles.logoPill}>
-              <Text style={styles.logoText}>DAYDUMP</Text>
-            </View>
-          </View>
-          {currentPage < slides.length - 1 && (
-            <TouchableOpacity onPress={handleSkip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
+    <Modal visible={visible} animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={() => {}}>
+      <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 }}>
+        <View style={{ paddingHorizontal: 24, height: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={[display(20), { color: t.ink }]}>DayDump</Text>
+          {!last && (
+            <Tap onPress={() => finish(false)} hitSlop={10} accessibilityRole="button">
+              <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip</Text>
+            </Tap>
           )}
         </View>
 
-        {/* Carousel Content */}
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={styles.scrollView}
-        >
-          {slides.map((slide, index) => {
-            const Icon = slide.icon;
-            return (
-              <View key={slide.id} style={styles.slide}>
-                <View style={[styles.iconContainer, { borderColor: `${slide.color}30` }]}>
-                  <View style={[styles.iconInner, { backgroundColor: `${slide.color}15` }]}>
-                    <Icon size={46} color={slide.color} strokeWidth={1.8} />
-                  </View>
-                </View>
-
-                {/* Feature preview visual pill */}
-                <View style={styles.badgePill}>
-                  <Text style={[styles.badgeText, { color: slide.color }]}>{slide.badge}</Text>
-                </View>
-
-                <Text style={styles.slideTitle}>{slide.title}</Text>
-                <Text style={styles.slideDesc}>{slide.description}</Text>
-
-                {/* Visual bullet points for slide 1 */}
-                {index === 0 && (
-                  <View style={styles.featureBox}>
-                    <View style={styles.featureRow}>
-                      <Film size={14} color="#FF9500" />
-                      <Text style={styles.featureRowText}>Aesthetic 35mm Film & Editorial 4:5 frames</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Layers size={14} color="#FF9500" />
-                      <Text style={styles.featureRowText}>Visual pacing: Hook → Action → Detail</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Privacy checkmarks for slide 2 */}
-                {index === 1 && (
-                  <View style={styles.featureBox}>
-                    <View style={styles.featureRow}>
-                      <Check size={14} color="#30D158" />
-                      <Text style={styles.featureRowText}>Stories and search run on-device (CLIP)</Text>
-                    </View>
-                    <View style={styles.featureRow}>
-                      <Check size={14} color="#30D158" />
-                      <Text style={styles.featureRowText}>Optional Gemini key in Settings sends photos to Google</Text>
-                    </View>
-                  </View>
-                )}
+        <ScrollView ref={scroll} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}>
+          {SLIDES.map((s, i) => (
+            <View key={s.id} style={{ width, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ marginBottom: 26 }}>
+                <FrameCard radius={22} rotate={i % 2 ? 2 : -2} style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
+                  <s.icon size={40} color={t.ink} strokeWidth={1.6} />
+                </FrameCard>
+                <Tape rotate={-6} style={{ top: -8 }} />
               </View>
-            );
-          })}
+              <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{s.badge}</Text>
+              <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>
+              <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{s.description}</Text>
+              {s.points && (
+                <FrameCard radius={16} padding={14} style={{ alignSelf: 'stretch', gap: 10 }}>
+                  {s.points.map((pt) => (
+                    <View key={pt.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <pt.icon size={15} color={t.ink} strokeWidth={1.75} />
+                      <Text style={[ui(12.5, 500), { color: t.ink, flexShrink: 1 }]}>{pt.text}</Text>
+                    </View>
+                  ))}
+                </FrameCard>
+              )}
+            </View>
+          ))}
         </ScrollView>
 
-        {/* Bottom Pagination & Primary CTA */}
-        <View style={styles.bottomBar}>
-          {/* Pagination Dots */}
-          <View style={styles.paginationRow}>
-            {slides.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  currentPage === i ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
+        <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
+            {SLIDES.map((s, i) => (
+              <View key={s.id} style={{ height: 6, borderRadius: 3, width: i === page ? 22 : 6, backgroundColor: i === page ? t.ink : t.borderStrong }} />
             ))}
           </View>
-
-          {/* Action Button */}
-          {currentPage < slides.length - 1 ? (
-            <TouchableOpacity style={styles.ctaButton} onPress={goToNextPage} activeOpacity={0.85}>
-              <Text style={styles.ctaButtonText}>Continue</Text>
-              <ArrowRight size={18} color="#000" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.ctaButton, styles.ctaButtonGlow]}
-              onPress={handleGrantPermissionAndFinish}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.ctaButtonText}>Allow Gallery & Start</Text>
-              <Sparkles size={18} color="#000" />
-            </TouchableOpacity>
-          )}
-
-          <Text style={styles.disclaimerText}>
-            You can change photo permissions anytime in Device Settings.
-          </Text>
+          <Tap onPress={last ? () => finish(true) : next} accessibilityRole="button"
+            style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
+            <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & start' : 'Continue'}</Text>
+          </Tap>
+          <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>You can change photo access anytime in Android settings.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0A0C',
-    justifyContent: 'space-between',
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoPill: {
-    backgroundColor: '#1C1C1E',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
-  },
-  logoText: {
-    color: '#FF9500',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  skipText: {
-    color: '#8E8E93',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainer: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-  iconInner: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgePill: {
-    backgroundColor: '#1C1C1E',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  slideTitle: {
-    color: '#FFFFFF',
-    fontSize: 27,
-    fontWeight: '800',
-    textAlign: 'center',
-    lineHeight: 34,
-    letterSpacing: -0.5,
-    marginBottom: 14,
-  },
-  slideDesc: {
-    color: '#8E8E93',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-    marginBottom: 24,
-  },
-  featureBox: {
-    backgroundColor: '#141416',
-    borderRadius: 14,
-    padding: 14,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#242426',
-    gap: 10,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  featureRowText: {
-    color: '#D1D1D6',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  bottomBar: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    alignItems: 'center',
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 22,
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    width: 24,
-    backgroundColor: '#FF9500',
-  },
-  dotInactive: {
-    width: 6,
-    backgroundColor: '#2C2C2E',
-  },
-  ctaButton: {
-    backgroundColor: '#FF9500',
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#FF9500',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  ctaButtonGlow: {
-    backgroundColor: '#FF9500',
-  },
-  ctaButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  disclaimerText: {
-    color: '#48484A',
-    fontSize: 11,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-});
+}

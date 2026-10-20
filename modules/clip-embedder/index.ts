@@ -37,7 +37,24 @@ type ClipEmbedderModule = {
   }>;
   /** Removes and returns up to limit photos the worker finished; concepts is the JSON photoIndex.ts stores. */
   takeBackgroundResults(limit: number): Promise<{ model: string | null; rows: { id: string; emb: string; concepts: string; lat: number | null; lon: number | null }[] }>;
+  /** Multi-image share (ACTION_SEND_MULTIPLE); file:// uris go through a FileProvider. Resolves with the package that got it, or 'chooser'. */
+  shareImages(uris: string[], caption: string, target: ShareTarget | null): Promise<string>;
+  /** Images the app was opened with (share / Open with), once per intent; null otherwise. */
+  getInitialShareIntent(): ShareIntent | null;
+  addListener(event: 'onShareIntent', cb: (e: ShareIntent) => void): { remove(): void };
+  /** No nav-bar scrim; light = dark nav buttons. */
+  setNavigationBarStyle(light: boolean): void;
 };
+
+export type ShareTarget = 'instagram' | 'tiktok';
+/** uris: content:// as handed over (content://media/.../<id> = a MediaStore id); action: SEND | SEND_MULTIPLE | VIEW | EDIT. */
+export type ShareIntent = { action: string; uris: string[]; mimeType: string };
+
+export const shareImages = (uris: string[], caption: string, target: ShareTarget | null) =>
+  ClipEmbedder ? ClipEmbedder.shareImages(uris, caption, target) : Promise.reject(new Error('shareImages: Android only'));
+export const getInitialShareIntent = () => ClipEmbedder?.getInitialShareIntent() ?? null;
+export const setNavigationBarStyle = (light: boolean) => ClipEmbedder?.setNavigationBarStyle?.(light);
+export const addShareIntentListener = (cb: (e: ShareIntent) => void) => ClipEmbedder?.addListener('onShareIntent', cb) ?? { remove() {} };
 
 /** null on iOS / Expo Go: callers fall back to non-CLIP behavior. */
 export const ClipEmbedder = requireOptionalNativeModule<ClipEmbedderModule>('ClipEmbedder');

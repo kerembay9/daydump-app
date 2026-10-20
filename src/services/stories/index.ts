@@ -1,17 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CuratedCarousel } from '../../types';
-import { GeminiService } from '../geminiService';
 import { placeFor } from '../index/cityLookup';
 import { embedText, IndexedPhoto, Library } from '../index/photoIndex';
 import { dot, isZero, scoreAll } from '../index/vectors';
 import { DEFAULT_TOPIC_OPTIONS, findTopics, TopicOptions } from './topics';
-import { capitalize, dateRange, plural, seasonOf, topicTitle } from './titles';
+import { capitalize, dateRange, disambiguate, topicTitle } from './titles';
+import { isCameraPhoto } from '../galleryService';
 import { findTrips, tripTitle } from './trips';
 
 export type Story = {
   id: string;
-  kind: 'trip' | 'topic' | 'search';
+  /** today = the day's camera photos (the 8 PM recap), ranked like the rest */
+  kind: 'trip' | 'topic' | 'search' | 'today';
   title: string;
+  /** meta line: "{picks} photos · {date range}" */
   subtitle: string;
   /** all member photos, time-ordered */
   photos: IndexedPhoto[];
@@ -27,6 +28,7 @@ export type Story = {
 };
 
 const SLIDES = 6;
+const MIN_TODAY = 3;
 const SEEN_KEY = '@daydump_seen_stories';
 const DAY = 86_400_000;
 
@@ -42,7 +44,7 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
       id: `trip:${t.place}:${t.start}`,
       kind: 'trip',
       title: tripTitle(t),
-      subtitle: `${t.country} · ${dateRange(t.start, t.end)} · ${t.photos.length} photos`,
+      subtitle: '',
       photos: t.photos as IndexedPhoto[],
       picks: pick(t.photos as IndexedPhoto[], lib, row, () => 0),
       concepts: [],
@@ -60,7 +62,7 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
           id: `topic:${t.conceptId}:${t.start}`,
           kind: 'topic',
           title: topicTitle(t),
-          subtitle: `${dateRange(t.start, t.end)} · ${t.photos.length} photos`,
+          subtitle: '',
           photos: t.photos,
           picks: pick(t.photos, lib, row, (p) => p.conceptScores[p.concepts.indexOf(t.conceptId)] ?? 0),
           concepts: [t.name, ...t.related],
@@ -71,10 +73,39 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
       })
     : [];
 
-  return [...trips, ...topics]
+  const todayKey = new Date(now).toDateString();
+  const todays = lib.photos.filter((p) => isCameraPhoto(p.uri) && new Date(p.creationTime).toDateString() === todayKey)
+    .sort((a, b) => a.creationTime - b.creationTime);
+  const today: Story[] = todays.length < MIN_TODAY ? [] : [{
+    id: `today:${todayKey}`,
+    kind: 'today',
+    title: 'Today',
+    subtitle: '',
+    photos: todays,
+    picks: pick(todays, lib, row, () => 0),
+    concepts: [],
+    start: todays[0].creationTime, end: todays[todays.length - 1].creationTime,
+    // same recipe as a trip: no pinning, it just tends to rank high because it's recent
+    score: 3 + Math.log(todays.length) * 0.5 + 2,
+    debug: { photos: todays.length },
+  }];
+
+  return disambiguate([...today, ...trips, ...topics].map(withMeta))
     .map((s) => (seen.has(s.id) ? { ...s, score: s.score * 0.3, debug: { ...s.debug, seen: 1 } } : s))
     .sort((a, b) => b.score - a.score);
 }
+
+/** "{N} photos · {range}", N = the dump that opens (picks), not the whole story. Trips drop the country: the title names the place. */
+const withMeta = (s: Story): Story => {
+  // the picks' own span, so count and range describe the same photos
+  const ts = s.picks.map((p) => p.creationTime);
+  const [a, b] = ts.length ? [Math.min(...ts), Math.max(...ts)] : [s.start, s.end];
+  return { ...s, subtitle: `${s.picks.length} photos · ${dateRange(a, b)}` };
+};
+
+/** Story by route id; "today" = today's story (the 8 PM notification links to /preview/today). */
+export const storyById = (stories: Story[], id?: string) =>
+  id === 'today' ? stories.find((s) => s.kind === 'today') : stories.find((s) => s.id === id);
 
 /** Free-text theme -> story from CLIP text/image similarity. Null without CLIP or no match. */
 export async function searchStory(lib: Library, query: string, minScore = 0.2, k = 40): Promise<Story | null> {
@@ -86,18 +117,18 @@ export async function searchStory(lib: Library, query: string, minScore = 0.2, k
   const sc = new Map(top.map((x) => [x.p.id, x.s]));
   const row = new Map(lib.photos.map((p, i) => [p.id, i]));
   const start = photos[0].creationTime, end = photos[photos.length - 1].creationTime;
-  return {
+  return withMeta({
     id: `search:${query}`,
     kind: 'search',
     title: capitalize(query.trim()),
-    subtitle: `${dateRange(start, end)} · ${photos.length} photos`,
+    subtitle: '',
     photos,
     picks: pick(photos, lib, row, (p) => sc.get(p.id) ?? 0),
     concepts: [query],
     start, end,
     score: top[0].s,
     debug: { best: +top[0].s.toFixed(3), cutoff: +top[top.length - 1].s.toFixed(3) },
-  };
+  });
 }
 
 /** Every embedded photo scored against the query, best first. */
@@ -125,25 +156,6 @@ export function pick(photos: IndexedPhoto[], lib: Library, row: Map<string, numb
   }
   for (const p of sorted) if (chosen.length < SLIDES && !chosen.includes(p) && !isDup(p)) chosen.push(p);
   return chosen.sort((a, b) => a.creationTime - b.creationTime);
-}
-
-export function toCarousel(s: Story): CuratedCarousel {
-  const season = seasonOf((s.start + s.end) / 2);
-  const base = GeminiService.runOnDeviceNanoEngine(s.picks, `${s.title} ${season}`, s.picks.length);
-  const subject = s.concepts[0] ? plural(s.concepts[0]) : 'moments';
-  const captions =
-    s.kind === 'trip'
-      ? {
-          minimal: `${s.title.toLowerCase()} ✈️`,
-          witty: 'out of office, fully in camera roll',
-          story: `${s.subtitle.split(' · ')[1]} away from home. ${s.photos.length} photos, these are the keepers.`,
-        }
-      : {
-          minimal: `${subject} season 🎞️`,
-          witty: `${s.photos.length} photos of ${subject} and not a single regret`,
-          story: `${dateRange(s.start, s.end)}, told in ${subject}.`,
-        };
-  return { ...base, id: s.id, themeTitle: s.title, themeDescription: s.subtitle, captions, isCustomTheme: s.kind === 'search' };
 }
 
 export async function markSeen(ids: string[]) {

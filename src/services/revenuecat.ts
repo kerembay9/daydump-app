@@ -1,9 +1,7 @@
-import { Platform } from 'react-native';
 import Purchases, {
   PurchasesPackage,
   CustomerInfo,
   LOG_LEVEL,
-  PurchasesError,
   PURCHASES_ERROR_CODE,
   PurchasesOfferings,
 } from 'react-native-purchases';
