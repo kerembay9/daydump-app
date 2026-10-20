@@ -6,12 +6,13 @@ import type { IndexedPhoto, Library } from '../../services/index/photoIndex';
 import { adoptWay, finishSets } from '../../services/stories/suggest';
 import { createDraft, DumpPhoto } from '../../services/dumps';
 import { useTheme } from '../../theme/ThemeProvider';
+import { fixed } from '../../theme/tokens';
 import { label, ui } from '../../theme/type';
 import { FrameCard } from '../ui/FrameCard';
 import { Icons } from '../ui/Icons';
 import { Print } from '../ui/Print';
 import { Tap } from '../ui/Tap';
-import { mix, WayPreview } from './WayPreview';
+import { WayPreview } from './WayPreview';
 
 export const toPhoto = (p: IndexedPhoto, suggested?: boolean): DumpPhoto =>
   ({ id: p.id, uri: p.uri, created: p.creationTime, ...(suggested ? { suggested } : null) });
@@ -142,6 +143,32 @@ export function useFinishes({ lib, basket, total, change, bumpTotal, title }: {
 
 export type Finishes = ReturnType<typeof useFinishes>;
 
+/**
+ * The mock's fan, for any count: [0] centred on top, then alternating left / right, each step further out and tilted
+ * more; every photo shows (no "+N").
+ */
+function Fan({ photos, w, h, sparkle }: { photos: DumpPhoto[]; w: number; h: number; sparkle?: boolean }) {
+  const { t } = useTheme();
+  const pw = Math.round(w * 0.56), ph = Math.round(h * 0.84), r = Math.max(6, Math.round(w * 0.08));
+  const steps = Math.ceil((photos.length - 1) / 2), mid = (w - pw) / 2;
+  return (
+    <View style={{ width: w, height: h }}>
+      {photos.map((p, i) => {
+        const k = Math.ceil(i / 2), side = i % 2 ? -1 : 1, f = steps ? k / steps : 0;
+        return { p, i, left: Math.round(mid + side * f * mid), top: Math.round(h * (i ? 0.06 + 0.04 * f : 0)), rotate: i ? side * (3 + 4 * f) : -1.5 };
+      }).reverse().map(({ p, left, top, rotate }) => (
+        <Print key={p.id} uri={p.uri} w={pw} h={ph} r={r} rotate={rotate} border={1.5} borderColor={fixed.printBorder} style={{ position: 'absolute', left, top }} />
+      ))}
+      {/* on the top (centre) photo: the fan's edge has nothing on it when there are few photos */}
+      {sparkle ? (
+        <View style={{ position: 'absolute', top: -6, left: Math.round(mid + pw - 12), width: 18, height: 18, borderRadius: 9, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+          <Icons.sparkle size={10} color={t.bgScreen} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function Pill({ text, on, onPress, icon, a11y }: { text: string; on?: boolean; onPress: () => void; icon?: React.ReactNode; a11y: string }) {
   const { t } = useTheme();
   return (
@@ -168,9 +195,9 @@ export function FinishSection({ f }: { f: Finishes }) {
   const page = pg.round === sets?.round ? pg.i : 0;
   if (!sets && !f.busy) return null;
 
+  // mock: card 212 of a 282 column, X fan 128x52, Y fan 176x76; prints at the mock's size at most (pinned area, grid needs room)
   const cardW = Math.round((win.width - 32) * 0.75);
-  // six tiles a row; a Total over 6 wraps to a second row
-  const tw = Math.floor((cardW - 20 - 5 * 4) / 6), th = Math.round(tw * 1.25);
+  const k = Math.min(cardW / 212, 1);
   const ways = sets ? sets.ys.map((y, i) => ({ y, i })).filter((w) => w.y.length) : [];
   // 3C: picks changed since the round: the cards fade under one big Refresh (no auto-refresh)
   const stale = f.stale && !f.busy;
@@ -197,7 +224,7 @@ export function FinishSection({ f }: { f: Finishes }) {
       </View>
 
       {!f.open ? null : !sets ? (
-        <FrameCard radius={18} style={{ width: cardW, height: 2 * th + 70, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <FrameCard radius={18} style={{ width: cardW, height: Math.round(150 * k) + 40, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <ActivityIndicator color={t.inkMuted} />
           <Text style={[ui(10), { color: t.inkMuted }]}>Finding 2 ways to finish…</Text>
         </FrameCard>
@@ -210,24 +237,19 @@ export function FinishSection({ f }: { f: Finishes }) {
               {ways.map(({ y, i }, j) => {
                 const on = f.added(i), saved = f.saved.includes(i);
                 return (
-                  <FrameCard key={i} radius={18} style={[{ width: cardW, paddingHorizontal: 10, paddingTop: 10, paddingBottom: 8 }, on ? { boxShadow: `0 0 0 2px ${t.ink}, ${t.shadowCard}` } : null]}>
-                    <Tap onPress={() => setPeek({ j, ids: new Set() })} accessibilityRole="button" accessibilityLabel={`Preview way ${j + 1}`}
-                      style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 }}>
-                      {mix(sets.x, y).map((p) => (
-                        <View key={p.id}>
-                          <Print uri={p.uri} w={tw} h={th} r={5} />
-                          {y.includes(p) ? (
-                            <View style={{ position: 'absolute', right: 2, bottom: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
-                              <Icons.sparkle size={7} color={t.bgScreen} />
-                            </View>
-                          ) : null}
-                        </View>
-                      ))}
+                  <FrameCard key={i} radius={18} style={[{ width: cardW, paddingHorizontal: 10, paddingTop: 12, paddingBottom: 8, alignItems: 'center' },
+                    on ? { boxShadow: `0 0 0 2px ${t.ink}, ${t.shadowCard}` } : null]}>
+                    <Tap onPress={() => setPeek({ j, ids: new Set() })} accessibilityRole="button" accessibilityLabel={`Preview way ${j + 1}`} style={{ alignItems: 'center' }}>
+                      <Fan photos={sets.x} w={Math.round(128 * k)} h={Math.round(52 * k)} />
+                      <View style={{ width: 18, height: 18, borderRadius: 9, marginVertical: -2, zIndex: 10, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={[ui(12, 600), { color: t.ink, lineHeight: 14 }]}>+</Text>
+                      </View>
+                      <Fan photos={y} w={Math.round(176 * k)} h={Math.round(76 * k)} sparkle />
                     </Tap>
-                    <Text onPress={() => setPeek({ j, ids: new Set() })} style={[ui(9.5), { color: t.inkMuted, textAlign: 'center', marginTop: 8 }]} numberOfLines={1}>
-                      {sets.x.length} yours + {y.length} suggested · <Text style={[ui(9.5, 700), { color: t.ink, textDecorationLine: 'underline' }]}>Preview</Text>
-                    </Text>
-                    <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                    <View style={{ alignSelf: 'stretch', marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text onPress={() => setPeek({ j, ids: new Set() })} style={[ui(9.5), { color: t.inkMuted, flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {sets.x.length} yours + {y.length} suggested · <Text style={[ui(9.5, 700), { color: t.ink, textDecorationLine: 'underline' }]}>Preview</Text>
+                      </Text>
                       <Pill text={saved ? 'Saved' : 'Save as draft'} onPress={() => f.save(i)} a11y={saved ? 'Saved to Drafts' : 'Save this way as a draft'}
                         icon={saved ? <Icons.check size={10} color={t.ink} /> : null} />
                       <Pill text={on ? 'Added' : 'Use this'} on={on} onPress={() => f.use(i)} a11y={on ? 'Added. Tap to take these out' : 'Use these suggestions'}
@@ -244,7 +266,9 @@ export function FinishSection({ f }: { f: Finishes }) {
                   <Icons.refresh size={14} color={t.bgScreen} />
                   <Text style={[ui(12, 600), { color: t.bgScreen }]}>Refresh for {f.picks} pick{f.picks === 1 ? '' : 's'}</Text>
                 </View>
-                <Text style={[ui(10, 500), { color: t.inkMuted, backgroundColor: t.bgScreen, paddingHorizontal: 8, borderRadius: 8, overflow: 'hidden' }]}>Picks changed</Text>
+                <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, boxShadow: t.shadowCard }}>
+                  <Text style={[ui(10.5, 600), { color: t.ink }]}>Picks changed</Text>
+                </View>
               </Tap>
             ) : null}
           </View>

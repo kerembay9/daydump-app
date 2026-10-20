@@ -23,14 +23,14 @@ test('opened with photos and no draft in progress: a new Create draft, no questi
   world.initialShare = null;
 }, 30000);
 
-test('shared while a draft is in progress: asks; Add joins it, Start a new dump starts another', async () => {
-  // still running from the first test: the Create draft holds 2 photos
-  await bootApp('/create');
-  await screen.findByLabelText('2 selected. Review', {}, { timeout: 10000 });
+test('shared while a draft is in progress: opens Create and asks; Add joins it, Start a new dump starts another', async () => {
+  // still running from the first test: the Create draft holds 2 photos; shared in while on Discover
+  const app = await bootApp('/');
   const first = (await currentCreateDraft())!.id;
 
   await shareIn([media('10'), media('11')]);
-  expect(await screen.findByText(ASK)).toBeTruthy();
+  expect(await screen.findByText(ASK, {}, { timeout: 10000 })).toBeTruthy();
+  expect(app.getPathname()).toBe('/create'); // on Create already, under the question
   expect(screen.getByText(/^2 photos shared to DayDump\./)).toBeTruthy();
   await fireEvent.press(screen.getByText('Add to my draft'));
   expect(await screen.findByLabelText('4 selected. Review')).toBeTruthy();

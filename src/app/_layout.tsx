@@ -59,6 +59,8 @@ function Root() {
     const inc = app.incoming;
     if (!navReady || !inc) return;
     app.clearIncoming();
+    // straight to Create (the add-or-new sheet, if any, opens over it); toCreate navigates again so Create reloads
+    router.navigate('/create');
     (async () => {
       const photos = await sharedPhotos(inc.uris);
       if (!photos.length) return;
