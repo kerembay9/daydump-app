@@ -27,6 +27,7 @@ import { list } from '../services/dumps';
 import { ratioOf } from '../services/layouts';
 import { resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
+import { ClipEmbedder } from '../../modules/clip-embedder';
 import { GeminiService } from '../services/geminiService';
 import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
@@ -256,6 +257,11 @@ function ProfileBody() {
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
+          <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
+            const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
+            if (cover) ClipEmbedder?.setRecapCover(cover);
+            NotificationService.sendTestNotification().catch((e) => toast(e.message));
+          }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <View style={{ paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderColor: t.borderSubtle }}>
             <Text style={[ui(12, 500), { color: t.ink }]}>Gemini API key</Text>
