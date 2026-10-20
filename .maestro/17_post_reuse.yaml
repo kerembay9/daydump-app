@@ -1,0 +1,23 @@
+# writes-album: Post opens the share chooser (no Instagram/TikTok on the emulator). Back in the app, the dump is Posted,
+# and Reuse makes an editable copy in Drafts.
+appId: com.daydump.app
+name: 17 post -> posted -> reuse
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Preview"
+- tapOn: "Post on Instagram or TikTok"
+- extendedWaitUntil:
+    notVisible: "Post on Instagram or TikTok"
+    timeout: 60000
+- back
+- extendedWaitUntil:
+    visible: "Shared"
+    timeout: 30000
+- assertVisible: "Caption copied.*"
+- tapOn: "View in Library"
+- assertVisible: "Posted \\(1\\)"
+- tapOn: "Reuse"
+- assertVisible: "Sizes · Filter % · Captions"
+- tapOn: "Back"
+- tapOn: "Drafts.*"
+- assertVisible: "Drafts \\(1\\)"

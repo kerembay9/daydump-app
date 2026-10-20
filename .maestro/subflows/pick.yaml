@@ -1,0 +1,31 @@
+# Create tab: tap the first N grid photos into the basket. runFlow with env N (1-4).
+appId: com.daydump.app
+---
+- tapOn: "Create"
+- extendedWaitUntil:
+    visible: "Photo from .*"
+    timeout: 60000
+- tapOn:
+    text: "Photo from .*"
+    index: 0
+- runFlow:
+    when:
+      true: ${N > 1}
+    commands:
+      - tapOn:
+          text: "Photo from .*"
+          index: 1
+- runFlow:
+    when:
+      true: ${N > 2}
+    commands:
+      - tapOn:
+          text: "Photo from .*"
+          index: 2
+- runFlow:
+    when:
+      true: ${N > 3}
+    commands:
+      - tapOn:
+          text: "Photo from .*"
+          index: 3

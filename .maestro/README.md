@@ -10,7 +10,7 @@ Scripted pass over the main flows on as many parallel Android emulators as the P
 .maestro/e2e.py run -n 4       # all flows on 4 headless emulators
 ```
 
-Measured: 4 emulators boot from the snapshot in about 20 s, and the whole suite takes about 95 s, including indexing the 100 photos (about 15 s on the emulator).
+Measured: emulators boot from the snapshot in about 20 s. Each flow takes 25–90 s, including wiping app data and re-indexing the 100 photos (about 15 s). The 25 flows add up to about 25 min, so about 5 min on 6 emulators.
 
 - `--headed` shows the emulator windows; leave it off for headless.
 - `-n N` sets the number of emulators. Each takes about 3 GB of RAM and 2 cores; the flows are split across them.
@@ -44,13 +44,26 @@ Android only fills MediaStore's `datetaken` when EXIF has `OffsetTimeOriginal`. 
 
 ## Flows
 
-Every `NN_*.yaml` is independent, so any subset runs in any order on any emulator.
+Every `NN_*.yaml` is independent, so any subset runs in any order on any emulator. Each flow wipes DayDump's data first. Most start with `subflows/ready.yaml`: launch, skip onboarding, then wait until indexing is done and Discover has a dump.
 
-- `01_onboarding` starts from wiped data, goes through the slides and grants access in the real permission dialog.
-- `02_indexing` starts from wiped data with access granted; indexing must start and then finish.
-- `03`–`06` start with `subflows/ready.yaml`: launch, skip onboarding, then wait until indexing is done and Discover has a dump.
-- `05` stops at the share/export screen. It never taps Post or Save only.
+| Area | Flows |
+|---|---|
+| First run | `01` onboarding + photo permission, `02` indexing, `24` access denied |
+| Discover | `04` open a dump, `07` hero Edit chip, tiles, pull-to-refresh shuffle |
+| Create search | `03` text search, `08` clear search (the suggestions dropdown is unreachable, see the flow), `09` month / place / no match |
+| Create basket | `05` create → edit → share step, `10` Total stepper + review sheet, `11` Suggest fills (2 ways, Use this, take out, Save as draft, Add N picked) |
+| Edit | `12` sizes, layouts, paging, Bleed/Border; `13` filter, strength, apply to all, caption ideas; `14` filmstrip cover, remove, swap, add |
+| Preview + share | `15` IG / grid / TikTok mocks, like, save, caption, HD, handle; `16` Save only → Drafts; `17` Post → Posted → Reuse |
+| Library | `18` drafts: search, delete with confirm, empty state |
+| Navigation | `19` tab bar + Android Back, `25` deep links (`daydump://preview/today` and unknown ids) |
+| Profile | `06` overview, `20` name, handle and defaults reach a new dump, `21` dark theme, `22` Terms/Privacy + developer tools, `23` recap/sensitive switches + Reindex |
+
+- Flows marked `writes-album` (`16`, `17`) really export slides to the emulator's DayDump album. `e2e.py` runs them last on each emulator, because the new photos change counts and screens. On a phone they leave files in the gallery.
+- `17` posts through the share chooser, since the emulator has no Instagram or TikTok.
+- Not covered: photos shared into DayDump from another app (Maestro can't send a share intent), purchases, and the avatar selfie finder (the test photos contain no faces).
 - The app asks for notification permission at first launch, before onboarding (`NotificationService.init()` in `AppState.tsx`). `subflows/dismiss_notifications.yaml` taps "Don't allow" whenever that prompt shows.
+- Known failure: `16` fails until the app is fixed. Save only can't export a topic dump: the export file name contains `:` (from the dump id), so `MediaLibrary.createAlbumAsync` can't tell its MIME type (`src/services/slides.tsx`, `exportSlides`).
+- Rare launch crashes seen on the emulator, both right after `clearState`: a `SQLITE_IOERR_FSYNC` in AsyncStorage, and a SIGSEGV in React Native Fabric (`MountingCoordinator::pullTransaction`). A re-run passes.
 - `--debug` mode hasn't been run yet. Headless and `--headed` both pass.
 
 ## Screenshot diffs

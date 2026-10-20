@@ -1,0 +1,24 @@
+# Edit: post sizes, layouts (slide count), slide paging, Bleed/Border; Preview follows the size.
+appId: com.daydump.app
+name: 12 edit sizes + layouts
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/edit.yaml
+    env:
+      N: 4
+- assertVisible: "4:5 · Original"
+- assertVisible: "1/4"
+- tapOn: "9:16 TikTok"
+- assertVisible: "9:16 · Original"
+- tapOn: "2×2 Grid"
+- assertVisible: "1/1"
+- tapOn: "2 Split"
+- assertVisible: "1/2"
+- tapOn: "Next slide"
+- assertVisible: "2/2"
+- tapOn: "Border"
+- waitForAnimationToEnd
+- takeScreenshot: vr_edit_split_border
+- tapOn: "Preview"
+- assertVisible: "9:16 · 2 Split layout"

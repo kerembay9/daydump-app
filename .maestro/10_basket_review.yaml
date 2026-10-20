@@ -1,0 +1,30 @@
+# Create basket: Total stepper, review sheet (move, remove), start a new dump; the old one stays in Drafts.
+appId: com.daydump.app
+name: 10 basket total + review
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/pick.yaml
+    env:
+      N: 3
+- assertVisible: "Continue with 3 photos"
+- assertVisible: ".*You 3 · App \\+3.*"
+- tapOn: "More photos"
+- assertVisible: ".*You 3 · App \\+4.*"
+- tapOn: "Fewer photos"
+- tapOn: "Fewer photos"
+- tapOn: "Fewer photos"
+- tapOn: "Fewer photos"
+- assertVisible: ".*You 3 · App \\+0.*"
+- tapOn: "3 selected. Review"
+- assertVisible: "Selected basket \\(3/3 photos\\)"
+- tapOn: "Photo 1"
+- tapOn: "Move later"
+- tapOn: "Remove photo 3"
+- assertVisible: "Selected basket \\(2/3 photos\\)"
+- tapOn: "Start a new dump · .*"
+- assertVisible: "Continue with 0 photos"
+- tapOn: "Library"
+- tapOn: "Drafts.*"
+- assertVisible: "Drafts \\(1\\)"
+- assertVisible: ".*, draft"

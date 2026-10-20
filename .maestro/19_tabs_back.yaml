@@ -1,0 +1,19 @@
+# Tab bar and Android Back: Create, Library and Profile go back to Discover; empty Library's Find a dump.
+appId: com.daydump.app
+name: 19 tabs + back
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- assertVisible: "Search keyword, place, date..."
+- back
+- assertVisible: "Other dumps"
+- tapOn: "Library"
+- assertVisible: "Nothing posted yet"
+- back
+- assertVisible: "Other dumps"
+- tapOn: "Library"
+- tapOn: "Find a dump"
+- assertVisible: "Other dumps"
+- tapOn: "Profile and settings"
+- back
+- assertVisible: "Other dumps"

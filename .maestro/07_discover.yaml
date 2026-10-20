@@ -1,0 +1,25 @@
+# Discover: hero Edit chip, a bento tile becomes the hero, pull-to-refresh shuffle.
+appId: com.daydump.app
+name: 07 discover hero, tiles, shuffle
+---
+- runFlow: subflows/ready.yaml
+- assertVisible: "Hi there"
+- assertVisible: "Other dumps"
+- tapOn: "Edit .*"
+- assertVisible: "Sizes · Filter % · Captions"
+- tapOn: "Back"
+- assertVisible: "Other dumps"
+- copyTextFrom: "Preview .+"
+- evalScript: ${output.hero = maestro.copiedText}
+- tapOn:
+    text: ".+, .+"
+    below: "Other dumps"
+- extendedWaitUntil:
+    notVisible: ${output.hero}
+    timeout: 5000
+- swipe:
+    start: 50%, 25%
+    end: 50%, 75%
+- extendedWaitUntil:
+    visible: "Preview"
+    timeout: 10000

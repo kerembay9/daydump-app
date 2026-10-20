@@ -1,0 +1,31 @@
+# Library drafts: a draft from Discover's Edit, search in drafts, delete (cancel, then long-press + confirm), empty state.
+appId: com.daydump.app
+name: 18 library drafts
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Edit .*"
+- assertVisible: "Sizes · Filter % · Captions"
+- tapOn: "Back"
+- tapOn: "Library"
+- assertVisible: "Nothing posted yet"
+- tapOn: "Drafts.*"
+- assertVisible: "Drafts \\(1\\)"
+- tapOn: "Search in drafts…"
+- inputText: "zzz"
+- assertVisible: "No matches"
+- tapOn:
+    text: "Clear search"
+    index: 0
+- assertVisible: ".*, draft"
+- tapOn: "Delete"
+- assertVisible: "Delete draft\\?"
+- tapOn: "Cancel"
+- assertVisible: ".*, draft"
+- longPressOn: ".*, draft"
+- assertVisible: "Delete draft\\?"
+- tapOn:
+    text: "Delete"
+    index: -1
+- assertVisible: "No drafts yet"
+- tapOn: "Start one"
+- assertVisible: "Search keyword, place, date..."

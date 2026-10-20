@@ -216,7 +216,9 @@ def run_flows(a):
 
     # longest flows first, round-robin, so shards finish together
     order = sorted(flows, key=lambda f: -f.stat().st_size)
-    shards = {s: order[i::n] for i, s in enumerate(serials)}
+    # flows that export to the photo album run last: the new photos would change counts and screens after them
+    album = lambda f: 'writes-album' in f.read_text()
+    shards = {s: [[f for f in order[i::n] if not album(f)], [f for f in order[i::n] if album(f)]] for i, s in enumerate(serials)}
 
     def shard(serial):
         d = OUT / serial
@@ -227,9 +229,12 @@ def run_flows(a):
         adb(serial, 'logcat', '-c', check=False)
         log = sp.Popen([ADB, '-s', serial, 'logcat', '-v', 'time'], stdout=open(d / 'logcat.txt', 'w'), stderr=sp.DEVNULL)
         try:
-            run([MAESTRO, '--device', serial, 'test', '--format', 'junit', '--output', d / 'junit.xml',
-                 '--test-output-dir', d, *shards[serial]], cwd=d, check=False,
-                stdout=open(d / 'maestro.log', 'w'), stderr=sp.STDOUT)
+            for k, g in enumerate(shards[serial]):
+                if not g:
+                    continue
+                run([MAESTRO, '--device', serial, 'test', '--format', 'junit', '--output', d / f'junit{k}.xml',
+                     '--test-output-dir', d, *g], cwd=d, check=False,
+                    stdout=open(d / f'maestro{k}.log', 'w'), stderr=sp.STDOUT)
         finally:
             log.terminate()
         return serial
@@ -245,12 +250,16 @@ def run_flows(a):
     failed = False
     print(f'\n{"flow":<34}{"device":<16}{"result":<8}time')
     for s in serials:
-        for name, (res, secs) in junit(OUT / s / 'junit.xml').items():
-            failed |= res != 'pass'
-            print(f'{name:<34}{s:<16}{res:<8}{secs:.0f} s')
-        if not (OUT / s / 'junit.xml').exists():
-            failed = True
-            print(f'{"(no report)":<34}{s:<16}fail    see {OUT / s / "maestro.log"}')
+        for k, g in enumerate(shards[s]):
+            if not g:
+                continue
+            if not (OUT / s / f'junit{k}.xml').exists():
+                failed = True
+                print(f'{"(no report)":<34}{s:<16}fail    see {OUT / s / f"maestro{k}.log"}')
+                continue
+            for name, (res, secs) in junit(OUT / s / f'junit{k}.xml').items():
+                failed |= res != 'pass'
+                print(f'{name:<34}{s:<16}{res:<8}{secs:.0f} s')
         crashes = [l for l in open(OUT / s / 'logcat.txt', errors='replace') if 'FATAL EXCEPTION' in l or (PKG in l and 'ANR in' in l)]
         if crashes:
             failed = True

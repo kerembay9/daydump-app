@@ -1,0 +1,30 @@
+# Profile: privacy explainer, Terms, Privacy Policy; 5 taps on Version unlock developer tools; Show onboarding.
+appId: com.daydump.app
+name: 22 profile about + dev tools
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- tapOn: "Everything happens on your phone.*"
+- tapOn: "Close"
+- scrollUntilVisible:
+    element: "Version.*"
+- tapOn: "Terms of Service"
+- assertVisible: "1\\. Agreement"
+- tapOn: "Close"
+- tapOn: "Privacy Policy"
+- assertVisible: "1\\. The short version"
+- tapOn: "Close"
+# 5 taps within 3 s (profile.tsx); separate tapOn steps are too slow
+- tapOn:
+    text: "Version.*"
+    repeat: 5
+    delay: 100
+- scrollUntilVisible:
+    element: "Show onboarding"
+- tapOn: "Show onboarding"
+- assertVisible: "Turn camera roll chaos into dumps"
+- tapOn: "Skip"
+- scrollUntilVisible:
+    element: "Hide developer tools"
+- tapOn: "Hide developer tools"
+- assertNotVisible: "Show onboarding"

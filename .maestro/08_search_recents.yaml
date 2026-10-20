@@ -1,0 +1,17 @@
+# Create search: a search can be cleared back to the full gallery.
+# The Try / Last searches dropdown (suggestions, recents, Remove) can't be tested yet: it sits outside its parent's
+# bounds (create.tsx, position absolute, top 44), so Android leaves it out of the accessibility tree (TalkBack too).
+appId: com.daydump.app
+name: 08 search clear
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- tapOn: "Search keyword, place, date..."
+- inputText: "coffee with friends"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Matches for \"coffee with friends\" .*"
+    timeout: 30000
+- tapOn: "Clear search"
+- assertVisible: "YOUR GALLERY \\(100\\)"
+- assertNotVisible: "Matches for .*"
