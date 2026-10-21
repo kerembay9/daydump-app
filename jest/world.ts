@@ -21,6 +21,8 @@ export const world = {
   shareListener: null as ((e: { action: string; uris: string[]; mimeType: string }) => void) | null,
   /** what the native share call resolves with: the package that got it */
   shareResult: 'com.instagram.android',
+  /** expo-file-system copy/move are async on the phone: a file is in `written` once its promise resolves; while `held` is set, they wait there */
+  files: { written: new Set<string>(), held: null as (() => void)[] | null },
 };
 
 let n = 0;
@@ -50,6 +52,7 @@ export function seedWorld(photos = defaultLibrary()) {
   world.bg = { state: 'idle', total: 0, left: 0, batteryPct: null, msPerPhoto: null };
   world.initialShare = null;
   world.shareResult = 'com.instagram.android';
+  world.files = { written: new Set(), held: null };
 }
 
 export const byUri = (uri: string) => world.photos.find((p) => p.uri === uri);

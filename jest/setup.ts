@@ -121,7 +121,13 @@ jest.mock('expo-image-manipulator', () => {
 jest.mock('expo-file-system', () => {
   const join = (...p: unknown[]) => p.map((x) => (typeof x === 'string' ? x : (x as { uri: string }).uri)).join('/');
   class Directory { uri: string; exists = false; constructor(...p: unknown[]) { this.uri = join(...p); } create() {} delete() {} }
-  class File { uri: string; exists = true; constructor(...p: unknown[]) { this.uri = join(...p); } write() {} delete() {} copy() {} }
+  const { world: w } = require('./world');
+  // async like the native ones: the destination counts as written only once the promise resolves
+  const relocate = (to: { uri: string }) => new Promise<void>((done) => {
+    const write = () => { w.files.written.add(to.uri); done(); };
+    if (w.files.held) w.files.held.push(write); else setTimeout(write, 0);
+  });
+  class File { uri: string; exists = true; constructor(...p: unknown[]) { this.uri = join(...p); } write() {} delete() {} copy(to: File) { return relocate(to); } move(to: File) { return relocate(to); } }
   return { File, Directory, Paths: { cache: 'file:///cache', document: 'file:///doc' } };
 });
 

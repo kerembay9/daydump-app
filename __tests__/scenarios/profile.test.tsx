@@ -2,11 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen, within } from 'expo-router/testing-library';
-import { bootApp, dump } from '../../jest/app';
-import { seedWorld } from '../../jest/world';
+import { act, fireEvent, screen, within } from 'expo-router/testing-library';
+import { bootApp, dump, settle } from '../../jest/app';
+import { seedWorld, world } from '../../jest/world';
 import { cashmere, espresso } from '../../src/theme/tokens';
 import { getProfile } from '../../src/services/profile';
+
+jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: async () => ({ canceled: false, assets: [{ uri: 'file:///cache/picked.jpg' }] }) }));
 
 const toasts = () => (ToastAndroid.show as jest.Mock).mock.calls.map((c) => c[0] as string);
 const painted = (color: string) => JSON.stringify(screen.toJSON()).includes(`"backgroundColor":"${color}"`);
@@ -95,4 +97,32 @@ test('no paywall or crown anywhere', async () => {
     const code = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
     expect([f, /\bCrown\b|react-native-purchases|presentPaywall/.test(code)]).toEqual([f, false]);
   }
+}, 30000);
+
+test('a new avatar shows only once its file is written, and Discover\'s header picks it up', async () => {
+  // The header's image loaded the avatar while File.copy was still writing it: an empty file, and expo-image never retries.
+  type Node = { props?: { source?: unknown }; children?: (Node | string)[] | null } | Node[] | string | null;
+  const uris = (n: Node): string[] => !n || typeof n === 'string' ? [] : Array.isArray(n) ? n.flatMap(uris)
+    : [...[n.props?.source].flat().map((x) => (x as { uri?: string } | undefined)?.uri ?? ''), ...uris(n.children ?? null)];
+  const avatars = () => [...new Set(uris(screen.toJSON() as Node).filter((u) => u.includes('/doc/avatar-')))];
+  await bootApp('/');
+  await screen.findByText('Other dumps', {}, { timeout: 10000 });
+  await fireEvent.press(screen.getByLabelText('Profile and settings'));
+  await fireEvent.press(await screen.findByLabelText('Change profile photo'));
+  world.files.held = [];
+  await fireEvent.press(await screen.findByText('Choose from gallery'));
+  await settle();
+  expect(world.files.held).toHaveLength(1); // the copy is still running...
+  expect(avatars()).toEqual([]); // ...so nothing shows the avatar yet
+
+  await act(async () => { world.files.held!.forEach((write) => write()); world.files.held = null; });
+  await settle();
+  const [uri] = avatars();
+  expect(world.files.written.has(uri)).toBe(true);
+  expect((await getProfile()).avatar).toBe(uri);
+
+  // back on Discover, the header shows it
+  await fireEvent.press(screen.getByLabelText('Back'));
+  await screen.findByText('Other dumps');
+  expect(avatars()).toEqual([uri]);
 }, 30000);
