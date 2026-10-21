@@ -51,7 +51,9 @@ private val STD = floatArrayOf(0.26862954f, 0.26130258f, 0.27577711f)
 
 /**
  * TinyCLIP image/text embeddings, all LiteRT. Images: the GPU (vision.tflite, batch 1, built from vision_dw8: VisionGpu) with
- * the CPU (vision_dw8.tflite) helping; without a usable GPU, vision_dw8 alone. Text: the CPU (text.tflite, dynamic int8). Vectors cross the bridge as base64
+ * the CPU (vision_dw8.tflite) helping; without a usable GPU, vision_dw8 alone. Text: the CPU (text.tflite, dynamic int8).
+ * Release builds download vision_dw8, concepts, sface and text after the install (ModelPacks); calls needing one that
+ * hasn't landed reject ("... not downloaded yet") and work once it has. Vectors cross the bridge as base64
  * little-endian Float32 (n * 512), L2-normalized. A photo that fails to decode yields a zero vector.
  */
 class ClipEmbedderModule : Module() {
@@ -59,13 +61,14 @@ class ClipEmbedderModule : Module() {
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
   private val clip get() = ClipEngine.get(ctx)
   private val yunet by lazy { YuNet(ctx, null, 320) }
-  private val sface by lazy { SFace(ctx) }
+  private val sface by lazy { SFace(ctx, ModelPacks.dir(ctx, ModelPacks.Pack.FACES)?.resolve("sface.tflite")?.path) }
+  private var packListener: com.google.android.play.core.assetpacks.AssetPackStateUpdateListener? = null
 
   override fun definition() = ModuleDefinition {
     Name("ClipEmbedder")
 
     // "Open with DayDump" / share-to-DayDump (intent filters in app.json): images handed to the app.
-    Events("onShareIntent")
+    Events("onShareIntent", "onModels")
     Function("getInitialShareIntent") { appContext.currentActivity?.intent?.let { takeShare(it) } }
     OnNewIntent { intent -> takeShare(intent)?.let { sendEvent("onShareIntent", it) } }
 
@@ -99,6 +102,14 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { encode(clip.embedTexts(texts)) }
     }
 
+    // The model downloads (ModelPacks), per pack: ready | downloading (progress 0..1) | queued | waiting | failed | unavailable (no Play).
+    AsyncFunction("modelState") Coroutine { -> withContext(Dispatchers.IO) { ModelPacks.state(ctx) } }
+    OnCreate {
+      packListener = ModelPacks.listen(ctx) { sendEvent("onModels", it) }
+      ModelPacks.next(ctx)
+    }
+    OnDestroy { packListener?.let { ModelPacks.unlisten(ctx, it) } }
+
     AsyncFunction("tokenize") Coroutine { s: String ->
       withContext(Dispatchers.Default) { clip.tokenizer.encode(s).toList() }
     }
@@ -111,7 +122,8 @@ class ClipEmbedderModule : Module() {
     // YuNet faces per photo, best first (+ SFace vectors with embed); a photo that fails to decode has none.
     AsyncFunction("faces") Coroutine { uris: List<String>, minScore: Double, embed: Boolean ->
       withContext(Dispatchers.Default) {
-        uris.map { u -> runCatching { yunet.detect(ctx, u, minScore, if (embed) sface else null) }.getOrElse { mapOf("aspect" to 1.0, "faces" to emptyList<Any>()) } }
+        val sf = if (embed) sface else null // rejects while the faces pack hasn't landed
+        uris.map { u -> runCatching { yunet.detect(ctx, u, minScore, sf) }.getOrElse { mapOf("aspect" to 1.0, "faces" to emptyList<Any>()) } }
       }
     }
 
@@ -225,20 +237,28 @@ class ClipEngine private constructor(private val ctx: Context) {
   private val decodePool = Executors.newFixedThreadPool(4, low).asCoroutineDispatcher()
   // Batch 1, one phrase per run; textLock: embedTexts isn't behind the mutex. Output is L2-normalized in the model.
   private val textLock = Any()
-  private val text by lazy { cpuModel("text") }
-  private fun cpuModel(name: String): Triple<CompiledModel, List<TensorBuffer>, List<TensorBuffer>> {
+  // These lazies throw (and retry on the next call) while their pack hasn't landed.
+  private fun packFile(p: ModelPacks.Pack, name: String) = ModelPacks.dir(ctx, p)?.resolve(name)?.path
+  private val text by lazy { cpuModel("text", packFile(ModelPacks.Pack.TEXT, "text.tflite")) }
+  private fun cpuModel(name: String, file: String? = null): Triple<CompiledModel, List<TensorBuffer>, List<TensorBuffer>> {
     val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$name-$installed.xnnpack").path
-    val m = CompiledModel.create(ctx.assets, "clip/$name.tflite", CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) })
+    val opts = CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) }
+    val m = if (file != null) CompiledModel.create(file, opts) else CompiledModel.create(ctx.assets, "clip/$name.tflite", opts)
     return Triple(m, m.createInputBuffers(), m.createOutputBuffers())
   }
-  val tokenizer by lazy { ClipTokenizer(asset("tokenizer.json").decodeToString()) }
+  // The app's fixed phrases (selfie finder), embedded at build time (phrases.json): they work before the text model arrives.
+  private val fixed by lazy {
+    val o = JSONObject(asset("phrases.json").decodeToString())
+    o.keys().asSequence().associateWith { decode(o.getString(it)) }
+  }
+  val tokenizer by lazy { ClipTokenizer(packFile(ModelPacks.Pack.TEXT, "tokenizer.json")?.let { File(it).readText() } ?: asset("tokenizer.json").decodeToString()) }
   val vocabNames by lazy {
     val a = JSONObject(asset("vocab.json").decodeToString()).getJSONArray("names")
     Array(a.length()) { a.getString(it) }
   }
   // q (1 x 512) -> scores against every vocab row (fp16 weights, fp32 math), one vector per run.
   private val conceptsLock = Any()
-  private val concepts by lazy { cpuModel("concepts") }
+  private val concepts by lazy { cpuModel("concepts", packFile(ModelPacks.Pack.VISION, "concepts.tflite")) }
   var timings = mapOf<String, Any>()
     private set
 
@@ -257,7 +277,7 @@ class ClipEngine private constructor(private val ctx: Context) {
       )
     }
     // The bundled GPU model is built from vision_dw8 on first use (VisionGpu); the stale-cache sweep drops old installs'.
-    return CompiledModel.create(visionFile ?: VisionGpu.build(ctx, File(ctx.cacheDir, "litert/vision-$installed.tflite")), opts)
+    return CompiledModel.create(visionFile ?: VisionGpu.build(ctx, packFile(ModelPacks.Pack.VISION, "vision_dw8.tflite"), File(ctx.cacheDir, "litert/vision-$installed.tflite")), opts)
   }
 
   private val installed get() = ctx.packageManager.getPackageInfo(ctx.packageName, 0).lastUpdateTime
@@ -272,7 +292,9 @@ class ClipEngine private constructor(private val ctx: Context) {
   // (16-18 alone): decode threads share the big cores. Packed weights cached next to the GPU cache.
   private fun makeCpu8(): CompiledModel {
     val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("dw8-$installed.xnnpack").path
-    return CompiledModel.create(ctx.assets, "clip/vision_dw8.tflite", CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) })
+    val opts = CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) }
+    val f = packFile(ModelPacks.Pack.VISION, "vision_dw8.tflite")
+    return if (f != null) CompiledModel.create(f, opts) else CompiledModel.create(ctx.assets, "clip/vision_dw8.tflite", opts)
   }
 
   private fun helperModel(): CompiledModel? {
@@ -282,9 +304,11 @@ class ClipEngine private constructor(private val ctx: Context) {
     return helper
   }
 
-  // Call on liteThread. null when LiteRT can't run here at all (GPU and CPU): no image embeddings.
+  // Call on liteThread. null when LiteRT can't run here at all (GPU and CPU): no image embeddings. Throws while the vision
+  // pack hasn't landed, before trying: that isn't the device failing, so it mustn't stick in liteFailed.
   private fun liteModel(): CompiledModel? {
     if (lite == null && !liteFailed) {
+      if (visionFile == null) ModelPacks.dir(ctx, ModelPacks.Pack.VISION)
       lite = runCatching(::makeLite).recoverCatching {
         // No usable GPU: the app's engine runs on its CPU half alone.
         if (engine != "gpu-cpu8" || visionFile != null) throw it
@@ -420,11 +444,13 @@ class ClipEngine private constructor(private val ctx: Context) {
     if (texts.isEmpty()) return FloatArray(0)
     val out = FloatArray(texts.size * DIM)
     synchronized(textLock) {
-      val (m, inBuf, outBuf) = text
       texts.forEachIndexed { i, t ->
-        inBuf[0].writeInt(tokenizer.encode(t))
-        m.run(inBuf, outBuf)
-        outBuf[0].readFloat().copyInto(out, i * DIM, 0, DIM)
+        val v = fixed[t] ?: text.let { (m, inBuf, outBuf) ->
+          inBuf[0].writeInt(tokenizer.encode(t))
+          m.run(inBuf, outBuf)
+          outBuf[0].readFloat()
+        }
+        v.copyInto(out, i * DIM, 0, DIM)
       }
     }
     return out

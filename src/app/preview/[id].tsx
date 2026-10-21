@@ -42,7 +42,8 @@ export default function Preview() {
     // warm the profile first: storyAsDump reads its size / frame defaults synchronously (cold start from the 8 PM recap)
     else if (story) getProfile().then(() => storyDraft(story.id)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
   }, [id, story]);
-  const dump = !isDumpId(id) && !story && loaded ? null : found;
+  // a dump already up stays: a rebuild while indexing can drop or re-id its story (topic ids carry their start date)
+  const dump = found ?? (!isDumpId(id) && !story && loaded ? null : found);
 
   if (dump === undefined) return null;
   // the 8 PM recap opens /preview/today even on a day with too few camera photos for a Today dump

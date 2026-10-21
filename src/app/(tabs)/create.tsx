@@ -23,6 +23,8 @@ import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { FinishSection, toPhoto, useFinishes } from '../../components/create/Finishes';
+import { ModelLoading } from '../../components/ModelLoading';
+import { useModels } from '../../state/models';
 
 const RECENTS_KEY = '@daydump_recent_searches';
 const MIN = 2, MAX = 12;
@@ -33,7 +35,7 @@ const dumpTitle = (q: string) => (q.trim() ? q.trim().split(/\s+/).map(capitaliz
 /** One CLIP text vector per query text (the grid re-searches whenever indexing rebuilds the library). */
 const textVecs = new Map<string, Promise<Float32Array | null>>();
 const vecFor = (text: string) => {
-  if (!textVecs.has(text)) textVecs.set(text, embedText(text).catch(() => null));
+  if (!textVecs.has(text)) textVecs.set(text, embedText(text).catch(() => { textVecs.delete(text); return null; })); // retry once the model arrives
   return textVecs.get(text)!;
 };
 
@@ -142,6 +144,10 @@ export default function Create() {
   // photos, not library rows: indexing rebuilds the library under a running search
   const [rows, setRows] = useState<IndexedPhoto[] | null>(null);
   const [qvec, setQvec] = useState<Float32Array | null>(null);
+  const [wordsSkipped, setWordsSkipped] = useState(false); // the search had words but no text vector
+  // release builds download the models after the install: vision (the library itself), then faces, then text (words)
+  const models = useModels();
+  const textReady = models?.text.state === 'ready';
   const [recents, setRecents] = useState<string[]>([]);
   const [basket, setBasket] = useState<DumpPhoto[]>([]);
   const [target, setTarget] = useState(6);
@@ -239,9 +245,10 @@ export default function Create() {
       if (query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip "${q.clip}": ${r.length} in ${Date.now() - t0} ms`);
       setRows(r.map((i) => lib.photos[i]));
       setQvec(v);
+      setWordsSkipped(!!q.clip && !v);
     }, query ? 300 : 0);
     return () => { live = false; clearTimeout(h); };
-  }, [query, lib]);
+  }, [query, lib, textReady]);
 
   // ---- "Similar to your N selected" (300 ms after the basket settles) ----
   const basketKey = basket.map((p) => p.id).join(',');
@@ -344,14 +351,25 @@ export default function Create() {
         <Text style={[ui(12, 600), { color: t.bgScreen }]}>Open settings</Text>
       </Tap>
     </FrameCard>
+  ) : models && models.vision.state !== 'ready' && !lib?.photos.length ? (
+    <ModelLoading pack="vision" s={models.vision} />
+  ) : query.trim() && wordsSkipped && models && !textReady ? (
+    <ModelLoading pack="text" s={models.text} />
   ) : rows == null ? (
     <Text style={[ui(12), { color: t.inkMuted, padding: 8 }]}>Loading your photos…</Text>
   ) : (
     <FrameCard padding={16} style={{ gap: 6 }}>
-      <Text style={[display(18), { color: t.ink }]}>{query.trim() ? 'No matches' : 'No photos yet'}</Text>
-      <Text style={[ui(12), { color: t.inkMuted }]}>
-        {query.trim() ? `Nothing in your library matches “${query.trim()}”. Try a place, a month or a simpler word.` : 'Photos appear here as DayDump reads your library.'}
-      </Text>
+      {(() => {
+        const [title, body] = query.trim()
+            ? ['No matches', `Nothing in your library matches “${query.trim()}”. Try a place, a month or a simpler word.`]
+            : ['No photos yet', 'Photos appear here as DayDump reads your library.'];
+        return (
+          <>
+            <Text style={[display(18), { color: t.ink }]}>{title}</Text>
+            <Text style={[ui(12), { color: t.inkMuted }]}>{body}</Text>
+          </>
+        );
+      })()}
     </FrameCard>
   );
 

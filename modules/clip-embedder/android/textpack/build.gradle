@@ -1,0 +1,6 @@
+// text.tflite + tokenizer.json: last in the download order (ModelPacks.kt), fetched by the app once facepack is in.
+plugins { id 'com.android.asset-pack' }
+assetPack {
+  packName = 'textpack'
+  dynamicDelivery { deliveryType = 'on-demand' }
+}

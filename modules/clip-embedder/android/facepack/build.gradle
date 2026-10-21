@@ -1,0 +1,6 @@
+// sface.tflite: second in the download order (ModelPacks.kt), fetched by the app once visionpack is in.
+plugins { id 'com.android.asset-pack' }
+assetPack {
+  packName = 'facepack'
+  dynamicDelivery { deliveryType = 'on-demand' }
+}

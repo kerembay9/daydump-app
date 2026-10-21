@@ -2,23 +2,28 @@
 
 Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision
         (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface]   (no args = all but bench)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface]   (no args = all but bench)
 
-clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU), tokenizer.json, golden vectors
-gpu    - the same vision tower -> LiteRT vision_dw8.tflite (int8 weights, CPU) + vision_gpu.skel (the phone rebuilds the fp16 GPU model
+clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU) + tokenizer.json (both the textpack asset pack), golden vectors,
+         phrases.json (FIXED_PHRASES embedded, so they work before the pack arrives)
+gpu    - the same vision tower -> LiteRT vision_dw8.tflite (int8 weights, CPU; visionpack) + vision_gpu.skel (bundled) (the phone rebuilds the fp16 GPU model
          from both, see gpu_skel). vision_dw8 is the CPU helper
          (and the fallback when the GPU can't run). Everything runs on LiteRT; there is no ONNX Runtime in the app.
-vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite
+vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite (visionpack)
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
 yunet  - YuNet face detector (OpenCV Zoo, MIT) -> LiteRT yunet_320.tflite (bundled, findSelfies) + yunet_640 for the face bench (prints the adb commands)
-sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
+sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (facepack; int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
 import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NATIVE = ROOT / "modules/clip-embedder/android/src/main/assets/clip"
+# Play asset packs, downloaded after the install in this order (ModelPacks.kt); debug builds carry them in the APK.
+VPACK = ROOT / "modules/clip-embedder/android/visionpack/src/main/assets/clip"
+FPACK = ROOT / "modules/clip-embedder/android/facepack/src/main/assets/clip"
+PACK = ROOT / "modules/clip-embedder/android/textpack/src/main/assets/clip"
 JS = ROOT / "src/services/index"
 CACHE = ROOT / "scripts/.cache"  # downloads; gitignored
 VOCAB = CACHE / "vocab.bin"  # concept text embeddings, rows of [float32 scale][512 x int8]; baked into concepts.tflite
@@ -36,6 +41,8 @@ CTX = 77
 EOT = 49407
 GOLDEN_PHRASES = ["a photo of a dog", "cinnamon bun", "wearing red", "A week in Seattle!", "café crème brûlée 123"]
 GOLDEN_IMAGE = ROOT / "screenshots/screenshot_1_hook.jpg"
+# The selfie finder's queries (src/services/selfie.ts), shipped as vectors: findSelfies works without the text model.
+FIXED_PHRASES = ["a selfie of a person, close-up face", "a sharp, in-focus photo", "a blurry, out-of-focus photo"]
 
 # Concepts Open Images lacks or names awkwardly: colors, clothing, light, moods, events, places.
 EXTRA = {
@@ -171,12 +178,28 @@ def build_clip():
     ids = torch.tensor(token_ids(tok, GOLDEN_PHRASES), dtype=torch.long)
     with torch.no_grad():
         q_v = t.vision(pix).numpy()  # fp32 reference: the GPU's fp16 tower matches it to cosine 1.0
-    q_t = export_tflite(t.text, ids, NATIVE / "text.tflite")
-    shutil.copy(tok_file, NATIVE / "tokenizer.json")
+    q_t = export_tflite(t.text, ids, PACK / "text.tflite")
+    shutil.copy(tok_file, PACK / "tokenizer.json")
     JS.mkdir(parents=True, exist_ok=True)
     golden = {"model": "-".join(MODELS[SHIPPED]), "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
               "image": {"file": GOLDEN_IMAGE.name, "vec": q_v[0].round(5).tolist()}}
     (JS / "clipGolden.json").write_text(json.dumps(golden))
+    build_phrases()
+
+
+def build_phrases():
+    import base64, numpy as np
+    from transformers import CLIPTokenizerFast
+    from ai_edge_litert.interpreter import Interpreter
+    tok = CLIPTokenizerFast(tokenizer_file=str(PACK / "tokenizer.json"))
+    it = Interpreter(model_path=str(PACK / "text.tflite")); it.allocate_tensors()
+    inp, out = it.get_input_details()[0], it.get_output_details()[0]
+    vecs = {}
+    for p, ids in zip(FIXED_PHRASES, token_ids(tok, FIXED_PHRASES)):
+        it.set_tensor(inp["index"], np.array([ids], dtype=inp["dtype"])); it.invoke()
+        vecs[p] = base64.b64encode(it.get_tensor(out["index"])[0].astype("<f4").tobytes()).decode()
+    (NATIVE / "phrases.json").write_text(json.dumps(vecs))
+    print(f"  phrases.json: {len(vecs)} phrases")
 
 
 def build_gpu():
@@ -213,15 +236,15 @@ def build_gpu():
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
     # vision_dw8: int8 weights, fp32 math (XNNPACK quantizes activations per run), for the CPU helping the GPU.
     # The fp16 vision.tflite isn't shipped: the phone builds its GPU twin from vision_dw8 (gpu_skel). It stays in the cache.
-    gpu = CACHE / "gpu"; gpu.mkdir(parents=True, exist_ok=True)
+    gpu = CACHE / "gpu"; gpu.mkdir(parents=True, exist_ok=True); VPACK.mkdir(parents=True, exist_ok=True)
     for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", recipe.dynamic_wi8_afp32(), 0.98),
                             ("vision_from_dw8", None, 0.98)]:
-        out = (NATIVE if name == "vision_dw8" else gpu) / f"{name}.tflite"
+        out = (VPACK if name == "vision_dw8" else gpu) / f"{name}.tflite"
         if rp:
             q = quantizer.Quantizer(str(f32)); q.load_quantization_recipe(rp)
             out.write_bytes(q.quantize().quantized_model)
         else:
-            out.write_bytes(gpu_skel(gpu / "vision.tflite", NATIVE / "vision_dw8.tflite", NATIVE / "vision_gpu.skel"))
+            out.write_bytes(gpu_skel(gpu / "vision.tflite", VPACK / "vision_dw8.tflite", NATIVE / "vision_gpu.skel"))
         it = Interpreter(model_path=str(out)); it.allocate_tensors()
         it.set_tensor(it.get_input_details()[0]["index"], x.numpy()); it.invoke()
         e = it.get_tensor(it.get_output_details()[0]["index"])[0]
@@ -389,7 +412,7 @@ def build_sface():
 
     rng = np.random.default_rng(0)
     x = torch.from_numpy(rng.uniform(0, 255, (4, 112, 112, 3)).astype(np.float32))
-    out = NATIVE / "sface.tflite"
+    out = FPACK / "sface.tflite"; FPACK.mkdir(parents=True, exist_ok=True)
     # plain int8 weights drift to cosine 0.955 on a real face vs OpenCV; Hadamard-rotated int8 (the FCs) stays at 1.000.
     # The rotation doesn't take convs, so they get fp16 weights (fp32 math), and so does its +-1/32 rotation matrix
     # (exact in fp16) in a second pass: 23.5 -> 15.1 MB; 30 vs 29 flipped same-person pairs of 104k vs fp32.
@@ -468,7 +491,7 @@ def build_concepts():
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
     q = torch.from_numpy(v[:8] / np.linalg.norm(v[:8], axis=-1, keepdims=True))
-    export_tflite(Concepts(), q, NATIVE / "concepts.tflite", rm.get_quantization_recipe(), floor=0.9999)
+    export_tflite(Concepts(), q, VPACK / "concepts.tflite", rm.get_quantization_recipe(), floor=0.9999)
 
 
 def build_cities():
@@ -493,4 +516,4 @@ def build_cities():
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface"]
     for s in steps:
-        {"clip": build_clip, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface}[s]()
+        {"clip": build_clip, "phrases": build_phrases, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface}[s]()

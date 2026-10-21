@@ -13,7 +13,7 @@ const ThemeCtx = createContext<Ctx>({ t: cashmere, mode: 'system', setMode: () =
 /** The new theme right away; ThemeCtx gets it one deferred render later (see ThemeNow). */
 const NowCtx = createContext<Ctx>({ t: cashmere, mode: 'system', setMode: () => {} });
 
-/** Follows the system theme; Profile can override with Light/Dark (persisted). */
+/** Light (Cashmere) by default; Profile can switch to Dark or System (persisted). */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // null until the saved override is read: rendering nothing for that tick avoids a Cashmere frame before Dark.
   const [mode, setModeState] = useState<ThemeMode | null>(null);
@@ -21,8 +21,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((m) => setModeState(m === 'light' || m === 'dark' ? m : 'system'))
-      .catch(() => setModeState('system'));
+      .then((m) => setModeState(m === 'system' || m === 'dark' ? m : 'light'))
+      .catch(() => setModeState('light'));
   }, []);
 
   const setMode = (m: ThemeMode) => {
@@ -46,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => { a.remove(); b.remove(); };
   }, [mode]);
 
-  const themeOf = (m: ThemeMode | null) => ((m ?? 'system') === 'system' ? system === 'dark' : m === 'dark') ? espresso : cashmere;
+  const themeOf = (m: ThemeMode | null) => ((m ?? 'light') === 'system' ? system === 'dark' : m === 'dark') ? espresso : cashmere;
   const t = themeOf(mode);
   // Every mounted screen re-renders on a theme change (~0.5 s in dev with Discover + Create under Profile). The
   // screen picking the theme (ThemeNow) and the root background repaint first; the rest catch up deferred, unseen.

@@ -15,7 +15,14 @@ type ClipEmbedderModule = {
    * model: files/models/vision_<model>.tflite on the device, null = bundled. ok = false: LiteRT can't run here (embedImages will throw).
    */
   configure(parallelDecode: boolean, engine: ClipEngine, model: string | null): Promise<{ loadMs: number; found: boolean; ok: boolean }>;
+  /** Rejects while the text model hasn't arrived (modelState), except for the selfie finder's fixed phrases. */
   embedTexts(texts: string[]): Promise<string>;
+  /**
+   * Release builds download the big models from Play after the install, one pack at a time: vision (embedImages, topConcepts),
+   * then faces (faces with embed), then text (embedTexts). Debug builds have them all. Calls needing a missing one reject.
+   * Updates come as onModels events. Also restarts a download that failed.
+   */
+  modelState(): Promise<Record<ModelPack, PackState>>;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
@@ -53,11 +60,15 @@ type ClipEmbedderModule = {
   /** Images the app was opened with (share / Open with), once per intent; null otherwise. */
   getInitialShareIntent(): ShareIntent | null;
   addListener(event: 'onShareIntent', cb: (e: ShareIntent) => void): { remove(): void };
+  addListener(event: 'onModels', cb: (e: PackState & { pack: ModelPack }) => void): { remove(): void };
   /** No nav-bar scrim; light = dark nav buttons. */
   setNavigationBarStyle(light: boolean): void;
 };
 
 export type ShareTarget = 'instagram' | 'tiktok';
+export type ModelPack = 'vision' | 'faces' | 'text';
+/** queued: behind another pack. unavailable: no Play delivery for this install (sideloaded release APK), so it never arrives. progress 0..1. */
+export type PackState = { state: 'ready' | 'downloading' | 'queued' | 'waiting' | 'failed' | 'unavailable'; progress: number };
 /** uris: content:// as handed over (content://media/.../<id> = a MediaStore id); action: SEND | SEND_MULTIPLE | VIEW | EDIT. */
 export type ShareIntent = { action: string; uris: string[]; mimeType: string };
 

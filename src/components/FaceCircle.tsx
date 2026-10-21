@@ -24,7 +24,8 @@ export function FaceCircle({ uri, box, aspect, size }: { uri: string; box?: Face
   const k = size / side;
   return (
     <View style={round}>
-      <Image source={{ uri }} contentFit="fill" style={{ position: 'absolute', width: aspect * k, height: k, left: -left * k, top: -top * k }} />
+      {/* key: a new photo remounts, else the old one shows a moment stretched to the new one's size */}
+      <Image key={uri} source={{ uri }} contentFit="fill" style={{ position: 'absolute', width: aspect * k, height: k, left: -left * k, top: -top * k }} />
     </View>
   );
 }

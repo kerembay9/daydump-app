@@ -185,6 +185,8 @@ class BackgroundIndexWorker(ctx: Context, params: WorkerParameters) : CoroutineW
   private val notes get() = NotificationManagerCompat.from(ctx)
 
   override suspend fun doWork(): Result {
+    // Release builds: the vision model may still be downloading (ModelPacks). Try again later (WorkManager's backoff).
+    if (!ModelPacks.ready(ctx, ModelPacks.Pack.VISION)) return Result.retry().also { ModelPacks.next(ctx) }
     val fast = inputData.getBoolean("fast", false)
     val t0 = SystemClock.elapsedRealtime()
     val clip = ClipEngine.get(ctx)

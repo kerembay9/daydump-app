@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Film, Image as ImageIcon, Layers, LucideIcon, ShieldCheck, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -12,6 +12,7 @@ import { Tape } from './ui/Tape';
 import { Tap } from './ui/Tap';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
+import { SelfieFinder } from './SelfieFinder';
 
 type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
@@ -47,12 +48,16 @@ const SLIDES: Slide[] = [
   },
 ];
 
-/** First-run slides in the app's theme. The last one asks for photo access; there is no paywall step. */
-export function OnboardingModal({ visible, onFinish }: { visible: boolean; onFinish: () => void }) {
+/**
+ * First-run slides in the app's theme. The last one asks for photo access; with it, indexing starts (onStart) and the
+ * selfie finder follows while it reads. There is no paywall step. onFinish(started): whether onStart already ran.
+ */
+export function OnboardingModal({ visible, onStart, onFinish }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void }) {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
+  const [selfie, setSelfie] = useState(false);
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
 
@@ -70,49 +75,68 @@ export function OnboardingModal({ visible, onFinish }: { visible: boolean; onFin
   };
 
   const finish = async (ask: boolean) => {
+    let granted = false;
     try {
       // Photo only, so Android 13+ doesn't reject the request over the undeclared audio permission.
-      if (ask) await MediaLibrary.requestPermissionsAsync(false, ['photo']);
+      if (ask) granted = (await MediaLibrary.requestPermissionsAsync(false, ['photo'])).granted;
     } catch (e) {
       console.warn('[onboarding] permission request failed:', e);
     } finally {
       await OnboardingService.setOnboardingCompleted();
-      onFinish();
+      if (!granted) onFinish(false);
+    }
+    if (granted) {
+      onStart();
+      setSelfie(true);
     }
   };
 
+  // back does nothing while it's up
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [visible]);
+
+  if (!visible) return null;
+  // An overlay, not a Modal: a Modal's own window gets Android's white scrim behind the nav buttons
   return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={() => {}}>
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 }}>
         <View style={{ paddingHorizontal: 24, height: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={[display(20), { color: t.ink }]}>DayDump</Text>
-          {!last && (
-            <Tap onPress={() => finish(false)} hitSlop={10} accessibilityRole="button">
-              <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip</Text>
-            </Tap>
-          )}
         </View>
 
+        {selfie ? (
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 18, paddingBottom: 16 }}>
+            <Text style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>One more thing</Text>
+            <Text style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Let’s find you in your photos</Text>
+            <SelfieFinder />
+          </ScrollView>
+        ) : (
         <ScrollView ref={scroll} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}>
           {SLIDES.map((s, i) => (
             <SlideBody key={s.id} s={s} i={i} width={width} />
           ))}
         </ScrollView>
+        )}
 
         <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
+          {!selfie && <View style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
             {SLIDES.map((s, i) => (
               <View key={s.id} style={{ height: 6, borderRadius: 3, width: i === page ? 22 : 6, backgroundColor: i === page ? t.ink : t.borderStrong }} />
             ))}
-          </View>
-          <Tap onPress={last ? () => finish(true) : next} accessibilityRole="button"
+          </View>}
+          <Tap onPress={selfie ? () => onFinish(true) : last ? () => finish(true) : next} accessibilityRole="button"
             style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
-            <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & start' : 'Continue'}</Text>
+            <Text style={[ui(15, 600), { color: t.bgScreen }]}>{selfie ? 'Go to my dumps' : last ? 'Allow photos & start' : 'Continue'}</Text>
           </Tap>
-          <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>You can change photo access anytime in Android settings.</Text>
+          <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>
+            {selfie ? 'DayDump keeps reading your photos in the background.' : 'You can change photo access anytime in Android settings.'}
+          </Text>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 

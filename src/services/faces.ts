@@ -28,5 +28,11 @@ export function groupFaces(vecs: Float32Array[], thr = SAME_PERSON): number[] {
   });
 }
 
+/** Whether f is one of these people (SFace vectors); false without a vector (face model not downloaded). */
+export const isAnyOf = (f: Face | undefined, people: Float32Array[]) => {
+  const v = f && faceVec(f);
+  return !!v && people.some((p) => dot(v, p) > SAME_PERSON);
+};
+
 /** 1 for a face in the middle of the photo (a bit above center, where selfies put it), 0 at an edge. */
 export const centered = (f: Face) => Math.max(0, 1 - 2 * Math.abs(f.x + f.w / 2 - 0.5)) * Math.max(0, 1 - 2 * Math.abs(f.y + f.h / 2 - 0.45));

@@ -79,6 +79,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./modules/clip-embedder/app.plugin.js",
       "expo-image",
       "expo-sharing",
       [

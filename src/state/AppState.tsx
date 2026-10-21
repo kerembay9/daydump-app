@@ -7,6 +7,7 @@ import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
 import { addShareIntentListener, ClipEmbedder, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
+import { whenReady } from './models';
 
 /** since = creation time of the photo just indexed (camera newest-first, then the rest newest-first) */
 export type IndexProgress = { done: number; total: number; etaSec: number | null; since: number; batteryPct?: number | null };
@@ -46,7 +47,10 @@ type AppStateValue = {
   shuffleStories: (seenIds?: string[]) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
-  finishOnboarding: () => Promise<void>;
+  /** Starts indexing (asks for photo access first). Onboarding calls it once access is granted. */
+  start: () => Promise<void>;
+  /** started: onboarding already called start(). */
+  finishOnboarding: (started?: boolean) => Promise<void>;
   showOnboarding: () => void;
 };
 
@@ -111,6 +115,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         console.log(`[stories] rebuilt from ${lib.photos.length} photos in ${showCost} ms (load ${tl} ms)`);
       };
       if (!sync) await show();
+      await whenReady('vision'); // release builds download it after the install; Discover shows the download meanwhile
       // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
       if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
@@ -147,8 +152,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       getProfile().catch(() => {}); // warm profileNow() (new-dump size / frame defaults) before anything reads it
-      await NotificationService.init();
-      if (await OnboardingService.hasCompletedOnboarding()) start();
+      // first run: the notification ask waits for the end of onboarding (finishOnboarding), not over the welcome
+      if (await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
       else setOnboarding(true);
     })();
   }, [start]);
@@ -156,9 +161,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   // Back in front: pick up photos taken / deleted meanwhile (a quick diff when nothing changed). Indexing handed to the
   // background worker when the app left: merge its results and finish here, as a full refresh.
   useEffect(() => {
+    if (!permission) return; // onboarding / no access yet: nothing to read
     const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active') refreshStories(!wasHandedOff()); });
     return () => sub.remove();
-  }, [refreshStories]);
+  }, [refreshStories, permission]);
 
   useEffect(() => {
     const sub = addShareIntentListener((e) => { console.log(`[share] received ${e.uris.length} (${e.action})`); setIncoming(e); });
@@ -190,9 +196,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       refreshStories();
     },
     // The onboarding paywall hook is gone (PAYWALLS_ENABLED = false).
-    finishOnboarding: async () => {
+    start,
+    finishOnboarding: async (started) => {
       setOnboarding(false);
-      await start();
+      if (!started) await start();
+      await NotificationService.init();
     },
     showOnboarding: () => setOnboarding(true),
   }), [library, stories, available, loaded, progress, edge, paused, permission, onboarding, incoming, refreshStories, start]);

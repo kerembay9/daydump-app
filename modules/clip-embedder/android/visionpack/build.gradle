@@ -1,0 +1,6 @@
+// vision_dw8.tflite + concepts.tflite: first in the download order (ModelPacks.kt). Fast-follow: Play fetches it right after the install.
+plugins { id 'com.android.asset-pack' }
+assetPack {
+  packName = 'visionpack'
+  dynamicDelivery { deliveryType = 'fast-follow' }
+}

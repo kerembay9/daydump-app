@@ -95,7 +95,7 @@ function Root() {
         </FrameCard>
       </Sheet>
       {/* keyed so onboarding reopened from Dev tools starts again at slide 1 */}
-      <OnboardingModal key={String(app.onboarding)} visible={app.onboarding} onFinish={app.finishOnboarding} />
+      <OnboardingModal key={String(app.onboarding)} visible={app.onboarding} onStart={app.start} onFinish={app.finishOnboarding} />
       <StatusBar style={now.dark ? 'light' : 'dark'} />
     </View>
   );

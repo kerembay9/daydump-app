@@ -18,8 +18,11 @@ import java.util.zip.CRC32
  * A CRC mismatch throws, and the caller falls back to the CPU.
  */
 internal object VisionGpu {
-  fun build(ctx: Context, out: File): String {
-    if (!out.exists()) {
+  /** dw8: the vision pack's file (release), null = the APK's asset (debug). */
+  fun build(ctx: Context, dw8: String?, out: File): String {
+    if (!out.exists() && dw8 != null) {
+      RandomAccessFile(dw8, "r").channel.use { dc -> write(ctx.assets.open("clip/vision_gpu.skel"), dc.map(FileChannel.MapMode.READ_ONLY, 0, dc.size()), out) }
+    } else if (!out.exists()) {
       ctx.assets.openFd("clip/vision_dw8.tflite").use { fd ->
         FileInputStream(fd.fileDescriptor).channel.use { dc ->
           write(ctx.assets.open("clip/vision_gpu.skel"), dc.map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.length), out)

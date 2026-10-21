@@ -16,6 +16,8 @@ import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
+import { ModelLoading } from '../../components/ModelLoading';
+import { useModels } from '../../state/models';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const edit = (id: string) => router.push({ pathname: '/edit/[id]', params: { id } });
@@ -124,6 +126,7 @@ export default function Discover() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [name, setName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
 
   useFocusEffect(useCallback(() => { getProfile().then((p) => setName(p.name.trim().split(/\s+/)[0] ?? '')); }, []));
 
@@ -162,6 +165,8 @@ export default function Discover() {
         />
       ) : hero ? (
         <Hero s={hero} />
+      ) : vision && vision.state !== 'ready' ? (
+        <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
         <TapedNote
           title={progress || paused ? 'Building your dumps…' : 'No dumps yet'}

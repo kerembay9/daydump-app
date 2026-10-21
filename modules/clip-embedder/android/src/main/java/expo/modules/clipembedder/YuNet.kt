@@ -83,8 +83,9 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
  * SFace face recognition (OpenCV Zoo, Apache 2.0; scripts/build_assets.py sface): a face aligned to 112x112 from its 5
  * landmarks -> L2-normalized 128-d feature. Same person when cosine > 0.363 (OpenCV's threshold).
  */
-internal class SFace(ctx: Context) : AutoCloseable {
-  private val m = CompiledModel.create(ctx.assets, "clip/sface.tflite", CPU)
+/** file: the faces pack's sface.tflite (release), null = the APK's asset (debug). */
+internal class SFace(ctx: Context, file: String?) : AutoCloseable {
+  private val m = file?.let { CompiledModel.create(it, CPU) } ?: CompiledModel.create(ctx.assets, "clip/sface.tflite", CPU)
   private val inBuf = m.createInputBuffers()
   private val outBuf = m.createOutputBuffers()
   private val crop = Bitmap.createBitmap(112, 112, Bitmap.Config.ARGB_8888)
