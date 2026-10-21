@@ -28,7 +28,6 @@ import { ratioOf } from '../services/layouts';
 import { resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { ClipEmbedder } from '../../modules/clip-embedder';
-import { GeminiService } from '../services/geminiService';
 import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
@@ -59,7 +58,6 @@ function ProfileBody() {
   const [legal, setLegal] = useState<LegalDocType | null>(null);
   const [debug, setDebug] = useState(false);
   const [bench, setBench] = useState(false);
-  const [gemini, setGemini] = useState('');
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
   const [sub, setSub] = useState<Sub | null>(null);
@@ -77,7 +75,6 @@ function ProfileBody() {
     list().then((d) => setDumps(d.length), () => {});
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
-    GeminiService.getApiKey().then((k) => setGemini(k ?? ''), () => {});
     getSubscription().then(setSub);
     return flushTyped;
   }, []));
@@ -263,12 +260,6 @@ function ProfileBody() {
             NotificationService.sendTestNotification().catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-          <View style={{ paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderColor: t.borderSubtle }}>
-            <Text style={[ui(12, 500), { color: t.ink }]}>Gemini API key</Text>
-            <TextInput value={gemini} onChangeText={setGemini} onEndEditing={() => GeminiService.setApiKey(gemini.trim()).catch(() => {})}
-              placeholder="Not set" placeholderTextColor={t.inkMuted} secureTextEntry autoCapitalize="none" autoCorrect={false}
-              style={[ui(11.5), { color: t.ink, padding: 0, marginTop: 4 }]} />
-          </View>
           <Row label="Hide developer tools" onPress={() => save({ dev: false })} last />
         </Section>
       )}
