@@ -86,8 +86,9 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("shareImages") { uris: List<String>, caption: String, target: String? -> shareImages(uris, caption, target) }
 
     // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
-    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
-      withContext(Dispatchers.Default) { encode(clip.embedImages(uris, thumb ?: 0)) }
+    // now: a few photos at once, on a CPU model of their own (embedNow), past indexing's lock and hold.
+    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int?, now: Boolean? ->
+      withContext(Dispatchers.Default) { encode(if (now == true) clip.embedNow(uris) else clip.embedImages(uris, thumb ?: 0)) }
     }
 
     // model: use filesDir/models/vision_<model>.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
@@ -119,11 +120,25 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { clip.topConcepts(decode(vecsB64), k) }
     }
 
+    // Loads the selfie scan's YuNet and CLIP ahead (~0.3 s on a fresh install: XNNPACK packs the weights), so its first look doesn't wait.
+    AsyncFunction("warmSelfie") Coroutine { ->
+      withContext(Dispatchers.Default) {
+        yunet.detect(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 1.0, null)
+        clip.embedNow(emptyList())
+        Unit
+      }
+    }
+
     // YuNet faces per photo, best first (+ SFace vectors with embed); a photo that fails to decode has none.
-    AsyncFunction("faces") Coroutine { uris: List<String>, minScore: Double, embed: Boolean ->
+    // Decodes 4 at a time (decoding is ~90% of the cost); thumb > 0: MediaStore thumbnails of content:// uris.
+    AsyncFunction("faces") Coroutine { uris: List<String>, minScore: Double, embed: Boolean, thumb: Int? ->
       withContext(Dispatchers.Default) {
         val sf = if (embed) sface else null // rejects while the faces pack hasn't landed
-        uris.map { u -> runCatching { yunet.detect(ctx, u, minScore, sf) }.getOrElse { mapOf("aspect" to 1.0, "faces" to emptyList<Any>()) } }
+        val none = mapOf("aspect" to 1.0, "faces" to emptyList<Any>())
+        uris.chunked(4).flatMap { c ->
+          c.map { u -> async(Dispatchers.IO) { runCatching { yunet.decode(ctx, u, sf != null, thumb ?: 0) }.getOrNull() } }.awaitAll()
+            .map { b -> b?.let { runCatching { yunet.detect(it, minScore, sf) }.getOrNull() } ?: none }
+        }
       }
     }
 
@@ -290,8 +305,8 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   // Dynamic int8 (weights int8, activations quantized per run) on XNNPACK, 4 threads. In the app it runs 43-52 ms/photo
   // (16-18 alone): decode threads share the big cores. Packed weights cached next to the GPU cache.
-  private fun makeCpu8(): CompiledModel {
-    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("dw8-$installed.xnnpack").path
+  private fun makeCpu8(name: String = "dw8"): CompiledModel {
+    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$name-$installed.xnnpack").path
     val opts = CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) }
     val f = packFile(ModelPacks.Pack.VISION, "vision_dw8.tflite")
     return if (f != null) CompiledModel.create(f, opts) else CompiledModel.create(ctx.assets, "clip/vision_dw8.tflite", opts)
@@ -343,10 +358,32 @@ class ClipEngine private constructor(private val ctx: Context) {
     val n = uris.size
     val input = FloatArray(n * 3 * PLANE)
     val t0 = SystemClock.elapsedRealtime()
-    // Each photo writes its own disjoint slice of input; returns the decoded size or null if undecodable.
-    fun fill(i: Int): String? = try {
-      waitForUser()
-      val uri = uris[i]
+    // waits first: on a fresh install the GPU model build (seconds of CPU) would land on the selfie finder's first look
+    val model = withContext(liteThread) { waitForUser(); liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
+    return embedLite(model, n, input, t0) { waitForUser(); fill(uris[it], thumb, input, it) }
+  }
+
+  // The selfie finder's few photos while indexing runs: its own vision_dw8 on a normal-priority thread, so neither the
+  // mutex (an indexing batch is ~7 s) nor holdIndexing makes it wait. Same model as the index's CPU half.
+  // ponytail: kept for the process (~1 dw8 copy in memory); close it after onboarding if memory gets tight.
+  private val nowThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+  private var nowModel: CompiledModel? = null
+  suspend fun embedNow(uris: List<String>): FloatArray = withContext(nowThread) {
+    val m = nowModel ?: makeCpu8("dw8now").also { nowModel = it }
+    val input = FloatArray(uris.size * 3 * PLANE)
+    val out = FloatArray(uris.size * DIM)
+    val inBuf = m.createInputBuffers()
+    val outBuf = m.createOutputBuffers()
+    try {
+      uris.forEachIndexed { i, u -> if (fill(u, 0, input, i) != null) runLite(m, inBuf, outBuf, input, i, out) }
+    } finally {
+      (inBuf + outBuf).forEach { it.close() }
+    }
+    out
+  }
+
+  // Photo i writes its own disjoint slice of input; returns the decoded size or null if undecodable.
+  private fun fill(uri: String, thumb: Int, input: FloatArray, i: Int): String? = try {
       val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
       } else {
@@ -365,12 +402,9 @@ class ClipEngine private constructor(private val ctx: Context) {
       }
       size
     } catch (e: Exception) {
-      Log.w("ClipEmbedder", "decode failed: ${uris[i]}", e)
+      Log.w("ClipEmbedder", "decode failed: $uri", e)
       null
     }
-    val model = withContext(liteThread) { liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
-    return embedLite(model, n, input, t0) { fill(it) }
-  }
 
   // Pipelined: photos decode on decodePool while the GPU embeds them front to back. Once every photo is decoded the CPU
   // is idle, so (engine gpu-cpu8) vision_dw8 takes photos from the back until the two meet. decodeMs = wall time the GPU wasn't busy.

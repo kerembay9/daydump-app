@@ -5,7 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
+import android.util.Size
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import kotlin.math.max
@@ -28,11 +31,23 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
   private val px = FloatArray(size * size * 3)
   private val argb = IntArray(size * size)
 
-  @Synchronized
   fun detect(ctx: Context, uri: String, minScore: Double, sface: SFace? = null): Map<String, Any> {
     val t0 = SystemClock.elapsedRealtime()
-    // SFace crops from a sharper decode than the detector's letterbox
-    val full = decodeScaled(ctx, uri, if (sface != null) 720 else size)
+    return detect(decode(ctx, uri, sface != null, 0), minScore, sface, t0)
+  }
+
+  /**
+   * The photo to detect on; not synchronized, so callers can decode several at once. SFace crops from a sharper decode
+   * than the detector's letterbox. thumb > 0 (content:// uris, no SFace): MediaStore's cached thumbnail, ~5x cheaper.
+   */
+  fun decode(ctx: Context, uri: String, sharp: Boolean, thumb: Int): Bitmap =
+    if (thumb > 0 && !sharp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      runCatching { ctx.contentResolver.loadThumbnail(Uri.parse(uri), Size(thumb, thumb), null) }.getOrElse { decodeScaled(ctx, uri, size) }
+    } else decodeScaled(ctx, uri, if (sharp) 720 else size)
+
+  /** Recycles full. */
+  @Synchronized
+  fun detect(full: Bitmap, minScore: Double, sface: SFace?, t0: Long = SystemClock.elapsedRealtime()): Map<String, Any> {
     val k = size.toFloat() / max(full.width, full.height)
     val bmp = Bitmap.createScaledBitmap(full, max(1, (full.width * k).roundToInt()), max(1, (full.height * k).roundToInt()), true)
     val bw = bmp.width

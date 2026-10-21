@@ -1,5 +1,7 @@
+import { Platform } from 'react-native';
 import { embedText, IndexedPhoto, Library } from './index/photoIndex';
-import { dot } from './index/vectors';
+import { b64ToFloats, dot } from './index/vectors';
+import type { PhotoAsset } from '../types';
 import { searchRanked } from './stories';
 import { isCameraPhoto } from './galleryService';
 import { ClipEmbedder, type Face } from '../../modules/clip-embedder';
@@ -13,6 +15,9 @@ const DOCUMENT = /passport|identity document|^a document$|license|certificate|^a
 const SAME_SHOT = 0.92;
 /** Not just you: a pet (YuNet finds cat faces too) or other people, in the top 5 concepts. */
 const NOT_SOLO = /^(a pet (cat|dog)|cat|dog|pet|tom cat|a sleepy pet|a group of friends|a family gathering|family|people|crowd|hug|kiss|friendship|social group)$/;
+/** Any cat or dog concept (not hot dogs): YuNet finds pet faces, and a pet close-up's top 5 can miss it ("reading, novel, curious…"). */
+const PET = /(^|\s)(cats?|kitten|dogs?|puppy|pets?)(\s|$)/;
+const NOT_PET = /hot dog|corn dog|cat fish/;
 /** Faces this sure count as someone else in the photo (a turned or half-hidden face scores below the selfie's 0.6). */
 const OTHER_FACE = 0.35;
 /**
@@ -55,7 +60,7 @@ export async function findSelfies(lib: Library, embed = true, not?: { ids: Set<s
     top.push(x);
   }
   const [sharp, blurry] = await Promise.all([embedText('a sharp, in-focus photo'), embedText('a blurry, out-of-focus photo')]);
-  // ~80 ms/photo on the A54, mostly decoding; no native module (iOS / Expo Go) = CLIP order only
+  // ~80 ms/photo on the A54, mostly decoding; no native module (iOS / Expo Go) = no faces, so no candidates
   const scans = (await ClipEmbedder?.faces(top.map(({ p }) => p.uri), OTHER_FACE, embed)) ?? [];
   const all = scans.flatMap((sc, k) => sc.faces.flatMap((f) => { if (f.score < 0.6) return []; const v = faceVec(f); return v ? [{ k, f, v }] : []; }));
   const group = groupFaces(all.map((x) => x.v));
@@ -76,4 +81,50 @@ export async function findSelfies(lib: Library, embed = true, not?: { ids: Set<s
     .sort((a, b) => b.seen - a.seen || a.person - b.person || b.face - a.face || b.score - a.score);
   top.forEach((x) => not?.ids.add(x.p.id));
   return cands.filter((c) => c.face > 0 && !isAnyOf(c.box, not?.faces ?? []));
+}
+
+/** A solo selfie scanSelfies found. vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs). */
+export type Selfie = { p: PhotoAsset; face: number; box: Face; aspect: number; vec: Float32Array; tags: string[] };
+let names: Promise<string[]> | undefined;
+
+/**
+ * Solo selfies among these photos without waiting for the photo index (CLIP reads ~55 ms/photo; the owner's selfies can be
+ * 900 photos back). YuNet on MediaStore's cached thumbnails finds the photos with one big face; only those are decoded at
+ * full size: YuNet again (sharper box; SFace with embed) and CLIP, to drop documents and other people (top 5 concepts), pets (top 20)
+ * and near-copies of one in `seen` (kept ones are added to it). Needs the vision pack. Android only: [] elsewhere.
+ */
+export async function scanSelfies(photos: PhotoAsset[], embed: boolean, seen: Float32Array[]): Promise<Selfie[]> {
+  if (!ClipEmbedder || Platform.OS !== 'android' || !photos.length) return [];
+  const thumbs = await ClipEmbedder.faces(photos.map((p) => `content://media/external/images/media/${p.id}`), OTHER_FACE, false, 320);
+  const solo = photos.filter((_, k) => selfieFace(thumbs[k]?.faces ?? []) > 0);
+  if (!solo.length) return [];
+  const uris = solo.map((p) => p.uri);
+  const [scans, b64, cn] = await Promise.all([ClipEmbedder.faces(uris, OTHER_FACE, embed), ClipEmbedder.embedImages(uris, 0, true), (names ??= ClipEmbedder.conceptNames())]);
+  const top = await ClipEmbedder.topConcepts(b64, 20);
+  const vecs = b64ToFloats(b64);
+  return solo.flatMap((p, k) => {
+    const faces = scans[k]?.faces ?? [], face = selfieFace(faces);
+    const tags20 = top.ids.slice(k * 20, k * 20 + 20).map((id) => cn[id]), tags = tags20.slice(0, 5);
+    const vec = vecs.slice(k * 512, (k + 1) * 512);
+    const drop = !face ? 'no solo face' : tags.find((n) => DOCUMENT.test(n) || NOT_SOLO.test(n)) ?? tags20.find((n) => PET.test(n) && !NOT_PET.test(n));
+    if (drop) { console.log(`[selfie] dropped (${drop}) ${p.uri}`); return []; }
+    if (seen.some((v) => dot(v, 0, vec, 0) > SAME_SHOT)) return [];
+    seen.push(vec);
+    return [{ p, face, box: faces[0], aspect: scans[k].aspect, vec, tags }];
+  });
+}
+
+/**
+ * Best first: the person in the most of these selfies (the phone's owner takes the most; SFace groups them), then by
+ * selfieFace. person -1: no face vector (facepack not there yet).
+ * ponytail: selfies scanned before facepack landed stay ungrouped; rescan them with embed if the owner pick suffers.
+ */
+export function rankSelfies(pool: Selfie[]) {
+  const has = pool.filter((s) => s.box.vec);
+  const group = groupFaces(has.map((s) => faceVec(s.box)!));
+  const person = new Map(has.map((s, i) => [s, group[i]]));
+  const count = new Map<number, number>();
+  group.forEach((g) => count.set(g, (count.get(g) ?? 0) + 1));
+  return pool.map((s) => { const g = person.get(s) ?? -1; return { ...s, person: g, seen: count.get(g) ?? 0 }; })
+    .sort((a, b) => b.seen - a.seen || a.person - b.person || b.face - a.face);
 }

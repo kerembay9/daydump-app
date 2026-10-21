@@ -24,6 +24,9 @@ function start() {
 
 const subscribe = (f: () => void) => { start(); subs.add(f); return () => { subs.delete(f); }; };
 
+/** The current state outside React (null until the first arrives). */
+export const modelsNow = () => models;
+
 /** null until the first state arrives. */
 export const useModels = () => useSyncExternalStore(subscribe, () => models);
 

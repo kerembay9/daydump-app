@@ -13,6 +13,8 @@ import { Tap } from './ui/Tap';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
 import { SelfieFinder } from './SelfieFinder';
+import { ClipEmbedder } from '../../modules/clip-embedder';
+import { useModels } from '../state/models';
 
 type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
@@ -60,6 +62,11 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
   const [selfie, setSelfie] = useState(false);
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
+  // the selfie finder's models load while the slides are read
+  const vision = useModels()?.vision.state === 'ready';
+  useEffect(() => {
+    if (visible && vision) ClipEmbedder?.warmSelfie?.().catch((e) => console.warn('[onboarding] warm failed:', e));
+  }, [visible, vision]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const p = Math.round(e.nativeEvent.contentOffset.x / width);

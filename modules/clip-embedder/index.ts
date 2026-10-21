@@ -6,8 +6,9 @@ type ClipEmbedderModule = {
   /**
    * base64 little-endian Float32, uris.length * 512, L2-normalized; zero rows = undecodable photo.
    * thumb > 0: uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
+   * now: a few photos at once on a CPU model of their own (vision_dw8), not queued behind indexing or its hold; thumb ignored.
    */
-  embedImages(uris: string[], thumb?: number): Promise<string>;
+  embedImages(uris: string[], thumb?: number, now?: boolean): Promise<string>;
   /** decode vs model time of the last embedImages call (LiteRT engines: modelMs = GPU busy, decodeMs = the rest of the wall time, cpuPhotos = photos the CPU took); size = first decoded bitmap */
   lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; size: string };
   /**
@@ -29,8 +30,13 @@ type ClipEmbedderModule = {
   conceptNames(): Promise<string[]>;
   /** Indexing pauses until ms from now (called on every touch, so scrolling stays smooth while it runs). */
   holdIndexing(ms: number): void;
-  /** YuNet 320 faces per photo (bundled), best first; embed adds SFace vectors (~10 ms/face more, and a sharper decode). */
-  faces(uris: string[], minScore: number, embed: boolean): Promise<FaceScan[]>;
+  /**
+   * YuNet 320 faces per photo (bundled), best first; embed adds SFace vectors (~10 ms/face more, and a sharper decode).
+   * thumb > 0 (without embed): uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
+   */
+  faces(uris: string[], minScore: number, embed: boolean, thumb?: number): Promise<FaceScan[]>;
+  /** Loads the models faces and embedImages(…, now) use, so the selfie finder's first look doesn't wait for them. Needs the vision pack. */
+  warmSelfie(): Promise<void>;
   /**
    * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service
    * with a progress notification (call while the app is on screen). Otherwise once the phone charges.
