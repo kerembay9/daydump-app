@@ -212,7 +212,7 @@ async function saveAvatar(s: Selfie) {
   const src = await faceFile(s.p.uri, s.box, AVATAR_PX);
   if (!src) return;
   const dest = new File(Paths.document, `avatar-${Date.now()}.jpg`);
-  new File(src).copy(dest);
+  await new File(src).copy(dest);
   await setProfile({ avatar: dest.uri });
   console.log('[onboarding] avatar saved', dest.uri);
 }

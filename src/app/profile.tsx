@@ -92,7 +92,7 @@ function ProfileBody() {
       const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
       img.release();
       const dest = new File(Paths.document, `avatar-${Date.now()}.jpg`);
-      new File(out.uri).copy(dest);
+      await new File(out.uri).copy(dest);
       dropAvatarFile(p.avatar);
       save({ avatar: dest.uri });
     } catch (e) {

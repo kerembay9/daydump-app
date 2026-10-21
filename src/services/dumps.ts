@@ -197,7 +197,7 @@ export async function sharedPhotos(uris: string[]): Promise<DumpPhoto[]> {
       const dir = new Directory(Paths.document, 'shared');
       if (!dir.exists) dir.create();
       const dest = new File(dir, `${Date.now()}-${out.length}.jpg`);
-      new File(uri).copy(dest);
+      await new File(uri).copy(dest);
       out.push({ id: dest.uri, uri: dest.uri, created: Date.now() });
     } catch (e) {
       console.warn('[share] copy failed, keeping the uri:', e);

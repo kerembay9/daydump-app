@@ -46,7 +46,7 @@ export function faceFile(uri: string, box: Face, px: number): Promise<string | n
       const face = await ImageManipulator.manipulate(full).crop({ originX: x, originY: y, width: s, height: s }).resize({ width: px }).renderAsync();
       const saved = await face.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
       full.release(); face.release();
-      new File(saved.uri).move(out);
+      await new File(saved.uri).move(out);
       return out.uri;
     }).catch((e) => { console.warn('[faces] thumb failed', uri, e); return null; });
     queue = p;
