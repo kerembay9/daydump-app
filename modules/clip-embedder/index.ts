@@ -6,9 +6,8 @@ type ClipEmbedderModule = {
   /**
    * base64 little-endian Float32, uris.length * 512, L2-normalized; zero rows = undecodable photo.
    * thumb > 0: uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
-   * now: a few photos at once on a CPU model of their own (vision_dw8), not queued behind indexing or its hold; thumb ignored.
    */
-  embedImages(uris: string[], thumb?: number, now?: boolean): Promise<string>;
+  embedImages(uris: string[], thumb?: number): Promise<string>;
   /** decode vs model time of the last embedImages call (LiteRT engines: modelMs = GPU busy, decodeMs = the rest of the wall time, cpuPhotos = photos the CPU took); size = first decoded bitmap */
   lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; size: string };
   /**
@@ -35,7 +34,12 @@ type ClipEmbedderModule = {
    * thumb > 0 (without embed): uris are content:// MediaStore uris, decoded from the cached thumbnail requested at thumb px.
    */
   faces(uris: string[], minScore: number, embed: boolean, thumb?: number): Promise<FaceScan[]>;
-  /** Loads the models faces and embedImages(…, now) use, so the selfie finder's first look doesn't wait for them. Needs the vision pack. */
+  /**
+   * The selfie finder's check: faces (embed as there) and CLIP vectors (as embedImages) of the same photos, each decoded once,
+   * CLIP on a CPU model of its own (vision_dw8), not queued behind indexing or its hold. Needs the vision pack.
+   */
+  selfieCheck(uris: string[], minScore: number, embed: boolean): Promise<{ scans: FaceScan[]; vecs: string }>;
+  /** Loads the models faces and selfieCheck use, so the selfie finder's first look doesn't wait for them. Needs the vision pack. */
   warmSelfie(): Promise<void>;
   /**
    * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service

@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Linking, RefreshControl, Text, TextStyle, View, ViewStyle } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../state/AppState';
 import type { Story } from '../../services/stories';
-import { getProfile } from '../../services/profile';
+import { useProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, label, ui } from '../../theme/type';
 import { fixed } from '../../theme/tokens';
@@ -124,11 +124,10 @@ export default function Discover() {
   const insets = useSafeAreaInsets();
   const { stories, loaded, permission, progress, paused, coverageSince, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
   const [loadingMore, setLoadingMore] = useState(false);
-  const [name, setName] = useState('');
+  const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
   const [refreshing, setRefreshing] = useState(false);
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
 
-  useFocusEffect(useCallback(() => { getProfile().then((p) => setName(p.name.trim().split(/\s+/)[0] ?? '')); }, []));
 
   const hero = stories[0];
   const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
@@ -30,8 +31,21 @@ export function setProfile(p: Partial<Profile>): Promise<Profile> {
     const next = { ...(await getProfile()), ...p };
     last = next;
     await AsyncStorage.setItem(KEY, JSON.stringify(next));
+    subs.forEach((f) => f(next));
     return next;
   });
   queue = run.catch(() => {});
   return run;
+}
+
+const subs = new Set<(p: Profile) => void>();
+/** The profile, kept current: re-renders on every setProfile (onboarding saves the name and avatar over Home, no refocus). */
+export function useProfile() {
+  const [p, setP] = useState(last);
+  useEffect(() => {
+    subs.add(setP);
+    getProfile().then(setP);
+    return () => { subs.delete(setP); };
+  }, []);
+  return p;
 }

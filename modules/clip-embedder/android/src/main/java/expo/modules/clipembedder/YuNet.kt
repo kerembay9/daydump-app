@@ -45,9 +45,9 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
       runCatching { ctx.contentResolver.loadThumbnail(Uri.parse(uri), Size(thumb, thumb), null) }.getOrElse { decodeScaled(ctx, uri, size) }
     } else decodeScaled(ctx, uri, if (sharp) 720 else size)
 
-  /** Recycles full. */
+  /** Recycles full. solo: SFace only a photo's single face (a photo with more isn't a selfie). */
   @Synchronized
-  fun detect(full: Bitmap, minScore: Double, sface: SFace?, t0: Long = SystemClock.elapsedRealtime()): Map<String, Any> {
+  fun detect(full: Bitmap, minScore: Double, sface: SFace?, t0: Long = SystemClock.elapsedRealtime(), solo: Boolean = false): Map<String, Any> {
     val k = size.toFloat() / max(full.width, full.height)
     val bmp = Bitmap.createScaledBitmap(full, max(1, (full.width * k).roundToInt()), max(1, (full.height * k).roundToInt()), true)
     val bw = bmp.width
@@ -74,11 +74,12 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
       val b = i * N
       val f = mutableMapOf<String, Any>("score" to o[b].toDouble(), "x" to ((o[b + 1] - o[b + 3] / 2) / bw).toDouble(), "y" to ((o[b + 2] - o[b + 4] / 2) / bh).toDouble(),
         "w" to (o[b + 3] / bw).toDouble(), "h" to (o[b + 4] / bh).toDouble())
-      if (sface != null) f["vec"] = encode(sface.embed(full, FloatArray(10) { o[b + 5 + it] * up }))
+      if (sface != null && (!solo || keep.size == 1)) f["vec"] = encode(sface.embed(full, FloatArray(10) { o[b + 5 + it] * up }))
       f
     }
     full.recycle()
-    return mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (t2 - t1).toDouble(), "aspect" to bw.toDouble() / bh, "faces" to faces)
+    return mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (t2 - t1).toDouble(), "sfaceMs" to (SystemClock.elapsedRealtime() - t2).toDouble(),
+      "aspect" to bw.toDouble() / bh, "faces" to faces)
   }
 
   override fun close() = m.close()

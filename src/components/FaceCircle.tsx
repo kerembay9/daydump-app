@@ -39,7 +39,7 @@ const hash = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h
  * A px-wide JPG of the face's square, cached on disk; one at a time (each decodes a full photo).
  * ponytail: rows scrolled past stay queued; skip stale ones if fast scrolling makes the visible ones wait.
  */
-function faceFile(uri: string, box: Face, px: number): Promise<string | null> {
+export function faceFile(uri: string, box: Face, px: number): Promise<string | null> {
   const name = `${hash(`${uri}|${box.x}|${box.y}|${box.w}|${box.h}`)}_${px}.jpg`;
   let p = made.get(name);
   if (!p) {

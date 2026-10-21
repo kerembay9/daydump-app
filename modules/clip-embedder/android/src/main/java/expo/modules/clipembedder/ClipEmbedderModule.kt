@@ -28,8 +28,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
@@ -61,6 +65,8 @@ class ClipEmbedderModule : Module() {
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
   private val clip get() = ClipEngine.get(ctx)
   private val yunet by lazy { YuNet(ctx, null, 320) }
+  // selfieCheck's own: detect is synchronized, and the finder overlaps the check with the next photos' thumbnails (faces)
+  private val yunetCheck by lazy { YuNet(ctx, null, 320) }
   private val sface by lazy { SFace(ctx, ModelPacks.dir(ctx, ModelPacks.Pack.FACES)?.resolve("sface.tflite")?.path) }
   private var packListener: com.google.android.play.core.assetpacks.AssetPackStateUpdateListener? = null
 
@@ -86,9 +92,8 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("shareImages") { uris: List<String>, caption: String, target: String? -> shareImages(uris, caption, target) }
 
     // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
-    // now: a few photos at once, on a CPU model of their own (embedNow), past indexing's lock and hold.
-    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int?, now: Boolean? ->
-      withContext(Dispatchers.Default) { encode(if (now == true) clip.embedNow(uris) else clip.embedImages(uris, thumb ?: 0)) }
+    AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
+      withContext(Dispatchers.Default) { encode(clip.embedImages(uris, thumb ?: 0)) }
     }
 
     // model: use filesDir/models/vision_<model>.tflite (pushed by hand, see build_assets.py bench) instead of the bundled one.
@@ -120,11 +125,13 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { clip.topConcepts(decode(vecsB64), k) }
     }
 
-    // Loads the selfie scan's YuNet and CLIP ahead (~0.3 s on a fresh install: XNNPACK packs the weights), so its first look doesn't wait.
+    // Loads the selfie scan's YuNets, SFace and CLIP ahead (~0.3 s on a fresh install: XNNPACK packs the weights), so its first look doesn't wait.
     AsyncFunction("warmSelfie") Coroutine { ->
       withContext(Dispatchers.Default) {
         yunet.detect(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 1.0, null)
-        clip.embedNow(emptyList())
+        yunetCheck.detect(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 1.0, null)
+        runCatching { sface.embed(Bitmap.createBitmap(112, 112, Bitmap.Config.ARGB_8888), floatArrayOf(38f, 52f, 74f, 52f, 56f, 72f, 42f, 92f, 71f, 92f)) } // no faces pack yet: loads later
+        clip.embedNow(0, Channel<Pair<Int, Bitmap>>().apply { close() })
         Unit
       }
     }
@@ -135,10 +142,45 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) {
         val sf = if (embed) sface else null // rejects while the faces pack hasn't landed
         val none = mapOf("aspect" to 1.0, "faces" to emptyList<Any>())
+        var decodeMs = 0L
+        val t0 = SystemClock.elapsedRealtime()
         uris.chunked(4).flatMap { c ->
+          val d = SystemClock.elapsedRealtime()
           c.map { u -> async(Dispatchers.IO) { runCatching { yunet.decode(ctx, u, sf != null, thumb ?: 0) }.getOrNull() } }.awaitAll()
+            .also { decodeMs += SystemClock.elapsedRealtime() - d }
             .map { b -> b?.let { runCatching { yunet.detect(it, minScore, sf) }.getOrNull() } ?: none }
-        }
+        }.also { Log.i("ClipEmbedder", "faces ${uris.size} (thumb ${thumb ?: 0}): ${SystemClock.elapsedRealtime() - t0} ms, decode wait $decodeMs") }
+      }
+    }
+
+    // The selfie finder's check of its solo photos: each decoded once (720 with embed, for SFace; else 320), YuNet (+ SFace, one-face photos only)
+    // on it while CLIP (embedNow) reads a 224 copy, side by side. -> { scans: as faces, vecs: as embedImages }.
+    AsyncFunction("selfieCheck") Coroutine { uris: List<String>, minScore: Double, embed: Boolean ->
+      withContext(Dispatchers.Default) {
+        val sf = if (embed) sface else null
+        val none = mapOf("aspect" to 1.0, "faces" to emptyList<Any>())
+        val t0 = SystemClock.elapsedRealtime()
+        val gate = Semaphore(4)
+        val decoded = uris.map { u -> async(Dispatchers.IO) { gate.withPermit { runCatching { yunetCheck.decode(ctx, u, sf != null, 0) }.getOrNull() } } }
+        val small = Channel<Pair<Int, Bitmap>>(Channel.UNLIMITED)
+        val vecs = async { clip.embedNow(uris.size, small) }
+        var detectMs = 0L
+        val split = DoubleArray(3) // prep (scale + pixels), YuNet, SFace
+        val scans = try {
+          decoded.mapIndexed { i, d ->
+            val b = d.await() ?: return@mapIndexed none
+            small.send(i to clipSize(b))
+            val t = SystemClock.elapsedRealtime()
+            (runCatching { yunetCheck.detect(b, minScore, sf, solo = true) }.getOrNull() ?: none).also { r ->
+              detectMs += SystemClock.elapsedRealtime() - t
+              listOf("decodeMs", "modelMs", "sfaceMs").forEachIndexed { k, key -> split[k] += r[key] as? Double ?: 0.0 }
+            }
+          }
+        } finally { small.close() }
+        val t1 = SystemClock.elapsedRealtime()
+        val v = vecs.await()
+        Log.i("ClipEmbedder", "selfieCheck ${uris.size}: faces done ${t1 - t0} ms (detect $detectMs: ${split.joinToString("/") { it.toInt().toString() }} prep/yunet/sface), clip done ${SystemClock.elapsedRealtime() - t0} ms")
+        mapOf("scans" to scans, "vecs" to encode(v))
       }
     }
 
@@ -368,14 +410,16 @@ class ClipEngine private constructor(private val ctx: Context) {
   // ponytail: kept for the process (~1 dw8 copy in memory); close it after onboarding if memory gets tight.
   private val nowThread = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
   private var nowModel: CompiledModel? = null
-  suspend fun embedNow(uris: List<String>): FloatArray = withContext(nowThread) {
+  // Photo i of n arrives as (i, bitmap) (clipSize; recycled here) and lands in row i; rows never sent stay zero.
+  suspend fun embedNow(n: Int, bmps: ReceiveChannel<Pair<Int, Bitmap>>): FloatArray = withContext(nowThread) {
     val m = nowModel ?: makeCpu8("dw8now").also { nowModel = it }
-    val input = FloatArray(uris.size * 3 * PLANE)
-    val out = FloatArray(uris.size * DIM)
+    val input = FloatArray(3 * PLANE)
+    val out = FloatArray(n * DIM)
+    val one = FloatArray(DIM)
     val inBuf = m.createInputBuffers()
     val outBuf = m.createOutputBuffers()
     try {
-      uris.forEachIndexed { i, u -> if (fill(u, 0, input, i) != null) runLite(m, inBuf, outBuf, input, i, out) }
+      for ((i, b) in bmps) { fillBitmap(b, input, 0); runLite(m, inBuf, outBuf, input, 0, one); one.copyInto(out, i * DIM) }
     } finally {
       (inBuf + outBuf).forEach { it.close() }
     }
@@ -389,22 +433,25 @@ class ClipEngine private constructor(private val ctx: Context) {
       } else {
         decodeScaled(ctx, uri, SIZE)
       }
-      val size = "${bmp.width}x${bmp.height}"
-      val px = IntArray(PLANE)
-      bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
-      bmp.recycle()
-      val base = i * 3 * PLANE
-      for (j in 0 until PLANE) {
-        val p = px[j]
-        input[base + j] = ((p shr 16 and 255) / 255f - MEAN[0]) / STD[0]
-        input[base + PLANE + j] = ((p shr 8 and 255) / 255f - MEAN[1]) / STD[1]
-        input[base + 2 * PLANE + j] = ((p and 255) / 255f - MEAN[2]) / STD[2]
-      }
-      size
+      "${bmp.width}x${bmp.height}".also { fillBitmap(bmp, input, i) }
     } catch (e: Exception) {
       Log.w("ClipEmbedder", "decode failed: $uri", e)
       null
     }
+
+  // bmp: shortest side SIZE; its center SIZE x SIZE, normalized, into photo i's slice. Recycles bmp.
+  private fun fillBitmap(bmp: Bitmap, input: FloatArray, i: Int) {
+    val px = IntArray(PLANE)
+    bmp.getPixels(px, 0, SIZE, (bmp.width - SIZE) / 2, (bmp.height - SIZE) / 2, SIZE, SIZE)
+    bmp.recycle()
+    val base = i * 3 * PLANE
+    for (j in 0 until PLANE) {
+      val p = px[j]
+      input[base + j] = ((p shr 16 and 255) / 255f - MEAN[0]) / STD[0]
+      input[base + PLANE + j] = ((p shr 8 and 255) / 255f - MEAN[1]) / STD[1]
+      input[base + 2 * PLANE + j] = ((p and 255) / 255f - MEAN[2]) / STD[2]
+    }
+  }
 
   // Pipelined: photos decode on decodePool while the GPU embeds them front to back. Once every photo is decoded the CPU
   // is idle, so (engine gpu-cpu8) vision_dw8 takes photos from the back until the two meet. decodeMs = wall time the GPU wasn't busy.
@@ -527,6 +574,17 @@ private fun loadThumb(ctx: Context, uri: String, req: Int): Bitmap {
   val s = SIZE.toFloat() / min(t.width, t.height)
   if (s == 1f) return t
   return Bitmap.createScaledBitmap(t, max(SIZE, (t.width * s).roundToInt()), max(SIZE, (t.height * s).roundToInt()), true).also { if (it !== t) t.recycle() }
+}
+
+/** A copy with the shortest side SIZE (CLIP's input), halved first while 2x or more too big so the bilinear scale doesn't alias. */
+internal fun clipSize(src: Bitmap): Bitmap {
+  var b = src
+  fun scaled(k: Float) = Bitmap.createScaledBitmap(b, max(1, (b.width * k).roundToInt()), max(1, (b.height * k).roundToInt()), true)
+  while (min(b.width, b.height) >= 2 * SIZE) b = scaled(0.5f).also { if (b !== src) b.recycle() }
+  val k = SIZE.toFloat() / min(b.width, b.height)
+  val out = Bitmap.createScaledBitmap(b, max(SIZE, (b.width * k).roundToInt()), max(SIZE, (b.height * k).roundToInt()), true)
+  if (b !== src && out !== b) b.recycle()
+  return if (out === src) src.copy(Bitmap.Config.ARGB_8888, false) else out
 }
 
 internal fun decodeScaled(ctx: Context, uri: String, side: Int): Bitmap {

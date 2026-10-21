@@ -8,6 +8,8 @@ export const EVAL_ALBUM = process.env.EXPO_PUBLIC_EVAL_ALBUM || null;
  * ponytail: path heuristic, Android only; iOS ph:// URIs never match, so iOS indexes plain newest-first.
  */
 export const isCameraPhoto = (uri: string) => /\/DCIM\/(?!Screenshots\/)/i.test(uri);
+// our own posted renders (Pictures/DayDump) are not photos to build dumps from
+const notOurs = (p: PhotoAsset) => !/\/Pictures\/DayDump\//i.test(p.uri);
 
 export class GalleryService {
   private static async evalAlbum(): Promise<MediaLibrary.Album | undefined> {
@@ -19,8 +21,19 @@ export class GalleryService {
 
   /** Every library photo (pruned), the input to the on-device index: camera shots newest first, then everything else newest first. */
   static async listLibraryPhotos(): Promise<PhotoAsset[]> {
-    const album = await this.evalAlbum();
     const raw: MediaLibrary.Asset[] = [];
+    for await (const page of this.rawPages()) raw.push(...page);
+    const all = this.pruneAndCleanAssets(raw).filter(notOurs);
+    return [...all.filter((p) => isCameraPhoto(p.uri)), ...all.filter((p) => !isCameraPhoto(p.uri))];
+  }
+
+  /** The library newest first, 1000 at a time and pruned per page, so a scan of a big library can start before it's all listed. */
+  static async *photoPages(): AsyncGenerator<PhotoAsset[]> {
+    for await (const page of this.rawPages()) yield this.pruneAndCleanAssets(page).filter(notOurs);
+  }
+
+  private static async *rawPages(): AsyncGenerator<MediaLibrary.Asset[]> {
+    const album = await this.evalAlbum();
     let after: string | undefined;
     do {
       const page = await MediaLibrary.getAssetsAsync({
@@ -30,12 +43,9 @@ export class GalleryService {
         first: 1000,
         after,
       });
-      raw.push(...page.assets);
+      yield page.assets;
       after = page.hasNextPage ? page.endCursor : undefined;
     } while (after);
-    // our own posted renders (Pictures/DayDump) are not photos to build dumps from
-    const all = this.pruneAndCleanAssets(raw).filter((p) => !/\/Pictures\/DayDump\//i.test(p.uri));
-    return [...all.filter((p) => isCameraPhoto(p.uri)), ...all.filter((p) => !isCameraPhoto(p.uri))];
   }
 
   /**

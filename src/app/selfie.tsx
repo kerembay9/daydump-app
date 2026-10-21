@@ -8,7 +8,7 @@ import { SelfieFinder } from '../components/SelfieFinder';
 import { useTheme } from '../theme/ThemeProvider';
 import { display } from '../theme/type';
 
-/** Dev tools experiment (also onboarding's last step): the selfie finder on its own screen. */
+/** Dev tools experiment (onboarding uses its pick, useSelfiePick): the selfie finder on its own screen. */
 export default function Selfie() {
   const { t } = useTheme();
   return (

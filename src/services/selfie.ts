@@ -83,23 +83,26 @@ export async function findSelfies(lib: Library, embed = true, not?: { ids: Set<s
   return cands.filter((c) => c.face > 0 && !isAnyOf(c.box, not?.faces ?? []));
 }
 
-/** A solo selfie scanSelfies found. vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs). */
+/** A solo selfie checkSelfies found. vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs). */
 export type Selfie = { p: PhotoAsset; face: number; box: Face; aspect: number; vec: Float32Array; tags: string[] };
 let names: Promise<string[]> | undefined;
 
 /**
- * Solo selfies among these photos without waiting for the photo index (CLIP reads ~55 ms/photo; the owner's selfies can be
- * 900 photos back). YuNet on MediaStore's cached thumbnails finds the photos with one big face; only those are decoded at
- * full size: YuNet again (sharper box; SFace with embed) and CLIP, to drop documents and other people (top 5 concepts), pets (top 20)
- * and near-copies of one in `seen` (kept ones are added to it). Needs the vision pack. Android only: [] elsewhere.
+ * Solo selfies without waiting for the photo index (CLIP reads ~55 ms/photo; the owner's selfies can be 900 photos back), in
+ * two steps the caller can overlap: soloPhotos runs YuNet on MediaStore's cached thumbnails to find the photos with one big
+ * face; checkSelfies decodes only those, once (selfieCheck): YuNet again (sharper box; SFace with embed) and CLIP, to drop
+ * documents and other people (top 5 concepts), pets (top 20) and near-copies of one in `seen` (kept ones are added to it).
+ * Needs the vision pack. Android only: [] elsewhere.
  */
-export async function scanSelfies(photos: PhotoAsset[], embed: boolean, seen: Float32Array[]): Promise<Selfie[]> {
+export async function soloPhotos(photos: PhotoAsset[]): Promise<PhotoAsset[]> {
   if (!ClipEmbedder || Platform.OS !== 'android' || !photos.length) return [];
   const thumbs = await ClipEmbedder.faces(photos.map((p) => `content://media/external/images/media/${p.id}`), OTHER_FACE, false, 320);
-  const solo = photos.filter((_, k) => selfieFace(thumbs[k]?.faces ?? []) > 0);
-  if (!solo.length) return [];
-  const uris = solo.map((p) => p.uri);
-  const [scans, b64, cn] = await Promise.all([ClipEmbedder.faces(uris, OTHER_FACE, embed), ClipEmbedder.embedImages(uris, 0, true), (names ??= ClipEmbedder.conceptNames())]);
+  return photos.filter((_, k) => selfieFace(thumbs[k]?.faces ?? []) > 0);
+}
+
+export async function checkSelfies(solo: PhotoAsset[], embed: boolean, seen: Float32Array[]): Promise<Selfie[]> {
+  if (!ClipEmbedder || !solo.length) return [];
+  const [{ scans, vecs: b64 }, cn] = await Promise.all([ClipEmbedder.selfieCheck(solo.map((p) => p.uri), OTHER_FACE, embed), (names ??= ClipEmbedder.conceptNames())]);
   const top = await ClipEmbedder.topConcepts(b64, 20);
   const vecs = b64ToFloats(b64);
   return solo.flatMap((p, k) => {

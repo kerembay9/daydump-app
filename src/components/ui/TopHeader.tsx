@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
-import { getProfile, Profile, profileNow } from '../../services/profile';
+import { useProfile } from '../../services/profile';
 import { Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -31,8 +30,7 @@ export function IconButton({ onPress, children, size = 36, label }: { onPress?: 
 /** Profile button: 36px round frame-card with the profile photo, else the name's initial, else a person glyph; 16px gear badge. */
 export function AvatarButton({ onPress }: { onPress?: () => void }) {
   const { t } = useTheme();
-  const [p, setP] = useState<Profile>(profileNow);
-  useFocusEffect(useCallback(() => { getProfile().then(setP); }, []));
+  const p = useProfile();
   const initial = p.name.trim()[0]?.toUpperCase();
   return (
     <FrameCard radius={18} onPress={onPress} label="Profile and settings" style={{ width: 36, height: 36, padding: 1.5 }}>
