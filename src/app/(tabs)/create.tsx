@@ -146,7 +146,7 @@ export default function Create() {
   const [qvec, setQvec] = useState<Float32Array | null>(null);
   const [wordsSkipped, setWordsSkipped] = useState(false); // the search had words but no text vector
   // release builds download the models after the install: vision (the library itself), then faces, then text (words)
-  const models = useModels();
+  const models = useModels('text');
   const textReady = models?.text.state === 'ready';
   const [recents, setRecents] = useState<string[]>([]);
   const [basket, setBasket] = useState<DumpPhoto[]>([]);

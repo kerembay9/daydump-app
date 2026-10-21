@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { ClipEmbedder, type ModelPack, type PackState } from '../../modules/clip-embedder';
 
@@ -27,8 +27,11 @@ const subscribe = (f: () => void) => { start(); subs.add(f); return () => { subs
 /** The current state outside React (null until the first arrives). */
 export const modelsNow = () => models;
 
-/** null until the first state arrives. */
-export const useModels = () => useSyncExternalStore(subscribe, () => models);
+/** null until the first state arrives. want: the pack this screen needs, downloaded next after vision. */
+export const useModels = (want?: ModelPack) => {
+  useEffect(() => { if (want) ClipEmbedder?.wantModel?.(want); }, [want]);
+  return useSyncExternalStore(subscribe, () => models);
+};
 
 /** Resolves once the pack is on the phone (never, on an install without Play). */
 export const whenReady = (p: ModelPack) => new Promise<void>((resolve) => {

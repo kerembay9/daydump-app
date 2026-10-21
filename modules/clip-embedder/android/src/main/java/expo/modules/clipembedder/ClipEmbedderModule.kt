@@ -67,6 +67,7 @@ class ClipEmbedderModule : Module() {
   private val yunet by lazy { YuNet(ctx, null, 320) }
   // selfieCheck's own: detect is synchronized, and the finder overlaps the check with the next photos' thumbnails (faces)
   private val yunetCheck by lazy { YuNet(ctx, null, 320) }
+  private val selfieGate by lazy { Gate(ctx) }
   private val sface by lazy { SFace(ctx, ModelPacks.dir(ctx, ModelPacks.Pack.FACES)?.resolve("sface.tflite")?.path) }
   private var packListener: com.google.android.play.core.assetpacks.AssetPackStateUpdateListener? = null
 
@@ -110,6 +111,7 @@ class ClipEmbedderModule : Module() {
 
     // The model downloads (ModelPacks), per pack: ready | downloading (progress 0..1) | queued | waiting | failed | unavailable (no Play).
     AsyncFunction("modelState") Coroutine { -> withContext(Dispatchers.IO) { ModelPacks.state(ctx) } }
+    Function("wantModel") { pack: String -> ModelPacks.Pack.entries.firstOrNull { it.key == pack }?.let { ModelPacks.want(ctx, it) } }
     OnCreate {
       packListener = ModelPacks.listen(ctx) { sendEvent("onModels", it) }
       ModelPacks.next(ctx)
@@ -131,7 +133,8 @@ class ClipEmbedderModule : Module() {
         yunet.detect(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 1.0, null)
         yunetCheck.detect(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888), 1.0, null)
         runCatching { sface.embed(Bitmap.createBitmap(112, 112, Bitmap.Config.ARGB_8888), floatArrayOf(38f, 52f, 74f, 52f, 56f, 72f, 42f, 92f, 71f, 92f)) } // no faces pack yet: loads later
-        clip.embedNow(0, Channel<Pair<Int, Bitmap>>().apply { close() })
+        if (ModelPacks.ready(ctx, ModelPacks.Pack.VISION)) clip.embedNow(0, Channel<Pair<Int, Bitmap>>().apply { close() })
+        else selfieGate.score(Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888))
         Unit
       }
     }
@@ -154,7 +157,9 @@ class ClipEmbedderModule : Module() {
     }
 
     // The selfie finder's check of its solo photos: each decoded once (720 with embed, for SFace; else 320), YuNet (+ SFace, one-face photos only)
-    // on it while CLIP (embedNow) reads a 224 copy, side by side. -> { scans: as faces, vecs: as embedImages }.
+    // on it while CLIP (embedNow) reads a 224 copy, side by side. -> { scans: as faces, vecs: as embedImages }. Without visionpack
+    // the Gate scores each photo instead: { scans, vecs: "", reject: P(document, screen or pet), gateVecs: n x 1024 base64,
+    // sharp: Laplacian variance of the single face (0: not one face) }.
     AsyncFunction("selfieCheck") Coroutine { uris: List<String>, minScore: Double, embed: Boolean ->
       withContext(Dispatchers.Default) {
         val sf = if (embed) sface else null
@@ -163,24 +168,42 @@ class ClipEmbedderModule : Module() {
         val gate = Semaphore(4)
         val decoded = uris.map { u -> async(Dispatchers.IO) { gate.withPermit { runCatching { yunetCheck.decode(ctx, u, sf != null, 0) }.getOrNull() } } }
         val small = Channel<Pair<Int, Bitmap>>(Channel.UNLIMITED)
-        val vecs = async { clip.embedNow(uris.size, small) }
+        val vision = ModelPacks.ready(ctx, ModelPacks.Pack.VISION)
+        val vecs = if (vision) async { clip.embedNow(uris.size, small) } else null
+        val reject = DoubleArray(uris.size)
+        val sharp = DoubleArray(uris.size)
+        val gateVecs = if (vision) null else FloatArray(uris.size * 1024)
         var detectMs = 0L
+        var gateMs = 0L
         val split = DoubleArray(3) // prep (scale + pixels), YuNet, SFace
         val scans = try {
           decoded.mapIndexed { i, d ->
             val b = d.await() ?: return@mapIndexed none
-            small.send(i to clipSize(b))
+            if (vision) small.send(i to clipSize(b))
+            else {
+              val g = SystemClock.elapsedRealtime()
+              runCatching { selfieGate.score(b) }.getOrNull()?.let { (p, f) -> reject[i] = p; f.copyInto(gateVecs!!, i * 1024) }
+              gateMs += SystemClock.elapsedRealtime() - g
+            }
             val t = SystemClock.elapsedRealtime()
-            (runCatching { yunetCheck.detect(b, minScore, sf, solo = true) }.getOrNull() ?: none).also { r ->
+            (runCatching { yunetCheck.detect(b, minScore, sf, solo = true, keepFull = !vision) }.getOrNull() ?: none).also { r ->
               detectMs += SystemClock.elapsedRealtime() - t
               listOf("decodeMs", "modelMs", "sfaceMs").forEachIndexed { k, key -> split[k] += r[key] as? Double ?: 0.0 }
+              if (!vision) {
+                (r["faces"] as? List<*>)?.singleOrNull()?.let { f -> f as Map<*, *>
+                  val g = SystemClock.elapsedRealtime()
+                  sharp[i] = runCatching { selfieGate.sharpness(b, f["x"] as Double, f["y"] as Double, f["w"] as Double, f["h"] as Double) }.getOrDefault(0.0)
+                  gateMs += SystemClock.elapsedRealtime() - g
+                }
+                b.recycle()
+              }
             }
           }
         } finally { small.close() }
         val t1 = SystemClock.elapsedRealtime()
-        val v = vecs.await()
-        Log.i("ClipEmbedder", "selfieCheck ${uris.size}: faces done ${t1 - t0} ms (detect $detectMs: ${split.joinToString("/") { it.toInt().toString() }} prep/yunet/sface), clip done ${SystemClock.elapsedRealtime() - t0} ms")
-        mapOf("scans" to scans, "vecs" to encode(v))
+        val v = vecs?.await()
+        Log.i("ClipEmbedder", "selfieCheck ${uris.size}: faces done ${t1 - t0} ms (detect $detectMs: ${split.joinToString("/") { it.toInt().toString() }} prep/yunet/sface${if (vision) "" else ", gate+sharpness $gateMs"}), ${if (vision) "clip" else "gate"} done ${SystemClock.elapsedRealtime() - t0} ms")
+        mapOf("scans" to scans, "vecs" to (v?.let(::encode) ?: ""), "reject" to reject.toList(), "gateVecs" to (gateVecs?.let(::encode) ?: ""), "sharp" to sharp.toList())
       }
     }
 

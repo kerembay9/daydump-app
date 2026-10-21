@@ -57,7 +57,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
   // the selfie finder's models load while the slides are read
-  const models = useModels();
+  const models = useModels('faces');
   const vision = models?.vision.state === 'ready', faces = models?.faces.state === 'ready'; // again once faces lands: SFace
   useEffect(() => {
     if (visible && vision) ClipEmbedder?.warmSelfie?.().catch((e) => console.warn('[onboarding] warm failed:', e));

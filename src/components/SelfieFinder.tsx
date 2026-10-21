@@ -3,7 +3,7 @@ import { Text, TextInput, View } from 'react-native';
 import { FaceCircle } from './FaceCircle';
 import { FrameCard } from './ui/FrameCard';
 import { Pill } from './ui/Pill';
-import { Bar, Developing, packCopy } from './ModelLoading';
+import { Bar, Developing } from './ModelLoading';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, label, ui } from '../theme/type';
 import { ClipEmbedder } from '../../modules/clip-embedder';
@@ -27,21 +27,20 @@ const pickFrom = (pool: Selfie[], skipped: Set<string>, notMe: Float32Array[]) =
 
 /**
  * The best selfie on the phone (soloPhotos, checkSelfies, rankSelfies) and a verdict on it. Logs everything to the console.
- * Waits for the vision model (release builds download it after the install), then scans the camera photos (front-camera
+ * Needs no download (before visionpack lands, checkSelfies' bundled gate stands in for CLIP). Scans the camera photos (front-camera
  * sized first, each newest first, while a big library is still listed) on their own, not waiting for the photo index; it keeps going in the background, so "Not me" / "Try another" shows the
  * next one at once. The face model only sharpens the pick (who's in most selfies): used once it's there.
  * on: scan (onboarding turns it on at the photo grant). best: on screen; wait: [title, body, progress] while there's none yet.
  */
 export function useSelfiePick(on = true) {
-  const models = useModels();
+  const models = useModels('faces');
   /** cur: on screen (null = none right now); passed: one was passed already; scanned: photos scanned; firstBy: scanned before the first pick; done: all scanned, or ENOUGH found */
   const [st, setSt] = useState<{ pool: Selfie[]; cur: Selfie | null; passed: boolean; scanned: number; firstBy: number; done: boolean }>({ pool: [], cur: null, passed: false, scanned: 0, firstBy: FIRST_BY, done: false });
   const [verdict, setVerdict] = useState<'up' | 'down' | null>(null);
   const skipped = useRef(new Set<string>()); // photos shown and passed
   const notMe = useRef<Float32Array[]>([]); // faces turned down
 
-  const need = models && models.vision.state !== 'ready' ? 'vision' : undefined;
-  const go = on && !!models && !need;
+  const go = on && !!models;
   const best = st.cur;
 
   useEffect(() => {
@@ -140,7 +139,6 @@ export function useSelfiePick(on = true) {
   // what it waits for: [title, body, progress or null]
   const wait: [string, string, number | null] | null = best ? null
     : !models ? ['Getting ready', 'One moment.', null]
-    : need ? packCopy(need, models[need])
     : st.done ? null
     : !st.passed ? ['Picking your best selfie', 'Looking through your recent photos. Nothing leaves your phone.', Math.min(1, st.scanned / st.firstBy)]
     : ['Looking further back', 'Checking older photos.', null];

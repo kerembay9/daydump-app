@@ -22,19 +22,20 @@ Release builds download the packs from Play after the install (`ModelPacks.kt`);
 | `phrases.json` | APK | 8 KB | ~0 | the selfie finder's 3 phrases, already embedded (`FIXED_PHRASES` in build_assets.py) | first `embedTexts` |
 | `vocab.json` | APK | 0.05 MB | ~0 | the 3,566 concept names | `loadLibrary` (app start) |
 | `yunet_320.tflite` | APK | 0.3 MB | 0.2 MB | face detection (where are faces) | first `faces` |
+| `gate.tflite` | APK | 5.2 MB | 4.7 MB | MobileNetV3-Small (timm, Apache 2.0), fp16 weights: the selfie step's P(document, screen or pet) and near-copy feature until visionpack lands (int8 was tried: it lets 19/30 pets through) | first `selfieCheck` / `warmSelfie` without visionpack |
 
-Download (bundletool, arm64, 2026-10-21): **43.3 MB at install**, then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (138.6 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
+Download (bundletool, arm64, 2026-10-21): **43.3 MB at install** (+4.7 MB gate.tflite, not yet re-measured), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (138.6 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
 builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. Debug builds add EdgeBench (Gemma, ML Kit).
 
 ## Download order (release builds)
 
-One pack at a time, so each gets the whole connection, in the order the app needs them:
+All three download on their own, one at a time, so each gets the whole connection. vision is always first; after it, the pack a screen asked for (`useModels(want)` → `wantModel`) jumps ahead; otherwise this order:
 
 | # | Pack | Delivery | Unlocks |
 |---|---|---|---|
 | 1 | visionpack | fast-follow: Play starts it at install, app opened or not | indexing → Discover dumps, Create's photo grid, topics, captions |
-| 2 | facepack | on-demand: the app fetches it when visionpack lands | People; sharper selfie pick (works without it) |
-| 3 | textpack | on-demand: fetched when facepack lands | Create search by words |
+| 2 | facepack | on-demand: the app fetches it when visionpack lands. Wanted by onboarding's selfie step, /selfie, People (any `faces(embed)` call) | People; sharper selfie pick (works without it) |
+| 3 | textpack | on-demand: fetched when facepack lands. Wanted by Create (first visit): then it goes before facepack | Create search by words |
 
 ```mermaid
 flowchart TD
@@ -43,16 +44,20 @@ flowchart TD
   INST -->|bundletool --local-testing| LT[packs copied to the phone; each fetched when the app asks]
   FF --> V[visionpack downloading]
   LT --> V
-  V -->|COMPLETED: the listener calls next| F[facepack downloading]
+  V -->|COMPLETED: the listener calls next| W{a screen wanted textpack?}
+  W -->|no: default| F[facepack downloading]
+  W -->|yes: Create opened| T2[textpack downloading]
   F -->|COMPLETED| T[textpack downloading]
-  T -->|COMPLETED| DONE[all ready]
+  T2 -->|COMPLETED| F2[facepack downloading]
+  T & F2 -->|COMPLETED| DONE[all ready]
   V & F & T -.->|network etc.| FAILED[failed: restarted by the next modelState, i.e. the app coming back to the front]
   V & F & T -.->|Play wants Wi-Fi or the user's OK| WAIT[waiting]
 ```
 
-`ModelPacks.next()` fetches the first pack in the order that isn't on the phone. It runs when the module starts (app
-launch), when a pack completes, from `modelState()`, when a call needs a missing pack, and from the background worker.
-Packs behind it report `queued`. ponytail: a feature waiting on a later pack doesn't jump the queue.
+`ModelPacks.next()` fetches the next missing pack (vision, then the last wanted, then Pack order) unless one is already
+downloading. It runs when the module starts (app launch), when a pack completes, from `modelState()`, when a call needs a
+missing pack (that also wants it), and from the background worker. Packs behind it report `queued`. A want doesn't stop
+the pack already downloading (ponytail: Play may drop a cancelled pack's bytes; cancel it if waiting behind it hurts).
 
 JS sees it through `modelState()` → `{vision, faces, text}: {state, progress}` (`ready | downloading | queued | waiting |
 failed | unavailable`) and the `onModels` event (`{pack, state, progress}`). `src/state/models.ts` keeps one copy for
@@ -110,7 +115,7 @@ the user touches the screen (`holdIndexing`).
 | Stories: Trips, Today | none (GPS, dates) | indexing waits, so none until visionpack lands | |
 | Stories: topics, curation, Hide sensitive photos, captions | stored concept tags | as indexing | Module missing: no topics, **Hide sensitive photos does nothing** |
 | Similar / Suggest fills / Edit swaps | stored vectors only | as indexing | "Nothing similar to suggest yet"; swaps fall back to nearest in time |
-| Selfie finder (`useSelfiePick`: onboarding's profile step, scanning from the photo grant; /selfie) | visionpack, yunet; facepack if there (groups faces into people: the owner is in the most selfies). Doesn't wait for the photo index | `SelfieFinder` shows visionpack's download, then "Picking your best selfie" (bar) while it goes through the camera photos, 30 at a time, starting on the library's first page of 1000 while the rest is listed: sizes other than the main camera's first (the front camera's), each newest first; YuNet on MediaStore's cached 320 px thumbnails (`soloPhotos`, indexing held meanwhile), then only the photos with one big face decoded once more (`checkSelfies` → `selfieCheck`): YuNet and SFace on it while CLIP reads a 224 px copy on a CPU vision_dw8 of its own (never queued behind indexing). The next 30's thumbnails run during that check. Shows solo selfies only (one face ≥ 0.6 and ≥ 10% of the photo, no other face ≥ 0.35); photos tagged as documents (passport, ID, screenshot…) or other people (group, family, hug…) in their top 5 concepts, any cat or dog concept in their top 20, and near-copies (CLIP cosine > 0.92) are dropped. Within a person, by `profileFit`: the avatar crop (a square ~2x the face) has its full margin and the face in its middle (a too-close or cut-off face loses), the face is >= 240 px tall, times CLIP's sharp-vs-blurry score (fixed phrase vectors, no textpack), halved for a poor-avatar concept in the top 5 (middle finger, crying, eating…). Without facepack: no grouping, best fit wins. Onboarding's strip: the picked person's other selfies (`mine`). Its YuNet and CLIP load during the onboarding slides (`warmSelfie`), and the index's GPU model build waits out the hold. The first pick shows once those odd-sized photos are scanned (at most 240; listing done); scanning goes on in the background until 40 are found, so "Not me" (skips that face, SFace match) and "Try another" show the next one at once; none yet: "Looking further back"; none at all: "No other selfie on your phone" (onboarding: "No selfie found", Continue). Onboarding's "That's me" saves the face's square (512 px, `faceFile`) as the profile avatar; "Skip for now" leaves any time. Avatar sheet and Model bench still use `findSelfies` (CLIP's top 30 in the index) | yunet fails (or no native module, or iOS): no face found, so "No other selfie on your phone"; facepack fails: biggest single face wins |
+| Selfie finder (`useSelfiePick`: onboarding's profile step, scanning from the photo grant; /selfie) | yunet; visionpack if there, else gate; facepack if there (groups faces into people: the owner is in the most selfies). Doesn't wait for the photo index | `SelfieFinder` doesn't wait for any download: "Picking your best selfie" (bar) while it goes through the camera photos, 30 at a time, starting on the library's first page of 1000 while the rest is listed: sizes other than the main camera's first (the front camera's), each newest first; YuNet on MediaStore's cached 320 px thumbnails (`soloPhotos`, indexing held meanwhile), then only the photos with one big face decoded once more (`checkSelfies` → `selfieCheck`): YuNet and SFace on it while CLIP reads a 224 px copy on a CPU vision_dw8 of its own (never queued behind indexing). The next 30's thumbnails run during that check. Shows solo selfies only (one face ≥ 0.6 and ≥ 10% of the photo, no other face ≥ 0.35); photos tagged as documents (passport, ID, screenshot…) or other people (group, family, hug…) in their top 5 concepts, any cat or dog concept in their top 20, and near-copies (CLIP cosine > 0.92) are dropped. Before visionpack lands, `selfieCheck` runs the bundled gate on the same decode instead of CLIP: P(document, screen or pet) > 0.14 drops the photo (Commons test set: 20/20 IDs, 30/30 pets, about half of posters and video stills caught, 25/28 selfies kept); near-copies by its 1024-d feature (cosine > 0.90), sharpness by the face's Laplacian variance; no poor-avatar check, and photos picked then aren't rechecked once CLIP is there. Within a person, by `profileFit`: the avatar crop (a square ~2x the face) has its full margin and the face in its middle (a too-close or cut-off face loses), the face is >= 240 px tall, times CLIP's sharp-vs-blurry score (fixed phrase vectors, no textpack), halved for a poor-avatar concept in the top 5 (middle finger, crying, eating…). Without facepack: no grouping, best fit wins. Onboarding's strip: the picked person's other selfies (`mine`). Its YuNet and CLIP load during the onboarding slides (`warmSelfie`; without visionpack the gate loads at the scan's start), and the index's GPU model build waits out the hold. The first pick shows once those odd-sized photos are scanned (at most 240; listing done); scanning goes on in the background until 40 are found, so "Not me" (skips that face, SFace match) and "Try another" show the next one at once; none yet: "Looking further back"; none at all: "No other selfie on your phone" (onboarding: "No selfie found", Continue). Onboarding's "That's me" saves the face's square (512 px, `faceFile`) as the profile avatar; "Skip for now" leaves any time. Avatar sheet and Model bench still use `findSelfies` (CLIP's top 30 in the index) | yunet fails (or no native module, or iOS): no face found, so "No other selfie on your phone"; visionpack missing: the gate filters; gate fails too: nothing dropped beyond YuNet's one-face rule; facepack fails: biggest single face wins |
 | People experiment (dev tools) | yunet, facepack | Scan rejects | finds nobody |
 | 8 PM daily recap | none | always works | text-only notification without the module |
 
@@ -128,9 +133,9 @@ Denied: straight to the app. The slides are two taps. The notification permissio
 
 | Scenario | How it happens | What changes in the UI |
 |---|---|---|
-| Play install, first open within a minute | visionpack (42.8 MB) still downloading | Discover and Create: **"Getting your dumps ready"**, "Downloading (N%)…". Onboarding's selfie step: the same. Dumps start as soon as it lands |
+| Play install, first open within a minute | visionpack (42.8 MB) still downloading | Discover and Create: **"Getting your dumps ready"**, "Downloading (N%)…". Onboarding's selfie step doesn't wait: the gate stands in for CLIP. Dumps start as soon as it lands |
 | Play install, opened later | Play fetched visionpack meanwhile | indexing starts at once; faces then text download in the background |
-| Word search before textpack | last in the order | Create: **"Word search is on its way"**, "Downloading (N%). Places and months work now." or "Next in line after the other downloads." |
+| Word search before textpack | behind vision (and facepack if that had started) | Create: **"Word search is on its way"**, "Downloading (N%). Places and months work now." or "Next in line after the other downloads." |
 | A pack waiting | Play holds it (Wi-Fi, needs the user's OK) | that pack's card: "Waiting for Wi-Fi." |
 | A pack failed | network error | "The download stopped. DayDump tries again when you come back." Restarted on the next foreground |
 | No packs at all | release APK sideloaded or installed with adb | every card: "This copy of DayDump can't download it. Install it from Google Play." Discover never fills |

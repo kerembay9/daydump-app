@@ -45,9 +45,9 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
       runCatching { ctx.contentResolver.loadThumbnail(Uri.parse(uri), Size(thumb, thumb), null) }.getOrElse { decodeScaled(ctx, uri, size) }
     } else decodeScaled(ctx, uri, if (sharp) 720 else size)
 
-  /** Recycles full. solo: SFace only a photo's single face (a photo with more isn't a selfie). */
+  /** Recycles full unless keepFull. solo: SFace only a photo's single face (a photo with more isn't a selfie). */
   @Synchronized
-  fun detect(full: Bitmap, minScore: Double, sface: SFace?, t0: Long = SystemClock.elapsedRealtime(), solo: Boolean = false): Map<String, Any> {
+  fun detect(full: Bitmap, minScore: Double, sface: SFace?, t0: Long = SystemClock.elapsedRealtime(), solo: Boolean = false, keepFull: Boolean = false): Map<String, Any> {
     val k = size.toFloat() / max(full.width, full.height)
     val bmp = Bitmap.createScaledBitmap(full, max(1, (full.width * k).roundToInt()), max(1, (full.height * k).roundToInt()), true)
     val bw = bmp.width
@@ -77,7 +77,7 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
       if (sface != null && (!solo || keep.size == 1)) f["vec"] = encode(sface.embed(full, FloatArray(10) { o[b + 5 + it] * up }))
       f
     }
-    full.recycle()
+    if (!keepFull) full.recycle()
     return mapOf("decodeMs" to (t1 - t0).toDouble(), "modelMs" to (t2 - t1).toDouble(), "sfaceMs" to (SystemClock.elapsedRealtime() - t2).toDouble(),
       "aspect" to bw.toDouble() / bh, "faces" to faces)
   }
@@ -93,6 +93,63 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
   }
 
   private companion object { const val N = 15 }
+}
+
+/**
+ * The selfie step's "not a selfie" gate while visionpack isn't on the phone: MobileNetV3-Small (timm, Apache 2.0;
+ * scripts/build_assets.py gate) -> P(document, screen or pet), its ImageNet softmax summed in the graph, and its
+ * L2-normalized 1024-d feature (near-copy check). The photo's shorter side is scaled to 256 and its center 224 read, as
+ * timm evaluates it. Bundled: clip/gate.tflite (5.2 MB, fp16 weights). sharpness stands in for CLIP's sharp-vs-blurry.
+ */
+internal class Gate(ctx: Context) : AutoCloseable {
+  private val m = CompiledModel.create(ctx.assets, "clip/gate.tflite", CPU)
+  private val inBuf = m.createInputBuffers()
+  private val outBuf = m.createOutputBuffers()
+  private val argb = IntArray(S * S)
+  private val px = FloatArray(S * S * 3)
+
+  /** P(document, screen or pet) and the feature. Doesn't recycle b. */
+  @Synchronized
+  fun score(b: Bitmap): Pair<Double, FloatArray> {
+    val k = 256f / min(b.width, b.height)
+    val sc = Bitmap.createScaledBitmap(b, max(S, (b.width * k).roundToInt()), max(S, (b.height * k).roundToInt()), true)
+    sc.getPixels(argb, 0, S, (sc.width - S) / 2, (sc.height - S) / 2, S, S)
+    if (sc !== b) sc.recycle()
+    for (i in argb.indices) {
+      val c = argb[i]
+      px[i * 3] = ((c shr 16) and 255).toFloat(); px[i * 3 + 1] = ((c shr 8) and 255).toFloat(); px[i * 3 + 2] = (c and 255).toFloat()
+    }
+    inBuf[0].writeFloat(px)
+    m.run(inBuf, outBuf)
+    val o = outBuf[0].readFloat()
+    return o[0].toDouble() to o.copyOfRange(1, o.size)
+  }
+
+  /** Variance of the 4-neighbour Laplacian over the face box (fractions of b), gray, scaled to 128 px tall. Doesn't recycle b. */
+  fun sharpness(b: Bitmap, x: Double, y: Double, w: Double, h: Double): Double {
+    val l = (x * b.width).roundToInt().coerceIn(0, b.width - 1)
+    val t = (y * b.height).roundToInt().coerceIn(0, b.height - 1)
+    val cw = (w * b.width).roundToInt().coerceIn(1, b.width - l)
+    val ch = (h * b.height).roundToInt().coerceIn(1, b.height - t)
+    val fw = max(8, (cw * 128f / ch).roundToInt())
+    val face = Bitmap.createBitmap(b, l, t, cw, ch).let { c -> Bitmap.createScaledBitmap(c, fw, 128, true).also { if (it !== c) c.recycle() } }
+    val p = IntArray(fw * 128).also { face.getPixels(it, 0, fw, 0, 0, fw, 128) }
+    face.recycle()
+    val g = FloatArray(p.size) { val c = p[it]; 0.299f * ((c shr 16) and 255) + 0.587f * ((c shr 8) and 255) + 0.114f * (c and 255) }
+    var sum = 0.0
+    var sq = 0.0
+    for (r in 1 until 127) for (c in 1 until fw - 1) {
+      val i = r * fw + c
+      val v = (g[i - fw] + g[i + fw] + g[i - 1] + g[i + 1] - 4 * g[i]).toDouble()
+      sum += v; sq += v * v
+    }
+    val n = 126.0 * (fw - 2)
+    return sq / n - (sum / n) * (sum / n)
+  }
+
+  override fun close() = m.close()
+
+  private companion object { const val S = 224 }
 }
 
 /**

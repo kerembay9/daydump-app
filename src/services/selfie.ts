@@ -20,6 +20,13 @@ const PET = /(^|\s)(cats?|kitten|dogs?|puppy|pets?)(\s|$)/;
 const NOT_PET = /hot dog|corn dog|cat fish/;
 /** Top-5 concepts that make a poor profile picture (a gesture, a hand on the face, crying, eating, sick): its fit halves. */
 const POOR_AVATAR = /middle finger|crying|tears|eating|patient|nursing|face mask|nose|eye drop|sleep/;
+/** Before visionpack: the bundled gate's P(document, screen or pet) above which a photo is dropped (keeps 25 of 28 selfies on a Commons test set). */
+const GATE = 0.14;
+/** Before visionpack: gate-feature cosine above which two photos are the same shot (synthetic bursts: 56/56 caught, 1/378 distinct selfies merged). */
+const GATE_SAME_SHOT = 0.9;
+/** Before visionpack: ln(face Laplacian variance) -> CLIP's sharp-minus-blurry scale (selfies: median 5.0, p10-p90 3.2-6.4; CLIP q spans about ±0.03). */
+const gateSharp = (lap: number) => (lap > 0 ? (0.03 * (Math.log(lap) - 5)) / 1.6 : 0);
+const cos = (a: Float32Array, b: Float32Array) => { let s = 0; for (let j = 0; j < a.length; j++) s += a[j] * b[j]; return s; };
 /** Faces this sure count as someone else in the photo (a turned or half-hidden face scores below the selfie's 0.6). */
 const OTHER_FACE = 0.35;
 /**
@@ -87,7 +94,7 @@ export async function findSelfies(lib: Library, embed = true, not?: { ids: Set<s
 
 /**
  * A solo selfie checkSelfies found. fit: how good a profile picture it makes (profileFit, times sharpness); sharp: CLIP's
- * sharp-minus-blurry score; vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs).
+ * sharp-minus-blurry score (before visionpack: gateSharp); vec: its CLIP vector, or gate feature before visionpack (near-copy check); tags: its top 5 concepts (logs).
  */
 export type Selfie = { p: PhotoAsset; face: number; fit: number; sharp: number; box: Face; aspect: number; vec: Float32Array; tags: string[] };
 let names: Promise<string[]> | undefined;
@@ -99,7 +106,10 @@ let focus: Promise<(Float32Array | null)[]> | undefined;
  * two steps the caller can overlap: soloPhotos runs YuNet on MediaStore's cached thumbnails to find the photos with one big
  * face; checkSelfies decodes only those, once (selfieCheck): YuNet again (sharper box; SFace with embed) and CLIP, to drop
  * documents and other people (top 5 concepts), pets (top 20) and near-copies of one in `seen` (kept ones are added to it).
- * Needs the vision pack. Android only: [] elsewhere.
+ * Before the vision pack lands, the bundled gate (MobileNetV3) stands in: it drops documents, screens and pets (GATE), its
+ * feature finds near-copies (GATE_SAME_SHOT) and the face's Laplacian replaces CLIP's sharpness; no poor-avatar check.
+ * Android only: [] elsewhere.
+ * ponytail: what was picked before visionpack isn't rechecked with CLIP when it lands; rescan the pool if gate misses show up.
  */
 export async function soloPhotos(photos: PhotoAsset[]): Promise<PhotoAsset[]> {
   if (!ClipEmbedder || Platform.OS !== 'android' || !photos.length) return [];
@@ -109,20 +119,22 @@ export async function soloPhotos(photos: PhotoAsset[]): Promise<PhotoAsset[]> {
 
 export async function checkSelfies(solo: PhotoAsset[], embed: boolean, seen: Float32Array[]): Promise<Selfie[]> {
   if (!ClipEmbedder || !solo.length) return [];
-  const [{ scans, vecs: b64 }, cn, [sharp, blurry]] = await Promise.all([ClipEmbedder.selfieCheck(solo.map((p) => p.uri), OTHER_FACE, embed),
+  const [{ scans, vecs: b64, reject, gateVecs, sharp: lap }, cn, [sharp, blurry]] = await Promise.all([ClipEmbedder.selfieCheck(solo.map((p) => p.uri), OTHER_FACE, embed),
     (names ??= ClipEmbedder.conceptNames()), (focus ??= Promise.all([embedText('a sharp, in-focus photo'), embedText('a blurry, out-of-focus photo')]).catch(() => [null, null]))]);
-  const top = await ClipEmbedder.topConcepts(b64, 20);
-  const vecs = b64ToFloats(b64);
+  const top = b64 ? await ClipEmbedder.topConcepts(b64, 20) : { ids: [] as number[] }; // "": no visionpack yet, the gate scored them
+  const vecs = b64 ? b64ToFloats(b64) : null;
+  const gv = !vecs && gateVecs ? b64ToFloats(gateVecs) : null;
   return solo.flatMap((p, k) => {
     const faces = scans[k]?.faces ?? [], face = selfieFace(faces);
     const tags20 = top.ids.slice(k * 20, k * 20 + 20).map((id) => cn[id]), tags = tags20.slice(0, 5);
-    const vec = vecs.slice(k * 512, (k + 1) * 512);
-    const drop = !face ? 'no solo face' : tags.find((n) => DOCUMENT.test(n) || NOT_SOLO.test(n)) ?? tags20.find((n) => PET.test(n) && !NOT_PET.test(n));
+    const vec = vecs ? vecs.slice(k * 512, (k + 1) * 512) : gv ? gv.slice(k * 1024, (k + 1) * 1024) : new Float32Array(0);
+    const drop = !face ? 'no solo face' : !vecs && reject[k] > GATE ? `gate ${reject[k].toFixed(2)}` : tags.find((n) => DOCUMENT.test(n) || NOT_SOLO.test(n)) ?? tags20.find((n) => PET.test(n) && !NOT_PET.test(n));
     if (drop) { console.log(`[selfie] dropped (${drop}) ${p.uri}`); return []; }
-    if (seen.some((v) => dot(v, 0, vec, 0) > SAME_SHOT)) return [];
-    seen.push(vec);
+    // CLIP and gate vectors live in different spaces: each is only compared with its own kind
+    if (seen.some((v) => v.length === vec.length && (vecs ? dot(v, 0, vec, 0) > SAME_SHOT : cos(v, vec) > GATE_SAME_SHOT))) return [];
+    if (vec.length) seen.push(vec);
     const aspect = scans[k].aspect, px = aspect >= 1 ? Math.min(p.width, p.height) : Math.max(p.width, p.height);
-    const q = sharp && blurry ? dot(vec, 0, sharp, 0) - dot(vec, 0, blurry, 0) : 0;
+    const q = !vecs ? gateSharp(lap?.[k] ?? 0) : sharp && blurry ? dot(vec, 0, sharp, 0) - dot(vec, 0, blurry, 0) : 0;
     // ponytail: sharpness weight eyeballed from A54 logs (q spans about ±0.03); a pixel blur measure if it misranks
     const fit = profileFit(faces[0], aspect, px) * Math.min(1.2, Math.max(0.8, 1 + 6 * q)) * (tags.some((n) => POOR_AVATAR.test(n)) ? 0.5 : 1);
     return [{ p, face, fit, sharp: q, box: faces[0], aspect, vec, tags }];

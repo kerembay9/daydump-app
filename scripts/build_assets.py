@@ -1,8 +1,8 @@
 """Build on-device ML/geo assets. Outputs are gitignored (big) except cities.json + clipGolden.json.
 
-Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision
+Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision timm
         (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface]   (no args = all but bench)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface] [gate]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU) + tokenizer.json (both the textpack asset pack), golden vectors,
          phrases.json (FIXED_PHRASES embedded, so they work before the pack arrives)
@@ -13,6 +13,7 @@ vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text 
 cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline reverse geocoding
 bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
 yunet  - YuNet face detector (OpenCV Zoo, MIT) -> LiteRT yunet_320.tflite (bundled, findSelfies) + yunet_640 for the face bench (prints the adb commands)
+gate   - MobileNetV3-Small (timm, Apache 2.0) -> LiteRT gate.tflite (bundled): the selfie step's "not a selfie" score before visionpack
 sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (facepack; int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
 import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
@@ -433,6 +434,56 @@ def build_sface():
     print(f"  vs ONNX cosine min {(ref * got).sum(-1).min():.4f}")
 
 
+def build_gate():
+    """The selfie step's "not a selfie" gate before visionpack lands: MobileNetV3-Small (timm mobilenetv3_small_100.lamb_in1k,
+    Apache 2.0, ImageNet) with its softmax summed over GATE_REJECT in the graph. Takes [1,224,224,3] RGB 0-255 (the photo's
+    shorter side scaled to 256, center 224) and returns [1,1025]: P(document, screen or pet), then the L2-normalized 1024-d
+    pre-logits feature (near-copy check: a burst copy > 0.90). Bundled: clip/gate.tflite (fp16 weights)."""
+    import numpy as np, timm, torch
+    from timm.data import ImageNetInfo
+    net = timm.create_model("mobilenetv3_small_100.lamb_in1k", pretrained=True).eval()
+    desc = [ImageNetInfo().index_to_description(i) for i in range(1000)]
+    rej = sorted(set(range(151, 269)) | set(range(281, 286)) | {i for i, d in enumerate(desc) if any(d.startswith(w) or ", " + w in d for w in GATE_REJECT)})
+    print(f"  {len(rej)} reject classes")
+
+    class Gate(torch.nn.Module):
+        def __init__(self):
+            super().__init__(); self.net = net
+            self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1) * 255)
+            self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1) * 255)
+            self.register_buffer("rej", torch.zeros(1000).index_fill_(0, torch.tensor(rej), 1.0))
+
+        def forward(self, x):
+            f = self.net.forward_head(self.net.forward_features((x.permute(0, 3, 1, 2) - self.mean) / self.std), pre_logits=True)
+            p = self.net.classifier(f).softmax(-1)
+            return torch.cat([(p * self.rej).sum(-1, keepdim=True), f / f.norm(dim=-1, keepdim=True)], -1)
+
+    from PIL import Image
+    im = Image.open(GOLDEN_IMAGE).convert("RGB"); s = 256 / min(im.size)
+    im = im.resize((round(im.width * s), round(im.height * s)), Image.BILINEAR)
+    l, t = (im.width - 224) // 2, (im.height - 224) // 2
+    real = np.asarray(im.crop((l, t, l + 224, t + 224)), dtype=np.float32)[None]
+    x = torch.from_numpy(np.concatenate([real, np.random.default_rng(0).uniform(0, 255, (3, 224, 224, 3)).astype(np.float32)]))
+    m = Gate().eval()
+    with torch.no_grad():
+        ref = m(x).numpy()
+    # fp16 weights, fp32 math: dynamic int8 moves P by up to 0.9 (19/30 pets pass, 13 more selfies drop on the test set)
+    from ai_edge_quantizer import recipe_manager, algorithm_manager
+    from ai_edge_quantizer.qtyping import TFLOperationName
+    rm = recipe_manager.RecipeManager()
+    rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16, algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
+    got = export_tflite(m, x, NATIVE / "gate.tflite", rm.get_quantization_recipe(), floor=-1)  # P checked by its value below
+    cos = (ref[:, 1:] * got[:, 1:]).sum(-1)
+    print(f"  reject P vs torch: max diff {np.abs(ref[:, 0] - got[:, 0]).max():.4f} (torch {ref[:, 0].round(3)}), feature cosine min {cos.min():.5f}")
+    assert np.abs(ref[:, 0] - got[:, 0]).max() < 0.02 and cos.min() > 0.999, "gate.tflite drifted"
+
+
+# ImageNet classes the gate rejects besides dogs (151-268) and cats (281-285): documents, screens, signs (an ID card lands on these).
+GATE_REJECT = ["web site", "envelope", "menu", "book jacket", "comic book", "crossword", "packet", "binder", "notebook", "monitor", "screen, CRT",
+               "television", "home theater", "desktop computer", "laptop", "iPod", "cellular telephone", "hand-held computer", "scoreboard", "street sign",
+               "jigsaw puzzle", "bookshop", "library", "toyshop", "cinema", "theater curtain", "window shade", "mailbox", "slide rule", "rule,", "Band Aid"]
+
+
 def build_vocab():
     import numpy as np, torch
     m, tok, _ = load_model()
@@ -514,6 +565,6 @@ def build_cities():
 
 
 if __name__ == "__main__":
-    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface"]
+    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface", "gate"]
     for s in steps:
-        {"clip": build_clip, "phrases": build_phrases, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface}[s]()
+        {"clip": build_clip, "phrases": build_phrases, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface, "gate": build_gate}[s]()

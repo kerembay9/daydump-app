@@ -19,10 +19,12 @@ type ClipEmbedderModule = {
   embedTexts(texts: string[]): Promise<string>;
   /**
    * Release builds download the big models from Play after the install, one pack at a time: vision (embedImages, topConcepts),
-   * then faces (faces with embed), then text (embedTexts). Debug builds have them all. Calls needing a missing one reject.
-   * Updates come as onModels events. Also restarts a download that failed.
+   * then the one wantModel last asked for, then faces (faces with embed), then text (embedTexts). Debug builds have them all.
+   * Calls needing a missing one reject (and want it). Updates come as onModels events. Also restarts a download that failed.
    */
   modelState(): Promise<Record<ModelPack, PackState>>;
+  /** A screen needs this pack: it downloads right after vision, ahead of the other (not ahead of one already downloading). */
+  wantModel?(pack: ModelPack): void;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
   topConcepts(vecs: string, k: number): Promise<{ ids: number[]; scores: number[] }>;
@@ -36,10 +38,12 @@ type ClipEmbedderModule = {
   faces(uris: string[], minScore: number, embed: boolean, thumb?: number): Promise<FaceScan[]>;
   /**
    * The selfie finder's check: faces (embed as there) and CLIP vectors (as embedImages) of the same photos, each decoded once,
-   * CLIP on a CPU model of its own (vision_dw8), not queued behind indexing or its hold. Needs the vision pack.
+   * CLIP on a CPU model of its own (vision_dw8), not queued behind indexing or its hold. Without the vision pack: vecs is ""
+   * and the bundled gate scores each photo instead: reject, its P(document, screen or pet); gateVecs, its 1024-d feature
+   * (base64 Float32, n x 1024); sharp, the single face's Laplacian variance (0: not one face).
    */
-  selfieCheck(uris: string[], minScore: number, embed: boolean): Promise<{ scans: FaceScan[]; vecs: string }>;
-  /** Loads the models faces and selfieCheck use, so the selfie finder's first look doesn't wait for them. Needs the vision pack. */
+  selfieCheck(uris: string[], minScore: number, embed: boolean): Promise<{ scans: FaceScan[]; vecs: string; reject: number[]; gateVecs: string; sharp: number[] }>;
+  /** Loads the models faces and selfieCheck use (CLIP, or the gate before the vision pack), so the selfie finder's first look doesn't wait for them. */
   warmSelfie(): Promise<void>;
   /**
    * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service
