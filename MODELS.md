@@ -26,14 +26,14 @@ builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. D
 
 ```mermaid
 flowchart TD
-  JS[JS calls ClipEmbedder] -->|null: iOS / Expo Go| NONE[No models: see 'Without the module']
+  JS[JS calls ClipEmbedder] -->|null: iOS / Expo Go| NONE[No models: see features table]
   JS --> IMG[embedImages]
   JS --> TXT[embedTexts]
   JS --> CON[topConcepts]
   JS --> FACE[faces]
 
   IMG --> BUILD{built GPU model in cache?}
-  BUILD -->|no| VG[VisionGpu: dw8 + skel -> fp16, CRC check]
+  BUILD -->|no| VG[VisionGpu: dw8 + skel to fp16, CRC check]
   BUILD -->|yes| GPU
   VG --> GPU[GPU model, batch 1]
   GPU -->|ok| PAR[GPU from the front + dw8 CPU helper from the back]
