@@ -5,16 +5,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Directory, File, Paths } from 'expo-file-system';
 import type { Face } from '../../modules/clip-embedder';
 import { useTheme } from '../theme/ThemeProvider';
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-/** The square around a face, ~2x its size and kept inside the photo, in photo heights. aspect: width / height. */
-function square(box: Face, aspect: number) {
-  const side = Math.min(2 * Math.max(box.w * aspect, box.h), aspect, 1);
-  const cx = clamp((box.x + box.w / 2) * aspect, side / 2, aspect - side / 2);
-  const cy = clamp(box.y + box.h / 2, side / 2, 1 - side / 2);
-  return { side, left: cx - side / 2, top: cy - side / 2 };
-}
+import { square } from '../services/faces';
 
 /** A photo in a circle, zoomed to a face. Draws the whole photo scaled up: fine for one big circle, too heavy for lists (FaceThumb). */
 export function FaceCircle({ uri, box, aspect, size }: { uri: string; box?: Face; aspect: number; size: number }) {
@@ -25,7 +16,8 @@ export function FaceCircle({ uri, box, aspect, size }: { uri: string; box?: Face
   return (
     <View style={round}>
       {/* key: a new photo remounts, else the old one shows a moment stretched to the new one's size */}
-      <Image key={uri} source={{ uri }} contentFit="fill" style={{ position: 'absolute', width: aspect * k, height: k, left: -left * k, top: -top * k }} />
+      {/* memory cache: the same circle drawn again (onboarding's flights) shows at once */}
+      <Image key={uri} source={{ uri }} contentFit="fill" cachePolicy="memory-disk" style={{ position: 'absolute', width: aspect * k, height: k, left: -left * k, top: -top * k }} />
     </View>
   );
 }

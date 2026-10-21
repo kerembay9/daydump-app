@@ -98,7 +98,7 @@ export function useSelfiePick(on = true) {
         found += c.length;
         scanned += cur.ps.length;
         console.log(`[selfie] scanned ${scanned} (${cur.ps.length}${cur.odd ? ' odd' : ''}, ${s.length} solo): ${c.length} kept in ${Date.now() - t0} ms`);
-        c.forEach((x) => console.log(`[selfie] face ${x.face.toFixed(3)} ${x.p.width}x${x.p.height} ${x.box.vec ? 'vec' : 'novec'} [${x.tags.join(', ')}] ${x.p.uri}`));
+        c.forEach((x) => console.log(`[selfie] face ${x.face.toFixed(3)} fit ${x.fit.toFixed(3)} sharp ${x.sharp.toFixed(3)} ${x.p.width}x${x.p.height} ${x.box.vec ? 'vec' : 'novec'} [${x.tags.join(', ')}] ${x.p.uri}`));
         if (stop) break;
         const done = !next.ps.length || found >= ENOUGH;
         const ready = done || !next.odd || scanned >= FIRST_BY;
@@ -122,12 +122,19 @@ export function useSelfiePick(on = true) {
   };
   const vote = (v: 'up' | 'down') => {
     setVerdict(v);
-    console.log(`[selfie] verdict ${v === 'up' ? "that's me" : 'not me'} face ${best?.face.toFixed(3)} ${best?.p.uri}`);
+    console.log(`[selfie] verdict ${v === 'up' ? "that's me" : 'not me'} fit ${best?.fit.toFixed(3)} ${best?.p.uri}`);
     if (v === 'down' && best) {
       const vec = best.box && faceVec(best.box);
       if (vec) notMe.current.push(vec);
       next();
     }
+  };
+
+  /** s and the other selfies of the same person (all the others before facepack: no grouping), best first; grows as the scan goes. */
+  const mine = (s: Selfie) => {
+    const r = rankSelfies(st.pool).filter((x) => !isAnyOf(x.box, notMe.current));
+    const who = r.find((x) => x.p.id === s.p.id)?.person ?? -1;
+    return r.filter((x) => who < 0 || x.person === who);
   };
 
   // what it waits for: [title, body, progress or null]
@@ -137,7 +144,7 @@ export function useSelfiePick(on = true) {
     : st.done ? null
     : !st.passed ? ['Picking your best selfie', 'Looking through your recent photos. Nothing leaves your phone.', Math.min(1, st.scanned / st.firstBy)]
     : ['Looking further back', 'Checking older photos.', null];
-  return { best, wait, verdict, vote, next };
+  return { best, wait, verdict, vote, next, mine };
 }
 
 /** /selfie: the pick, a verdict, and the user's name. */

@@ -5,7 +5,7 @@ import type { PhotoAsset } from '../types';
 import { searchRanked } from './stories';
 import { isCameraPhoto } from './galleryService';
 import { ClipEmbedder, type Face } from '../../modules/clip-embedder';
-import { centered, faceVec, groupFaces, isAnyOf } from './faces';
+import { centered, faceVec, groupFaces, isAnyOf, profileFit } from './faces';
 
 // SELFIE_QUERY and the sharp/blurry phrases ship as vectors (FIXED_PHRASES, scripts/build_assets.py): change both together.
 export const SELFIE_QUERY = 'a selfie of a person, close-up face';
@@ -18,6 +18,8 @@ const NOT_SOLO = /^(a pet (cat|dog)|cat|dog|pet|tom cat|a sleepy pet|a group of 
 /** Any cat or dog concept (not hot dogs): YuNet finds pet faces, and a pet close-up's top 5 can miss it ("reading, novel, curious…"). */
 const PET = /(^|\s)(cats?|kitten|dogs?|puppy|pets?)(\s|$)/;
 const NOT_PET = /hot dog|corn dog|cat fish/;
+/** Top-5 concepts that make a poor profile picture (a gesture, a hand on the face, crying, eating, sick): its fit halves. */
+const POOR_AVATAR = /middle finger|crying|tears|eating|patient|nursing|face mask|nose|eye drop|sleep/;
 /** Faces this sure count as someone else in the photo (a turned or half-hidden face scores below the selfie's 0.6). */
 const OTHER_FACE = 0.35;
 /**
@@ -83,9 +85,14 @@ export async function findSelfies(lib: Library, embed = true, not?: { ids: Set<s
   return cands.filter((c) => c.face > 0 && !isAnyOf(c.box, not?.faces ?? []));
 }
 
-/** A solo selfie checkSelfies found. vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs). */
-export type Selfie = { p: PhotoAsset; face: number; box: Face; aspect: number; vec: Float32Array; tags: string[] };
+/**
+ * A solo selfie checkSelfies found. fit: how good a profile picture it makes (profileFit, times sharpness); sharp: CLIP's
+ * sharp-minus-blurry score; vec: its CLIP vector (near-copy check); tags: its top 5 concepts (logs).
+ */
+export type Selfie = { p: PhotoAsset; face: number; fit: number; sharp: number; box: Face; aspect: number; vec: Float32Array; tags: string[] };
 let names: Promise<string[]> | undefined;
+// the sharp / blurry phrases ship as vectors (FIXED_PHRASES): no text pack needed
+let focus: Promise<(Float32Array | null)[]> | undefined;
 
 /**
  * Solo selfies without waiting for the photo index (CLIP reads ~55 ms/photo; the owner's selfies can be 900 photos back), in
@@ -102,7 +109,8 @@ export async function soloPhotos(photos: PhotoAsset[]): Promise<PhotoAsset[]> {
 
 export async function checkSelfies(solo: PhotoAsset[], embed: boolean, seen: Float32Array[]): Promise<Selfie[]> {
   if (!ClipEmbedder || !solo.length) return [];
-  const [{ scans, vecs: b64 }, cn] = await Promise.all([ClipEmbedder.selfieCheck(solo.map((p) => p.uri), OTHER_FACE, embed), (names ??= ClipEmbedder.conceptNames())]);
+  const [{ scans, vecs: b64 }, cn, [sharp, blurry]] = await Promise.all([ClipEmbedder.selfieCheck(solo.map((p) => p.uri), OTHER_FACE, embed),
+    (names ??= ClipEmbedder.conceptNames()), (focus ??= Promise.all([embedText('a sharp, in-focus photo'), embedText('a blurry, out-of-focus photo')]).catch(() => [null, null]))]);
   const top = await ClipEmbedder.topConcepts(b64, 20);
   const vecs = b64ToFloats(b64);
   return solo.flatMap((p, k) => {
@@ -113,13 +121,17 @@ export async function checkSelfies(solo: PhotoAsset[], embed: boolean, seen: Flo
     if (drop) { console.log(`[selfie] dropped (${drop}) ${p.uri}`); return []; }
     if (seen.some((v) => dot(v, 0, vec, 0) > SAME_SHOT)) return [];
     seen.push(vec);
-    return [{ p, face, box: faces[0], aspect: scans[k].aspect, vec, tags }];
+    const aspect = scans[k].aspect, px = aspect >= 1 ? Math.min(p.width, p.height) : Math.max(p.width, p.height);
+    const q = sharp && blurry ? dot(vec, 0, sharp, 0) - dot(vec, 0, blurry, 0) : 0;
+    // ponytail: sharpness weight eyeballed from A54 logs (q spans about ±0.03); a pixel blur measure if it misranks
+    const fit = profileFit(faces[0], aspect, px) * Math.min(1.2, Math.max(0.8, 1 + 6 * q)) * (tags.some((n) => POOR_AVATAR.test(n)) ? 0.5 : 1);
+    return [{ p, face, fit, sharp: q, box: faces[0], aspect, vec, tags }];
   });
 }
 
 /**
  * Best first: the person in the most of these selfies (the phone's owner takes the most; SFace groups them), then by
- * selfieFace. person -1: no face vector (facepack not there yet).
+ * fit (a well-framed, sharp face beats a bigger one). person -1: no face vector (facepack not there yet).
  * ponytail: selfies scanned before facepack landed stay ungrouped; rescan them with embed if the owner pick suffers.
  */
 export function rankSelfies(pool: Selfie[]) {
@@ -129,5 +141,5 @@ export function rankSelfies(pool: Selfie[]) {
   const count = new Map<number, number>();
   group.forEach((g) => count.set(g, (count.get(g) ?? 0) + 1));
   return pool.map((s) => { const g = person.get(s) ?? -1; return { ...s, person: g, seen: count.get(g) ?? 0 }; })
-    .sort((a, b) => b.seen - a.seen || a.person - b.person || b.face - a.face);
+    .sort((a, b) => b.seen - a.seen || a.person - b.person || b.fit - a.fit);
 }

@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Keyboard, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Film, Image as ImageIcon, Layers, Lock, LucideIcon, ShieldCheck, Sparkles } from 'lucide-react-native';
-import { File, Paths } from 'expo-file-system';
+import { Check, Film, Image as ImageIcon, Layers, LucideIcon, ShieldCheck, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { OnboardingService } from '../services/onboardingService';
@@ -13,14 +12,9 @@ import { Tape } from './ui/Tape';
 import { Tap } from './ui/Tap';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
-import { useSelfiePick } from './SelfieFinder';
-import { FaceCircle, faceFile } from './FaceCircle';
-import { Bar } from './ModelLoading';
-import { Pill } from './ui/Pill';
-import type { Selfie } from '../services/selfie';
+import { ProfileStep } from './ProfileStep';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { useModels } from '../state/models';
-import { getProfile, setProfile } from '../services/profile';
 
 type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
@@ -140,114 +134,6 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
       </View>
     </View>
   );
-}
-
-/**
- * After the photo grant: the name and selfie a dump preview's post header shows (preview/[id] → PostMocks), filled in live.
- * The selfie scan starts here, while the name is typed (the keyboard covers it). Continue needs a photo picked ("That's me",
- * saved as the profile avatar) or none found; Skip leaves the initial letter. The name saves as it's typed.
- */
-function ProfileStep({ onDone }: { onDone: () => void }) {
-  const { t } = useTheme();
-  const [name, setName] = useState('');
-  const [picked, setPicked] = useState<Selfie | null>(null);
-  const { best, wait, vote } = useSelfiePick();
-  useEffect(() => { getProfile().then((p) => setName(p.name)); }, []);
-  const editName = (n: string) => {
-    setName(n);
-    setProfile({ name: n.trim() }).catch((e) => console.warn('[onboarding] name save failed:', e));
-  };
-  const yes = () => {
-    if (!best) return;
-    vote('up'); setPicked(best); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    faceFile(best.p.uri, best.box, AVATAR_PX); // cropped now: after Continue the notification ask pauses the app
-  };
-  const no = () => { setPicked(null); vote('down'); };
-  const canGo = !!picked || (!best && !wait);
-  const done = (use: boolean) => {
-    Keyboard.dismiss();
-    if (use && picked) saveAvatar(picked).catch((e) => console.warn('[onboarding] avatar save failed:', e));
-    onDone();
-  };
-  const initial = name.trim()[0]?.toUpperCase();
-
-  return (
-    <>
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 18, paddingBottom: 16 }}>
-        <Text style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>Your dump previews</Text>
-        <Text style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Put yourself in your posts</Text>
-
-        {/* a post header like the previews' (PostMocks), filled in as they type and pick */}
-        <FrameCard radius={18} padding={12} rotate={-1} style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
-              {picked ? <FaceCircle uri={picked.p.uri} box={picked.box} aspect={picked.aspect} size={40} />
-                : initial ? <Text style={[ui(16, 600), { color: t.accentFabText }]}>{initial}</Text> : <Icons.user size={20} color={t.accentFabText} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[ui(14, 600), { color: name.trim() ? t.ink : t.inkMuted }]} numberOfLines={1}>{name.trim() || 'Your name'}</Text>
-              <Text style={[ui(11), { color: t.inkMuted }]}>Today · photo dump</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {[0, 1, 2].map((i) => <View key={i} style={{ flex: 1, height: 56, borderRadius: 8, backgroundColor: t.borderStrong, opacity: 0.5 }} />)}
-          </View>
-        </FrameCard>
-
-        <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4, marginBottom: 12 }}>
-          <TextInput value={name} onChangeText={editName} placeholder="Your name" placeholderTextColor={t.inkMuted} autoFocus
-            returnKeyType="done" style={[display(18), { color: t.ink, paddingVertical: 8 }]} />
-        </FrameCard>
-
-        <FrameCard radius={18} padding={12}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            {best ? <FaceCircle uri={best.p.uri} box={best.box} aspect={best.aspect} size={64} />
-              : <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: t.borderStrong, opacity: 0.5 }} />}
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[ui(14, 600), { color: t.ink }]}>{wait ? wait[0] : best ? 'Is this you?' : 'No selfie found'}</Text>
-              <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>
-                {wait ? 'Looking through your photos for one.' : best ? 'Found on your phone. It fills the circle above.' : 'Your previews show your initial. Add a photo later in Profile.'}
-              </Text>
-              {wait && <Bar progress={wait[2]} />}
-            </View>
-          </View>
-          {best && (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <Pill label="Not me" onPress={no} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
-              <Pill label="That's me" on={picked?.p.id === best.p.id} onPress={yes} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
-            </View>
-          )}
-        </FrameCard>
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-          <Lock size={12} color={t.inkMuted} strokeWidth={2} />
-          <Text style={[ui(11.5), { color: t.inkMuted }]}>Only for your previews. Stays on your phone.</Text>
-        </View>
-        <Tap onPress={() => canGo && done(true)} accessibilityRole="button" accessibilityState={{ disabled: !canGo }}
-          style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, opacity: canGo ? 1 : 0.35, alignItems: 'center', justifyContent: 'center', boxShadow: t.shadowCard }}>
-          <Text style={[ui(15, 600), { color: t.bgScreen }]}>Continue</Text>
-        </Tap>
-        {canGo ? <View style={{ height: 42 }} /> : (
-          <Tap onPress={() => done(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
-            <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip for now</Text>
-          </Tap>
-        )}
-      </View>
-    </>
-  );
-}
-
-const AVATAR_PX = 512;
-/** The face's square as the profile avatar: our own copy (the cache's can be cleared, the photo deleted). */
-async function saveAvatar(s: Selfie) {
-  const src = await faceFile(s.p.uri, s.box, AVATAR_PX);
-  if (!src) return;
-  const dest = new File(Paths.document, `avatar-${Date.now()}.jpg`);
-  new File(src).copy(dest);
-  await setProfile({ avatar: dest.uri });
-  console.log('[onboarding] avatar saved', dest.uri);
 }
 
 function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
