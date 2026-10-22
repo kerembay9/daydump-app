@@ -17,7 +17,7 @@ export type Story = {
   subtitle: string;
   /** all member photos, time-ordered */
   photos: IndexedPhoto[];
-  /** the 6 slides, near-duplicates removed, time-ordered */
+  /** the 4-8 slides (slideCount), near-duplicates removed, time-ordered */
   picks: IndexedPhoto[];
   concepts: string[];
   /** trips: "City, CC" */
@@ -31,7 +31,12 @@ export type Story = {
   debug: Record<string, string | number>;
 };
 
-const SLIDES = 6;
+/** Slides per dump, 4-8 but mostly 6: seeded by the story id, so a story keeps its count across rebuilds. */
+export function slideCount(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return [4, 5, 5, 6, 6, 6, 6, 6, 7, 7, 8][Math.abs(h) % 11];
+}
 const MIN_TODAY = 3;
 /** Trips and today scored like a topic: sqrt(photos) x days x this (topics also multiply by cosine x log(1/share), ~1-1.5). */
 const TRIP_K = 1.2;
@@ -39,7 +44,7 @@ const SEEN_KEY = '@daydump_seen_stories';
 const DAY = 86_400_000;
 
 /**
- * Ranked stories, best first: the top `limit` get their 6 picks (the costly part: embeddings + near-duplicate checks),
+ * Ranked stories, best first: the top `limit` get their picks (the costly part: embeddings + near-duplicate checks),
  * the rest are only counted (`available`) so Discover can offer "Show more" without building them.
  * With CLIP tags the order is curated (curate.ts): worth folded into the score, group caps per page, and with
  * hideSensitive no sensitive topic or photo anywhere.
@@ -121,7 +126,7 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
   const order = curated ? curate(ranked) : ranked;
   const picked = order.slice(0, limit).map((s) => {
     const id = s.kind === 'topic' ? Number(s.id.split(':')[1]) : null;
-    return withMeta({ ...s, picks: pick(s.photos, lib, row, id == null ? () => 0 : (p) => p.conceptScores[p.concepts.indexOf(id)] ?? 0) });
+    return withMeta({ ...s, picks: pick(s.photos, lib, row, id == null ? () => 0 : (p) => p.conceptScores[p.concepts.indexOf(id)] ?? 0, slideCount(s.id)) });
   });
   return { stories: picked, available: order.length };
 }
@@ -154,7 +159,7 @@ export async function searchStory(lib: Library, query: string, minScore = 0.2, k
     title: capitalize(query.trim()),
     subtitle: '',
     photos,
-    picks: pick(photos, lib, row, (p) => sc.get(p.id) ?? 0),
+    picks: pick(photos, lib, row, (p) => sc.get(p.id) ?? 0, slideCount(`search:${query}`)),
     concepts: [query],
     start, end,
     score: top[0].s,
@@ -172,7 +177,7 @@ export async function searchRanked(lib: Library, query: string): Promise<{ p: In
 }
 
 /** Time-spread picks: best photo per time bucket, skipping near-duplicates (cosine > 0.95). */
-export function pick(photos: IndexedPhoto[], lib: Library, row: Map<string, number>, quality: (p: IndexedPhoto) => number): IndexedPhoto[] {
+export function pick(photos: IndexedPhoto[], lib: Library, row: Map<string, number>, quality: (p: IndexedPhoto) => number, n: number): IndexedPhoto[] {
   const sorted = [...photos].sort((a, b) => a.creationTime - b.creationTime);
   const chosen: IndexedPhoto[] = [];
   const isDup = (p: IndexedPhoto) =>
@@ -180,13 +185,13 @@ export function pick(photos: IndexedPhoto[], lib: Library, row: Map<string, numb
       const a = row.get(p.id), b = row.get(c.id);
       return a != null && b != null && !isZero(lib.vecs, a) && dot(lib.vecs, a, lib.vecs, b) > 0.95;
     });
-  const buckets = Math.min(SLIDES, sorted.length);
+  const buckets = Math.min(n, sorted.length);
   for (let b = 0; b < buckets; b++) {
     const slice = sorted.slice(Math.floor((b * sorted.length) / buckets), Math.floor(((b + 1) * sorted.length) / buckets));
     const best = slice.filter((p) => !isDup(p)).sort((x, y) => quality(y) - quality(x))[0];
     if (best) chosen.push(best);
   }
-  for (const p of sorted) if (chosen.length < SLIDES && !chosen.includes(p) && !isDup(p)) chosen.push(p);
+  for (const p of sorted) if (chosen.length < n && !chosen.includes(p) && !isDup(p)) chosen.push(p);
   return chosen.sort((a, b) => a.creationTime - b.creationTime);
 }
 

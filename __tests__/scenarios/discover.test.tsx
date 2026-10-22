@@ -13,7 +13,7 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
   await screen.findByText('Other dumps', {}, { timeout: 10000 });
 
   // hero + 2 tiles, every one with its meta line
-  for (const [title, meta] of [[LONG, '6 photos · Sep 22–Oct 22, 2025'], ['A week in Seattle', '6 photos · Aug 4–9, 2025'], ['Cinnamon rolls', '6 photos · May 1–Jun 12, 2025']]) {
+  for (const [title, meta] of [[LONG, '7 photos · Sep 22–Oct 22, 2025'], ['A week in Seattle', '6 photos · Aug 4–9, 2025'], ['Cinnamon rolls', '8 photos · May–Jun 2025']]) {
     expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(meta).length).toBeGreaterThan(0);
     expect(meta).toMatch(META);
@@ -28,7 +28,7 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
   expect(screen.queryByText(/…$/)).toBeNull();
 
   // tapping a tile opens its preview; the hero stays
-  await fireEvent.press(screen.getByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`));
+  await fireEvent.press(screen.getByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`));
   expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
 }, 30000);
 
@@ -61,4 +61,13 @@ test('time-left and coverage wording', () => {
     'Working out time left…', 'Less than a minute left', 'About 2 min left', 'About 6 min left', 'About 1 h left', 'About 1 h 10 min left', 'About 2 h left',
   ]);
   expect([0.4, 3, 21, 120, 400, 800].map((d) => coverageLine(Date.now() - d * 864e5))).toEqual(['day', '3 days', '3 weeks', '4 months', '13 months', '2 years'].map((x) => `Dumps from your last ${x} so far`));
+});
+
+test('dumps open with 4 to 8 photos, mostly 6, and a story keeps its count', () => {
+  const { slideCount } = require('../../src/services/stories');
+  const n = Array.from({ length: 2000 }, (_, i) => slideCount(`topic:${i}`));
+  expect(Math.min(...n)).toBe(4);
+  expect(Math.max(...n)).toBe(8);
+  expect(n.filter((x) => x === 6).length / n.length).toBeGreaterThan(0.35);
+  expect(slideCount('trip:42')).toBe(slideCount('trip:42'));
 });

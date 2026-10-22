@@ -13,20 +13,20 @@ beforeAll(() => seedWorld());
 test('Post shares to the chosen app and marks the dump Posted; Library shows it; Reuse makes "{title} (2)"', async () => {
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
-  await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
   await screen.findByLabelText('Post on Instagram or TikTok');
   expect(screen.getByRole('tab', { name: 'IG Post', selected: true })).toBeTruthy();
 
   await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
   // done sheet (board 10)
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
-  expect(screen.getByText('Caption copied · 6 slides saved to the DayDump album.')).toBeTruthy();
+  expect(screen.getByText('Caption copied · 7 slides saved to the DayDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByText('Back to Discover'));
   await waitFor(() => expect(app.getPathname()).toBe('/'));
   expect(share()).toHaveBeenCalledTimes(1);
   const [uris, caption, target] = share().mock.calls[0];
   expect(target).toBe('instagram');
-  expect(uris).toHaveLength(6); // one 1-photo slide per pick
+  expect(uris).toHaveLength(7); // one 1-photo slide per pick
   expect(uris.every((u: string) => u.endsWith('.jpg'))).toBe(true);
   expect(typeof caption).toBe('string');
   await settle();
@@ -49,7 +49,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   await waitFor(() => expect(app.getPathname()).toBe('/library'));
   expect(await screen.findByText('Posted (2)')).toBeTruthy();
   expect(screen.getByLabelText(`${LONG}, posted`)).toBeTruthy();
-  expect(screen.getByText(new RegExp(`^6 photos · .+\\sShared to IG · ${today()}$`))).toBeTruthy();
+  expect(screen.getByText(new RegExp(`^7 photos · .+\\sShared to IG · ${today()}$`))).toBeTruthy();
   expect(screen.getByText(new RegExp(`^6 photos · .+\\sShared to TikTok · ${today()}$`))).toBeTruthy();
 
   // Reuse: an editable copy, "{title} (2)", opened in Edit
@@ -68,10 +68,10 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
 test('Save only shows the done sheet; Start a new dump opens Create', async () => {
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
-  await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
   await fireEvent.press(await screen.findByLabelText('Save only, to the DayDump album'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
-  expect(screen.getByText('6 slides saved to the DayDump album.')).toBeTruthy();
+  expect(screen.getByText('7 slides saved to the DayDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
   await waitFor(() => expect(app.getPathname()).toBe('/create'));
 }, 30000);
