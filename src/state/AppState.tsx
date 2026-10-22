@@ -152,7 +152,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       getProfile().catch(() => {}); // warm profileNow() (new-dump size / frame defaults) before anything reads it
-      // first run: the notification ask waits for the end of onboarding (finishOnboarding), not over the welcome
+      // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks
       if (await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
       else setOnboarding(true);
     })();

@@ -2,12 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LucideIcon } from 'lucide-react-native';
+import Bell from 'lucide-react-native/icons/bell';
 import Check from 'lucide-react-native/icons/check';
 import Film from 'lucide-react-native/icons/film';
 import ImageIcon from 'lucide-react-native/icons/image';
 import Layers from 'lucide-react-native/icons/layers';
 import ShieldCheck from 'lucide-react-native/icons/shield-check';
 import Sparkles from 'lucide-react-native/icons/sparkles';
+import { Image } from 'expo-image';
+import Animated, { Easing, FadeInDown, interpolate, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { OnboardingService } from '../services/onboardingService';
@@ -21,6 +24,8 @@ import { Icons } from './ui/Icons';
 import { ProfileStep } from './ProfileStep';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { useModels } from '../state/models';
+import { NotificationService } from '../services/notificationService';
+import { GalleryService, isCameraPhoto } from '../services/galleryService';
 
 type Slide = { id: string; badge: string; title: string; description: string; icon: LucideIcon; points?: { icon: LucideIcon; text: string }[] };
 
@@ -52,14 +57,14 @@ const SLIDES: Slide[] = [
 
 /**
  * First-run slides in the app's theme. The last one (privacy) asks for photo access; with it, indexing starts (onStart) and the
- * profile step shows (ProfileStep). There is no paywall step. onFinish(started): whether onStart already ran.
+ * recap notification's ask shows (NotifyStep), then the profile step (ProfileStep). There is no paywall step. onFinish(started): whether onStart already ran.
  */
 export function OnboardingModal({ visible, onStart, onFinish }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void }) {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
-  const [profile, setProfileStep] = useState(false); // after the photo grant
+  const [step, setStep] = useState<'slides' | 'notify' | 'profile'>('slides'); // notify + profile: after the photo grant
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
   // the selfie finder's models load while the slides are read
@@ -95,7 +100,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
     }
     if (granted) {
       onStart();
-      setProfileStep(true);
+      setStep('notify');
     }
   };
 
@@ -115,7 +120,8 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
           <Text style={[display(20), { color: t.ink }]}>DayDump</Text>
         </View>
 
-        {profile ? <ProfileStep onDone={() => onFinish(true)} /> : <>
+        {step === 'notify' ? <NotifyStep onDone={() => setStep('profile')} />
+          : step === 'profile' ? <ProfileStep onDone={() => onFinish(true)} /> : <>
         <ScrollView ref={scroll} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}>
           {SLIDES.map((s, i) => (
             <SlideBody key={s.id} s={s} i={i} width={width} />
@@ -139,6 +145,134 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
         </>}
       </View>
     </View>
+  );
+}
+
+const LOOP_MS = 5200;
+// eases as plain worklets (Reanimated's Easing builders aren't callable inside one)
+const backOut = (x: number) => { 'worklet'; const u = x - 1; return 1 + 2.6 * u * u * u + 1.6 * u * u; };
+const cubicOut = (x: number) => { 'worklet'; return 1 - (1 - x) ** 3; };
+
+/**
+ * The 8 PM recap, shown before its permission ask: a lock screen where the notification drops in (bell rings), its picture
+ * unfolds into a collage of the user's own latest camera shots (today's when there are enough), then it lifts away, on a loop. Turn on asks for
+ * notifications (the only place that asks: NotificationService.init doesn't); Not now stores them off.
+ */
+function NotifyStep({ onDone }: { onDone: () => void }) {
+  const { t } = useTheme();
+  const shots = useLatestShots();
+  const [busy, setBusy] = useState(false);
+  // one clock for the whole loop, so drop, ring and unfold stay in step
+  const k = useSharedValue(0);
+  useEffect(() => { k.value = withRepeat(withTiming(1, { duration: LOOP_MS, easing: Easing.linear }), -1); }, [k]);
+  const card = useAnimatedStyle(() => {
+    const drop = backOut(interpolate(k.value, [0.06, 0.2], [0, 1], 'clamp'));
+    const lift = interpolate(k.value, [0.86, 0.95], [0, 1], 'clamp') ** 3;
+    return {
+      opacity: Math.min(1, drop * 2.5) * (1 - lift),
+      transform: [{ translateY: -150 * (1 - drop) - 60 * lift }, { scale: 0.9 + 0.1 * drop - 0.05 * lift }],
+    };
+  });
+  const ring = useAnimatedStyle(() => ({ transform: [{ rotate: `${interpolate(k.value, [0.17, 0.2, 0.23, 0.26, 0.29, 0.32], [0, 18, -15, 10, -5, 0], 'clamp')}deg` }] }));
+  const pic = useAnimatedStyle(() => {
+    const open = cubicOut(interpolate(k.value, [0.3, 0.44], [0, 1], 'clamp'));
+    return { height: 132 * open, opacity: open, marginTop: 10 * open, transform: [{ scale: 1.15 - 0.15 * open }] };
+  });
+  // the lock screen's clock steps back while the notification is up
+  const clock = useAnimatedStyle(() => ({ opacity: interpolate(k.value, [0.06, 0.2, 0.86, 0.95], [1, 0.55, 0.55, 1], 'clamp') }));
+
+  const choose = async (on: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try { await NotificationService.setEnabled(on); } catch (e) { console.warn('[onboarding] notification setting failed:', e); }
+    onDone();
+  };
+
+  return (
+    <>
+      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 14 }}>
+        <Animated.Text entering={FadeInDown.duration(500)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>Daily recap</Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(80).duration(500)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Your day, ready at 8 PM</Animated.Text>
+
+        {/* the lock screen the recap lands on */}
+        <Animated.View entering={FadeInDown.delay(160).springify().damping(16)}>
+          <FrameCard radius={28} rotate={-1} style={{ height: 350, overflow: 'hidden', paddingHorizontal: 12, paddingTop: 18 }}>
+            <Animated.View style={[{ alignItems: 'center', marginBottom: 14 }, clock]}>
+              <Text style={[display(44, 1), { color: t.ink }]}>8:00</Text>
+              <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 4 }]}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+            </Animated.View>
+            <Animated.View accessibilityLabel="Notification preview"
+              style={[{ backgroundColor: t.bgScreen, borderRadius: 18, borderWidth: 1, borderColor: t.borderSubtle, padding: 12, boxShadow: t.shadowCard }, card]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Animated.View style={ring}>
+                  <Image source={require('../../assets/icon.png')} style={{ width: 22, height: 22, borderRadius: 6 }} />
+                </Animated.View>
+                <Text style={[ui(11.5, 600), { color: t.ink }]}>DayDump</Text>
+                <Text style={[ui(11), { color: t.inkMuted }]}>· now</Text>
+                <Bell size={13} color={t.inkMuted} strokeWidth={2} style={{ marginLeft: 'auto' }} />
+              </View>
+              <Text style={[ui(14, 600), { color: t.ink, marginTop: 8 }]}>Your DayDump is ready 🎞️</Text>
+              <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 2, lineHeight: 17 }]}>{"Today's photos, curated into one dump. Take a look before bed."}</Text>
+              <Animated.View style={[{ borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong, flexDirection: 'row', gap: 3 }, pic]}>
+                {shots.length ? <>
+                  <Shot k={k} i={0} uri={shots[0]} flex={1.6} />
+                  {shots.length > 1 && <View style={{ flex: 1, gap: 3 }}>{shots.slice(1).map((u, i) => <Shot key={u} k={k} i={i + 1} uri={u} flex={1} />)}</View>}
+                </> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ImageIcon size={28} color={t.inkMuted} strokeWidth={1.5} /></View>}
+              </Animated.View>
+            </Animated.View>
+          </FrameCard>
+        </Animated.View>
+
+        <Animated.Text entering={FadeInDown.delay(260).duration(500)} style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginTop: 22 }]}>
+          {"Every evening at 8, a heads-up with today's dump and its cover. One a day, nothing else."}
+        </Animated.Text>
+      </View>
+
+      <Animated.View entering={FadeInDown.delay(340).duration(500)} style={{ paddingHorizontal: 24, alignItems: 'center' }}>
+        <Tap onPress={() => choose(true)} accessibilityRole="button"
+          style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
+          <Bell size={16} color={t.bgScreen} strokeWidth={2} />
+          <Text style={[ui(15, 600), { color: t.bgScreen }]}>Turn on</Text>
+        </Tap>
+        <Tap onPress={() => choose(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.inkMuted }]}>Not now</Text>
+        </Tap>
+      </Animated.View>
+    </>
+  );
+}
+
+/** Up to three of the newest camera shots (bursts pruned), today's when there are three; [] until listed or with none. */
+function useLatestShots() {
+  const [uris, setUris] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: 60 })
+      .then(({ assets }) => {
+        const all = GalleryService.pruneAndCleanAssets(assets);
+        const cam = all.filter((p) => isCameraPhoto(p.uri));
+        const pool = cam.length ? cam : all; // iOS: no DCIM paths
+        const today = pool.filter((p) => new Date(p.creationTime).toDateString() === new Date().toDateString());
+        if (live) setUris((today.length >= 3 ? today : pool).slice(0, 3).map((p) => p.uri));
+      })
+      .catch((e) => console.warn('[onboarding] recent photos failed:', e));
+    return () => { live = false; };
+  }, []);
+  return uris;
+}
+
+/** One collage photo: pops in just after the picture unfolds (staggered by i), then drifts in slowly until the lift. */
+function Shot({ k, i, uri, flex }: { k: SharedValue<number>; i: number; uri: string; flex: number }) {
+  const st = useAnimatedStyle(() => {
+    const pop = backOut(interpolate(k.value, [0.33 + i * 0.04, 0.45 + i * 0.04], [0, 1], 'clamp'));
+    const drift = interpolate(k.value, [0.45, 0.9], [0, 1], 'clamp');
+    return { opacity: Math.min(1, pop * 2), transform: [{ scale: (0.7 + 0.3 * pop) * (1 + 0.08 * drift) }, { rotate: `${(1 - pop) * (i % 2 ? 6 : -6)}deg` }] };
+  });
+  return (
+    <Animated.View style={[{ flex, overflow: 'hidden', borderRadius: 4 }, st]}>
+      <Image source={{ uri }} contentFit="cover" style={{ flex: 1 }} />
+    </Animated.View>
   );
 }
 

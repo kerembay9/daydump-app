@@ -30,9 +30,11 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   getInitialShareIntent: () => world.initialShare,
   addListener: (_: string, cb: typeof world.shareListener) => { world.shareListener = cb; return { remove: () => { world.shareListener = null; } }; },
   setNavigationBarStyle: () => {},
-  // the selfie finder: a scan that finds none
-  wantModel: () => {}, holdIndexing: () => {}, warmSelfie: async () => {},
+  // onboarding: models on the phone, a selfie scan that finds none, the 8 PM recap job
+  modelState: async () => ({ vision: { state: 'ready', progress: 1 }, faces: { state: 'ready', progress: 1 }, text: { state: 'ready', progress: 1 } }),
+  wantModel: () => {}, holdIndexing: jest.fn(), warmSelfie: async () => {},
   faces: async () => [], selfieCheck: async () => ({ scans: [], vecs: '', reject: [], gateVecs: '', sharp: [] }),
+  scheduleDailyRecap: jest.fn(async () => {}), cancelDailyRecap: jest.fn(async () => {}), setRecapCover: () => {},
 };
 
 // The app only indexes in the foreground (photoIndex hands off to the background worker otherwise).

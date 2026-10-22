@@ -64,10 +64,10 @@ export class NotificationService {
         });
       }
 
-      // Check if user has enabled notifications (default to true on first launch)
+      // Never asks: onboarding's notifications step does. Not chosen yet but already allowed: on, without a prompt.
       const stored = await AsyncStorage.getItem(NOTIF_STORAGE_KEY);
       if (stored === null) {
-        await this.setEnabled(true);
+        if ((await Notifications.getPermissionsAsync()).status === 'granted') await this.setEnabled(true);
       } else if (stored === 'true') {
         await this.scheduleDailyRecap(20, 0);
       }
