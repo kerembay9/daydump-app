@@ -57,5 +57,14 @@
     "test": "jest",
     "eas-build-pre-install": "node scripts/release-check.js"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "android": {
+        "exclude": [
+          "@expo/ui"
+        ]
+      }
+    }
+  }
 }

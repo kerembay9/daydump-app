@@ -8,6 +8,7 @@ module.exports = defineConfig([
     ignores: ["dist/*"],
   },
   {
+    files: ["**/*.ts", "**/*.tsx"], // the @typescript-eslint plugin is only registered for TS files
     rules: {
       // The package root bundles all ~1,500 icons (~1.7 MB of JS); type imports are erased, so they're fine.
       "@typescript-eslint/no-restricted-imports": ["error", {
