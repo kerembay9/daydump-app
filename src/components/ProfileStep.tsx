@@ -68,7 +68,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
   /** s is the avatar now: flies in from `from`, its circle of this size (the big one or its strip thumb; drawn at the same size, so from memory). */
   const take = (s: Selfie, from: RefObject<View | null>, size: number) => {
     setPicked(s);
-    faceFile(s.p.uri, s.box, AVATAR_PX); // cropped now: after Continue the notification ask pauses the app
+    faceFile(s.p.uri, s.box, AVATAR_PX); // cropped now, so the avatar is ready when Continue ends onboarding
     launch(from, headFace, () => <FaceCircle uri={s.p.uri} box={s.box} aspect={s.aspect} size={size} />, () => setAvatar({ s, size }), 40 / size);
   };
   const yes = () => { if (!best) return; vote('up'); take(best, big, BIG); setPhase('picked'); };
