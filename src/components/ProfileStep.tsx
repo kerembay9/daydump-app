@@ -1,7 +1,7 @@
 import React, { ReactNode, RefObject, useEffect, useRef, useState } from 'react';
 import { Keyboard, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutLeft, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
-import { Lock } from 'lucide-react-native';
+import Lock from 'lucide-react-native/icons/lock';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../theme/ThemeProvider';

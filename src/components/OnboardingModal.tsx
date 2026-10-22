@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Film, Image as ImageIcon, Layers, LucideIcon, ShieldCheck, Sparkles } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import Check from 'lucide-react-native/icons/check';
+import Film from 'lucide-react-native/icons/film';
+import ImageIcon from 'lucide-react-native/icons/image';
+import Layers from 'lucide-react-native/icons/layers';
+import ShieldCheck from 'lucide-react-native/icons/shield-check';
+import Sparkles from 'lucide-react-native/icons/sparkles';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { OnboardingService } from '../services/onboardingService';

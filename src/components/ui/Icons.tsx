@@ -1,9 +1,27 @@
 import React from 'react';
 import Svg, { Path, Rect } from 'react-native-svg';
-import {
-  ArrowRight, Bookmark, Check, ChevronLeft, ChevronRight, Clock, Copy, Crop, Download, Heart, Image as ImageIcon,
-  LucideIcon, MessageCircle, MoreHorizontal, Music, Pencil, Search, Send, Settings, Sparkle, User, X,
-} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import ArrowRight from 'lucide-react-native/icons/arrow-right';
+import Bookmark from 'lucide-react-native/icons/bookmark';
+import Check from 'lucide-react-native/icons/check';
+import ChevronLeft from 'lucide-react-native/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/icons/chevron-right';
+import Clock from 'lucide-react-native/icons/clock';
+import Copy from 'lucide-react-native/icons/copy';
+import Crop from 'lucide-react-native/icons/crop';
+import Download from 'lucide-react-native/icons/download';
+import Heart from 'lucide-react-native/icons/heart';
+import ImageIcon from 'lucide-react-native/icons/image';
+import MessageCircle from 'lucide-react-native/icons/message-circle';
+import MoreHorizontal from 'lucide-react-native/icons/ellipsis';
+import Music from 'lucide-react-native/icons/music';
+import Pencil from 'lucide-react-native/icons/pencil';
+import Search from 'lucide-react-native/icons/search';
+import Send from 'lucide-react-native/icons/send';
+import Settings from 'lucide-react-native/icons/settings';
+import Sparkle from 'lucide-react-native/icons/sparkle';
+import User from 'lucide-react-native/icons/user';
+import X from 'lucide-react-native/icons/x';
 import { useTheme } from '../../theme/ThemeProvider';
 
 /** All icons: 24 viewBox, 1.75 stroke, round caps (mock icon system). Color defaults to ink. */

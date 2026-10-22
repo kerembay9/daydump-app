@@ -6,5 +6,13 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
-  }
+  },
+  {
+    rules: {
+      // The package root bundles all ~1,500 icons (~1.7 MB of JS); type imports are erased, so they're fine.
+      "@typescript-eslint/no-restricted-imports": ["error", {
+        paths: [{ name: "lucide-react-native", allowTypeImports: true, message: "Import the icon itself: lucide-react-native/icons/<name>." }],
+      }],
+    },
+  },
 ]);
