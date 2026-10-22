@@ -11,6 +11,7 @@ android {
   defaultConfig {
     versionCode 1
     versionName '0.1.0'
+    consumerProguardFiles 'proguard-rules.pro'
   }
   // Debug builds (Metro, adb installs) carry the packs' models in the APK; release downloads them (ModelPacks.kt).
   sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets']

@@ -24,7 +24,7 @@ Release builds download the packs from Play after the install (`ModelPacks.kt`);
 | `yunet_320.tflite` | APK | 0.3 MB | 0.2 MB | face detection (where are faces) | first `faces` |
 | `gate.tflite` | APK | 5.2 MB | 4.7 MB | MobileNetV3-Small (timm, Apache 2.0), fp16 weights: the selfie step's P(document, screen or pet) and near-copy feature until visionpack lands (int8 was tried: it lets 19/30 pets through) | first `selfieCheck` / `warmSelfie` without visionpack |
 
-Download (bundletool, arm64, 2026-10-21): **43.3 MB at install** (+4.7 MB gate.tflite, not yet re-measured), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (138.6 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
+Download (bundletool, arm64, 2026-10-22): **36.3 MB at install** (48.3 MB before R8 was turned on; models are 5.4 MB of it), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (131.6 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
 builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. Debug builds add EdgeBench (Gemma, ML Kit).
 
 ## Download order (release builds)

@@ -106,6 +106,15 @@
             "./node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"
           ]
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
       ]
     ],
     "scheme": "daydump"
