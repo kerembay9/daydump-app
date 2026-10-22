@@ -100,10 +100,10 @@
             "./node_modules/@expo-google-fonts/source-serif-4/500Medium/SourceSerif4_500Medium.ttf",
             "./node_modules/@expo-google-fonts/source-serif-4/600SemiBold/SourceSerif4_600SemiBold.ttf",
             "./node_modules/@expo-google-fonts/source-serif-4/500Medium_Italic/SourceSerif4_500Medium_Italic.ttf",
-            "./node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
-            "./node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
-            "./node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
-            "./node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"
+            "./assets/fonts/Inter_400Regular.ttf",
+            "./assets/fonts/Inter_500Medium.ttf",
+            "./assets/fonts/Inter_600SemiBold.ttf",
+            "./assets/fonts/Inter_700Bold.ttf"
           ]
         }
       ],

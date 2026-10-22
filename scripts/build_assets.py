@@ -2,7 +2,7 @@
 
 Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wordfreq ftfy regex litert-torch ai-edge-quantizer torchvision timm
         (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
-Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface] [gate]   (no args = all but bench)
+Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface] [gate] [fonts]   (no args = all but bench)
 
 clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU) + tokenizer.json (both the textpack asset pack), golden vectors,
          phrases.json (FIXED_PHRASES embedded, so they work before the pack arrives)
@@ -14,6 +14,8 @@ cities - GeoNames cities15000 (CC BY 4.0) -> compact cities.json for offline rev
 bench  - int8 LiteRT vision towers of the other MODELS, for the index bench (prints the adb commands to push them)
 yunet  - YuNet face detector (OpenCV Zoo, MIT) -> LiteRT yunet_320.tflite (bundled, findSelfies) + yunet_640 for the face bench (prints the adb commands)
 gate   - MobileNetV3-Small (timm, Apache 2.0) -> LiteRT gate.tflite (bundled): the selfie step's "not a selfie" score before visionpack
+fonts  - Inter (OFL, @expo-google-fonts) cut to Latin + punctuation/symbols -> assets/fonts (1.4 -> 0.6 MB). Other scripts
+         fall back per glyph to the system font; __tests__/fonts.test.ts fails if a string the app ships needs a dropped glyph
 sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (facepack; int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
 import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
@@ -564,7 +566,29 @@ def build_cities():
     print(len(rows), f"cities, {(JS / 'cities.json').stat().st_size / 1e6:.1f} MB")
 
 
+# Latin incl. Turkish/Azerbaijani/Vietnamese, IPA, modifiers (ʻ), combining marks, then punctuation, currency, letterlike, arrows, math, shapes, symbols, dingbats.
+FONT_RANGES = [(0x0, 0x36F), (0x1E00, 0x1EFF), (0x2000, 0x22FF), (0x25A0, 0x27BF)]
+# Source Serif 4 stays whole: its OFL reserves the name "Source", so a cut copy would have to be renamed.
+FONTS = ["inter/400Regular/Inter_400Regular", "inter/500Medium/Inter_500Medium", "inter/600SemiBold/Inter_600SemiBold", "inter/700Bold/Inter_700Bold"]
+
+
+def build_fonts():
+    from fontTools import subset
+    from fontTools.ttLib import TTFont
+    out = ROOT / "assets/fonts"
+    out.mkdir(exist_ok=True)
+    for f in FONTS:
+        font = TTFont(ROOT / "node_modules/@expo-google-fonts" / f"{f}.ttf")
+        o = subset.Options()
+        o.name_IDs, o.name_languages, o.notdef_outline = ["*"], ["*"], True  # names (incl. license) and .notdef kept whole
+        s = subset.Subsetter(o)
+        s.populate(unicodes=[c for c in font.getBestCmap() if any(a <= c <= b for a, b in FONT_RANGES)])
+        s.subset(font)
+        font.save(out / f"{Path(f).name}.ttf")
+    print(f"fonts: {sum(p.stat().st_size for p in out.glob('*.ttf')) / 1e6:.2f} MB")
+
+
 if __name__ == "__main__":
-    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface", "gate"]
+    steps = sys.argv[1:] or ["clip", "gpu", "vocab", "cities", "yunet", "sface", "gate", "fonts"]
     for s in steps:
-        {"clip": build_clip, "phrases": build_phrases, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface, "gate": build_gate}[s]()
+        {"clip": build_clip, "phrases": build_phrases, "gpu": build_gpu, "vocab": build_vocab, "concepts": build_concepts, "cities": build_cities, "bench": build_bench, "yunet": build_yunet, "sface": build_sface, "gate": build_gate, "fonts": build_fonts}[s]()
