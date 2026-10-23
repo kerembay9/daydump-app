@@ -1,5 +1,5 @@
 # Edit: post sizes, layouts (slide count), slide paging, Bleed/Border; Preview follows the size.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 12 edit sizes + layouts
 ---
 - runFlow: subflows/ready.yaml

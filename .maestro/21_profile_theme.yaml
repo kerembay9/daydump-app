@@ -1,5 +1,5 @@
 # Profile: Espresso (dark) theme with a screenshot, then back to Cashmere.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 21 profile dark theme
 ---
 - runFlow: subflows/ready.yaml

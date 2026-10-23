@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Purchases, {
   PurchasesPackage,
   CustomerInfo,
@@ -23,12 +24,17 @@ const STORAGE_KEYS = {
 export const REVENUECAT_CONFIG = {
   // Official project API keys
   API_KEYS: {
+    APPLE: 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ',
     GOOGLE: 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
     TEST_STORE: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
   },
   // In development/test builds, default to test store key for instant mock purchases.
-  // In production builds, default to Google Play Store production key.
-  API_KEY: __DEV__ ? 'test_ylRDWCJBJadzsPOeIwXNCitplYA' : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
+  // In production builds, default to store production key.
+  API_KEY: __DEV__
+    ? 'test_ylRDWCJBJadzsPOeIwXNCitplYA'
+    : Platform.OS === 'ios'
+    ? 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ'
+    : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
   // Primary Pro Entitlement Identifier
   ENTITLEMENT_ID: 'daydump_pro',
   // Product Identifiers
@@ -94,8 +100,11 @@ export class RevenueCatService {
       return false;
     }
 
-    // Primary check for requested 'daydump_pro' entitlement
-    if (customerInfo.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] !== undefined) {
+    // Primary check for requested 'daydump_pro' or 'picdump_pro' entitlement
+    if (
+      customerInfo.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] !== undefined ||
+      customerInfo.entitlements.active['picdump_pro'] !== undefined
+    ) {
       return true;
     }
 

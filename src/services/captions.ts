@@ -84,7 +84,7 @@ export function hashtags(c: CaptionInput): string[] {
     ...(c.concepts ?? []).slice(0, 2).map(clean),
     seasonOf((c.start + c.end) / 2),
   ];
-  return [...new Set(['#photodump', ...words.filter(Boolean).map(tag), '#daydump'])].filter((t) => t.length > 1).slice(0, 5);
+  return [...new Set(['#photodump', ...words.filter(Boolean).map(tag), '#picdump'])].filter((t) => t.length > 1).slice(0, 5);
 }
 
 /** What Copy puts on the clipboard. */

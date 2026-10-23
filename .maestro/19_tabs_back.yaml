@@ -1,5 +1,5 @@
 # Tab bar and Android Back: Create, Library and Profile go back to Discover; empty Library's Find a dump.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 19 tabs + back
 ---
 - runFlow: subflows/ready.yaml

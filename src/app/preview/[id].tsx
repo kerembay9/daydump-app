@@ -160,12 +160,12 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
         setDone({
           title: r.to === 'chooser' ? 'Shared' : `Posted to ${app}`,
           tab: r.marked ? 'posted' : 'draft',
-          note: `Caption copied${r.saved ? ` · ${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the DayDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`,
+          note: `Caption copied${r.saved ? ` · ${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the PicDump album` : ''}.${r.marked ? '' : " Couldn't mark it posted in your Library."}`,
         });
       } else {
         const { slides: k, id } = await saveOnly(deps, dump, hd);
         setDump((d) => ({ ...d, id }));
-        setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the DayDump album.` });
+        setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the PicDump album.` });
       }
     } catch (e) {
       console.warn(`[preview] ${what} failed:`, e);
@@ -216,7 +216,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
         </Tap>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 8, paddingBottom: 2 }}>
-          <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the DayDump album">
+          <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
             <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
           </Tap>
           <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump">

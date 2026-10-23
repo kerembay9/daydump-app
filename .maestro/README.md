@@ -91,4 +91,4 @@ maestro --device <adb-serial> test .maestro/
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-That APK has the same `appId` (`com.daydump.app`) and debug signing as the debug build.
+That APK has the same `appId` (`com.horizonzeta.picdump`) and debug signing as the debug build.

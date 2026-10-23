@@ -1,5 +1,5 @@
 # Create tab: tap the first N grid photos into the basket. runFlow with env N (1-4).
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 ---
 - tapOn: "Create"
 - extendedWaitUntil:

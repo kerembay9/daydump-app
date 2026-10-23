@@ -7,7 +7,7 @@ import { isDumpId } from './dumpLabels';
 export type PostDeps = {
   /** dump -> rendered slide JPGs (file://), in order */
   exportSlides(d: Dump, hd?: boolean): Promise<string[]>;
-  /** into the "DayDump" album */
+  /** into the "PicDump" album */
   saveToAlbum(uris: string[]): Promise<void>;
   copy(text: string): Promise<void>;
   /** opens the app (or the chooser); resolves with the package that got it or 'chooser' */

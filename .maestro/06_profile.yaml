@@ -1,4 +1,4 @@
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 06 profile screen
 ---
 - runFlow: subflows/ready.yaml

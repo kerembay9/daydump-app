@@ -1,5 +1,5 @@
 # Text search on Create. Other query: maestro test -e QUERY=beach 03_search.yaml
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 03 search returns results
 env:
   QUERY: sky

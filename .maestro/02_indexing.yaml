@@ -1,5 +1,5 @@
 # Fresh install state with access already granted: indexing must start, then finish.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 02 indexing starts and finishes
 ---
 - launchApp:

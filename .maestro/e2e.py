@@ -23,7 +23,7 @@ ENV = {**os.environ, 'ANDROID_HOME': str(SDK), 'JAVA_HOME': os.environ.get('JAVA
        # emulator overlays (~1 GB each) and Maestro's temp files on disk, not in /tmp: tmpfs eats RAM,
        # a crashed emulator leaves its overlay behind, and a full /tmp stops Maestro from starting
        'ANDROID_TMP': str(CACHE / 'tmp'), 'TMPDIR': str(CACHE / 'tmp'), 'JAVA_TOOL_OPTIONS': f'-Djava.io.tmpdir={CACHE / "tmp"}'}
-AVD, IMAGE, SNAP, PKG = 'daydump-e2e', 'system-images;android-35;google_apis;x86_64', 'seeded', 'com.daydump.app'
+AVD, IMAGE, SNAP, PKG = 'daydump-e2e', 'system-images;android-35;google_apis;x86_64', 'seeded', 'com.horizonzeta.picdump'
 APK = {'e2e': APP / 'android/app/build/outputs/apk/e2e/app-e2e.apk',
        'debug': APP / 'android/app/build/outputs/apk/debug/app-debug.apk'}
 N_PHOTOS, PER_DAY = 100, 10

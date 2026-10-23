@@ -294,7 +294,7 @@ def build_bench():
             continue
         f = CACHE / "bench" / f"vision_{name}.tflite"
         export_tflite(Towers(load_model(name)[0]).vision, pix, f)
-        print(f"  adb push {f} /data/local/tmp/ && adb shell \"run-as com.daydump.app sh -c 'mkdir -p files/models && "
+        print(f"  adb push {f} /data/local/tmp/ && adb shell \"run-as com.horizonzeta.picdump sh -c 'mkdir -p files/models && "
               f"cat /data/local/tmp/{f.name} > files/models/{f.name}'\"")
 
 
@@ -388,7 +388,7 @@ def build_yunet():
         assert err < 1e-3, f"{out.name}: export drifted"
         if size == 320:
             shutil.copy(out, NATIVE / out.name)
-        print(f"  adb push {out} /data/local/tmp/ && adb shell \"run-as com.daydump.app sh -c 'mkdir -p files/models && "
+        print(f"  adb push {out} /data/local/tmp/ && adb shell \"run-as com.horizonzeta.picdump sh -c 'mkdir -p files/models && "
               f"cat /data/local/tmp/{out.name} > files/models/{out.name}'\"")
 
 

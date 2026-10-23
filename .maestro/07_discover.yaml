@@ -1,5 +1,5 @@
 # Discover: hero Edit chip, a bento tile opens its preview, pull-to-refresh shuffle.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 07 discover hero, tiles, shuffle
 ---
 - runFlow: subflows/ready.yaml

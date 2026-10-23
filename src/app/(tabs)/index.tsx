@@ -157,7 +157,7 @@ export default function Discover() {
       )}
       {permission === false ? (
         <TapedNote
-          title="Let DayDump see your photos"
+          title="Let PicDump see your photos"
           body="Dumps are made on your phone from your camera roll. Nothing leaves your device."
           action="Open settings"
           onAction={() => Linking.openSettings()}

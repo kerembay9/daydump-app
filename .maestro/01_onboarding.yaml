@@ -1,6 +1,6 @@
 # Cold launch with wiped app data: onboarding slides, then the real photo-permission dialog.
 # clearState wipes DayDump's data on the device (fine on emulators; careful on a phone).
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 01 onboarding + photo permission
 ---
 - launchApp:

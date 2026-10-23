@@ -1,5 +1,5 @@
 # Edit: filter preset, apply-to-all (on by default), strength slider; caption ideas paging and Copy.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 13 edit filter + captions
 ---
 - runFlow: subflows/ready.yaml

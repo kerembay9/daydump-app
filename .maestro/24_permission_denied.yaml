@@ -1,5 +1,5 @@
 # Photo access denied in the system dialog: Discover and Create explain it and offer Open settings.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 24 photo access denied
 ---
 - launchApp:

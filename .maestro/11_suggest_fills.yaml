@@ -1,5 +1,5 @@
 # Create, Suggest fills: 2 ways to finish, Use this + take out, Save as draft, way preview with Add N picked.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 11 suggest fills
 ---
 - runFlow: subflows/ready.yaml

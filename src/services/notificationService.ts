@@ -145,7 +145,7 @@ export class NotificationService {
       await Notifications.scheduleNotificationAsync({
         identifier: DAILY_NOTIF_ID,
         content: {
-          title: 'Your DayDump is ready 🎞️',
+          title: 'Your PicDump is ready 🎞️',
           body: 'Review 6 curated shots from today before heading to bed.',
           sound: 'default',
           data: { url: '/preview/today' },
@@ -212,7 +212,7 @@ export class NotificationService {
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Your DayDump is ready 🎞️',
+        title: 'Your PicDump is ready 🎞️',
         body: 'Review 6 curated shots from today before heading to bed.',
         sound: 'default',
       },

@@ -88,10 +88,10 @@ object DailyRecap {
     )
     val open = PendingIntent.getActivity(
       ctx, NOTE_ID,
-      Intent(Intent.ACTION_VIEW, Uri.parse("daydump://preview/today")).setPackage(ctx.packageName),
+      Intent(Intent.ACTION_VIEW, Uri.parse("picdump://preview/today")).setPackage(ctx.packageName),
       PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
-    val title = "Your DayDump is ready 🎞️"
+    val title = "Your PicDump is ready 🎞️"
     val body = if (n > 0) "$n photos from today, curated into one dump. Take a look before bed." else "Review today's curated shots before heading to bed."
     val b = NotificationCompat.Builder(ctx, CHANNEL)
       .setSmallIcon(ctx.applicationInfo.icon)

@@ -1,5 +1,5 @@
 {
-  "name": "daydump-app",
+  "name": "picdump",
   "version": "0.0.3",
   "main": "expo-router/entry",
   "dependencies": {

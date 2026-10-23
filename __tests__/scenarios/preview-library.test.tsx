@@ -21,7 +21,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   // done sheet (board 10)
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
-  expect(screen.getByText('Caption copied · 7 slides saved to the DayDump album.')).toBeTruthy();
+  expect(screen.getByText('Caption copied · 7 slides saved to the PicDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByText('Back to Discover'));
   await waitFor(() => expect(app.getPathname()).toBe('/'));
   expect(share()).toHaveBeenCalledTimes(1);
@@ -71,9 +71,9 @@ test('Save only shows the done sheet; Start a new dump opens Create', async () =
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText('Save only, to the DayDump album'));
+  await fireEvent.press(await screen.findByLabelText('Save only, to the PicDump album'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
-  expect(screen.getByText('7 slides saved to the DayDump album.')).toBeTruthy();
+  expect(screen.getByText('7 slides saved to the PicDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
   await waitFor(() => expect(app.getPathname()).toBe('/create'));
 }, 30000);

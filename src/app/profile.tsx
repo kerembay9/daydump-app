@@ -109,7 +109,7 @@ function ProfileBody() {
     const want = !recap;
     setRecap(want);
     const ok = await NotificationService.setEnabled(want);
-    if (!ok) { setRecap(false); toast('Notifications are off for DayDump in Android settings'); }
+    if (!ok) { setRecap(false); toast('Notifications are off for PicDump in Android settings'); }
   };
 
   const toggleSensitive = () => {
@@ -120,7 +120,7 @@ function ProfileBody() {
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
     title: 'Reindex your library?',
-    body: 'DayDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.',
+    body: 'PicDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.',
     action: 'Reindex',
     onConfirm: () => { resetIndex().then(app.refreshStories, (e) => console.warn('[profile] reindex failed:', e)); },
   });
@@ -219,7 +219,7 @@ function ProfileBody() {
       </Section>
 
       <Section title="Data privacy">
-        <Row label="Everything happens on your phone" sub="How DayDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
+        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
       </Section>
 
       <Section title="Daily recap">
@@ -243,7 +243,7 @@ function ProfileBody() {
       <Section title="About">
         <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Contact" onPress={() => Linking.openURL('mailto:support@daydump.app?subject=DayDump').catch(() => toast('No mail app found. Write to support@daydump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@daydump.app</Text>} />
+        <Row label="Contact" onPress={() => Linking.openURL('mailto:support@picdump.app?subject=PicDump').catch(() => toast('No mail app found. Write to support@picdump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@picdump.app</Text>} />
         <Row label="Version" sub={devHint || undefined} onPress={versionTap} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
 
@@ -282,7 +282,7 @@ function dropAvatarFile(uri: string) {
 
 const date = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
-/** DayDump Pro: a Go Pro call to action (store not wired yet: coming soon), or the plan and when it renews / ends. */
+/** PicDump Pro: a Go Pro call to action (store not wired yet: coming soon), or the plan and when it renews / ends. */
 function SubCard({ sub }: { sub: Sub | null }) {
   const { t } = useTheme();
   return (
@@ -291,14 +291,14 @@ function SubCard({ sub }: { sub: Sub | null }) {
         <Icons.sparkle size={16} color={t.accentFabText} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[display(17), { color: t.ink }]}>DayDump Pro</Text>
+        <Text style={[display(17), { color: t.ink }]}>PicDump Pro</Text>
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
-          {!sub ? 'Extra features for DayDump, coming soon.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+          {!sub ? 'Extra features for PicDump, coming soon.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
         </Text>
       </View>
       {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />
         : (
-          <Tap onPress={() => toast('DayDump Pro is coming soon')} accessibilityRole="button" accessibilityLabel="Go Pro"
+          <Tap onPress={() => toast('PicDump Pro is coming soon')} accessibilityRole="button" accessibilityLabel="Go Pro"
             style={{ height: 30, paddingHorizontal: 14, borderRadius: 15, backgroundColor: t.ink, justifyContent: 'center' }}>
             <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Go Pro</Text>
           </Tap>

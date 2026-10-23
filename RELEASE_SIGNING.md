@@ -1,6 +1,6 @@
-# DayDump Production Release & Signing Guide
+# PicDump Production Release & Signing Guide
 
-This document contains the signing credentials and release artifacts for **DayDump** (`com.daydump.app`).
+This document contains the signing credentials and release artifacts for **PicDump** (`com.horizonzeta.picdump`).
 
 ---
 

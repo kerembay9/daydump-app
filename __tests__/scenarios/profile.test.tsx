@@ -19,7 +19,7 @@ beforeAll(() => seedWorld());
 test('theme override sticks', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
-  expect(screen.getByRole('button', { name: /^System/, selected: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Cashmere/, selected: true })).toBeTruthy();
   expect(painted(cashmere.bgScreen)).toBe(true);
 
   await fireEvent.press(screen.getByRole('button', { name: /^Espresso/ }));
@@ -66,9 +66,9 @@ test('Connect rows say Soon', async () => {
 test('Profile: Go Pro says coming soon; no Done, no bio', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
-  expect(screen.getByText('DayDump Pro')).toBeTruthy();
+  expect(screen.getByText('PicDump Pro')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'Go Pro' }));
-  expect(toasts()).toContain('DayDump Pro is coming soon');
+  expect(toasts()).toContain('PicDump Pro is coming soon');
   expect(screen.queryByText('Done')).toBeNull();
   expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
 }, 30000);

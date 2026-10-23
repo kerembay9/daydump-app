@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "DayDump",
-    "slug": "daydump-app",
+    "name": "PicDump",
+    "slug": "picdump",
     "version": "0.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.daydump.app",
+      "bundleIdentifier": "com.horizonzeta.picdump",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "DayDump scans your photos locally to curate aesthetic Instagram carousels and suggest daily themes.",
-        "NSPhotoLibraryAddUsageDescription": "DayDump needs permission to save your curated carousel slides to your camera roll."
+        "NSPhotoLibraryUsageDescription": "PicDump scans your photos locally to curate aesthetic Instagram carousels and suggest daily themes.",
+        "NSPhotoLibraryAddUsageDescription": "PicDump needs permission to save your curated carousel slides to your camera roll."
       }
     },
     "android": {
-      "package": "com.daydump.app",
+      "package": "com.horizonzeta.picdump",
       "permissions": [
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",
@@ -85,8 +85,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow DayDump to access your photos to curate daily aesthetic carousels.",
-          "savePhotosPermission": "Allow DayDump to save curated posts to your gallery.",
+          "photosPermission": "Allow PicDump to access your photos to curate daily aesthetic carousels.",
+          "savePhotosPermission": "Allow PicDump to save curated posts to your gallery.",
           "isAccessMediaLocationEnabled": true
         }
       ],
@@ -117,6 +117,6 @@
         }
       ]
     ],
-    "scheme": "daydump"
+    "scheme": "picdump"
   }
 }

@@ -1,5 +1,5 @@
 # Create basket: Total stepper, review sheet (move, remove), start a new dump; the old one stays in Drafts.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 10 basket total + review
 ---
 - runFlow: subflows/ready.yaml

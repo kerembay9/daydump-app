@@ -34,7 +34,7 @@ const SLIDES: Slide[] = [
     id: 'hook',
     badge: 'Effortless photo dumps',
     title: 'Turn camera roll chaos into dumps',
-    description: 'Say goodbye to scrolling through 200 shots. DayDump picks the best photos of your days and trips, paced with flow and ready-made captions.',
+    description: 'Say goodbye to scrolling through 200 shots. PicDump picks the best photos of your days and trips, paced with flow and ready-made captions.',
     icon: Sparkles,
     points: [
       { icon: Film, text: 'Film looks, borders and IG / TikTok sizes' },
@@ -45,7 +45,7 @@ const SLIDES: Slide[] = [
     id: 'privacy',
     badge: 'On-device curation',
     title: 'Picked on your phone, not in the cloud',
-    description: 'Stories, search and photo picks run on a small vision model on your phone. DayDump does not upload your photos to curate them.',
+    description: 'Stories, search and photo picks run on a small vision model on your phone. PicDump does not upload your photos to curate them.',
     icon: ShieldCheck,
     points: [
       { icon: Check, text: 'Stories and search run on-device' },
@@ -117,7 +117,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 }}>
         <View style={{ paddingHorizontal: 24, height: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={[display(20), { color: t.ink }]}>DayDump</Text>
+          <Text style={[display(20), { color: t.ink }]}>PicDump</Text>
         </View>
 
         {step === 'notify' ? <NotifyStep onDone={() => setStep('profile')} />
@@ -208,11 +208,11 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
                 <Animated.View style={ring}>
                   <Image source={require('../../assets/icon.png')} style={{ width: 22, height: 22, borderRadius: 6 }} />
                 </Animated.View>
-                <Text style={[ui(11.5, 600), { color: t.ink }]}>DayDump</Text>
+                <Text style={[ui(11.5, 600), { color: t.ink }]}>PicDump</Text>
                 <Text style={[ui(11), { color: t.inkMuted }]}>· now</Text>
                 <Bell size={13} color={t.inkMuted} strokeWidth={2} style={{ marginLeft: 'auto' }} />
               </View>
-              <Text style={[ui(14, 600), { color: t.ink, marginTop: 8 }]}>Your DayDump is ready 🎞️</Text>
+              <Text style={[ui(14, 600), { color: t.ink, marginTop: 8 }]}>Your PicDump is ready 🎞️</Text>
               <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 2, lineHeight: 17 }]}>{"Today's photos, curated into one dump. Take a look before bed."}</Text>
               <Animated.View style={[{ borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong, flexDirection: 'row', gap: 3 }, pic]}>
                 {shots.length ? <>

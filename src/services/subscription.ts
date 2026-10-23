@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-/** DayDump Pro as Profile shows it. renews false = cancelled: Pro until `until`, then it ends. */
+/** PicDump Pro as Profile shows it. renews false = cancelled: Pro until `until`, then it ends. */
 export type Sub = { plan: 'Monthly' | 'Yearly'; until: number; renews: boolean };
 
 const FAKE = '@daydump_fake_sub';
@@ -26,4 +26,4 @@ export async function cycleFakeSubscription(cur: Sub | null): Promise<Sub | null
 
 /** The store's own subscriptions page (cancel, change plan, payment method). */
 export const MANAGE_URL = Platform.OS === 'ios' ? 'https://apps.apple.com/account/subscriptions'
-  : 'https://play.google.com/store/account/subscriptions?package=com.daydump.app';
+  : 'https://play.google.com/store/account/subscriptions?package=com.horizonzeta.picdump';
