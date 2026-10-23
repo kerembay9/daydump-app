@@ -75,3 +75,24 @@ test('Save only shows the done sheet; Start a new dump opens Create', async () =
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
   await waitFor(() => expect(app.getPathname()).toBe('/create'));
 }, 30000);
+
+test('Preview renders the slides in the background; Post reuses them, a Quality change renders again', async () => {
+  const draw = jest.requireMock('@shopify/react-native-skia').drawAsImage as jest.Mock;
+  await bootApp('/');
+  const tile = await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 });
+  draw.mockClear();
+  (ClipEmbedder!.holdIndexing as jest.Mock).mockClear();
+  await fireEvent.press(tile);
+  // nothing tapped: the 7 slides render anyway, and indexing is held while they do
+  await waitFor(() => expect(draw).toHaveBeenCalledTimes(7));
+  expect(ClipEmbedder!.holdIndexing).toHaveBeenCalled();
+  // Quality → the other setting: a fresh export
+  await fireEvent.press(screen.getByLabelText('HD export for this dump'));
+  await waitFor(() => expect(draw).toHaveBeenCalledTimes(14));
+  await settle();
+  share().mockClear();
+  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
+  expect(draw).toHaveBeenCalledTimes(14); // Post drew nothing new
+  expect(share().mock.calls[0][0]).toHaveLength(7);
+}, 30000);

@@ -5,6 +5,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Directory, File, Paths } from 'expo-file-system';
 import type { Dump } from './dumps';
 import { getProfile } from './profile';
+import { ClipEmbedder } from '../../modules/clip-embedder';
 import { matrixFor, filterOf, lookFor } from './filters';
 import { Cell, chunk, exportSize, Fit, fitOf, LayoutKey, layoutOf, paintOrder, slideCells, UNIT } from './layouts';
 
@@ -56,12 +57,19 @@ export function SlideDrawing({ layout, fit, width, height, photos }: { layout: L
   );
 }
 
-// One decode at a time: a 12 MP photo is ~48 MB while it's being scaled down.
-let queue: Promise<unknown> = Promise.resolve();
-const serial = <T,>(fn: () => Promise<T>): Promise<T> => {
-  const p = queue.then(fn);
-  queue = p.catch(() => {});
-  return p;
+// Three decodes at a time, first come first served: a 12 MP photo is ~48 MB while it's being scaled down (~150 MB peak).
+// ponytail: a 50 MP photo is ~200 MB, so three of those could run out of memory; decode subsampled natively if that shows up.
+let free = 3;
+const waiting: (() => void)[] = [];
+const limited = async <T,>(fn: () => Promise<T>): Promise<T> => {
+  if (free) free--;
+  else await new Promise<void>((go) => waiting.push(go));
+  try {
+    return await fn();
+  } finally {
+    const next = waiting.shift();
+    if (next) next(); else free++;
+  }
 };
 
 /**
@@ -69,7 +77,7 @@ const serial = <T,>(fn: () => Promise<T>): Promise<T> => {
  * content:// (shared-in photos; Skia only reads file/http) and applies EXIF rotation.
  */
 export function loadImage(uri: string, boxW: number, boxH: number): Promise<SkImage | null> {
-  return serial(async () => {
+  return limited(async () => {
     const full = await ImageManipulator.manipulate(uri).renderAsync();
     const s = Math.min(1, Math.max(boxW / full.width, boxH / full.height));
     const small = s < 1 ? await ImageManipulator.manipulate(full).resize({ width: Math.round(full.width * s) }).renderAsync() : full;
@@ -101,7 +109,7 @@ export function previewImage(uri: string, boxW: number, boxH: number) {
 }
 
 /**
- * Renders every slide of a dump to JPGs in the cache (1080 px wide, q0.92; 2160 px at q1.0 with High-Res), with its
+ * Renders every slide of a dump to JPGs in the cache (1080 px wide, q0.92; 2160 px at q0.95 with High-Res), with its
  * layout, Border/Bleed and filters baked in. Returns file:// uris in slide order. Each call replaces the last export.
  */
 export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): Promise<string[]> {
@@ -112,23 +120,34 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): P
   const dir = new Directory(Paths.cache, 'export');
   if (dir.exists) dir.delete();
   dir.create({ intermediates: true });
-  const stamp = Date.now().toString(36);
+  const t0 = Date.now();
+  const stamp = t0.toString(36);
   const out: string[] = [];
   const slides = chunk(d.photos, layoutOf(d.layout).key);
-  for (const [i, s] of slides.entries()) {
+  // every photo queued at once, in slide order, so up to three decode while a slide draws
+  const hold = () => ClipEmbedder?.holdIndexing?.(3000); // someone's waiting: the CPU to the export, not indexing
+  const loads = slides.map((s) => {
     const { cells } = slideCells(s.layout, fit, width, height);
-    const photos: SlidePhoto[] = [];
-    for (const [j, p] of s.photos.entries()) {
-      photos.push({ image: await loadImage(p.uri, cells[j].w, cells[j].h), matrix: matrixFor(lookFor(filter, p.id)) });
+    return s.photos.map((p, j) => loadImage(p.uri, cells[j].w, cells[j].h).finally(hold));
+  });
+  hold();
+  try {
+    for (const [i, s] of slides.entries()) {
+      const images = await Promise.all(loads[i]);
+      const photos: SlidePhoto[] = s.photos.map((p, j) => ({ image: images[j], matrix: matrixFor(lookFor(filter, p.id)) }));
+      const img = await drawAsImage(<SlideDrawing layout={s.layout} fit={fit} width={width} height={height} photos={photos} />, { width, height });
+      if (!img) throw new Error(`slide ${i + 1} did not render`);
+      // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
+      const file = new File(dir, `${d.id.replace(/[^\w-]/g, '_')}-${stamp}-${i + 1}.jpg`);
+      file.write(img.encodeToBytes(ImageFormat.JPEG, highRes ? 95 : 92));
+      out.push(file.uri);
+      img.dispose();
+      hold();
     }
-    const img = await drawAsImage(<SlideDrawing layout={s.layout} fit={fit} width={width} height={height} photos={photos} />, { width, height });
-    if (!img) throw new Error(`slide ${i + 1} did not render`);
-    // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
-    const file = new File(dir, `${d.id.replace(/[^\w-]/g, '_')}-${stamp}-${i + 1}.jpg`);
-    file.write(img.encodeToBytes(ImageFormat.JPEG, highRes ? 100 : 92));
-    out.push(file.uri);
-    img.dispose();
-    photos.forEach((p) => p.image?.dispose());
+  } finally {
+    // drawn or not (a slide failed): every loaded image freed once its load lands
+    for (const l of loads.flat()) l.then((im) => im?.dispose());
   }
+  console.log(`[slides] exported ${out.length} slide(s), ${d.photos.length} photo(s) at ${width}x${height} in ${Date.now() - t0} ms`);
   return out;
 }

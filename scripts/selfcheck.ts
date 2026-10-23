@@ -299,13 +299,13 @@ async function posting() {
   const draft = dump({ id: 'd_1' });
   let r = await postDump(fake(), draft, 'cap', ['#photodump', '#paris'], 'instagram');
   assert.deepEqual(calls.splice(0), [
-    'export d_1', 'album 2', 'copy "cap\\n\\n#photodump #paris"',
-    'share file:///c/export/1.jpg,file:///c/export/2.jpg | cap | instagram', 'posted d_1 instagram cap',
+    'export d_1', 'copy "cap\\n\\n#photodump #paris"',
+    'share file:///c/export/1.jpg,file:///c/export/2.jpg | cap | instagram', 'album 2', 'posted d_1 instagram cap',
   ]);
   assert.deepEqual(r, { to: 'com.instagram.android', saved: true, marked: true, slides: 2, id: 'd_1' });
   // a story preview gets its draft only once the share opened; the chooser (no TikTok app) posts with no platform
   r = await postDump(fake({ share: 'chooser' }), dump({ id: 'trip:paris' }), 'c', [], 'tiktok');
-  assert.deepEqual(calls.splice(0).slice(3), ['share file:///c/export/1.jpg,file:///c/export/2.jpg | c | tiktok', 'persist trip:paris', 'posted d_new null c']);
+  assert.deepEqual(calls.splice(0).slice(2), ['share file:///c/export/1.jpg,file:///c/export/2.jpg | c | tiktok', 'album 2', 'persist trip:paris', 'posted d_new null c']);
   assert.equal(r.id, 'd_new');
   // album refused: still posts; share failed: nothing marked, error surfaces
   r = await postDump(fake({ album: false }), draft, 'c', [], 'instagram');

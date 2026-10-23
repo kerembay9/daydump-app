@@ -11,6 +11,7 @@ import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
+import { exportSlides } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -51,6 +52,26 @@ export default function Preview() {
   if (dump === null) return <Stub back title="Preview" note="This dump is no longer available." />;
   if (!dump.photos.length) return <Stub back title="Preview" note="The photos in this dump are no longer on your phone." />;
   return <PostedPreview key={dump.id} dump={dump} story={stories.find((s) => s.id === dump.storyId)} stories={stories} library={library} />;
+}
+
+/**
+ * Slides for Post / Save only, rendered ahead: one export at a time (each replaces the last's files), cached by what
+ * the slides show; a superseded one is skipped, a failed one runs again on the next call.
+ */
+function exporter() {
+  let cur: { key: string; p: Promise<string[]> } | null = null;
+  return (d: Dump, highRes?: boolean) => {
+    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri]), d.layout, d.ratio, d.fit, d.filter, !!highRes]);
+    if (cur?.key === key) return cur.p;
+    const prev = cur?.p.catch(() => {});
+    const p: Promise<string[]> = Promise.resolve(prev).then(() => {
+      if (cur?.p !== p) throw new Error('superseded');
+      return exportSlides(d, { highRes });
+    });
+    p.catch(() => { if (cur?.p === p) cur = null; });
+    cur = { key, p };
+    return p;
+  };
 }
 
 type Platform3 = 'ig' | 'grid' | 'tiktok';
@@ -111,7 +132,11 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const running = useRef(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
-  const deps = useMemo(() => postDeps(stories), [stories]);
+  // The slides render in the background from the moment Preview opens (and again on a Quality change), so Post /
+  // Save only just wait for what's left.
+  const [exportFor] = useState(exporter);
+  useEffect(() => { exportFor(dump, hd).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor]);
+  const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: exportFor }), [stories, exportFor]);
   const n = slides.length;
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
   const run = async (what: 'post' | 'save') => {
