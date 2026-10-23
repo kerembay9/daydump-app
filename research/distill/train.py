@@ -161,3 +161,4 @@ if __name__ == "__main__":
         torch.save({"model": model.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
                     "step": step, "ep": ep, "P": P.cpu()}, S)
     print("done", run, flush=True)
+    os._exit(0)  # everything is saved; skips persistent-worker atexit cleanup ("can't create new thread at interpreter shutdown")

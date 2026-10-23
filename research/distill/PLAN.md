@@ -29,6 +29,8 @@ embeddings stored once, student trained against them) is public and is what we c
 - Training on the app's own concept vocab is the product, not leakage (tag metric uses Flickr tags).
 
 ## Log
+Code version per run: everything through `pilot_m700k_lr1e-4` ran on v1 (`git show distill-v1:research/distill/train.py`).
+From `pilot_m100k_v2` on, each entry names its version (v2 = tag `distill-v2`) and any non-default knobs (KL_W / REL_W / PCA_TXT).
 - 2026-10-22: untrained MNV4-S/M/L exported for the bench (`export_speed.py`; 3.8M / 9.7M / 32M params). Pilot
   download started.
 - 2026-10-22: teacher bake-off on VIST val (2,284 photos, 1,929 queries), R@1 / album / tags / curation:
@@ -74,3 +76,21 @@ embeddings stored once, student trained against them) is public and is what we c
   album 56.6 / tags 30.4 / curation 33.9; ImageNet 30.3. tc22 out of the box: 34.9 / 62.6 / 60.4 / 33.8 / 33.4, ImageNet 52.8.
   Distillation at 100k DESTROYS the CLIP init (-4.8 VIST, -22.5 ImageNet) and lands where MNV4-M from IN-12k lands (30.9).
   The 100k teacher signal, not the init, sets the ceiling. tc22/tc45-init runs at LR 1e-4 not run (stopped per user).
+- 2026-10-23: `pilot_m700k_lr1e-4` (MNV4-M, 658.8k OI photos x 20 epochs, LR 1e-4; 664,830 fetched, last 6k = unseen probe)
+  VIST-val R@1 37.7 / R@5 66.1 / album 61.2 / tags 32.7 / curation 32.7; EMA 38.2 / 66.3 / 61.7 / 32.7 / 32.5
+  (tc45 42.1 / 72.7 / 65.1 / 36.1 / 34.7). R@1 CI vs tc45 [-6.2, -1.7] for EMA (was [-8.5, -3.8] at 294k). ImageNet zero-shot
+  50.8 / EMA 50.7 (294k: 48.5, tc45 63.5). 294k -> 659k (2.2x) = +2.3 R@1, ~+2 per doubling: returns shrinking, ~4 more doublings
+  to tc45 by data alone. Curation fell 34.9 -> 32.7 (CI vs tc45 [-4.6, +0.2]).
+  Per epoch: R@1 peaked 39.0 / EMA 39.3 at epochs 12-14, then EMA fell 5 epochs in a row to 37.9 while the probe cos kept rising
+  (0.780 -> 0.787 trained, 0.768 -> 0.773 unseen, gap ~0.013): the loss (cos + KL on OI) and VIST ranking diverge late. The
+  per-epoch save overwrote the best epoch: keep a best-VIST checkpoint, or ~12 epochs. Probe gap small at all points, so not
+  memorization; cos 0.787 even on trained photos = student capacity / loss shape is the ceiling, not data.
+  Ops: first attempt was killed at epoch 16 by systemd-oomd (training ran inside the Claude app scope; 40.8G cgroup peak from file
+  cache + a 12-process VIST Pool forked twice per epoch). Fixes: VIST val pixels prepped once (PIX), `del emb` after targets, save
+  every epoch, run as its own systemd user unit. PCA moved from full SVD (CUDA OOM at 660k rows) to Gram + eigh (identical basis).
+- 2026-10-23: `pilot_m100k_v2` (**v2**, default knobs = v1 loss; MNV4-M, N=99,700 x 20 epochs, LR 1e-4) VIST-val R@1 30.1 / R@5 57.4 /
+  album 55.0 / tags 29.2 / curation 33.4; EMA 29.9 / 56.0 / 55.4 / 28.1 / 33.0 (v1 `pilot_m100k_lr1e-4`: 30.9 / 57.9 / 54.9 / 29.4 /
+  36.8). Search, album, tags within noise of v1; curation -3.4 but v1 runs alone spread 32.7-36.8 on it (128 albums), and inputs are
+  bit-identical, so read as noise; re-check on the next run. Speed: 0.090 s/step after a ~75 s compile/autotune warmup (v1 0.12,
+  1.33x); 16 min wall vs 25 for the same run; GPU now ~97% busy, so the data loader is no longer the limit. Resume (RESUME=1) smoke
+  test continued at epoch 20 with the same probe cos (0.7473 vs 0.7474): optimizer, schedule, EMA and PCA restore correctly.
