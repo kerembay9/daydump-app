@@ -123,3 +123,15 @@ knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the fast
   tc45 GPU only 56-57 (49); tc45 CPU int8 42 (34); MNV4-S 26 (16); MNV4-M 33 (24); MNV4-L 43 (35). Matches the 10-22 gate.
   Trained M vs the shipped path: 1.1x faster, -3.4 R@1. GPU-only vs GPU-only: M 1.7x faster than tc45. The shipped path's edge
   is the CPU int8 helper taking ~45% of photos; students don't have one yet.
+- 2026-10-23: `full_s660k` (MNV4-S, v1 loss on the cleaned code, LR 1e-4, N=658,830, 20 epochs; ~0.078 s/step, 69 min wall).
+  VIST-val R@1 / R@5 / R@10 / album / tags / curation: 30.4 / 58.1 / 69.4 / 56.0 / 29.0 / 33.8, EMA 30.7 / 58.8 / 69.6 / 55.9 / 28.9 / 34.0
+  (same scoring run: tc45 42.1 / 72.7 / 79.9 / 65.1 / 36.1 / 34.1; M cand EMA 38.4 / 66.6 / 75.0 / 60.5 / 32.6 / 32.4).
+  Per epoch EMA (1-based): 5: 28.3, 10: 30.7, 13: 31.7 (best), 20: 30.7; flat ~31 from epoch 11. Probe cos 0.726 / 0.719
+  (trained / unseen), M 0.787. S is ~8 R@1 below M and ~11 below tc45 for 1.3x M's speed: not a useful tier. Curation is
+  noisy (tc45 34.1 here vs 34.9 before), S's 34.0 there isn't a signal.
+- 2026-10-23: CPU int8 helper for trained M (export_speed.py now also writes vision_<key>_dw8.tflite, dynamic int8, cosine 0.992
+  vs torch; ClipEngine uses files/models/vision_<model>_dw8.tflite as the gpu-cpu8 helper when it exists). A54, n=256, same run
+  (phone warmer than the morning run): shipped tc45 GPU + helper 40-43 (model 30-32); tc45 GPU only 60; tc45 CPU int8 46;
+  M GPU only 34 (24); M GPU + helper 33 (23), the CPU took only 32/256 photos (tc45's helper takes 95-105). Dynamic-int8 MNV4 on
+  XNNPACK is ~7x slower than M on the GPU (depthwise convs stay fp32), so the helper adds ~nothing. Trained M vs shipped:
+  1.2-1.3x faster end to end, -3.7 R@1.
