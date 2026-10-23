@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,8 +41,8 @@ const vecFor = (text: string) => {
 };
 
 /** Search field with the recent-searches dropdown (only while focused). */
-function SearchBar({ query, onQuery, onCommit, recents, suggestions, onRemoveRecent }: {
-  query: string; onQuery: (q: string) => void; onCommit: (q: string) => void;
+function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent }: {
+  query: string; searching: boolean; onQuery: (q: string) => void; onCommit: (q: string) => void;
   recents: string[]; suggestions: string[]; onRemoveRecent: (q: string) => void;
 }) {
   const { t } = useTheme();
@@ -62,7 +62,7 @@ function SearchBar({ query, onQuery, onCommit, recents, suggestions, onRemoveRec
     <>
       <View onLayout={(e) => setTop(e.nativeEvent.layout.y + 44)} style={{ marginHorizontal: 16, marginBottom: 8, zIndex: 30 }}>
         <FrameCard radius={16} style={[{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
-          <Icons.search size={16} color={t.inkMuted} />
+          {searching ? <ActivityIndicator size={16} color={t.inkMuted} accessibilityLabel="Searching" /> : <Icons.search size={16} color={t.inkMuted} />}
           <TextInput
             ref={input}
             value={query}
@@ -132,6 +132,34 @@ function Badge({ n, suggested }: { n: number; suggested?: boolean }) {
     </View>
   );
 }
+
+/** One row of 3 grid photos. */
+const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, onToggle }: {
+  item: IndexedPhoto[]; order: Map<string, number>; basket: DumpPhoto[]; w: number; h: number; now: number; onToggle: (p: IndexedPhoto) => void;
+}) {
+  const { t } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: GAP, marginBottom: GAP }}>
+      {item.map((p) => {
+        const k = order.get(p.id);
+        const date = dateRange(p.creationTime, p.creationTime, now);
+        return (
+          <Tap key={p.id} onPress={() => onToggle(p)} accessibilityRole="button" accessibilityState={{ selected: k != null }}
+            accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in the basket` : ''}`}
+            style={[{ width: w, height: h, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
+            <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+              <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
+              <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 6, paddingTop: 10, paddingBottom: 4, experimental_backgroundImage: 'linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0))' }}>
+                <Text style={[ui(8.5, 500), { color: '#fff' }]} numberOfLines={1}>{date}</Text>
+              </View>
+            </View>
+            <Badge n={k != null ? k + 1 : 0} suggested={k != null && basket[k].suggested} />
+          </Tap>
+        );
+      })}
+    </View>
+  );
+});
 
 /** Create (ph3.png): search the library, pick photos into the basket (auto-saved Create draft), Continue to Edit. */
 export default function Create() {
@@ -224,7 +252,8 @@ export default function Create() {
   /** Searches are remembered when they're submitted, picked, or left by tapping away (newest first, 5 kept). */
   const commit = (q: string) => {
     const s = q.trim().toLowerCase();
-    if (s) editRecents((r) => (r[0] === s ? r : [s, ...r.filter((x) => x !== s)].slice(0, 5)));
+    // "red" replaces the "r" a tap-away saved mid-typing
+    if (s) editRecents((r) => (r[0] === s ? r : [s, ...r.filter((x) => !s.startsWith(x))].slice(0, 5)));
   };
   /** First-time hints: a place from the library, a season, a thing. */
   const suggestions = useMemo(() => {
@@ -234,7 +263,9 @@ export default function Create() {
     return [places[1] ?? places[0], `${season} sunset`, 'coffee with friends'].filter((x): x is string => !!x);
   }, [lib]);
 
-  // ---- search: parse, embed the CLIP words, filter + rank (300 ms after typing stops) ----
+  // ---- search: parse, embed the CLIP words, filter + rank (150 ms after typing stops) ----
+  const [searched, setSearched] = useState<string | null>(null); // the query `rows` are for
+  const searching = !!lib && searched !== query;
   useEffect(() => {
     if (!lib) return;
     let live = true;
@@ -252,7 +283,8 @@ export default function Create() {
       setQvec(v);
       setExpanded(x);
       setWordsSkipped(!!q.clip && !v);
-    }, query ? 300 : 0);
+      setSearched(query);
+    }, query ? 150 : 0);
     return () => { live = false; clearTimeout(h); };
   }, [query, lib, textReady, langStates]);
 
@@ -319,26 +351,13 @@ export default function Create() {
     return out;
   }, [rows]);
   const [now] = useState(Date.now);
-  const renderRow = ({ item }: { item: IndexedPhoto[] }) => (
-    <View style={{ flexDirection: 'row', gap: GAP, marginBottom: GAP }}>
-      {item.map((p) => {
-        const k = order.get(p.id);
-        return (
-          <Tap key={p.id} onPress={() => toggle(toPhoto(p))} accessibilityRole="button" accessibilityState={{ selected: k != null }}
-            accessibilityLabel={`Photo from ${dateRange(p.creationTime, p.creationTime, now)}${k != null ? `, number ${k + 1} in the basket` : ''}`}
-            style={[{ width: cellW, height: cellH, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
-            <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
-              <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
-              <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 6, paddingTop: 10, paddingBottom: 4, experimental_backgroundImage: 'linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0))' }}>
-                <Text style={[ui(8.5, 500), { color: '#fff' }]} numberOfLines={1}>{dateRange(p.creationTime, p.creationTime, now)}</Text>
-              </View>
-            </View>
-            <Badge n={k != null ? k + 1 : 0} suggested={k != null && basket[k].suggested} />
-          </Tap>
-        );
-      })}
-    </View>
-  );
+  // the grid only re-renders when the basket or the results change, not per keystroke / keyboard toggle
+  const toggleRef = useRef(toggle);
+  useEffect(() => { toggleRef.current = toggle; });
+  const onToggle = useCallback((p: IndexedPhoto) => toggleRef.current(toPhoto(p)), []);
+  const renderRow = useCallback(({ item }: { item: IndexedPhoto[] }) => (
+    <GridRow item={item} order={order} basket={basket} w={cellW} h={cellH} now={now} onToggle={onToggle} />
+  ), [order, basket, cellW, cellH, now, onToggle]);
 
   // a search language this query may be in isn't downloaded yet: say it's searched as typed for now
   const pending = query.trim() && expanded?.pending.length ? (() => {
@@ -408,10 +427,12 @@ export default function Create() {
       <View style={{ paddingHorizontal: 16, zIndex: 10 }}>
         <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
       </View>
-      <SearchBar query={query} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
+      <SearchBar query={query} searching={searching} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
         onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
 
       <FlatList
+        // new results start at the top and mount only the first screen, not the old scroll window (~750 ms)
+        key={searched ?? ''}
         data={gridRows}
         keyExtractor={(r) => r[0].id}
         renderItem={renderRow}
@@ -425,7 +446,7 @@ export default function Create() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
-        style={{ flex: 1 }}
+        style={{ flex: 1, opacity: searching && rows ? 0.4 : 1 }}
       />
 
       {keyboard ? null : (

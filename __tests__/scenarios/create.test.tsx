@@ -162,3 +162,23 @@ test('an untitled draft is named by its dates; emptying the basket keeps a draft
   await settle();
   expect((await list()).some((x) => x.id === bare.id)).toBe(false);
 }, 30000);
+
+test('search shows a spinner until results land; a half-typed search left by tapping away is replaced in Last searches', async () => {
+  await bootApp('/create');
+  await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
+  const input = screen.getByPlaceholderText('Search keyword, place, date...');
+
+  // "s", then tap away (blur saves it), then the full "seattle"
+  await fireEvent(input, 'focus');
+  await fireEvent.changeText(input, 's');
+  expect(screen.getByLabelText('Searching')).toBeTruthy();
+  await fireEvent(input, 'blur');
+  await fireEvent(input, 'focus');
+  await fireEvent.changeText(input, 'seattle');
+  await screen.findByText('Matches for "seattle" (21)');
+  expect(screen.queryByLabelText('Searching')).toBeNull();
+  await fireEvent(input, 'submitEditing');
+
+  expect(screen.getByLabelText('Search seattle')).toBeTruthy();
+  expect(screen.queryByLabelText('Search s')).toBeNull();
+});
