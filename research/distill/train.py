@@ -156,6 +156,8 @@ if __name__ == "__main__":
             np.savez(f"{D}/vist_emb_val/{r}.npz", **v)
             torch.save(m.state_dict(), f"{D}/{r}.pt")
             torch.save(P.cpu(), f"{D}/{r}_pca.pt")
+        os.makedirs(f"{D}/ckpt/{run}", exist_ok=True)  # every epoch's weights, kept (ckpt -> second SSD; root disk is nearly full): the best epoch isn't the last
+        torch.save(model.state_dict(), f"{D}/ckpt/{run}/ep{ep:02d}.pt"); torch.save(ema.module.state_dict(), f"{D}/ckpt/{run}/ep{ep:02d}_ema.pt")
         torch.save({"model": model.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
                     "step": step, "ep": ep, "P": P.cpu()}, S)
     print("done", run, flush=True)
