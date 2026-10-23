@@ -18,6 +18,7 @@ import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
 import { PrivacyModal } from '../components/OnboardingModal';
+import { PaywallModal } from '../components/PaywallModal';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp } from '../state/AppState';
@@ -61,6 +62,7 @@ function ProfileBody() {
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
   const [sub, setSub] = useState<Sub | null>(null);
+  const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
   // Leaving while a field is still focused: Android may not fire onEndEditing, so save typed text on the way out.
@@ -184,7 +186,7 @@ function ProfileBody() {
         </View>
       </FrameCard>
 
-      <SubCard sub={sub} />
+      <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
 
       <Section title="Connected accounts">
         <Row label="Connect Instagram" right={<Soon />} />
@@ -267,6 +269,7 @@ function ProfileBody() {
       <PrivacyModal visible={privacy} onClose={() => setPrivacy(false)} />
       <AvatarSheet visible={avatarSheet} onClose={() => setAvatarSheet(false)} hasAvatar={!!p.avatar} onUse={setAvatarFrom} onGallery={pickAvatar}
         onRemove={() => { dropAvatarFile(p.avatar); save({ avatar: '' }); }} />
+      <PaywallModal visible={paywall} onClose={() => setPaywall(false)} onPurchased={() => { getSubscription().then(setSub); }} />
       <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       <DebugStoriesModal visible={debug} onClose={() => setDebug(false)} onResetIndex={app.refreshStories} />
       <BenchModal visible={bench} onClose={() => setBench(false)} />
@@ -282,8 +285,8 @@ function dropAvatarFile(uri: string) {
 
 const date = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
-/** PicDump Pro: a Go Pro call to action (store not wired yet: coming soon), or the plan and when it renews / ends. */
-function SubCard({ sub }: { sub: Sub | null }) {
+/** PicDump Pro: a Go Pro call to action, or the plan and when it renews / ends. */
+function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
   const { t } = useTheme();
   return (
     <FrameCard radius={20} padding={12} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -293,12 +296,12 @@ function SubCard({ sub }: { sub: Sub | null }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[display(17), { color: t.ink }]}>PicDump Pro</Text>
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
-          {!sub ? 'Extra features for PicDump, coming soon.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+          {!sub ? 'Unlimited dumps, Ultra HD 2160 px exports & more.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
         </Text>
       </View>
       {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />
         : (
-          <Tap onPress={() => toast('PicDump Pro is coming soon')} accessibilityRole="button" accessibilityLabel="Go Pro"
+          <Tap onPress={onGoPro} accessibilityRole="button" accessibilityLabel="Go Pro"
             style={{ height: 30, paddingHorizontal: 14, borderRadius: 15, backgroundColor: t.ink, justifyContent: 'center' }}>
             <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Go Pro</Text>
           </Tap>

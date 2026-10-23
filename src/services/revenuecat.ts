@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SubscriptionPlanId, UserSubscriptionState } from '../types';
 import { MAX_FREE_DAILY_DUMPS } from '../constants/plans';
 
+export type { PurchasesPackage, CustomerInfo, PurchasesOfferings };
+
 // Storage keys for offline / tracking state
 const STORAGE_KEYS = {
   DAILY_DUMPS_COUNT: '@daydump_daily_dumps_count',
@@ -28,11 +30,8 @@ export const REVENUECAT_CONFIG = {
     GOOGLE: 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
     TEST_STORE: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
   },
-  // In development/test builds, default to test store key for instant mock purchases.
-  // In production builds, default to store production key.
-  API_KEY: __DEV__
-    ? 'test_ylRDWCJBJadzsPOeIwXNCitplYA'
-    : Platform.OS === 'ios'
+  // In production and dev on Android, use Google Play key; on iOS use Apple key.
+  API_KEY: Platform.OS === 'ios'
     ? 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ'
     : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
   // Primary Pro Entitlement Identifier
@@ -277,6 +276,27 @@ export class RevenueCatService {
         return { success: false, error: 'User cancelled' };
       }
       console.warn('[RevenueCat] Purchase failed:', err);
+      return { success: false, error: err.message || 'Purchase could not be completed' };
+    }
+  }
+
+  /**
+   * 5b. Purchase a specific RevenueCat package directly
+   */
+  static async purchasePackage(
+    targetPackage: PurchasesPackage
+  ): Promise<{ success: boolean; customerInfo?: CustomerInfo; error?: string }> {
+    if (!this.isConfigured) await this.init();
+
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(targetPackage);
+      const isPro = this.isEntitledToPro(customerInfo);
+      return { success: isPro, customerInfo };
+    } catch (err: any) {
+      if (err.userCancelled || err.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return { success: false, error: 'User cancelled' };
+      }
+      console.warn('[RevenueCat] Purchase package failed:', err);
       return { success: false, error: err.message || 'Purchase could not be completed' };
     }
   }
