@@ -1,5 +1,5 @@
-"""Untrained students -> fp16 LiteRT GPU files for the in-app index bench (speed only).
-usage (repo root): .venv/bin/python research/distill/export_speed.py [key ...]; prints the adb push lines."""
+"""Students -> fp16 LiteRT GPU files for the in-app index bench.
+usage (repo root): .venv/bin/python research/distill/export_speed.py [key[=weights.pt] ...]; untrained without weights. Prints the adb push lines."""
 import sys
 from pathlib import Path
 import numpy as np, torch, litert_torch
@@ -15,8 +15,11 @@ x = torch.from_numpy(preprocess(GOLDEN_IMAGE))
 rm = recipe_manager.RecipeManager()
 rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                           algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
-for key in sys.argv[1:] or ARCHS:
-    m = Student(key).eval()
+for arg in sys.argv[1:] or ARCHS:
+    key, _, w = arg.partition("=")
+    m = Student(key, pretrained=not w).eval()
+    if w:
+        m.load_state_dict(torch.load(w, map_location="cpu"))
     with torch.no_grad():
         ref = m(x).numpy()[0]
     f32 = CACHE / "fp32" / f"vision_{key}.tflite"; f32.parent.mkdir(parents=True, exist_ok=True)

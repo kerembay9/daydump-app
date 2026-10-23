@@ -118,3 +118,8 @@ knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the fast
   TF32 on (v2 default; ~-0.8 R@1 vs off, the only "regression" in v2), KL_W=0.5 + TF32 off (+0.8 R@1 at 100k, gone at 659k).
   Conclusion: MNV4-M is capacity-limited (probe cos 0.787 even on trained photos); next lever is the student, not the loss.
   `full_s660k` (MNV4-S, same recipe) started 13:35 to size the speed tier.
+- 2026-10-23: A54 index bench re-run with the TRAINED `full_m660k_cand` (export_speed.py mnv4m=<weights>; S and L untrained,
+  speed is weights-independent), n=256, ms/photo end-to-end (model only): shipped tc45 GPU + CPU-int8 helper 36 (27-28);
+  tc45 GPU only 56-57 (49); tc45 CPU int8 42 (34); MNV4-S 26 (16); MNV4-M 33 (24); MNV4-L 43 (35). Matches the 10-22 gate.
+  Trained M vs the shipped path: 1.1x faster, -3.4 R@1. GPU-only vs GPU-only: M 1.7x faster than tc45. The shipped path's edge
+  is the CPU int8 helper taking ~45% of photos; students don't have one yet.
