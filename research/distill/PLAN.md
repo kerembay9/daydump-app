@@ -108,8 +108,8 @@ knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the fast
 - 2026-10-23: `full_m660k_cand` (v2 code, KL_W=0.5 TF32=0; MNV4-M, 658.8k x 20 epochs, LR 1e-4) VIST-val R@1 / R@5 / R@10 / album /
   tags / curation: 38.7 / 66.7 / 75.2 / 60.4 / 32.6 / 32.1; EMA 38.4 / 66.6 / 75.0 / 60.5 / 32.6 / 33.1 (v1 `pilot_m700k_lr1e-4`
   37.7 / 66.1 / 75.3 / 61.2 / 32.7 / 32.8, EMA 38.2 / 66.3 / 75.7 / 61.7 / 32.7 / 32.7; tc45 42.1 / 72.7 / 79.9 / 65.1 / 36.1 / 34.9).
-  Per epoch (live / EMA, epochs 1-based): 4: 34.9 / 36.9, 6: 38.2 / 38.6, 10: 37.0 / 39.0 (best EMA), 13: 38.6 / 38.2, 20: 38.7 / 38.4;
-  flat 37-38.9 from epoch 6, no late EMA decline (v1 fell 39.3 -> 38.2). Every metric within noise of v1: the loss knobs buy nothing
+  Per epoch (live / EMA, epochs 1-based): 5: 34.9 / 36.9, 7: 38.2 / 38.6, 10: 37.0 / 39.0 (best EMA), 14: 38.6 / 38.2, 20: 38.7 / 38.4;
+  flat 37-38.9 from epoch 7, no late EMA decline (v1 fell 39.3 -> 38.2). Every metric within noise of v1: the loss knobs buy nothing
   at full data either. 81 min wall (v1 code ~2 h).
   Decision: v2 loss changes REMOVED from train.py (KL_W, REL_W, PCA_TXT balanced basis, TF32 matmul switch); kept = speed work only
   (uint8 workers + GPU normalize, torch.compile, cudnn autotune, fused AdamW, prefetch 4, RESUME, per-epoch checkpoints, Gram+eigh
