@@ -1,6 +1,6 @@
 """Distill the teacher's image embeddings into a student image tower (research/distill/PLAN.md).
 usage (repo root): .venv/bin/python research/distill/train.py <student key> <run> [epochs] [teacher key]
-v2 (v1 = git tag distill-v1): uint8 workers + GPU normalize, torch.compile, resume (RESUME=1), loss knobs KL_W / REL_W / PCA_TXT.
+v1 loss (git tag distill-v1) on faster code: uint8 workers + GPU normalize, torch.compile, resume (RESUME=1), per-epoch checkpoints.
 Each epoch: VIST-val search R@1 of student image + teacher text (both in the 512-d PCA space), then writes
 scripts/.cache/distill/vist_emb_val/<run>.npz for score_vist.py (SPLIT=val), the checkpoints and <run>_state.pt."""
 import math, os, random, sys, time
@@ -16,13 +16,8 @@ from student import Student
 
 D, DIM, SIZE, BATCH = f"{CACHE}/distill", 512, 224, 256
 LR = float(os.environ.get("LR", 1e-3))  # env override for the LR sweep
-# v2 knobs, defaults = v1. A setting is adopted only if VIST-val R@1, album R@1, tag hit and curation all hold within noise
-KL_W = float(os.environ.get("KL_W", 1.0))  # text-bank KL vs cosine: >1 spends capacity on directions the app's texts read
-REL_W = float(os.environ.get("REL_W", 0))  # in-batch photo-photo cosine matching (albums, dedupe in curation)
-PCA_TXT = os.environ.get("PCA_TXT")  # text share of the PCA basis (photos and texts each normalized); unset = v1 (by count, ~12:1 photos)
 MEAN, STD = np.float32(CLIP_MEAN), np.float32(CLIP_STD)
 torch.backends.cudnn.benchmark = True  # fixed shapes (drop_last): autotune convs once
-torch.backends.cuda.matmul.allow_tf32 = os.environ.get("TF32", "1") == "1"  # fp32 text-bank KL matmuls ([256, 512] x [512, 53k], twice a step) on tensor cores
 
 
 def gpu(x):
@@ -31,12 +26,10 @@ def gpu(x):
     return ((x.cuda(non_blocking=True).float() / 255 - m) / s).contiguous(memory_format=torch.channels_last)
 
 
-def pca(img, txt, dim, lam=None):
-    """Uncentered: top right-singular vectors of unit rows, so dot products (cosines) are kept where the energy is.
-    lam: photos and texts each averaged, texts weighted lam; None = all rows pooled (v1)."""
+def pca(img, txt, dim):
+    """Uncentered: top right-singular vectors of unit rows, so dot products (cosines) are kept where the energy is."""
     gram = lambda x: sum(c.double().T @ c.double() for c in x.split(50000))  # x^T x has svd(x)'s right-singular vectors, without its [N, D] workspace (OOM at 660k)
-    g = gram(img) + gram(txt) if lam is None else gram(img) / len(img) + lam * gram(txt) / len(txt)
-    return torch.linalg.eigh(g)[1].flip(1)[:, :dim].float()  # [D, dim], descending
+    return torch.linalg.eigh(gram(img) + gram(txt))[1].flip(1)[:, :dim].float()  # [D, dim], descending
 
 
 class Crops(torch.utils.data.Dataset):
@@ -104,7 +97,7 @@ if __name__ == "__main__":
     bank = torch.from_numpy(T["bank"]).cuda()
     S = f"{D}/{run}_state.pt"  # RESUME=1: continue after the last finished epoch. Weights alone would reset AdamW and the LR schedule
     st = torch.load(S) if os.environ.get("RESUME") else None
-    P = st["P"].cuda() if st else pca(emb[:, 0].cuda(), bank, DIM, PCA_TXT and float(PCA_TXT))  # saved: eigenvector signs must not flip
+    P = st["P"].cuda() if st else pca(emb[:, 0].cuda(), bank, DIM)  # saved: eigenvector signs must not flip
     tgt = torch.cat([F.normalize(c.cuda().float() @ P, dim=-1).half() for c in emb.split(50000)])  # [N, K, 512]; ponytail: all on the GPU (~1.5 GB per 300k photos)
     B = F.normalize(bank.float() @ P, dim=-1)  # [T, 512]
     scale = float(T["logit_scale"])
@@ -141,10 +134,7 @@ if __name__ == "__main__":
                 s = F.normalize(cmodel(gpu(x)).float(), dim=-1)
             cos = (1 - (s * t).sum(-1)).mean()
             kl = F.kl_div(F.log_softmax(s @ B.T * scale, -1), F.log_softmax(t @ B.T * scale, -1), log_target=True, reduction="batchmean")
-            loss = cos + KL_W * kl
-            if REL_W:
-                off = ~torch.eye(len(s), dtype=torch.bool, device=s.device)
-                loss = loss + REL_W * ((s @ s.T - t @ t.T)[off] ** 2).mean()  # pairwise cosines, not just each photo's own vector
+            loss = cos + kl
             opt.zero_grad(set_to_none=True); loss.backward(); opt.step(); sched.step(); ema.update_parameters(model); step += 1
             if step % 100 == 0:
                 print(f"ep {ep} step {step}/{total} cos {cos.item():.4f} kl {kl.item():.4f} {(time.time() - t0) / (step - s0):.3f}s/step", flush=True)

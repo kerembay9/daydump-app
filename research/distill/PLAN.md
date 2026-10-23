@@ -30,8 +30,8 @@ embeddings stored once, student trained against them) is public and is what we c
 
 ## Log
 Code version per run: everything through `pilot_m700k_lr1e-4` ran on v1 (`git show distill-v1:research/distill/train.py`).
-From `pilot_m100k_v2` on, entries ran on the v1-successor code ("v2 code", commit e33b28e + TF32 knob; untagged until a config clearly
-beats v1) and name any non-default knobs (KL_W / REL_W / PCA_TXT / TF32).
+From `pilot_m100k_v2` to `full_m660k_cand`, entries ran on "v2 code" (commit e33b28e + TF32 knob, 46e0cff) and name any non-default
+knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the faster code, knobs removed (none beat v1; see 2026-10-23).
 - 2026-10-22: untrained MNV4-S/M/L exported for the bench (`export_speed.py`; 3.8M / 9.7M / 32M params). Pilot
   download started.
 - 2026-10-22: teacher bake-off on VIST val (2,284 photos, 1,929 queries), R@1 / album / tags / curation:
@@ -105,3 +105,16 @@ beats v1) and name any non-default knobs (KL_W / REL_W / PCA_TXT / TF32).
   v2 pair +0.8 / +0.4 / +1.1 / +0.6 / +0.7 / -1.5 curation, probe cos 0.769 vs 0.746. Noise: same config +-1.2 R@1 run to run,
   curation +-0.7 on re-scoring the same weights. Loss knobs move ~1 point; data (100k -> 659k) moved +7: the student is
   capacity-limited. Next: candidate at full 659k (`full_m660k_cand`) vs `pilot_m700k_lr1e-4`.
+- 2026-10-23: `full_m660k_cand` (v2 code, KL_W=0.5 TF32=0; MNV4-M, 658.8k x 20 epochs, LR 1e-4) VIST-val R@1 / R@5 / R@10 / album /
+  tags / curation: 38.7 / 66.7 / 75.2 / 60.4 / 32.6 / 32.1; EMA 38.4 / 66.6 / 75.0 / 60.5 / 32.6 / 33.1 (v1 `pilot_m700k_lr1e-4`
+  37.7 / 66.1 / 75.3 / 61.2 / 32.7 / 32.8, EMA 38.2 / 66.3 / 75.7 / 61.7 / 32.7 / 32.7; tc45 42.1 / 72.7 / 79.9 / 65.1 / 36.1 / 34.9).
+  Per epoch (live / EMA, epochs 1-based): 4: 34.9 / 36.9, 6: 38.2 / 38.6, 10: 37.0 / 39.0 (best EMA), 13: 38.6 / 38.2, 20: 38.7 / 38.4;
+  flat 37-38.9 from epoch 6, no late EMA decline (v1 fell 39.3 -> 38.2). Every metric within noise of v1: the loss knobs buy nothing
+  at full data either. 81 min wall (v1 code ~2 h).
+  Decision: v2 loss changes REMOVED from train.py (KL_W, REL_W, PCA_TXT balanced basis, TF32 matmul switch); kept = speed work only
+  (uint8 workers + GPU normalize, torch.compile, cudnn autotune, fused AdamW, prefetch 4, RESUME, per-epoch checkpoints, Gram+eigh
+  PCA). What was tried and why it lost, all at 100k e20 unless noted: KL_W=2 (-1.1 R@1, -1.1 tags), REL_W=10 (-1.2 R@1, -2.4 R@5),
+  PCA_TXT=1 (wash over 2 runs, tags -0.8; teacher-only ceiling shows the basis barely matters at 512-d), KL_W=0.5 alone (wash),
+  TF32 on (v2 default; ~-0.8 R@1 vs off, the only "regression" in v2), KL_W=0.5 + TF32 off (+0.8 R@1 at 100k, gone at 659k).
+  Conclusion: MNV4-M is capacity-limited (probe cos 0.787 even on trained photos); next lever is the student, not the loss.
+  `full_s660k` (MNV4-S, same recipe) started 13:35 to size the speed tier.
