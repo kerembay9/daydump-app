@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <!-- shareTargets / shareImages: see the Post apps (package visibility) -->
+  <queries>
+    <package android:name="com.instagram.android" />
+    <package android:name="com.zhiliaoapp.musically" />
+    <package android:name="com.ss.android.ugc.trill" />
+  </queries>
   <application>
     <!-- LiteRT-LM GPU backend (OpenCL) -->
     <uses-native-library android:name="libvndksupport.so" android:required="false" />

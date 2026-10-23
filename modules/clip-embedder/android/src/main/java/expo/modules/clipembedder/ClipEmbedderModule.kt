@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.ai.edge.litert.Accelerator
@@ -91,6 +92,7 @@ class ClipEmbedderModule : Module() {
     }
     // Multi-image share (ACTION_SEND_MULTIPLE). target: "instagram" | "tiktok" | null; returns the package that got it or "chooser".
     AsyncFunction("shareImages") { uris: List<String>, caption: String, target: String? -> shareImages(uris, caption, target) }
+    Function("shareTargets") { TARGETS.keys.filter { forTarget(ctx.packageManager, Intent(Intent.ACTION_SEND_MULTIPLE).setType("image/*"), it) != null } }
 
     // thumb > 0: content:// uris decoded from MediaStore's cached thumbnail, requested at thumb x thumb.
     AsyncFunction("embedImages") Coroutine { uris: List<String>, thumb: Int? ->
@@ -234,8 +236,31 @@ class ClipEmbedderModule : Module() {
 private val SHARE_ACTIONS = setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_VIEW, Intent.ACTION_EDIT)
 private val TARGETS = mapOf(
   "instagram" to listOf("com.instagram.android"),
+  "instagram-story" to listOf("com.instagram.android"),
+  "instagram-reel" to listOf("com.instagram.android"),
   "tiktok" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
 )
+/** Instagram's share screens by activity name (ShareHandlerActivity[MultipleFeedAlias], [Multi]StoryShareHandlerActivity,
+ *  ReelShareHandlerActivity): not an API, so a renamed one falls back to Instagram's own app-only picker. */
+private fun screenOf(target: String?, cls: String) = when (target) {
+  "instagram" -> "ShareHandlerActivity" in cls && "Story" !in cls && "Reel" !in cls
+  "instagram-story" -> "Story" in cls
+  "instagram-reel" -> "Reel" in cls
+  else -> false
+}
+
+/** send aimed at target: its Instagram screen when found, else the app; null = not installed. */
+@Suppress("DEPRECATION")
+private fun forTarget(pm: PackageManager, send: Intent, target: String?): Intent? {
+  for (pkg in TARGETS[target].orEmpty()) {
+    val i = Intent(send).setPackage(pkg)
+    val acts = pm.queryIntentActivities(i, 0)
+    if (acts.isEmpty()) continue
+    val screen = acts.firstOrNull { screenOf(target, it.activityInfo.name) } ?: return i
+    return i.setClassName(pkg, screen.activityInfo.name)
+  }
+  return null
+}
 private var lastShareIntent: Intent? = null
 
 /** Image uris an incoming share/view intent carries, once per intent (a JS reload does not replay it).
@@ -272,10 +297,10 @@ private fun ClipEmbedderModule.shareImages(uris: List<String>, caption: String, 
     clipData = ClipData.newRawUri(null, list[0]).also { c -> list.drop(1).forEach { c.addItem(ClipData.Item(it)) } }
     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
   }
-  for (pkg in TARGETS[target].orEmpty()) {
+  forTarget(activity.packageManager, send, target)?.let { i ->
     try {
-      activity.startActivity(Intent(send).setPackage(pkg))
-      return pkg
+      activity.startActivity(i)
+      return i.`package`!!
     } catch (_: ActivityNotFoundException) {}
   }
   activity.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))

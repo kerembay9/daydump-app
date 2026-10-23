@@ -7,7 +7,7 @@ const DAY = 86_400_000;
 
 /** Dump ids start with "d_"; anything else on the edit/preview routes is a Discover story id. */
 export const isDumpId = (id?: string) => !!id?.startsWith('d_');
-const PLATFORM: Record<string, string> = { instagram: 'IG', tiktok: 'TikTok' };
+const PLATFORM: Record<string, string> = { instagram: 'IG', 'instagram-story': 'IG Story', 'instagram-reel': 'IG Reel', tiktok: 'TikTok' };
 const day = (t: number) => new Date(t).setHours(0, 0, 0, 0);
 
 /** Reuse copy name: "{title} (2)", or the next free number ("Trip (2)" reused again -> "Trip (3)"). */

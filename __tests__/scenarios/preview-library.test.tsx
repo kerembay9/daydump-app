@@ -18,6 +18,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   expect(screen.getByRole('tab', { name: 'IG Post', selected: true })).toBeTruthy();
 
   await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('Instagram post'));
   // done sheet (board 10)
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
   expect(screen.getByText('Caption copied · 7 slides saved to the DayDump album.')).toBeTruthy();
@@ -34,12 +35,13 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   expect(posted).toHaveLength(1);
   expect(posted[0]).toMatchObject({ title: LONG, platform: 'instagram', caption });
 
-  // TikTok tab -> the TikTok target
+  // TikTok from the app picker
   // back on Discover the Seattle trip is the hero again
   world.shareResult = 'com.zhiliaoapp.musically';
   await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle'));
   await fireEvent.press(await screen.findByRole('tab', { name: 'TikTok 9:16' }));
   await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('TikTok'));
   await waitFor(() => expect(share()).toHaveBeenCalledTimes(2));
   expect(share().mock.calls[1][2]).toBe('tiktok');
   expect(await screen.findByText('Posted to TikTok')).toBeTruthy();
@@ -92,7 +94,37 @@ test('Preview renders the slides in the background; Post reuses them, a Quality 
   await settle();
   share().mockClear();
   await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('Instagram post'));
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
   expect(draw).toHaveBeenCalledTimes(14); // Post drew nothing new
   expect(share().mock.calls[0][0]).toHaveLength(7);
+}, 30000);
+
+test('Post lists only the installed apps; Story opens Instagram Stories', async () => {
+  world.shareTargets = ['instagram', 'instagram-story', 'instagram-reel'];
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
+  share().mockClear();
+  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('A carousel of 7 slides')).toBeTruthy();
+  expect(screen.getByText('7 stories, one per slide')).toBeTruthy();
+  expect(screen.getByLabelText('Instagram reel')).toBeTruthy();
+  expect(screen.queryByLabelText('TikTok')).toBeNull(); // not installed
+  await fireEvent.press(screen.getByLabelText('Instagram story'));
+  expect(await screen.findByText('Posted to Instagram Stories')).toBeTruthy();
+  expect(share().mock.calls[0][2]).toBe('instagram-story');
+  await settle();
+  expect((await list()).filter((d) => d.platform === 'instagram-story')).toMatchObject([{ status: 'posted' }]);
+}, 30000);
+
+test('no Instagram or TikTok installed: Post skips the picker, straight to the system share sheet', async () => {
+  world.shareTargets = [];
+  world.shareResult = 'chooser';
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 }));
+  share().mockClear();
+  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('Shared')).toBeTruthy();
+  expect(share()).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Post to')).toBeNull();
 }, 30000);

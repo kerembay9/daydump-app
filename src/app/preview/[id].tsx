@@ -24,6 +24,8 @@ import { Tap } from '../../components/ui/Tap';
 import { usePreviewImages } from '../../components/edit/SlidePager';
 import { IgGrid, IgPost, PostView, TikTok } from '../../components/preview/PostMocks';
 import { Done, DoneSheet } from '../../components/preview/DoneSheet';
+import { APPS, PostSheet } from '../../components/preview/PostSheet';
+import { shareTargets, ShareTarget } from '../../../modules/clip-embedder';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.LONG) : console.log('[preview]', m));
@@ -132,6 +134,9 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const running = useRef(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
+  const [picking, setPicking] = useState(false);
+  // installed once per Preview: back from installing an app re-opens Preview anyway
+  const [targets] = useState(shareTargets);
   // The slides render in the background from the moment Preview opens (and again on a Quality change), so Post /
   // Save only just wait for what's left.
   const [exportFor] = useState(exporter);
@@ -139,11 +144,13 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: exportFor }), [stories, exportFor]);
   const n = slides.length;
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
-  const run = async (what: 'post' | 'save') => {
+  // no Instagram / TikTok on the phone: the system share sheet (target ignored)
+  const post = () => (targets.length ? setPicking(true) : run('post', platform === 'tiktok' ? 'tiktok' : 'instagram'));
+  const run = async (what: 'post' | 'save', target: ShareTarget = 'instagram') => {
+    setPicking(false);
     if (running.current) return;
     running.current = true;
-    const target = platform === 'tiktok' ? 'tiktok' : 'instagram';
-    const app = target === 'tiktok' ? 'TikTok' : 'Instagram';
+    const app = APPS[target].name;
     setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
     try {
       if (what === 'post') {
@@ -203,7 +210,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
       </Screen>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: insets.bottom + 6, alignItems: 'center' }}>
-        <Tap onPress={() => run('post')} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post on Instagram or TikTok"
+        <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post on Instagram or TikTok"
           style={{ alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', opacity: busy ? 0.85 : 1 }}>
           {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
           <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
@@ -217,6 +224,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           </Tap>
         </View>
       </View>
+      <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => setPicking(false)} />
       <DoneSheet done={done} onClose={() => setDone(null)} />
     </View>
   );

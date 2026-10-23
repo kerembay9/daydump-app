@@ -4,12 +4,15 @@ import type { LucideIcon } from 'lucide-react-native';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import Bookmark from 'lucide-react-native/icons/bookmark';
 import Check from 'lucide-react-native/icons/check';
+import CircleDashed from 'lucide-react-native/icons/circle-dashed';
+import Clapperboard from 'lucide-react-native/icons/clapperboard';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Clock from 'lucide-react-native/icons/clock';
 import Copy from 'lucide-react-native/icons/copy';
 import Crop from 'lucide-react-native/icons/crop';
 import Download from 'lucide-react-native/icons/download';
+import GalleryHorizontal from 'lucide-react-native/icons/gallery-horizontal';
 import Heart from 'lucide-react-native/icons/heart';
 import ImageIcon from 'lucide-react-native/icons/image';
 import MessageCircle from 'lucide-react-native/icons/message-circle';
@@ -97,6 +100,9 @@ export const Icons = {
   music: lucide(Music),
   download: lucide(Download),
   check: lucide(Check),
+  carousel: lucide(GalleryHorizontal),
+  story: lucide(CircleDashed),
+  reel: lucide(Clapperboard),
   crop: lucide(Crop),
   sparkle: lucide(Sparkle),
   copy: lucide(Copy),

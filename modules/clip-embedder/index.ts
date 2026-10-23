@@ -71,6 +71,8 @@ type ClipEmbedderModule = {
   setRecapCover(uri: string): void;
   /** Multi-image share (ACTION_SEND_MULTIPLE); file:// uris go through a FileProvider. Resolves with the package that got it, or 'chooser'. */
   shareImages(uris: string[], caption: string, target: ShareTarget | null): Promise<string>;
+  /** The targets whose app is installed. */
+  shareTargets(): ShareTarget[];
   /** Images the app was opened with (share / Open with), once per intent; null otherwise. */
   getInitialShareIntent(): ShareIntent | null;
   addListener(event: 'onShareIntent', cb: (e: ShareIntent) => void): { remove(): void };
@@ -79,7 +81,7 @@ type ClipEmbedderModule = {
   setNavigationBarStyle(light: boolean): void;
 };
 
-export type ShareTarget = 'instagram' | 'tiktok';
+export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok';
 export type ModelPack = 'vision' | 'faces' | 'text';
 /** queued: behind another pack. unavailable: no Play delivery for this install (sideloaded release APK), so it never arrives. progress 0..1. */
 export type PackState = { state: 'ready' | 'downloading' | 'queued' | 'waiting' | 'failed' | 'unavailable'; progress: number };
@@ -88,6 +90,7 @@ export type ShareIntent = { action: string; uris: string[]; mimeType: string };
 
 export const shareImages = (uris: string[], caption: string, target: ShareTarget | null) =>
   ClipEmbedder ? ClipEmbedder.shareImages(uris, caption, target) : Promise.reject(new Error('shareImages: Android only'));
+export const shareTargets = (): ShareTarget[] => ClipEmbedder?.shareTargets() ?? [];
 export const getInitialShareIntent = () => ClipEmbedder?.getInitialShareIntent() ?? null;
 export const setNavigationBarStyle = (light: boolean) => ClipEmbedder?.setNavigationBarStyle?.(light);
 export const addShareIntentListener = (cb: (e: ShareIntent) => void) => ClipEmbedder?.addListener('onShareIntent', cb) ?? { remove() {} };

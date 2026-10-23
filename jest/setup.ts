@@ -27,6 +27,7 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   },
   takeBackgroundResults: async () => ({ model: MODEL, rows: ready.splice(0) }),
   shareImages: async () => world.shareResult,
+  shareTargets: () => world.shareTargets,
   getInitialShareIntent: () => world.initialShare,
   addListener: (_: string, cb: typeof world.shareListener) => { world.shareListener = cb; return { remove: () => { world.shareListener = null; } }; },
   setNavigationBarStyle: () => {},
