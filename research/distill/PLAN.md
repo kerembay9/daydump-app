@@ -30,7 +30,8 @@ embeddings stored once, student trained against them) is public and is what we c
 
 ## Log
 Code version per run: everything through `pilot_m700k_lr1e-4` ran on v1 (`git show distill-v1:research/distill/train.py`).
-From `pilot_m100k_v2` on, each entry names its version (v2 = tag `distill-v2`) and any non-default knobs (KL_W / REL_W / PCA_TXT).
+From `pilot_m100k_v2` on, entries ran on the v1-successor code ("v2 code", commit e33b28e + TF32 knob; untagged until a config clearly
+beats v1) and name any non-default knobs (KL_W / REL_W / PCA_TXT / TF32).
 - 2026-10-22: untrained MNV4-S/M/L exported for the bench (`export_speed.py`; 3.8M / 9.7M / 32M params). Pilot
   download started.
 - 2026-10-22: teacher bake-off on VIST val (2,284 photos, 1,929 queries), R@1 / album / tags / curation:
@@ -88,9 +89,19 @@ From `pilot_m100k_v2` on, each entry names its version (v2 = tag `distill-v2`) a
   Ops: first attempt was killed at epoch 16 by systemd-oomd (training ran inside the Claude app scope; 40.8G cgroup peak from file
   cache + a 12-process VIST Pool forked twice per epoch). Fixes: VIST val pixels prepped once (PIX), `del emb` after targets, save
   every epoch, run as its own systemd user unit. PCA moved from full SVD (CUDA OOM at 660k rows) to Gram + eigh (identical basis).
-- 2026-10-23: `pilot_m100k_v2` (**v2**, default knobs = v1 loss; MNV4-M, N=99,700 x 20 epochs, LR 1e-4) VIST-val R@1 30.1 / R@5 57.4 /
+- 2026-10-23: `pilot_m100k_v2` (**v2 code**, default knobs = v1 loss; MNV4-M, N=99,700 x 20 epochs, LR 1e-4) VIST-val R@1 30.1 / R@5 57.4 /
   album 55.0 / tags 29.2 / curation 33.4; EMA 29.9 / 56.0 / 55.4 / 28.1 / 33.0 (v1 `pilot_m100k_lr1e-4`: 30.9 / 57.9 / 54.9 / 29.4 /
   36.8). Search, album, tags within noise of v1; curation -3.4 but v1 runs alone spread 32.7-36.8 on it (128 albums), and inputs are
-  bit-identical, so read as noise; re-check on the next run. Speed: 0.090 s/step after a ~75 s compile/autotune warmup (v1 0.12,
-  1.33x); 16 min wall vs 25 for the same run; GPU now ~97% busy, so the data loader is no longer the limit. Resume (RESUME=1) smoke
+  bit-identical, so read as noise; re-check on the next run. Speed: ~0.12 s/step steady (an earlier 0.090 reading was wrong) after a ~75 s compile/autotune
+  warmup; 16 min wall vs 25 for the same run; GPU now ~97% busy, so the data loader is no longer the limit. Resume (RESUME=1) smoke
   test continued at epoch 20 with the same probe cos (0.7473 vs 0.7474): optimizer, schedule, EMA and PCA restore correctly.
+- 2026-10-23: 100k e20 knob sweep (v2 code, MNV4-M, N=99,700, LR 1e-4). R@1 / R@5 / R@10 / album / tags / curation:
+  v2 30.1 / 57.4 / 67.9 / 55.0 / 29.2 / 33.5 and v2b 30.3 / 57.0 / 65.4 / 56.3 / 29.0 / 34.3 (v1 30.9 / 57.9 / 67.7 / 54.9 / 29.4 / ~36).
+  KL_W=2: 29.0 / 56.9 / 66.7 / 54.6 / 28.1 / 35.6 (rejected). REL_W=10: 28.9 / 55.0 / 65.7 / 54.4 / 29.4 / 33.5 (rejected).
+  PCA_TXT=1: 31.4 / 58.3 / 68.0 / 56.0 / 28.1 / 34.4, replicate 30.2 / 57.6 / 67.1 / 55.5 / 28.8 / 33.1 (wash, dropped; teacher-only PCA
+  ceiling at 512-d: v1 basis 56.6, lambda=1 56.8, full 57.2, so the basis barely matters at 512). KL_W=0.5: 30.3 / 58.6 / 68.7 / 56.0 /
+  30.4 / 34.1. TF32=0: 30.9 / 58.0 / 68.4 / 56.2 / 29.6 / 34.5 (v2 turned on TF32 for matmuls; off recovers v1 numbers, ~3% slower).
+  Candidate KL_W=0.5 TF32=0: 32.0 / 58.3 / 68.5 / 57.1 / 30.0 / 32.6, replicate 30.0 / 56.8 / 67.0 / 55.5 / 29.5 / 32.4; mean vs the
+  v2 pair +0.8 / +0.4 / +1.1 / +0.6 / +0.7 / -1.5 curation, probe cos 0.769 vs 0.746. Noise: same config +-1.2 R@1 run to run,
+  curation +-0.7 on re-scoring the same weights. Loss knobs move ~1 point; data (100k -> 659k) moved +7: the student is
+  capacity-limited. Next: candidate at full 659k (`full_m660k_cand`) vs `pilot_m700k_lr1e-4`.

@@ -22,7 +22,7 @@ REL_W = float(os.environ.get("REL_W", 0))  # in-batch photo-photo cosine matchin
 PCA_TXT = os.environ.get("PCA_TXT")  # text share of the PCA basis (photos and texts each normalized); unset = v1 (by count, ~12:1 photos)
 MEAN, STD = np.float32(CLIP_MEAN), np.float32(CLIP_STD)
 torch.backends.cudnn.benchmark = True  # fixed shapes (drop_last): autotune convs once
-torch.backends.cuda.matmul.allow_tf32 = True  # fp32 text-bank KL matmuls ([256, 512] x [512, 53k], twice a step) on tensor cores
+torch.backends.cuda.matmul.allow_tf32 = os.environ.get("TF32", "1") == "1"  # fp32 text-bank KL matmuls ([256, 512] x [512, 53k], twice a step) on tensor cores
 
 
 def gpu(x):
