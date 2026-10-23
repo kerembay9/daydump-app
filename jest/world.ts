@@ -25,6 +25,8 @@ export const world = {
   shareTargets: ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'] as string[],
   /** expo-file-system copy/move are async on the phone: a file is in `written` once its promise resolves; while `held` is set, they wait there */
   files: { written: new Set<string>(), held: null as (() => void)[] | null },
+  /** search languages (QueryTranslate): the phone's language, downloaded models, and a gate translation downloads wait on */
+  lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string> },
 };
 
 let n = 0;

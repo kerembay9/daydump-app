@@ -10,6 +10,7 @@ import { OnboardingModal } from '../components/OnboardingModal';
 import { NotificationService } from '../services/notificationService';
 import { currentCreateDraft, discardShared, DumpPhoto, receiveShared, sharedPhotos } from '../services/dumps';
 import { Sheet } from '../components/ui/Sheet';
+import { syncLangs } from '../services/index/queryLang';
 import { FrameCard } from '../components/ui/FrameCard';
 import { Tap } from '../components/ui/Tap';
 import { display, ui } from '../theme/type';
@@ -70,6 +71,8 @@ function Root() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navReady, app.incoming]);
   // The 8 PM recap opens today's story (/preview/today), from a cold start too.
+  // search languages: fetch the ones not downloaded yet (index/queryLang.ts)
+  useEffect(() => { syncLangs().catch((e) => console.warn('[queryLang] sync failed:', e)); }, []);
   useEffect(() => (navReady ? NotificationService.onOpen((url) => router.push(url as never)) : undefined), [navReady]);
 
   return (

@@ -132,6 +132,7 @@ assert.equal(parseQuery('yesterday', isPl, new Date(2026, 9, 20, 9).getTime()).d
   assert.deepEqual(searchLibrary(L, parseQuery('', yes), null), [3, 2, 1, 0]);
   assert.deepEqual(searchLibrary(L, parseQuery('may picnic', yes), vec(1, 0)), [2, 0]); // 3 scores 0 (outside the band)
   assert.deepEqual(searchLibrary(L, parseQuery('picnic', yes), null), []); // CLIP words but no CLIP
+  assert.deepEqual(searchLibrary(L, parseQuery('may picnic', yes), [vec(0, 1), vec(1, 0)]), [3, 2, 0]); // each photo's best of the query + its translation
 }
 
 // Create suggestions: X on axis 0; cluster A leans to axis 1, cluster B to axis 2, every member its own extra axis

@@ -23,6 +23,8 @@ Release builds download the packs from Play after the install (`ModelPacks.kt`);
 | `vocab.json` | APK | 0.05 MB | ~0 | the 3,566 concept names | `loadLibrary` (app start) |
 | `yunet_320.tflite` | APK | 0.3 MB | 0.2 MB | face detection (where are faces) | first `faces` |
 | `gate.tflite` | APK | 5.2 MB | 4.7 MB | MobileNetV3-Small (timm, Apache 2.0), fp16 weights: the selfie step's P(document, screen or pet) and near-copy feature until visionpack lands (int8 was tried: it lets 19/30 pets through) | first `selfieCheck` / `warmSelfie` without visionpack |
+| ML Kit language ID | APK (`com.google.mlkit:language-id`) | ~1 MB | ~1 MB | which language a search is in (`QueryTranslateModule.kt`) | first search in a non-English search language |
+| ML Kit translation, one per search language | Google, on request (`com.google.mlkit:translate`) | ~30 MB each | ~30 MB each | translates a search to English on the phone (`index/queryLang.ts`). The phone's language is fetched at app start; Settings → Search languages adds or deletes others | first search that isn't confidently English |
 
 Download (bundletool, arm64, 2026-10-22): **33.0 MB at install** (48.3 MB before R8, lucide deep imports, dropping Compose and cutting Inter; models are 5.4 MB of it), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (128.3 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
 builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. Debug builds add EdgeBench (Gemma, ML Kit).
@@ -112,6 +114,8 @@ the user touches the screen (`holdIndexing`).
 | Create photo grid | visionpack (via indexing) | empty library: the same download card | |
 | Create search: free words | textpack + stored vectors | a search with words and no hits: the **"Word search is on its way"** card, % and bar; re-searches when it lands | "No matches", retried on the next search |
 | Create search: places, months | none | always work | |
+| Create search in other languages | textpack; ML Kit translation for that language | searches as typed, with "Turkish is still downloading (about 30 MB)…" under the search; Settings → Search languages shows Downloading / Ready | download failed: "didn't download… Retry in Settings" (tap the row to retry); translation fails: searches as typed. iOS / no module: English only, section hidden |
+| Create search: emoji | textpack | as free words | emoji are searched as their names (`emojiNames.json`, from Unicode's emoji-test.txt) next to the emoji |
 | Stories: Trips, Today | none (GPS, dates) | indexing waits, so none until visionpack lands | |
 | Stories: topics, curation, Hide sensitive photos, captions | stored concept tags | as indexing | Module missing: no topics, **Hide sensitive photos does nothing** |
 | Similar / Suggest fills / Edit swaps | stored vectors only | as indexing | "Nothing similar to suggest yet"; swaps fall back to nearest in time |

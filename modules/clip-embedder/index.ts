@@ -98,6 +98,23 @@ export const addShareIntentListener = (cb: (e: ShareIntent) => void) => ClipEmbe
 /** null on iOS / Expo Go: callers fall back to non-CLIP behavior. */
 export const ClipEmbedder = requireOptionalNativeModule<ClipEmbedderModule>('ClipEmbedder');
 
+type QueryTranslateModule = {
+  /** The phone's language as an ML Kit code; null = one it can't translate. */
+  deviceLanguage(): string | null;
+  /** Every language it translates, sorted by English name. */
+  languages(): { code: string; name: string }[];
+  downloaded(): Promise<string[]>;
+  /** ~30 MB from Google, once per language. */
+  download(lang: string): Promise<null>;
+  remove(lang: string): Promise<null>;
+  /** Most likely first; lang 'und' = can't tell. */
+  identify(text: string): Promise<{ lang: string; conf: number }[]>;
+  /** Rejects if lang isn't downloaded. */
+  toEnglish(text: string, lang: string): Promise<string>;
+};
+/** Search in other languages (QueryTranslateModule.kt, ML Kit, Android only): src/services/index/queryLang.ts. */
+export const QueryTranslate = requireOptionalNativeModule<QueryTranslateModule>('QueryTranslate');
+
 export type GemmaResult = { ms: number; prepMs: number; text: string; ttftMs: number; prefillTokens: number; prefillTps: number; decodeTokens: number; decodeTps: number };
 /** Box as fractions of the photo; vec: L2-normalized SFace feature (base64 Float32 x 128), same person when dot > 0.363. */
 export type Face = { score: number; x: number; y: number; w: number; h: number; vec?: string };

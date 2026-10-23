@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Modal, Platform, ScrollView, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
@@ -13,7 +13,7 @@ import { FrameCard } from '../components/ui/FrameCard';
 import { IconButton } from '../components/ui/TopHeader';
 import { Icons } from '../components/ui/Icons';
 import { Tap } from '../components/ui/Tap';
-import { Confirm, ConfirmSpec } from '../components/ui/Sheet';
+import { Confirm, ConfirmSpec, Sheet } from '../components/ui/Sheet';
 import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
@@ -27,7 +27,8 @@ import { list } from '../services/dumps';
 import { ratioOf } from '../services/layouts';
 import { resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
-import { ClipEmbedder } from '../../modules/clip-embedder';
+import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
+import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
 import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
@@ -240,6 +241,11 @@ function ProfileBody() {
           </View>} />
       </Section>
 
+      {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
+        setP((x) => ({ ...x, searchLangs: l }));
+        setSearchLangs(l).catch((e) => console.warn('[profile] search languages failed:', e));
+      }} />}
+
       <Section title="About">
         <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
@@ -345,6 +351,35 @@ function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; s
 }
 
 /** Mock toggle: 36x20 track (ink on, 18% black off), 16px screen-coloured knob. */
+/** English always; the others are translated to English on the phone after a one-time download (index/queryLang.ts). */
+function SearchLangs({ langs, onChange }: { langs: string[]; onChange: (langs: string[]) => void }) {
+  const { t } = useTheme();
+  const states = useLangStates();
+  const [pick, setPick] = useState(false);
+  const all = useMemo(() => QueryTranslate?.languages().filter((l) => l.code !== 'en') ?? [], []);
+  const status = (l: string) => states[l] === 'ready' ? 'Ready' : states[l] === 'failed' ? 'Download failed. Tap to retry' : 'Downloading (about 30 MB)…';
+  return (
+    <>
+      <Section title="Search languages" note="Searches in these languages are translated to English on your phone. Each one is a one-time download of about 30 MB.">
+        <Row label="English" sub="Built in" />
+        {langs.map((l) => <Row key={l} label={langName(l)} sub={status(l)} onPress={states[l] === 'failed' ? () => { syncLangs().catch(() => {}); } : undefined} />)}
+        <Row label="Choose languages" onPress={() => setPick(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
+      </Section>
+      <Sheet visible={pick} onClose={() => setPick(false)}>
+        <Text style={[display(18), { color: t.ink }]}>Search languages</Text>
+        <Text style={[ui(11), { color: t.inkMuted }]}>Turning one off deletes its download.</Text>
+        <ScrollView style={{ maxHeight: 420 }}>
+          {all.map((l, i) => {
+            const on = langs.includes(l.code);
+            return <Row key={l.code} label={l.name} toggle={on} last={i === all.length - 1}
+              onPress={() => onChange(on ? langs.filter((x) => x !== l.code) : [...langs, l.code])} />;
+          })}
+        </ScrollView>
+      </Sheet>
+    </>
+  );
+}
+
 function Toggle({ on }: { on: boolean }) {
   const { t } = useTheme();
   return (

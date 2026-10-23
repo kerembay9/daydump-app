@@ -64,11 +64,12 @@ export function placeIndex(lib: Pick<Library, 'photos'>): Map<string, Set<number
 }
 
 /**
- * Rows matching the query, best first: CLIP order when there are CLIP words (qvec), else newest first. With CLIP,
+ * Rows matching the query, best first: CLIP order when there are CLIP words (qvec), else newest first. Several vectors
+ * (the query and its translations, index/queryLang.ts): a photo's best score counts. With CLIP,
  * keeps hits within 0.06 of the best (cosines are low and query-dependent; same idea as searchStory's 0.03 cut).
  * ponytail: fixed 0.06 band + 300 cap, tuned by eye on one phone; per-query calibration if results feel off.
  */
-export function searchLibrary(lib: Library, q: ParsedQuery, qvec: Float32Array | null): number[] {
+export function searchLibrary(lib: Library, q: ParsedQuery, qvec: Float32Array | Float32Array[] | null): number[] {
   const places = q.places.length ? placeIndex(lib) : null;
   const ok = (p: IndexedPhoto, i: number) => {
     const d = new Date(p.creationTime);
@@ -81,8 +82,9 @@ export function searchLibrary(lib: Library, q: ParsedQuery, qvec: Float32Array |
   const rows: number[] = [];
   for (let i = lib.photos.length - 1; i >= 0; i--) if (ok(lib.photos[i], i)) rows.push(i); // photos are oldest-first
   if (!q.clip) return rows;
-  if (!qvec || qvec.length !== DIM) return [];
-  const s = scoreAll(lib.vecs, qvec);
+  const qs = (Array.isArray(qvec) ? qvec : qvec ? [qvec] : []).filter((v) => v.length === DIM);
+  if (!qs.length) return [];
+  const s = qs.map((v) => scoreAll(lib.vecs, v)).reduce((a, b) => a.map((x, i) => Math.max(x, b[i])));
   const hits = rows.filter((i) => !isZero(lib.vecs, i)).sort((a, b) => s[b] - s[a]);
   const best = hits.length ? s[hits[0]] : 0;
   return hits.filter((i) => s[i] >= best - 0.06).slice(0, 300);

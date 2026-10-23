@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../../state/AppState';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
+import { expandQuery, Expanded, langName, useLangStates } from '../../services/index/queryLang';
 import { similarTo } from '../../services/stories/suggest';
 import { capitalize, dateRange } from '../../services/stories/titles';
 import { createDraft, currentCreateDraft, DumpPhoto, get, remove, setCurrentCreateDraft, update } from '../../services/dumps';
@@ -145,6 +146,8 @@ export default function Create() {
   const [rows, setRows] = useState<IndexedPhoto[] | null>(null);
   const [qvec, setQvec] = useState<Float32Array | null>(null);
   const [wordsSkipped, setWordsSkipped] = useState(false); // the search had words but no text vector
+  const [expanded, setExpanded] = useState<Expanded | null>(null); // translations searched too (index/queryLang.ts)
+  const langStates = useLangStates();
   // release builds download the models after the install: vision (the library itself), then faces, then text (words)
   const models = useModels('text');
   const textReady = models?.text.state === 'ready';
@@ -239,16 +242,19 @@ export default function Create() {
       const t0 = Date.now();
       const places = placeIndex(lib);
       const q = parseQuery(query, (n) => places.has(n));
-      const v = q.clip ? await vecFor(q.clip) : null;
+      const x = q.clip ? await expandQuery(q.clip) : null;
+      const vs = x ? await Promise.all(x.texts.map(vecFor)) : [];
+      const v = vs[0] ?? null;
       if (!live) return;
-      const r = searchLibrary(lib, q, v);
-      if (query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip "${q.clip}": ${r.length} in ${Date.now() - t0} ms`);
+      const r = searchLibrary(lib, q, vs.filter((y): y is Float32Array => !!y));
+      if (query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip ${JSON.stringify(x?.texts ?? [])}: ${r.length} in ${Date.now() - t0} ms`);
       setRows(r.map((i) => lib.photos[i]));
       setQvec(v);
+      setExpanded(x);
       setWordsSkipped(!!q.clip && !v);
     }, query ? 300 : 0);
     return () => { live = false; clearTimeout(h); };
-  }, [query, lib, textReady]);
+  }, [query, lib, textReady, langStates]);
 
   // ---- "Similar to your N selected" (300 ms after the basket settles) ----
   const basketKey = basket.map((p) => p.id).join(',');
@@ -334,12 +340,33 @@ export default function Create() {
     </View>
   );
 
+  // a search language this query may be in isn't downloaded yet: say it's searched as typed for now
+  const pending = query.trim() && expanded?.pending.length ? (() => {
+    const failed = expanded.pending.some((l) => langStates[l] === 'failed');
+    const names = expanded.pending.map(langName).join(', ');
+    return failed ? `${names} didn’t download, so this searches only what you typed. Retry in Settings.`
+      : `${names} is still downloading (about 30 MB). Until then this searches only what you typed.`;
+  })() : null;
+  const langNote = query.trim() && (expanded?.also.length || pending) ? (
+    <View style={{ gap: 4, marginBottom: 6, paddingHorizontal: 2 }}>
+      {expanded?.also.length ? (
+        <View style={{ alignSelf: 'flex-start', borderWidth: 1, borderColor: t.borderSubtle, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+          <Text style={[ui(10.5), { color: t.inkMuted }]} numberOfLines={1}>Also searching: {expanded.also.join(', ')}</Text>
+        </View>
+      ) : null}
+      {pending ? <Text style={[ui(10.5), { color: t.inkMuted }]}>{pending}</Text> : null}
+    </View>
+  ) : null;
+
   const header = (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
-      <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
-        {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
-      </Text>
-      <Text style={[ui(9.5), { color: t.inkMuted }]}>Tap to add to basket</Text>
+    <View>
+      {langNote}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
+        <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
+          {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
+        </Text>
+        <Text style={[ui(9.5), { color: t.inkMuted }]}>Tap to add to basket</Text>
+      </View>
     </View>
   );
 
@@ -367,6 +394,7 @@ export default function Create() {
           <>
             <Text style={[display(18), { color: t.ink }]}>{title}</Text>
             <Text style={[ui(12), { color: t.inkMuted }]}>{body}</Text>
+            {query.trim() && pending ? <Text style={[ui(12), { color: t.inkMuted }]}>{pending}</Text> : null}
           </>
         );
       })()}

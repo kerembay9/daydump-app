@@ -38,6 +38,17 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   scheduleDailyRecap: jest.fn(async () => {}), cancelDailyRecap: jest.fn(async () => {}), setRecapCover: () => {},
 };
 
+// Search in other languages (QueryTranslateModule.kt): Turkish (anything with ç ğ ı ö ş ü) and a tiny dictionary.
+(globalThis as any).expo.modules.QueryTranslate = {
+  deviceLanguage: () => world.lang.device,
+  languages: () => [{ code: 'de', name: 'German' }, { code: 'tr', name: 'Turkish' }],
+  downloaded: async () => [...world.lang.downloaded],
+  download: (l: string) => world.lang.gate.then(() => { world.lang.downloaded.push(l); return null; }),
+  remove: async (l: string) => { world.lang.downloaded = world.lang.downloaded.filter((x) => x !== l); return null; },
+  identify: async (text: string) => [{ lang: /[çğıöşü]/.test(text) ? 'tr' : 'en', conf: 0.9 }],
+  toEnglish: async (text: string) => world.lang.dict[text] ?? text,
+};
+
 // The app only indexes in the foreground (photoIndex hands off to the background worker otherwise).
 Object.defineProperty(AppState, 'currentState', { get: () => 'active', configurable: true });
 // Toasts: ToastAndroid.show is a jest.fn tests can read (toast()).
