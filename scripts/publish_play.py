@@ -1,8 +1,8 @@
 #!/usr/bin/env -S uv run
 # /// script
 # dependencies = [
-#   "google-api-python-client>=2.0.0",
 #   "google-auth>=2.0.0",
+#   "requests>=2.28.0",
 # ]
 # ///
 """
@@ -12,15 +12,13 @@ Usage:
 """
 
 import argparse
+import json
 import os
-import socket
+import subprocess
 import sys
+import requests
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-
-# Increase socket timeout for large App Bundle uploads (170MB+)
-socket.setdefaulttimeout(600)
+from google.auth.transport.requests import Request
 
 PACKAGE_NAME = "com.horizonzeta.picdump"
 DEFAULT_KEY = os.path.expanduser("~/.gemini/antigravity/play-service-account.json")
@@ -45,29 +43,62 @@ def main():
 
     print(f"Authenticating with: {args.key}")
     creds = service_account.Credentials.from_service_account_file(args.key, scopes=SCOPES)
-    service = build("androidpublisher", "v3", credentials=creds)
+    creds.refresh(Request())
+    headers = {
+        "Authorization": f"Bearer {creds.token}",
+        "Content-Type": "application/json",
+    }
 
     print(f"Creating edit for {PACKAGE_NAME}...")
-    edit_req = service.edits().insert(packageName=PACKAGE_NAME, body={})
-    edit = edit_req.execute()
-    edit_id = edit["id"]
+    edit_resp = requests.post(
+        f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE_NAME}/edits",
+        headers=headers,
+        json={},
+    )
+    edit_resp.raise_for_status()
+    edit_id = edit_resp.json()["id"]
     print(f"Edit created (ID: {edit_id})")
 
     try:
-        print(f"Uploading {args.aab} ({os.path.getsize(args.aab) / (1024 * 1024):.1f} MB)...")
-        media = MediaFileUpload(args.aab, mimetype="application/octet-stream", chunksize=10 * 1024 * 1024, resumable=True)
-        bundle_req = service.edits().bundles().upload(
-            packageName=PACKAGE_NAME,
-            editId=edit_id,
-            media_body=media,
-            ackBundleInstallationWarning=True,
+        filesize = os.path.getsize(args.aab)
+        print(f"Initiating upload for {args.aab} ({filesize / (1024 * 1024):.1f} MB)...")
+        init_headers = {
+            "Authorization": f"Bearer {creds.token}",
+            "X-Upload-Content-Type": "application/octet-stream",
+            "X-Upload-Content-Length": str(filesize),
+        }
+        init_url = (
+            f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/"
+            f"{PACKAGE_NAME}/edits/{edit_id}/bundles?uploadType=resumable&ackBundleInstallationWarning=true"
         )
-        response = None
-        while response is None:
-            upload_status, response = bundle_req.next_chunk()
-            if upload_status:
-                print(f"Uploaded {int(upload_status.progress() * 100)}%...")
-        bundle_resp = response
+        init_resp = requests.post(init_url, headers=init_headers)
+        init_resp.raise_for_status()
+        upload_url = init_resp.headers.get("Location")
+        if not upload_url:
+            raise RuntimeError(f"No upload Location header returned: {init_resp.text}")
+
+        print("Streaming bundle to Google Play via native curl with TCP keepalive...")
+        curl_cmd = [
+            "curl",
+            "-sS",
+            "-X", "PUT",
+            "--upload-file", args.aab,
+            "-H", "Content-Type: application/octet-stream",
+            "-H", f"Content-Length: {filesize}",
+            "--keepalive-time", "15",
+            "--connect-timeout", "60",
+            upload_url,
+        ]
+        proc = subprocess.run(curl_cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise RuntimeError(f"curl upload failed (code {proc.returncode}): {proc.stderr}")
+
+        output = proc.stdout.strip()
+        print("Google Play response received:", output[:200])
+        bundle_resp = json.loads(output)
+        if "versionCode" not in bundle_resp:
+            raise RuntimeError(f"Unexpected bundle upload response: {output}")
+
         version_code = bundle_resp["versionCode"]
         print(f"Bundle uploaded successfully! Version Code: {version_code}")
 
@@ -80,23 +111,28 @@ def main():
         }
 
         print(f"Assigning bundle to track '{args.track}' (status: {status})...")
-        track_req = service.edits().tracks().update(
-            packageName=PACKAGE_NAME,
-            editId=edit_id,
-            track=args.track,
-            body={"track": args.track, "releases": [release_body]},
+        track_resp = requests.put(
+            f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE_NAME}/edits/{edit_id}/tracks/{args.track}",
+            headers=headers,
+            json={"track": args.track, "releases": [release_body]},
         )
-        track_req.execute()
+        track_resp.raise_for_status()
 
         print("Committing edit to Google Play...")
-        commit_req = service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id)
-        commit_req.execute()
+        commit_resp = requests.post(
+            f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE_NAME}/edits/{edit_id}:commit",
+            headers=headers,
+        )
+        commit_resp.raise_for_status()
         print(f"SUCCESS! PicDump (Version Code {version_code}) is published to the '{args.track}' track.")
 
     except Exception as e:
         print(f"\nFailed: {e}")
         try:
-            service.edits().delete(packageName=PACKAGE_NAME, editId=edit_id).execute()
+            requests.delete(
+                f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE_NAME}/edits/{edit_id}",
+                headers=headers,
+            )
             print("Aborted edit to leave Play Console clean.")
         except Exception:
             pass
