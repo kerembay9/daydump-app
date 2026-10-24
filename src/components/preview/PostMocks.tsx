@@ -49,7 +49,7 @@ function SlideCanvas({ v, i, w, h }: { v: PostView; i: number; w: number; h: num
   const sw = Math.min(w, h / k);
   const sh = sw * k;
   const s = v.slides[i];
-  const photos = useMemo(() => s.photos.map((p) => ({ image: v.images[p.uri], matrix: matrixFor(lookFor(v.filter, p.id)) })), [s, v.images, v.filter]);
+  const photos = useMemo(() => s.photos.map((p) => ({ image: v.images[p.uri], matrix: matrixFor(lookFor(v.filter, p.id)), crop: p.crop })), [s, v.images, v.filter]);
   return (
     <Canvas style={{ width: w, height: h }}>
       <Group transform={[{ translateX: (w - sw) / 2 }, { translateY: (h - sh) / 2 }]}>

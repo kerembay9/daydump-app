@@ -62,7 +62,7 @@ export default function Preview() {
 function exporter() {
   let cur: { key: string; p: Promise<string[]> } | null = null;
   return (d: Dump, highRes?: boolean) => {
-    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri]), d.layout, d.ratio, d.fit, d.filter, !!highRes]);
+    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri, p.crop]), d.layout, d.ratio, d.fit, d.filter, !!highRes]);
     if (cur?.key === key) return cur.p;
     const prev = cur?.p.catch(() => {});
     const p: Promise<string[]> = Promise.resolve(prev).then(() => {

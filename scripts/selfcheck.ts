@@ -11,7 +11,7 @@ import { findTrips, tripTitle } from '../src/services/stories/trips';
 import { dateRange, disambiguate, topicTitle } from '../src/services/stories/titles';
 import { copyTitle, kindLabel, matches, photoRange, rowLine, statusLine } from '../src/services/dumpLabels';
 import type { Dump } from '../src/services/dumps';
-import { chunk, exportSize, LAYOUTS, slideCells } from '../src/services/layouts';
+import { cellAt, chunk, exportSize, LAYOUTS, placePhoto, slideCells } from '../src/services/layouts';
 import { IDENTITY, lookFor, matrixFor, PRESETS } from '../src/services/filters';
 import { postDump, PostDeps, saveOnly } from '../src/services/post';
 
@@ -224,6 +224,18 @@ assert.deepEqual(chunk([], 'grid'), []);
 assert.deepEqual(exportSize('9:16'), { width: 1080, height: 1920 });
 assert.deepEqual(exportSize('4:5', true), { width: 2160, height: 2700 });
 assert.deepEqual(exportSize('nope'), { width: 1080, height: 1350 });
+{ // crop: centred = plain cover; a far-off centre stops at the photo's edge (no gap); zoom clamps to 1..4
+  const c = placePhoto(900, 1600, 4000, 3000); // 4:3 photo in a 9:16 cell
+  assert.deepEqual([c.dh, c.dy, c.dx], [1600, 0, (900 - c.dw) / 2]);
+  const left = placePhoto(900, 1600, 4000, 3000, { x: 0, y: 0.5, z: 1 });
+  assert.equal(left.dx, 0);
+  assert.ok(Math.abs(placePhoto(900, 1600, 4000, 3000, { x: 9, y: 0.5, z: 1 }).dx - (900 - c.dw)) < 1e-6);
+  assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 0.2 }).crop.z, 1);
+  assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 9 }).crop.z, 4);
+  const { cells } = slideCells('split', 'bleed', 1080, 1350);
+  assert.deepEqual([cellAt(cells, 'split', 10, 10), cellAt(cells, 'split', 1070, 10)], [0, 1]);
+  assert.equal(cellAt(slideCells('scrapbook', 'bleed', 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
+}
 { // cells stay inside the slide; border insets them
   const W = 1080, H = 1350;
   for (const l of LAYOUTS) for (const fit of ['bleed', 'border'] as const) for (const c of slideCells(l.key, fit, W, H).cells) {

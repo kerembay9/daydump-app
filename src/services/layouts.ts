@@ -93,6 +93,30 @@ export function slideCells(layout: LayoutKey, fit: Fit, W: number, H: number): {
   }
 }
 
+/** The part of a photo a cell shows: centre (x, y) as a share of the photo's width / height, zoom z (1 = just covers). */
+export type Crop = { x: number; y: number; z: number };
+export const CENTRED: Crop = { x: 0.5, y: 0.5, z: 1 };
+export const MAX_ZOOM = 4;
+
+/**
+ * Where a photo (iw x ih) draws in a w x h cell: covering it, zoomed z, centred on (x, y) as far as the photo's edges
+ * allow (so it never leaves a gap). dx / dy are from the cell's top-left; crop is the clamped crop actually shown.
+ */
+export function placePhoto(w: number, h: number, iw: number, ih: number, c: Crop = CENTRED) {
+  const z = Math.min(MAX_ZOOM, Math.max(1, c.z));
+  const s = Math.max(w / iw, h / ih) * z;
+  const dw = iw * s, dh = ih * s;
+  const hx = w / dw / 2, hy = h / dh / 2;
+  const x = Math.min(1 - hx, Math.max(hx, c.x)), y = Math.min(1 - hy, Math.max(hy, c.y));
+  return { crop: { x, y, z }, dx: w / 2 - x * dw, dy: h / 2 - y * dh, dw, dh };
+}
+
+/** The top-most cell under (x, y) in a slide, or -1. Tilt ignored (a few degrees). */
+export function cellAt(cells: Cell[], layout: LayoutKey, x: number, y: number) {
+  const hit = paintOrder(layout, cells.length).filter((i) => { const c = cells[i]; return x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h; });
+  return hit.length ? hit[hit.length - 1] : -1;
+}
+
 /** Paint order: scrapbook's cover (cell 0) goes on top of the two back prints. */
 export const paintOrder = (layout: LayoutKey, n: number) => (layout === 'scrapbook' ? [1, 2, 0] : [0, 1, 2, 3]).filter((i) => i < n);
 

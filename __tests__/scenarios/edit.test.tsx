@@ -1,7 +1,9 @@
-import { fireEvent, screen } from 'expo-router/testing-library';
+import { act, fireEvent, screen } from 'expo-router/testing-library';
 import { bootApp, settle } from '../../jest/app';
-import { seedWorld } from '../../jest/world';
-import { get, list } from '../../src/services/dumps';
+import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
+import { State } from 'react-native-gesture-handler';
+import { seedWorld, world } from '../../jest/world';
+import { createDraft, get, list } from '../../src/services/dumps';
 import { filterOf } from '../../src/services/filters';
 
 beforeAll(() => seedWorld());
@@ -50,4 +52,25 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   await bootApp(`/edit/${id}`);
   expect(await screen.findByRole('button', { name: 'B&W Roll', selected: true })).toBeTruthy();
   expect(screen.getByRole('checkbox', { name: 'Apply to all photos' }).props.accessibilityState).toEqual({ checked: true });
+}, 30000);
+
+test('Crop: dragging a photo in Crop mode picks the part shown, saved with the dump', async () => {
+  const [p] = world.photos;
+  const d = await createDraft({ source: 'create', photos: [{ id: p.id, uri: p.uri }], ratio: '9:16' });
+  await bootApp(`/edit/${d.id}`);
+  await fireEvent.press(await screen.findByRole('button', { name: 'Crop' }));
+  expect(await screen.findByText('Drag or pinch a photo')).toBeTruthy();
+  // the mocked photo is 4:5, so in a 9:16 cell it overflows sideways: dragging left shows more of its right side
+  await act(async () => fireGestureHandler(getByGestureTestId('crop-pan'), [
+    { state: State.BEGAN, x: 50, y: 50, translationX: 0 },
+    { state: State.ACTIVE, x: 50, y: 50, translationX: -20 },
+    { state: State.ACTIVE, x: 50, y: 50, translationX: -40 },
+    { state: State.END, x: 50, y: 50, translationX: -40 },
+  ]));
+  await settle();
+  const crop = (await get(d.id))!.photos[0].crop!;
+  expect(crop.x).toBeGreaterThan(0.5);
+  expect(crop.y).toBe(0.5);
+  await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
+  expect(await screen.findByLabelText('9:16 TikTok')).toBeTruthy();
 }, 30000);

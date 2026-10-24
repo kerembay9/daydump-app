@@ -2,12 +2,13 @@ import * as MediaLibrary from 'expo-media-library/legacy';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { mainDb } from './index/photoIndex';
 import type { Story } from './stories';
+import type { Crop } from './layouts';
 import { copyTitle, matches, photoRange } from './dumpLabels';
 import { getProfile, profileNow } from './profile';
 import { Directory, File, Paths } from 'expo-file-system';
 
 /** id = MediaStore asset id; a photo with no asset (shared in by uri) uses its uri as id. created = taken at (ms). */
-export type DumpPhoto = { id: string; uri: string; created?: number; /** added by a suggestion (✨) */ suggested?: boolean };
+export type DumpPhoto = { id: string; uri: string; created?: number; /** added by a suggestion (✨) */ suggested?: boolean; /** the part shown (dragged / pinched in Edit); none = centred */ crop?: Crop };
 export type DumpStatus = 'draft' | 'posted';
 /** story = opened from Discover, create = Create basket, share = photos shared / "opened with" PicDump */
 export type DumpSource = 'story' | 'create' | 'share';

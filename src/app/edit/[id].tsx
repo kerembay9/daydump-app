@@ -185,7 +185,8 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       </View>
 
       <SlidePager slides={slides} ratio={ratio} fit={fit} layout={layout} filter={filter} index={cur}
-        images={images} onIndex={setSlide} onFit={setFit} onLayout={(l) => { setLayout(l); setSlide(0); }} />
+        images={images} onIndex={setSlide} onFit={setFit} onLayout={(l) => { setLayout(l); setSlide(0); }}
+        onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
       <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} />
       <Filmstrip
         photos={photos}

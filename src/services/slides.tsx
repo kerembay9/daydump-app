@@ -7,17 +7,18 @@ import type { Dump } from './dumps';
 import { getProfile } from './profile';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { matrixFor, filterOf, lookFor } from './filters';
-import { Cell, chunk, exportSize, Fit, fitOf, LayoutKey, layoutOf, paintOrder, slideCells, UNIT } from './layouts';
+import { Cell, chunk, Crop, exportSize, Fit, fitOf, LayoutKey, layoutOf, paintOrder, placePhoto, slideCells, UNIT } from './layouts';
 
 /** Cashmere matte: the border, scrapbook ground and collage gaps, in both app themes (exports never change colour). */
 export const MATTE = '#EFE6DA';
 const EMPTY = 'rgba(74,52,40,0.15)';
 
-export type SlidePhoto = { image: SkImage | null | undefined; matrix: number[] | null };
+export type SlidePhoto = { image: SkImage | null | undefined; matrix: number[] | null; crop?: Crop };
 
 function PhotoCell({ c, p, u }: { c: Cell; p: SlidePhoto; u: number }) {
   const b = c.border;
   const inner = rect(c.x + b, c.y + b, c.w - 2 * b, c.h - 2 * b);
+  const at = p.image ? placePhoto(inner.width, inner.height, p.image.width(), p.image.height(), p.crop) : null;
   return (
     <Group transform={c.rot ? [{ rotate: (c.rot * Math.PI) / 180 }] : undefined} origin={vec(c.x + c.w / 2, c.y + c.h / 2)}>
       {c.shadow || b ? (
@@ -26,8 +27,8 @@ function PhotoCell({ c, p, u }: { c: Cell; p: SlidePhoto; u: number }) {
         </RoundedRect>
       ) : null}
       <Group clip={rrect(inner, Math.max(0, c.r - b), Math.max(0, c.r - b))}>
-        {p.image ? (
-          <Image image={p.image} x={inner.x} y={inner.y} width={inner.width} height={inner.height} fit="cover">
+        {p.image && at ? (
+          <Image image={p.image} x={inner.x + at.dx} y={inner.y + at.dy} width={at.dw} height={at.dh} fit="fill">
             {p.matrix ? <ColorMatrix matrix={p.matrix} /> : null}
           </Image>
         ) : (
@@ -134,7 +135,7 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): P
   try {
     for (const [i, s] of slides.entries()) {
       const images = await Promise.all(loads[i]);
-      const photos: SlidePhoto[] = s.photos.map((p, j) => ({ image: images[j], matrix: matrixFor(lookFor(filter, p.id)) }));
+      const photos: SlidePhoto[] = s.photos.map((p, j) => ({ image: images[j], matrix: matrixFor(lookFor(filter, p.id)), crop: p.crop }));
       const img = await drawAsImage(<SlideDrawing layout={s.layout} fit={fit} width={width} height={height} photos={photos} />, { width, height });
       if (!img) throw new Error(`slide ${i + 1} did not render`);
       // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
