@@ -12,6 +12,7 @@ beforeAll(() => seedWorld());
 test('search, pick 3, Suggest fills, use / swap / save a way, then a selection change asks for Refresh', async () => {
   await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
+  expect(screen.queryByText('Tap to add to basket')).toBeNull();
 
   // "seattle" is a place in the library: a place filter, no CLIP needed
   await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');

@@ -384,7 +384,6 @@ export default function Create() {
         <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
           {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
         </Text>
-        <Text style={[ui(9.5), { color: t.inkMuted }]}>Tap to add to basket</Text>
       </View>
     </View>
   );
