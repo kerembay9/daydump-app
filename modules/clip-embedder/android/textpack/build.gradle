@@ -1,4 +1,4 @@
-// text.tflite + tokenizer.json: fast-follow: Play fetches it after the install, like visionpack (ModelPacks.kt fetches it again if that failed).
+// text.tflite + tokenizer.json: last in the download order (ModelPacks.kt). Fast-follow: Play fetches it right after the install.
 plugins { id 'com.android.asset-pack' }
 assetPack {
   packName = 'textpack'

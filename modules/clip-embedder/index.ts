@@ -34,7 +34,7 @@ type ClipEmbedderModule = {
    * Calls needing a missing one reject (and want it). Updates come as onModels events. Also restarts a download that failed.
    */
   modelState(): Promise<Record<ModelPack, PackState>>;
-  /** A screen needs this pack: it downloads right after vision, ahead of the other (not ahead of one already downloading). */
+  /** A screen needs this pack: it downloads right after faces, ahead of the other (not ahead of one already downloading). */
   wantModel?(pack: ModelPack): void;
   tokenize(text: string): Promise<number[]>;
   /** vecs: base64 Float32 n*512 -> flat n*k vocab ids + scores, best first per vector */
@@ -95,7 +95,7 @@ type ClipEmbedderModule = {
 export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok';
 export type ModelPack = 'vision' | 'faces' | 'text';
 /** queued: behind another pack. unavailable: no Play delivery for this install (sideloaded release APK), so it never arrives. progress 0..1. */
-export type PackState = { state: 'ready' | 'downloading' | 'queued' | 'waiting' | 'failed' | 'unavailable'; progress: number };
+export type PackState = { state: 'ready' | 'downloading' | 'queued' | 'waiting' | 'failed' | 'unavailable'; progress: number; error?: number };
 /** uris: content:// as handed over (content://media/.../<id> = a MediaStore id); action: SEND | SEND_MULTIPLE | VIEW | EDIT. */
 export type ShareIntent = { action: string; uris: string[]; mimeType: string };
 

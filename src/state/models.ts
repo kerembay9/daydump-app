@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { ClipEmbedder, type ModelPack, type PackState } from '../../modules/clip-embedder';
 
-/** The model downloads (release builds get them from Play after the install, vision first; see ModelPacks.kt). */
+/** The model downloads (release builds get them from Play after the install, faces first; see ModelPacks.kt). */
 export type Models = Record<ModelPack, PackState>;
 
 const READY: PackState = { state: 'ready', progress: 1 };
@@ -27,7 +27,7 @@ const subscribe = (f: () => void) => { start(); subs.add(f); return () => { subs
 /** The current state outside React (null until the first arrives). */
 export const modelsNow = () => models;
 
-/** null until the first state arrives. want: the pack this screen needs, downloaded next after vision. */
+/** null until the first state arrives. want: the pack this screen needs, downloaded next after faces. */
 export const useModels = (want?: ModelPack) => {
   useEffect(() => { if (want) ClipEmbedder?.wantModel?.(want); }, [want]);
   return useSyncExternalStore(subscribe, () => models);
