@@ -92,7 +92,7 @@ type ClipEmbedderModule = {
   setNavigationBarStyle(light: boolean): void;
 };
 
-export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok';
+export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok' | 'whatsapp';
 export type ModelPack = 'vision' | 'faces' | 'text';
 /** queued: behind another pack. unavailable: no Play delivery for this install (sideloaded release APK), so it never arrives. progress 0..1. */
 export type PackState = { state: 'ready' | 'downloading' | 'queued' | 'waiting' | 'failed' | 'unavailable'; progress: number; error?: number };

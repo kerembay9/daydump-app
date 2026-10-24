@@ -152,7 +152,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted' }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
-          title: r.to === 'chooser' ? 'Shared' : `Posted to ${app}`,
+          title: r.to === 'chooser' ? 'Shared' : `${target === 'whatsapp' ? 'Sent' : 'Posted'} to ${app}`,
           tab: r.marked ? 'posted' : 'draft',
           note: `${r.saved ? `${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the PicDump album.` : ''}${r.marked ? '' : " Couldn't mark it posted in your Library."}`.trim(),
         });

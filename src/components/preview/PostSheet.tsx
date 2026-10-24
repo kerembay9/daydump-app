@@ -13,6 +13,7 @@ export const APPS: Record<ShareTarget, { label: string; name: string; note: (n: 
   'instagram-story': { label: 'Instagram story', name: 'Instagram Stories', note: (n) => (n === 1 ? 'One story' : `${n} stories, one per slide`), Icon: Icons.story },
   'instagram-reel': { label: 'Instagram reel', name: 'Instagram Reels', note: () => 'A slideshow reel', Icon: Icons.reel },
   tiktok: { label: 'TikTok', name: 'TikTok', note: () => 'A photo post', Icon: Icons.music },
+  whatsapp: { label: 'WhatsApp', name: 'WhatsApp', note: (n) => (n === 1 ? 'Send to a chat' : `Send ${n} slides to a chat`), Icon: Icons.comment },
 };
 
 /** Post's app picker: only the installed apps, each opening its share screen directly (no system share sheet). */

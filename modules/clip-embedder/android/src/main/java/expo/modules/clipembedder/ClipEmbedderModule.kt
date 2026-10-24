@@ -95,7 +95,7 @@ class ClipEmbedderModule : Module() {
         }
       }
     }
-    // Multi-image share (ACTION_SEND_MULTIPLE). target: "instagram" | "tiktok" | null; returns the package that got it or "chooser".
+    // Multi-image share (ACTION_SEND_MULTIPLE). target: a TARGETS key or null; returns the package that got it or "chooser".
     AsyncFunction("shareImages") { uris: List<String>, caption: String, target: String? -> shareImages(uris, caption, target) }
     Function("shareTargets") { TARGETS.keys.filter { forTarget(ctx.packageManager, Intent(Intent.ACTION_SEND_MULTIPLE).setType("image/*"), it) != null } }
 
@@ -259,6 +259,7 @@ private val TARGETS = mapOf(
   "instagram-story" to listOf("com.instagram.android"),
   "instagram-reel" to listOf("com.instagram.android"),
   "tiktok" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
+  "whatsapp" to listOf("com.whatsapp", "com.whatsapp.w4b"),
 )
 /** Instagram's share screens by activity name (ShareHandlerActivity[MultipleFeedAlias], [Multi]StoryShareHandlerActivity,
  *  ReelShareHandlerActivity): not an API, so a renamed one falls back to Instagram's own app-only picker. */

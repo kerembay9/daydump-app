@@ -117,6 +117,20 @@ test('Post lists only the installed apps; Story opens Instagram Stories', async 
   expect((await list()).filter((d) => d.platform === 'instagram-story')).toMatchObject([{ status: 'posted' }]);
 }, 30000);
 
+test('Post to WhatsApp: sends the slides, marks it posted as whatsapp', async () => {
+  world.shareTargets = ['instagram', 'whatsapp'];
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
+  share().mockClear();
+  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('Send 7 slides to a chat')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('WhatsApp'));
+  expect(await screen.findByText('Sent to WhatsApp')).toBeTruthy();
+  expect(share().mock.calls[0][2]).toBe('whatsapp');
+  await settle();
+  expect((await list()).filter((d) => d.platform === 'whatsapp')).toMatchObject([{ status: 'posted' }]);
+}, 30000);
+
 test('no Instagram or TikTok installed: Post skips the picker, straight to the system share sheet', async () => {
   world.shareTargets = [];
   world.shareResult = 'chooser';
