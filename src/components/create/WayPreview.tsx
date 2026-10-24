@@ -1,6 +1,7 @@
 // Board 9 "Way preview": one way's photos big. Yours are tagged; suggested ones carry pick circles for "Add N picked".
 import React from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DumpPhoto } from '../../services/dumps';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ui } from '../../theme/type';
@@ -17,6 +18,20 @@ export function mix<P>(a: P[], b: P[]): P[] {
   return out;
 }
 
+/**
+ * Fewest columns (biggest tiles) whose rows still fit in `room` px tall: 3 photos go 2x2, 6 go 3 rows of 2. Tiles are 1.15
+ * tall, squashed down to square to fit; 3 columns at 1.15 when nothing fits.
+ */
+export function tiles(n: number, width: number, room: number) {
+  for (let c = 1; c < 3; c++) {
+    const w = (width - 4 * (c - 1)) / c, rows = Math.ceil(n / c);
+    const h = Math.min(Math.round(w * 1.15), Math.floor((room - 4 * (rows - 1)) / rows));
+    if (h >= w) return { w, h };
+  }
+  const w = (width - 8) / 3;
+  return { w, h: Math.round(w * 1.15) };
+}
+
 type Peek = { j: number; ids: Set<string> } | null;
 
 export function WayPreview({ f, x, ways, peek, setPeek }: {
@@ -24,9 +39,11 @@ export function WayPreview({ f, x, ways, peek, setPeek }: {
 }) {
   const { t } = useTheme();
   const win = useWindowDimensions();
+  const inset = useSafeAreaInsets();
   const w = peek ? ways[peek.j] : undefined;
   const close = () => setPeek(null);
-  const cw = (win.width - 32 - 8) / 3, ch = Math.round(cw * 1.15);
+  // ponytail: 200 = header, hint, buttons, padding and a strip of backdrop above the sheet, guessed not measured
+  const { w: cw, h: ch } = tiles(w ? x.length + w.y.length : 0, win.width - 32, win.height - inset.top - inset.bottom - 200);
   const n = peek?.ids.size ?? 0;
   const on = !!w && f.added(w.i);
   const go = (j: number) => setPeek({ j, ids: new Set() });
