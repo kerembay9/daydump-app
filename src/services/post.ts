@@ -16,16 +16,16 @@ export type PostDeps = {
 };
 
 /**
- * Render -> share to IG / TikTok -> album. Android can't see whether the post went out,
+ * Render -> share to IG / TikTok -> album (unless save is false: Profile's "Posting also saves to gallery"). Android can't see whether the post went out,
  * so the dump is marked Posted once the share opened; via the chooser (app not installed) without a platform.
  * An album failure doesn't stop the post (saved = false); nor does a draft/mark failure after the share opened
  * (marked = false). A failure before the share throws and nothing is marked.
  */
-export async function postDump(x: PostDeps, d: Dump, target: ShareTarget, hd?: boolean) {
+export async function postDump(x: PostDeps, d: Dump, target: ShareTarget, hd?: boolean, save = true) {
   const uris = await x.exportSlides(d, hd);
   const to = await x.share(uris, target);
   // the album after the share: the app opens ~1.4 s sooner (6 HD slides on an A54), the copies land while you're there
-  const saved = await x.saveToAlbum(uris).then(() => true, (e) => (console.warn('[post] album save failed:', e), false));
+  const saved = save && await x.saveToAlbum(uris).then(() => true, (e) => (console.warn('[post] album save failed:', e), false));
   // The app is open now: a failure from here on mustn't read as "couldn't open" (the user would post twice).
   let id = d.id;
   const marked = await (async () => {

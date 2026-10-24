@@ -287,6 +287,10 @@ async function posting() {
   r = await postDump(fake({ share: 'chooser' }), dump({ id: 'trip:paris' }), 'tiktok');
   assert.deepEqual(calls.splice(0).slice(1), ['share file:///c/export/1.jpg,file:///c/export/2.jpg | tiktok', 'album 2', 'persist trip:paris', 'posted d_new null']);
   assert.equal(r.id, 'd_new');
+  // "Posting also saves to gallery" off: no album step
+  r = await postDump(fake(), draft, 'instagram', false, false);
+  assert.equal(r.saved, false);
+  assert.ok(!calls.splice(0).some((c) => c.startsWith('album')));
   // album refused: still posts; share failed: nothing marked, error surfaces
   r = await postDump(fake({ album: false }), draft, 'instagram');
   assert.equal(r.saved, false);

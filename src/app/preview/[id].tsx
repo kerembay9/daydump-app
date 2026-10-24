@@ -148,7 +148,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
     try {
       if (what === 'post') {
-        const r = await postDump(deps, dump, target, hd);
+        const r = await postDump(deps, dump, target, hd, (await getProfile()).saveOnPost);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted' }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
