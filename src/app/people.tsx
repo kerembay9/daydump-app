@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { File, Paths } from 'expo-file-system';
@@ -13,13 +13,15 @@ import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 import { useApp } from '../state/AppState';
 import { ClipEmbedder, type Face, type FaceScan } from '../../modules/clip-embedder';
-import { faceVec, groupFaces } from '../services/faces';
+import { faceVec, groupFaces, isAnyOf } from '../services/faces';
+import { getProfile } from '../services/profile';
 
 /**
  * uri -> faces found; names: face key (uri#index) -> name, so a name survives regrouping; groups: face key -> person,
- * saved because grouping takes seconds (cleared by a scan, redone once after it).
+ * saved because grouping takes seconds (cleared by a scan, redone once after it). me: the profile's name was given to the
+ * person matching its avatar (once, so clearing it sticks).
  */
-type Saved = { scans: Record<string, FaceScan>; names: Record<string, string>; groups?: Record<string, number> };
+type Saved = { scans: Record<string, FaceScan>; names: Record<string, string>; groups?: Record<string, number>; me?: boolean };
 type Shot = { key: string; uri: string; f: Face };
 type Person = { shots: Shot[]; photos: number; name: string };
 
@@ -45,18 +47,28 @@ function groupAll(s: Saved): Record<string, number> {
   return Object.fromEntries(shots.map((x, i) => [x.key, group[i]]));
 }
 
-/** The saved groups as people, most photos first; a person's name is the one given to most of their faces. */
-function people(s: Saved, groups: Record<string, number>): Person[] {
+const same = (a: string, b: string) => !!a && a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The saved groups as people, most photos first; a person's name is the one given to most of their faces, and groups
+ * with the same name are one person (how the user merges a person split in two).
+ */
+export function people(s: Saved, groups: Record<string, number>): Person[] {
   const by = new Map<number, Shot[]>();
   shotsOf(s).forEach((x) => { const g = groups[x.key]; if (g !== undefined) (by.get(g) ?? by.set(g, []).get(g)!).push(x); });
-  return [...by.values()]
-    .map((sh) => {
-      const votes = new Map<string, number>();
-      sh.forEach((x) => { const n = s.names[x.key]; if (n) votes.set(n, (votes.get(n) ?? 0) + 1); });
-      const name = [...votes].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-      // biggest, surest face first: the person's picture
-      return { shots: sh.sort((a, b) => b.f.w * b.f.h * b.f.score - a.f.w * a.f.h * a.f.score), photos: new Set(sh.map((x) => x.uri)).size, name };
-    })
+  const named = new Map<string, { name: string; sh: Shot[] }>();
+  const out: { name: string; sh: Shot[] }[] = [];
+  by.forEach((sh) => {
+    const votes = new Map<string, number>();
+    sh.forEach((x) => { const n = s.names[x.key]; if (n) votes.set(n, (votes.get(n) ?? 0) + 1); });
+    const name = [...votes].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const into = name && named.get(name.toLowerCase());
+    if (into) into.sh.push(...sh);
+    else { const p = { name, sh }; out.push(p); if (name) named.set(name.toLowerCase(), p); }
+  });
+  return out
+    // biggest, surest face first: the person's picture
+    .map(({ name, sh }) => ({ shots: sh.sort((a, b) => b.f.w * b.f.h * b.f.score - a.f.w * a.f.h * a.f.score), photos: new Set(sh.map((x) => x.uri)).size, name }))
     .sort((a, b) => b.photos - a.photos);
 }
 
@@ -68,6 +80,7 @@ export default function People() {
   const [saved, setSaved] = useState<Saved | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [rev, setRev] = useState(0); // remounts the name fields, to undo a typed name the user didn't confirm
   const stop = useRef(false);
 
   useEffect(() => { load().then(setSaved); return () => { stop.current = true; }; }, []);
@@ -79,6 +92,26 @@ export default function People() {
   }, [saved, progress]);
   const list = useMemo(() => (saved?.groups && !progress ? people(saved, saved.groups) : []), [saved, progress]);
   const shown = useMemo(() => list.filter((p) => p.photos >= 2), [list]);
+  // the profile's name on the person whose face is the avatar's (onboarding's "That's me")
+  useEffect(() => {
+    if (!saved?.groups || saved.me || !list.length || !ClipEmbedder) return;
+    let live = true;
+    (async () => {
+      const p = await getProfile();
+      if (!p.name || !p.avatar) return;
+      const f = (await ClipEmbedder!.faces([p.avatar], 0.6, true))[0]?.faces[0];
+      const me = f && faceVec(f);
+      if (!me || !live) return;
+      const hits = (x: Person) => x.shots.filter((sh) => isAnyOf(sh.f, [me])).length;
+      const best = list.reduce((a, b) => (hits(b) > hits(a) ? b : a));
+      if (!hits(best)) return;
+      const names = { ...saved.names };
+      if (!list.some((x) => same(x.name, p.name))) best.shots.forEach((x) => (names[x.key] = p.name));
+      const s = { ...saved, names, me: true };
+      setSaved(s); save(s);
+    })().catch((e) => console.warn('[people] profile match failed:', e));
+    return () => { live = false; };
+  }, [saved, list]);
   const todo = library && saved ? library.photos.filter((p) => !saved.scans[p.uri]) : [];
 
   const scan = async () => {
@@ -101,10 +134,18 @@ export default function People() {
 
   const rename = (p: Person, name: string) => {
     if (!saved || name === p.name) return;
-    const names = { ...saved.names };
-    p.shots.forEach((x) => (name ? (names[x.key] = name) : delete names[x.key]));
-    const s = { ...saved, names };
-    setSaved(s); save(s);
+    const write = () => {
+      const names = { ...saved.names };
+      p.shots.forEach((x) => (name ? (names[x.key] = name) : delete names[x.key]));
+      const s = { ...saved, names };
+      setSaved(s); save(s);
+    };
+    const other = list.find((x) => x !== p && same(x.name, name));
+    if (!other) return write();
+    Alert.alert(`Merge with ${other.name}?`, `Someone is already called ${other.name}. Are they the same person?`, [
+      { text: 'No', style: 'cancel', onPress: () => setRev((r) => r + 1) },
+      { text: 'Merge', onPress: write },
+    ], { cancelable: true, onDismiss: () => setRev((r) => r + 1) });
   };
 
   const faces = list.reduce((n, p) => n + p.shots.length, 0);
@@ -134,7 +175,7 @@ export default function People() {
       <FlatList
         data={shown}
         keyExtractor={(p) => p.shots[0].key}
-        extraData={open}
+        extraData={[open, rev]}
         ListHeaderComponent={header}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -148,7 +189,7 @@ export default function People() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <FaceThumb uri={p.shots[0].uri} box={p.shots[0].f} size={56} />
                 <View style={{ flex: 1 }}>
-                  <TextInput defaultValue={p.name} onEndEditing={(e) => rename(p, e.nativeEvent.text.trim())} placeholder="Who is this?"
+                  <TextInput key={rev} defaultValue={p.name} onEndEditing={(e) => rename(p, e.nativeEvent.text.trim())} placeholder="Who is this?"
                     placeholderTextColor={t.inkMuted} returnKeyType="done" style={[display(17), { color: t.ink, paddingVertical: 4 }]} />
                   <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>{p.photos} photos</Text>
                 </View>
