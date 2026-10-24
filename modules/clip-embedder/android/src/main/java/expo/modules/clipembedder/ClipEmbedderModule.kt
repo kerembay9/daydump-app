@@ -13,6 +13,8 @@ import com.google.ai.edge.litert.TensorBuffer
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Process
@@ -44,6 +46,9 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -106,6 +111,12 @@ class ClipEmbedderModule : Module() {
 
     // Split of the last embedImages call: decode vs model ms, plus the first decoded bitmap's size.
     Function("lastEmbedTimings") { clip.timings }
+
+    // Bench: which decoder embedImages uses (ClipEngine.decoder), and the decode pool timed alone.
+    Function("setDecoder") { mode: String -> clip.decoder = mode }
+    AsyncFunction("benchDecode") Coroutine { uris: List<String> ->
+      withContext(Dispatchers.Default) { clip.benchDecode(uris) }
+    }
 
     AsyncFunction("embedTexts") Coroutine { texts: List<String> ->
       withContext(Dispatchers.Default) { encode(clip.embedTexts(texts)) }
@@ -327,6 +338,10 @@ class ClipEngine private constructor(private val ctx: Context) {
   // cpu8: LiteRT CPU dynamic int8), optional alternative vision model file.
   private var parallel = true
   private var engine = "gpu-cpu8"
+  // Bench knob (setDecoder): fast = decodeClip (the app's); sample8 = decodeClip without EXIF thumbnails; skia = the old
+  // decodeScaled; gold = decodeClip at 1/2 scale, no thumbnails (the bench's quality reference, slow).
+  @Volatile var decoder = "fast"
+  private val thumbs = AtomicInteger() // photos of the current call decoded from their EXIF thumbnail
   private var visionFile: String? = null
   // Indexing threads run below the UI and JS threads so scrolling stays smooth while it runs; they still get every idle
   // core. Nice 9, not THREAD_PRIORITY_BACKGROUND (10): from 10 Android may also move the thread to the little cores.
@@ -443,8 +458,17 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   suspend fun embedImages(uris: List<String>, thumb: Int) = mutex.withLock { embedImagesLocked(uris, thumb) }
 
+  // Bench: the decode pool alone (current decoder, 4 threads, nice 9) over uris, as an index batch decodes them.
+  suspend fun benchDecode(uris: List<String>): Map<String, Double> = mutex.withLock {
+    thumbs.set(0)
+    val t0 = SystemClock.elapsedRealtime()
+    val failed = coroutineScope { uris.map { u -> async(decodePool) { fill(u, 0, FloatArray(3 * PLANE), 0) } }.awaitAll() }.count { it == null }
+    mapOf("ms" to (SystemClock.elapsedRealtime() - t0).toDouble(), "thumbs" to thumbs.get().toDouble(), "failed" to failed.toDouble())
+  }
+
   private suspend fun embedImagesLocked(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
+    thumbs.set(0)
     val n = uris.size
     val input = FloatArray(n * 3 * PLANE)
     val t0 = SystemClock.elapsedRealtime()
@@ -478,8 +502,10 @@ class ClipEngine private constructor(private val ctx: Context) {
   private fun fill(uri: String, thumb: Int, input: FloatArray, i: Int): String? = try {
       val bmp = if (thumb > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         runCatching { loadThumb(ctx, uri, thumb) }.getOrElse { decodeScaled(ctx, uri, SIZE) }
-      } else {
+      } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || decoder == "skia") {
         decodeScaled(ctx, uri, SIZE)
+      } else {
+        decodeClip(ctx, uri, decoder == "fast", if (decoder == "gold") 2 else 8).let { (b, thumb) -> if (thumb) thumbs.incrementAndGet(); b }
       }
       "${bmp.width}x${bmp.height}".also { fillBitmap(bmp, input, i) }
     } catch (e: Exception) {
@@ -556,7 +582,7 @@ class ClipEngine private constructor(private val ctx: Context) {
       jobs.awaitAll()
     }
     val wall = SystemClock.elapsedRealtime() - t0
-    timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "cpuPhotos" to cpuPhotos.toDouble(), "size" to (sizes.firstOrNull() ?: ""))
+    timings = mapOf("decodeMs" to (wall - modelMs).toDouble(), "modelMs" to modelMs.toDouble(), "cpuPhotos" to cpuPhotos.toDouble(), "thumbs" to thumbs.get().toDouble(), "size" to (sizes.firstOrNull() ?: ""))
     return out
   }
 
@@ -633,6 +659,127 @@ internal fun clipSize(src: Bitmap): Bitmap {
   val out = Bitmap.createScaledBitmap(b, max(SIZE, (b.width * k).roundToInt()), max(SIZE, (b.height * k).roundToInt()), true)
   if (b !== src && out !== b) b.recycle()
   return if (out === src) src.copy(Bitmap.Config.ARGB_8888, false) else out
+}
+
+/**
+ * CLIP's decode (API 28+): shortest side SIZE, upright; second = it came from the EXIF thumbnail. A camera JPEG carries a
+ * ~512x384 thumbnail that decodes in a few ms; otherwise libjpeg scales by 1/2-1/8 while decoding. (setTargetSize, as in
+ * decodeScaled, asks for sample 13 on a 12 MP photo, which libjpeg can't do: a full decode, every 13th pixel kept.)
+ */
+internal fun decodeClip(ctx: Context, uri: String, useThumb: Boolean, maxSample: Int): Pair<Bitmap, Boolean> {
+  val u = Uri.parse(uri)
+  val isFile = u.scheme == null || u.scheme == "file"
+  if (useThumb) exifThumb(ctx, u, isFile)?.let { return it to true }
+  val src = if (isFile) ImageDecoder.createSource(File(u.path!!)) else ImageDecoder.createSource(ctx.contentResolver, u)
+  val b = ImageDecoder.decodeBitmap(src) { dec, info, _ ->
+    var k = 1
+    while (k < maxSample && min(info.size.width, info.size.height) / (k * 2) >= SIZE) k *= 2
+    dec.setTargetSampleSize(k)
+    dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+  }
+  return tentSize(b) to false
+}
+
+/**
+ * The EXIF thumbnail, shortest side SIZE and upright, when it can stand in for the photo: the photo's aspect (an edit that
+ * crops leaves a stale one), big enough, and not heavily compressed (some firmware writes ~q50 ones). Else null.
+ */
+private fun exifThumb(ctx: Context, u: Uri, isFile: Boolean): Bitmap? = runCatching {
+  fun read(e: ExifInterface): Bitmap? {
+    if (!e.hasThumbnail() || !e.isThumbnailCompressed) return null
+    val w = e.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
+    val h = e.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0)
+    val j = e.thumbnailBytes ?: return null
+    if (w <= 0 || h <= 0 || dcQuant(j) > 8) return null // 8: libjpeg quality ~75
+    val t = BitmapFactory.decodeByteArray(j, 0, j.size) ?: return null
+    if (min(t.width, t.height) < SIZE || abs(t.width.toFloat() / t.height - w.toFloat() / h) > 0.01f * w / h) return null.also { t.recycle() }
+    val m = Matrix() // as Glide's TransformationUtils
+    when (e.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+      ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> m.setScale(-1f, 1f)
+      ExifInterface.ORIENTATION_ROTATE_180 -> m.setRotate(180f)
+      ExifInterface.ORIENTATION_FLIP_VERTICAL -> { m.setRotate(180f); m.postScale(-1f, 1f) }
+      ExifInterface.ORIENTATION_TRANSPOSE -> { m.setRotate(90f); m.postScale(-1f, 1f) }
+      ExifInterface.ORIENTATION_ROTATE_90 -> m.setRotate(90f)
+      ExifInterface.ORIENTATION_TRANSVERSE -> { m.setRotate(-90f); m.postScale(-1f, 1f) }
+      ExifInterface.ORIENTATION_ROTATE_270 -> m.setRotate(-90f)
+    }
+    val s = tentSize(t)
+    return if (m.isIdentity) s else Bitmap.createBitmap(s, 0, 0, s.width, s.height, m, false).also { if (it !== s) s.recycle() }
+  }
+  // thumbnailBytes may re-read the source, so it's read before the stream closes
+  if (isFile) read(ExifInterface(u.path!!)) else ctx.contentResolver.openInputStream(u)!!.use { read(ExifInterface(it)) }
+}.getOrNull()
+
+/** A JPEG's first quantization table's DC step (2-3 at quality 90, 8 at 75, 16 at 50); 99 when there's none to read. */
+internal fun dcQuant(j: ByteArray): Int {
+  var i = 2
+  while (i + 5 < j.size && j[i] == 0xFF.toByte()) {
+    val m = j[i + 1].toInt() and 255
+    if (m == 0xDB) return if ((j[i + 4].toInt() and 0xF0) == 0) j[i + 5].toInt() and 255 else 99 // 8-bit table
+    if (m == 0xDA) break
+    i += 2 + ((j[i + 2].toInt() and 255) shl 8 or (j[i + 3].toInt() and 255))
+  }
+  return 99
+}
+
+/**
+ * Shortest side SIZE, antialiased like training's resize (PIL BILINEAR: a triangle filter widened by the scale), where
+ * createScaledBitmap samples 2 pixels whatever the scale. Recycles src unless it's returned.
+ */
+internal fun tentSize(src: Bitmap): Bitmap {
+  val w = src.width
+  val h = src.height
+  val s = SIZE.toFloat() / min(w, h)
+  val tw = max(SIZE, (w * s).roundToInt())
+  val th = max(SIZE, (h * s).roundToInt())
+  if (tw == w && th == h) return src
+  val px = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h); src.recycle() }
+  val (xf, xn, xw) = taps(w, tw)
+  val (yf, yn, yw) = taps(h, th)
+  val mid = FloatArray(h * tw * 3) // rows resized, channels split
+  for (y in 0 until h) for (x in 0 until tw) {
+    var r = 0f; var g = 0f; var b = 0f
+    for (k in 0 until xn) {
+      val wt = xw[x * xn + k]
+      if (wt == 0f) continue
+      val p = px[y * w + xf[x] + k]
+      r += wt * (p shr 16 and 255); g += wt * (p shr 8 and 255); b += wt * (p and 255)
+    }
+    val o = (y * tw + x) * 3
+    mid[o] = r; mid[o + 1] = g; mid[o + 2] = b
+  }
+  val out = IntArray(tw * th)
+  for (y in 0 until th) for (x in 0 until tw) {
+    var r = 0f; var g = 0f; var b = 0f
+    for (k in 0 until yn) {
+      val wt = yw[y * yn + k]
+      if (wt == 0f) continue
+      val o = ((yf[y] + k) * tw + x) * 3
+      r += wt * mid[o]; g += wt * mid[o + 1]; b += wt * mid[o + 2]
+    }
+    fun c(v: Float) = (v + 0.5f).toInt().coerceIn(0, 255)
+    out[y * tw + x] = (0xFF shl 24) or (c(r) shl 16) or (c(g) shl 8) or c(b)
+  }
+  return Bitmap.createBitmap(out, tw, th, Bitmap.Config.ARGB_8888)
+}
+
+/** Per output pixel: its first input pixel and n weights (zero past the window), PIL's precompute_coeffs for a triangle. */
+private fun taps(inSize: Int, outSize: Int): Triple<IntArray, Int, FloatArray> {
+  val scale = inSize.toFloat() / outSize
+  val fs = max(scale, 1f)
+  val n = ceil(fs).toInt() * 2 + 1
+  val first = IntArray(outSize)
+  val wts = FloatArray(outSize * n)
+  for (o in 0 until outSize) {
+    val c = (o + 0.5f) * scale
+    val lo = max((c - fs + 0.5f).toInt(), 0)
+    val hi = min((c + fs + 0.5f).toInt(), inSize)
+    first[o] = lo
+    var sum = 0f
+    for (k in 0 until min(hi - lo, n)) max(0f, 1f - abs((lo + k - c + 0.5f) / fs)).let { wts[o * n + k] = it; sum += it }
+    if (sum > 0f) for (k in 0 until n) wts[o * n + k] /= sum
+  }
+  return Triple(first, n, wts)
 }
 
 internal fun decodeScaled(ctx: Context, uri: String, side: Int): Bitmap {

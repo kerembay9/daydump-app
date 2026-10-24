@@ -9,7 +9,14 @@ type ClipEmbedderModule = {
    */
   embedImages(uris: string[], thumb?: number): Promise<string>;
   /** decode vs model time of the last embedImages call (LiteRT engines: modelMs = GPU busy, decodeMs = the rest of the wall time, cpuPhotos = photos the CPU took); size = first decoded bitmap */
-  lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; size: string };
+  lastEmbedTimings(): { decodeMs: number; modelMs: number; cpuPhotos?: number; thumbs?: number; size: string };
+  /**
+   * Bench: the decoder embedImages uses. fast (default): the camera's EXIF thumbnail when it matches the photo, else a 1/2-1/8
+   * scaled decode; sample8: fast without thumbnails; skia: the old full decode (setTargetSize); gold: 1/2 scale, the quality reference.
+   */
+  setDecoder?(mode: 'fast' | 'sample8' | 'skia' | 'gold'): void;
+  /** Bench: the decode pool alone over uris with the current decoder; thumbs = photos decoded from their EXIF thumbnail. */
+  benchDecode?(uris: string[]): Promise<{ ms: number; thumbs: number; failed: number }>;
   /**
    * Benchmark knobs; rebuilds the vision model. engine: gpu-cpu8 (default; LiteRT GPU, vision.tflite, with LiteRT CPU dynamic int8, vision_dw8.tflite, taking photos once decoding is done) | gpu-only | cpu8 (LiteRT CPU dynamic int8 alone; also gpu-cpu8 without a usable GPU).
    * model: files/models/vision_<model>.tflite on the device, null = bundled. ok = false: LiteRT can't run here (embedImages will throw).

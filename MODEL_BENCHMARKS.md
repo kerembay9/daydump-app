@@ -60,6 +60,16 @@ Rows are fp32 unless marked; int8 costs ≤ 0.2 points. Queries are the raw capt
 | Parallel decode, XNNPACK EP | 240 | 209 |
 | MediaStore thumbnails instead of full decode | decode 83 → 23–47 ms | top concept changed for ~40% of photos: not used |
 
+Decode (2026-10-24, A54, dev model M, 256 random photos, alternating runs; "gold" = 1/2-scale decode + tent resize on the GPU). The old decode (`ImageDecoder.setTargetSize`) picks sample size 13, which has no DCT-domain shortcut, so it decodes at full resolution and point-samples (aliased). The fast decode (shipped): the camera's EXIF thumbnail when it matches the photo's aspect, is ≥ 224 px and has DC quant ≤ 8 (84 of 256 photos); otherwise a 1/2–1/8 DCT-scaled decode. Both then use a PIL-style tent resize.
+
+| | Old decode | Fast decode |
+|---|---|---|
+| Decode only, 4 threads | 23.0 ms/photo | 15.6 (sample 8 without thumbnails: 22.1; entropy decode dominates) |
+| GPU + CPU helper, full index path | 35–36 ms/photo (~101k/h) | 29–30 (~121k/h); CPU took 35–39 photos vs 19–27 |
+| GPU only | 37 | 34 |
+| vs gold: cosine mean / min | 0.960 / 0.786 | 0.995 / 0.965 |
+| vs gold: top concept same / top-5 overlap | 54% / 68% | 82% / 88% |
+
 Thread and core tests (2026-10-19, 128 photos, wall time per photo; the shipped config scored 88–92 in the same runs). None beat it, so the code was removed.
 
 | Setting | Wall ms/photo | Why |
