@@ -256,7 +256,7 @@ function ProfileBody() {
         <Section title="Developer tools">
           <Row label="Stories debug" onPress={() => setDebug(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Model bench" onPress={() => setBench(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />}
-          {__DEV__ && <Row label="CLIP model" sub={`${DEV_MODEL ?? 'Shipped'}. Tap to switch to ${DEV_MODEL ? 'shipped' : 'tc45 (TinyCLIP-45M)'}: restarts the app, each keeps its own index`}
+          {__DEV__ && <Row label="CLIP model" sub={`${clipName(DEV_MODEL)}. Tap to switch to ${clipName(DEV_MODEL ? null : 'tc45')}: restarts the app, each keeps its own index`}
             onPress={() => ClipEmbedder?.setDevModel(DEV_MODEL ? null : 'tc45')} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
@@ -287,6 +287,9 @@ function dropAvatarFile(uri: string) {
   if (!uri) return;
   try { new File(uri).delete(); } catch { /* already gone */ }
 }
+
+/** Developer tools' CLIP switch: null = the shipped model. */
+const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);
 
 const date = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
