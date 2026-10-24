@@ -35,20 +35,23 @@ const MODES = [
 const modeName = (m: { gpu: boolean; visionGpu: boolean }) => `LLM ${m.gpu ? 'GPU' : 'CPU'} · vision ${m.visionGpu ? 'GPU' : 'CPU'}`;
 type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
 
-/** Indexer path (batches of 16: asset info for GPS, embed, top concepts) with full decode vs MediaStore thumbnails. */
+/** Indexer path (batches of IDX_BATCH: asset info for GPS, embed, top concepts), old vs fast decode. */
 const IDX_N = 256; // ≥ the biggest batch below, or that mode measures a smaller one
 const IDX_BATCH = 128;
-// Thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so full decode only.
-// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = bundled 45M.
-// other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = GPU alone (fp16, ~fp32 vectors).
+// MediaStore thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so not those.
+// decoder (setDecoder): skia = the old full decode, fast = the app's (EXIF thumbnail, else 1/2-1/8 scaled decode).
+// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = bundled.
+// other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = GPU alone on the gold decode.
 // batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
-const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; batch?: number; other?: boolean }[] = [
-  // Alternating, so heat hits both hybrids the same.
-  { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
-  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
-  { name: 'parallel · LiteRT CPU int8 (dw8) · 45M', parallel: true, engine: 'cpu8', model: null },
-  { name: 'parallel · GPU + LiteRT CPU int8 helps · 45M', parallel: true, engine: 'gpu-cpu8', model: null },
-  { name: 'parallel · GPU only · 45M', parallel: true, engine: 'gpu-only', model: null },
+type Decoder = 'fast' | 'sample8' | 'skia' | 'gold';
+const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; decoder: Decoder; batch?: number; other?: boolean }[] = [
+  // Alternating, so heat hits old and new the same.
+  { name: 'GPU + CPU helper · old decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'skia' },
+  { name: 'GPU + CPU helper · fast decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'fast' },
+  { name: 'GPU only · old decode', parallel: true, engine: 'gpu-only', model: null, decoder: 'skia' },
+  { name: 'GPU only · fast decode', parallel: true, engine: 'gpu-only', model: null, decoder: 'fast' },
+  { name: 'GPU + CPU helper · old decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'skia' },
+  { name: 'GPU + CPU helper · fast decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'fast' },
 ];
 
 /** YuNet face bench: files/models/yunet_<size>.tflite (scripts/build_assets.py yunet), on the selfie candidates + random photos. */
@@ -204,13 +207,14 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
     const n = photos.length;
     const lines: string[] = [];
     const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
-    // Untimed pass on the GPU alone: warms the file cache (fair to every mode) and gives the reference vectors.
+    // Untimed pass on the GPU alone with the gold decode: warms the file cache (fair to every mode) and gives the reference vectors.
     await clip.configure(true, 'gpu-only', null);
+    clip.setDecoder?.('gold');
     const pass = async (B = IDX_BATCH) => {
-      const t = { info: 0, decode: 0, model: 0, concepts: 0, cpu: 0 };
+      const t = { info: 0, decode: 0, model: 0, concepts: 0, cpu: 0, thumbs: 0 };
       let size = '';
       const vecs = new Float32Array(n * DIM);
-      const top1: number[] = [];
+      const top5: number[][] = [];
       for (let i = 0; i < n; i += B) {
         const batch = photos.slice(i, i + B);
         const [, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
@@ -220,16 +224,26 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         t.decode += lt.decodeMs;
         t.model += lt.modelMs;
         t.cpu += lt.cpuPhotos ?? 0;
+        t.thumbs += lt.thumbs ?? 0;
         size ||= lt.size;
         const [c, cMs] = await timed(() => clip.topConcepts(b64, 10));
         t.concepts += cMs;
-        for (let j = 0; j < batch.length; j++) top1.push(c.ids[j * 10]);
+        for (let j = 0; j < batch.length; j++) top5.push(c.ids.slice(j * 10, j * 10 + 5));
         vecs.set(b64ToFloats(b64), i * DIM);
       }
-      return { t, size, vecs, top1 };
+      return { t, size, vecs, top5 };
     };
     setBusy('index bench: warm-up');
     const ref = await pass();
+    // The decode pool alone (no model), all IDX_N photos per run, alternating.
+    for (const d of ['skia', 'sample8', 'fast', 'skia', 'sample8', 'fast'] as const) {
+      if (!clip.benchDecode) break;
+      setBusy(`index bench: decode only, ${d}`);
+      clip.setDecoder?.(d);
+      const r = await clip.benchDecode(uris);
+      lines.push(`decode only · ${d}: ${(r.ms / n).toFixed(1)} ms/photo${r.thumbs ? ` · EXIF thumbnail ${r.thumbs}/${n}` : ''}${r.failed ? ` · failed ${r.failed}` : ''}`);
+      setIdx([...lines]);
+    }
     for (const [k, m] of IDX_MODES.entries()) {
       setBusy(`index bench ${k + 1}/${IDX_MODES.length}: ${m.name}`);
       const cfg = await clip.configure(m.parallel, m.engine, m.model).catch((e) => ({ found: false, ok: false, loadMs: 0, error: String(e) }));
@@ -238,20 +252,23 @@ export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
         setIdx([...lines]);
         continue;
       }
-      const { t, size, vecs, top1 } = await pass(m.batch);
+      clip.setDecoder?.(m.decoder);
+      const { t, size, vecs, top5 } = await pass(m.batch);
       const per = (x: number) => (x / n).toFixed(0);
       const cos = photos.map((_, k) => {
         let d = 0;
         for (let x = 0; x < DIM; x++) d += vecs[k * DIM + x] * ref.vecs[k * DIM + x];
         return d;
       });
-      const same = top1.filter((id, k) => id === ref.top1[k]).length;
+      const same = top5.filter((ids, k) => ids[0] === ref.top5[k][0]).length;
+      const overlap = top5.reduce((a, ids, k) => a + ids.filter((id) => ref.top5[k].includes(id)).length, 0) / (5 * n);
       // Another model's vectors live in a different space: only its timings mean anything.
-      const vs = m.other ? '' : `\n   vs shipped: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}%`;
+      const vs = m.other ? '' : `\n   vs gold: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}% · top-5 overlap ${(100 * overlap).toFixed(0)}%`;
       const total = t.info + t.decode + t.model + t.concepts;
-      lines.push(`${m.name}: ${per(total)} ms/photo · ${Math.round((3.6e6 * n) / total).toLocaleString()} photos/h (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''} · src ${size}${vs}`);
+      lines.push(`${m.name}: ${per(total)} ms/photo · ${Math.round((3.6e6 * n) / total).toLocaleString()} photos/h (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''}${t.thumbs ? ` · EXIF thumbnail ${t.thumbs}/${n}` : ''} · src ${size}${vs}`);
       setIdx([...lines]);
     }
+    clip.setDecoder?.('fast');
     await clip.configure(true, 'gpu-cpu8', null); // back to shipped defaults
   });
 
