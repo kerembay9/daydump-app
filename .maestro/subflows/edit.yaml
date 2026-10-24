@@ -3,4 +3,5 @@ appId: com.horizonzeta.picdump
 ---
 - runFlow: pick.yaml
 - tapOn: "Continue with .*"
-- assertVisible: "Sizes · Filter %"
+- assertVisible:
+    id: "edit-title"

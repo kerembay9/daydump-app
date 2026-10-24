@@ -28,4 +28,5 @@ name: 14 edit filmstrip
 - tapOn:
     text: "Use this photo"
     index: 0
-- assertVisible: "Sizes · Filter %"
+- assertVisible:
+    id: "edit-title"

@@ -12,4 +12,5 @@ name: 16 save only -> drafts
 - tapOn: "View in Library"
 - assertVisible: "Drafts \\(1\\)"
 - tapOn: ".*, draft"
-- assertVisible: "Sizes · Filter %"
+- assertVisible:
+    id: "edit-title"

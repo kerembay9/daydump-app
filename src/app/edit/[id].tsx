@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../state/AppState';
@@ -53,7 +53,7 @@ export default function Edit() {
   return <Studio dump={dump} story={stories.find((s) => s.id === dump.storyId)} library={library} />;
 }
 
-type Saved = Pick<Dump, 'photos' | 'ratio' | 'fit' | 'layout' | 'filter'>;
+type Saved = Pick<Dump, 'title' | 'photos' | 'ratio' | 'fit' | 'layout' | 'filter'>;
 
 /** Debounced auto-save; returns flush(), which saves a pending change now (before Preview reads it, and on close). */
 function useAutosave(id: string, value: Saved) {
@@ -81,6 +81,7 @@ const fromAsset = (a: PhotoAsset): DumpPhoto => ({ id: a.id, uri: a.uri, created
 function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: Library | null }) {
   const { t } = useTheme();
   const bottom = useSafeAreaInsets().bottom;
+  const [title, setTitle] = useState(dump.title);
   const [photos, setPhotos] = useState(dump.photos);
   const [ratio, setRatio] = useState<string>(ratioOf(dump.ratio).key);
   const fit = fitOf(dump.fit);
@@ -90,7 +91,9 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   /** the filmstrip photo picked by a tap; tapping it again makes it the cover */
   const [sel, setSel] = useState<string | null>(null);
 
-  const saved = useMemo(() => ({ photos, ratio, fit, layout, filter: filter as Record<string, unknown> }), [photos, ratio, fit, layout, filter]);
+  // a cleared title keeps the last saved one
+  const saved = useMemo(() => ({ title: title.trim() || dump.title, photos, ratio, fit, layout, filter: filter as Record<string, unknown> }),
+    [title, dump.title, photos, ratio, fit, layout, filter]);
   const flush = useAutosave(dump.id, saved);
   // Posted from the Preview pushed on top of this Edit: back here would edit the posted record (update() drops it
   // anyway), so leave instead. Reuse makes the editable copy.
@@ -156,8 +159,9 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       <View style={{ paddingTop: 2, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
         <View style={{ flex: 1, alignItems: 'center', minWidth: 0 }}>
-          <Text style={[display(18.5), { color: t.ink }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>{dump.title}</Text>
-          <Text style={[ui(10), { color: t.inkMuted }]}>Sizes · Filter %</Text>
+          <TextInput value={title} onChangeText={setTitle} onEndEditing={() => { if (!title.trim()) setTitle(dump.title); }}
+            testID="edit-title" accessibilityLabel="Dump title" multiline submitBehavior="blurAndSubmit" returnKeyType="done" maxLength={80}
+            style={[display(18.5), { color: t.ink, textAlign: 'center', padding: 0, alignSelf: 'stretch' }]} />
         </View>
         <Tap onPress={toPreview}
           accessibilityRole="button" accessibilityLabel="Preview"

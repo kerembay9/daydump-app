@@ -93,3 +93,22 @@ test('Crop: dragging / pinching a photo picks the part shown, saved with the dum
   expect(zoomed.z).toBeCloseTo(2);
   expect(zoomed.x).toBeCloseTo(crop.x);
 }, 30000);
+
+test('the title on top is editable and auto-saves; a cleared title keeps the old one', async () => {
+  const [p] = world.photos;
+  const d = await createDraft({ source: 'create', title: 'Beach day', photos: [{ id: p.id, uri: p.uri }] });
+  await bootApp(`/edit/${d.id}`);
+  const input = await screen.findByLabelText('Dump title');
+  expect(input.props.value).toBe('Beach day');
+  expect(screen.queryByText('Sizes · Filter %')).toBeNull();
+
+  await fireEvent.changeText(input, 'Sunset swim');
+  await settle();
+  expect((await get(d.id))!.title).toBe('Sunset swim');
+
+  await fireEvent.changeText(input, '  ');
+  await settle();
+  expect((await get(d.id))!.title).toBe('Beach day');
+  await fireEvent(input, 'endEditing');
+  expect(screen.getByLabelText('Dump title').props.value).toBe('Beach day');
+}, 30000);

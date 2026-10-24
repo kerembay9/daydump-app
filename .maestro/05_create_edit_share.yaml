@@ -15,7 +15,8 @@ name: 05 create -> edit -> share step
     text: "Photo from .*"
     index: 1
 - tapOn: "Continue with .*"
-- assertVisible: "Sizes · Filter %"
+- assertVisible:
+    id: "edit-title"
 - waitForAnimationToEnd
 - takeScreenshot: vr_edit
 - tapOn: "Preview"
