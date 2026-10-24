@@ -148,7 +148,7 @@ jest.mock('@shopify/react-native-skia', () => {
   const img = () => ({ width: () => 1080, height: () => 1350, encodeToBytes: () => new Uint8Array([0xff, 0xd8]), dispose: () => {} });
   const rect = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
   return {
-    Canvas: Null, Group: Null, Image: Null, Rect: Null, RoundedRect: Null, Shadow: Null, ColorMatrix: Null, Path: Null,
+    Canvas: jest.fn(Null), Group: Null, Image: Null, Rect: Null, RoundedRect: Null, Shadow: Null, ColorMatrix: Null, Path: Null,
     rect, rrect: (r: object, rx: number, ry: number) => ({ rect: r, rx, ry }), vec: (x: number, y: number) => ({ x, y }),
     Skia: { Image: { MakeImageFromEncoded: img }, Data: { fromURI: async () => ({}) } },
     drawAsImage: jest.fn(async () => img()),

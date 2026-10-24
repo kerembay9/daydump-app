@@ -42,11 +42,11 @@ const LIKES = 1284;
 const shown = (h: string) => h || 'your_account';
 const ring = { experimental_backgroundImage: `linear-gradient(45deg, ${fixed.igRing[0]}, ${fixed.igRing[1]})` };
 
-/** One slide in a w x h frame: cover = cropped to fill (IG feed, grid), contain = whole slide, letterboxed (TikTok). */
-function SlideCanvas({ v, i, w, h, mode }: { v: PostView; i: number; w: number; h: number; mode: 'cover' | 'contain' }) {
+/** One slide in a w x h frame, whole and letterboxed: no mock-up ever hides part of a slide. */
+function SlideCanvas({ v, i, w, h }: { v: PostView; i: number; w: number; h: number }) {
   const r = ratioOf(v.ratio);
   const k = r.h / r.w;
-  const sw = mode === 'cover' ? Math.max(w, h / k) : Math.min(w, h / k);
+  const sw = Math.min(w, h / k);
   const sh = sw * k;
   const s = v.slides[i];
   const photos = useMemo(() => s.photos.map((p) => ({ image: v.images[p.uri], matrix: matrixFor(lookFor(v.filter, p.id)) })), [s, v.images, v.filter]);
@@ -60,7 +60,7 @@ function SlideCanvas({ v, i, w, h, mode }: { v: PostView; i: number; w: number; 
 }
 
 /** Sideways pager over the slides; tap = next slide. Follows index changes from arrows / dots. */
-function Pager({ v, w, h, mode }: { v: PostView; w: number; h: number; mode: 'cover' | 'contain' }) {
+function Pager({ v, w, h }: { v: PostView; w: number; h: number }) {
   const list = useRef<FlatList<number>>(null);
   const n = v.slides.length;
   useEffect(() => { list.current?.scrollToOffset({ offset: v.index * w, animated: true }); }, [v.index, w]);
@@ -81,7 +81,7 @@ function Pager({ v, w, h, mode }: { v: PostView; w: number; h: number; mode: 'co
       style={{ width: w, height: h }}
       renderItem={({ item }) => (
         <Pressable onPress={() => v.onIndex((v.index + 1) % n)} accessibilityLabel={v.index === n - 1 ? 'First slide' : 'Next slide'}>
-          <SlideCanvas v={v} i={item} w={w} h={h} mode={mode} />
+          <SlideCanvas v={v} i={item} w={w} h={h} />
         </Pressable>
       )}
     />
@@ -106,7 +106,7 @@ function Avatar({ v, size, ringed = true, border = 1 }: { v: PostView; size: num
 const pill = { position: 'absolute', height: 24, paddingHorizontal: 10, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' } as const;
 const arrow = { position: 'absolute', top: '50%', marginTop: -14, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' } as const;
 
-/** IG feed post: author row (handle edited in place), carousel at the post's ratio (taller than 4:5 is cropped, like IG), actions. */
+/** IG feed post: author row (handle edited in place), carousel at the post's ratio (frame capped at 4:5; taller slides letterboxed, whole), actions. */
 export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (h: string) => void }) {
   const { t } = useTheme();
   const input = useRef<TextInput>(null);
@@ -142,7 +142,7 @@ export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (
       </View>
 
       <View style={{ width: w, height: h, backgroundColor: t.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-        <Pager v={v} w={w} h={h} mode="cover" />
+        <Pager v={v} w={w} h={h} />
         <View pointerEvents="none" style={[pill, { top: 10, right: 10 }]}>
           <Text style={[ui(11, 600), { color: WHITE }]}>{v.index + 1}/{n}</Text>
         </View>
@@ -208,8 +208,8 @@ export function IgGrid({ v, w, others }: { v: PostView; w: number; others: strin
         </View>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, borderRadius: 12, overflow: 'hidden' }}>
-        <View style={{ width: tile, height: tile }}>
-          <SlideCanvas v={v} i={0} w={tile} h={tile} mode="cover" />
+        <View style={{ width: tile, height: tile, backgroundColor: t.borderSubtle }}>
+          <SlideCanvas v={v} i={0} w={tile} h={tile} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: t.ink }} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: '#261F1B' }}>
             <Text style={[ui(9, 700), { color: fixed.printBorder }]}>NEW</Text>
@@ -242,7 +242,7 @@ export function TikTok({ v, w, h }: { v: PostView; w: number; h: number }) {
   const n = v.slides.length;
   return (
     <View style={{ width: w, height: h, alignSelf: 'center', borderRadius: 22, overflow: 'hidden', backgroundColor: fixed.tiktokBg, marginBottom: 10, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)' }}>
-      <Pager v={v} w={w} h={h} mode="contain" />
+      <Pager v={v} w={w} h={h} />
       <View pointerEvents="none" style={{ position: 'absolute', top: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 16 }}>
         <Text style={[ui(12.5, 600), { color: WHITE, opacity: 0.7 }, shadowText]}>Following</Text>
         <Text style={[ui(12.5, 600), { color: WHITE, borderBottomWidth: 2, borderColor: WHITE, paddingBottom: 2 }, shadowText]}>For You</Text>
