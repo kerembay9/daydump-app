@@ -14,6 +14,7 @@ import Crop from 'lucide-react-native/icons/crop';
 import Download from 'lucide-react-native/icons/download';
 import GalleryHorizontal from 'lucide-react-native/icons/gallery-horizontal';
 import Heart from 'lucide-react-native/icons/heart';
+import Maximize2 from 'lucide-react-native/icons/maximize-2';
 import ImageIcon from 'lucide-react-native/icons/image';
 import MessageCircle from 'lucide-react-native/icons/message-circle';
 import MoreHorizontal from 'lucide-react-native/icons/ellipsis';
@@ -107,6 +108,7 @@ export const Icons = {
   sparkle: lucide(Sparkle),
   copy: lucide(Copy),
   image: lucide(ImageIcon),
+  expand: lucide(Maximize2),
   more: lucide(MoreHorizontal),
   refresh: Refresh,
   fancyFrame: FancyFrame,

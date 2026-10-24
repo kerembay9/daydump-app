@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { useApp } from '../../state/AppState';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
@@ -21,6 +22,7 @@ import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Print } from '../../components/ui/Print';
 import { Sheet } from '../../components/ui/Sheet';
 import { Tap } from '../../components/ui/Tap';
+import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { FinishSection, toPhoto, useFinishes } from '../../components/create/Finishes';
@@ -134,8 +136,8 @@ function Badge({ n, suggested }: { n: number; suggested?: boolean }) {
 }
 
 /** One row of 3 grid photos. */
-const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, onToggle }: {
-  item: IndexedPhoto[]; order: Map<string, number>; basket: DumpPhoto[]; w: number; h: number; now: number; onToggle: (p: IndexedPhoto) => void;
+const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, onToggle, onOpen }: {
+  item: IndexedPhoto[]; order: Map<string, number>; basket: DumpPhoto[]; w: number; h: number; now: number; onToggle: (p: IndexedPhoto) => void; onOpen: (p: IndexedPhoto) => void;
 }) {
   const { t } = useTheme();
   return (
@@ -144,8 +146,8 @@ const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, on
         const k = order.get(p.id);
         const date = dateRange(p.creationTime, p.creationTime, now);
         return (
-          <Tap key={p.id} onPress={() => onToggle(p)} accessibilityRole="button" accessibilityState={{ selected: k != null }}
-            accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in the basket` : ''}`}
+          <Tap key={p.id} onPress={() => onToggle(p)} onLongPress={() => onOpen(p)} delayLongPress={350} accessibilityRole="button" accessibilityState={{ selected: k != null }}
+            accessibilityHint="Hold to enlarge" accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in the basket` : ''}`}
             style={[{ width: w, height: h, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
             <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
               <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
@@ -185,6 +187,8 @@ export default function Create() {
   const [similar, setSimilar] = useState<IndexedPhoto[]>([]);
   const [review, setReview] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  /** the enlarged photo: a copy of the list it was opened from, so a re-search or a removal doesn't shift it */
+  const [viewing, setViewing] = useState<{ photos: DumpPhoto[]; i: number } | null>(null);
   const [keyboard, setKeyboard] = useState(false);
   /** false until the draft is read: the footer stays hidden rather than flash an empty 0/6 basket */
   const [loaded, setLoaded] = useState(false);
@@ -355,9 +359,16 @@ export default function Create() {
   const toggleRef = useRef(toggle);
   useEffect(() => { toggleRef.current = toggle; });
   const onToggle = useCallback((p: IndexedPhoto) => toggleRef.current(toPhoto(p)), []);
+  const view = (photos: DumpPhoto[], id: string) => {
+    Haptics.selectionAsync().catch(() => {});
+    setViewing({ photos, i: Math.max(0, photos.findIndex((p) => p.id === id)) });
+  };
+  const rowsRef = useRef(rows);
+  useEffect(() => { rowsRef.current = rows; });
+  const onOpen = useCallback((p: IndexedPhoto) => view((rowsRef.current ?? []).map((x) => toPhoto(x)), p.id), []);
   const renderRow = useCallback(({ item }: { item: IndexedPhoto[] }) => (
-    <GridRow item={item} order={order} basket={basket} w={cellW} h={cellH} now={now} onToggle={onToggle} />
-  ), [order, basket, cellW, cellH, now, onToggle]);
+    <GridRow item={item} order={order} basket={basket} w={cellW} h={cellH} now={now} onToggle={onToggle} onOpen={onOpen} />
+  ), [order, basket, cellW, cellH, now, onToggle, onOpen]);
 
   // a search language this query may be in isn't downloaded yet: say it's searched as typed for now
   const pending = query.trim() && expanded?.pending.length ? (() => {
@@ -377,6 +388,7 @@ export default function Create() {
         <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
           {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
         </Text>
+        <Text style={[ui(9.5), { color: t.inkMuted }]}>Hold to enlarge</Text>
       </View>
     </View>
   );
@@ -458,7 +470,8 @@ export default function Create() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 4 }}>
                 {similar.map((p) => {
                   return (
-                    <Tap key={p.id} onPress={() => toggle(toPhoto(p, true))} accessibilityRole="button" accessibilityLabel="Add this similar photo"
+                    <Tap key={p.id} onPress={() => toggle(toPhoto(p, true))} onLongPress={() => view(similar.map((x) => toPhoto(x, true)), p.id)} delayLongPress={350}
+                      accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
                       style={{ width: 62, height: 64, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: t.borderStrong }}>
                       <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} />
                       <View style={{ position: 'absolute', top: 4, right: 4, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.65)' }}>
@@ -532,6 +545,18 @@ export default function Create() {
         </View>
         {basket.length ? (
           <>
+            {(() => {
+              const k = basket.findIndex((p) => p.id === sel);
+              return k < 0 ? null : (
+                <Tap onPress={() => view(basket, basket[k].id)} accessibilityRole="button" accessibilityLabel={`Enlarge photo ${k + 1}`}
+                  style={{ height: Math.round(win.height * 0.3), borderRadius: 14, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+                  <Image source={{ uri: basket[k].uri }} style={{ flex: 1 }} contentFit="contain" recyclingKey={basket[k].id} transition={100} />
+                  <View style={{ position: 'absolute', right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icons.expand size={14} color="#fff" />
+                  </View>
+                </Tap>
+              );
+            })()}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 6, paddingHorizontal: 2 }}>
               {basket.map((p, i) => (
                 <Tap key={p.id} onPress={() => setSel(sel === p.id ? null : p.id)} accessibilityRole="button" accessibilityState={{ selected: sel === p.id }} accessibilityLabel={`Photo ${i + 1}`}
@@ -560,7 +585,7 @@ export default function Create() {
                 );
               })}
             </View>
-            <Text style={[ui(10.5), { color: t.inkMuted }]}>{sel ? 'Move it, or tap × to take it out.' : 'Tap a photo to move it. × takes it out.'}</Text>
+            <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. × takes it out.' : 'Tap a photo to see it bigger and move it. × takes it out.'}</Text>
             <Tap onPress={go} accessibilityRole="button" style={{ height: 40, borderRadius: 20, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
               <Text style={[ui(12, 600), { color: t.bgScreen }]}>Continue to Edit ({basket.length}) →</Text>
             </Tap>
@@ -572,6 +597,21 @@ export default function Create() {
           <Text style={[ui(12), { color: t.inkMuted, paddingVertical: 12 }]}>Nothing picked yet. Tap photos in the grid to add them.</Text>
         )}
       </Sheet>
+      <PhotoViewer photos={viewing?.photos ?? []} index={viewing?.i ?? null} onClose={() => setViewing(null)}
+        footer={(p) => {
+          const k = order.get(p.id);
+          return (
+            <Tap onPress={() => toggle(p)} accessibilityRole="button" accessibilityLabel={k == null ? 'Add to basket' : 'Remove from basket'}
+              style={{ height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: k == null ? '#fff' : 'rgba(255,255,255,0.15)' }}>
+              {k == null ? <Text style={[ui(13, 600), { color: '#000' }]}>+ Add to basket</Text> : (
+                <>
+                  <Icons.check size={15} color="#fff" />
+                  <Text style={[ui(13, 600), { color: '#fff' }]}>#{k + 1} in basket · Remove</Text>
+                </>
+              )}
+            </Tap>
+          );
+        }} />
       <StatusScrim />
     </View>
   );

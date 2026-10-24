@@ -183,3 +183,47 @@ test('search shows a spinner until results land; a half-typed search left by tap
   expect(screen.getByLabelText('Search seattle')).toBeTruthy();
   expect(screen.queryByLabelText('Search s')).toBeNull();
 });
+
+test('hold a photo to enlarge it: swipe with the arrows, add / remove from the viewer; the basket shows the tapped one big', async () => {
+  await bootApp('/create');
+  await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
+  await settle();
+  if (!screen.queryByLabelText('0 selected. Review')) { // an earlier test's basket: start empty
+    await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+    await fireEvent.press(await screen.findByText(/^Start a new dump/));
+    await settle();
+  }
+  expect(screen.getByText('Hold to enlarge')).toBeTruthy();
+
+  // hold the 2nd grid photo: the viewer opens on it, 2 / 77, both arrows
+  const cells = screen.getAllByLabelText(/^Photo from /);
+  await fireEvent(cells[1], 'longPress');
+  expect(await screen.findByText('2 / 77')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Previous photo'));
+  expect(screen.getByText('1 / 77')).toBeTruthy();
+  expect(screen.queryByLabelText('Previous photo')).toBeNull(); // nothing before the first
+  await fireEvent.press(screen.getByLabelText('Next photo'));
+  expect(screen.getByText('2 / 77')).toBeTruthy();
+
+  // add it from the viewer: the grid shows it picked; Remove takes it out again
+  await fireEvent.press(screen.getByLabelText('Add to basket'));
+  expect(screen.getByText('#1 in basket · Remove')).toBeTruthy();
+  expect(screen.getAllByLabelText(/number 1 in the basket$/)).toHaveLength(1);
+  await fireEvent.press(screen.getByLabelText('Remove from basket'));
+  expect(screen.getByLabelText('Add to basket')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Add to basket'));
+  await fireEvent.press(screen.getByLabelText('Next photo'));
+  await fireEvent.press(screen.getByLabelText('Add to basket'));
+  await fireEvent.press(screen.getByLabelText('Close photo'));
+  await waitFor(() => expect(screen.queryByText('3 / 77')).toBeNull());
+  expect(screen.getByText('2/6')).toBeTruthy();
+
+  // the basket: tapping a photo shows it big; tapping that opens the viewer over the basket, in basket order
+  await fireEvent.press(screen.getByLabelText('2 selected. Review'));
+  expect(screen.queryByLabelText(/^Enlarge photo/)).toBeNull();
+  await fireEvent.press(await screen.findByLabelText('Photo 2'));
+  await fireEvent.press(screen.getByLabelText('Enlarge photo 2'));
+  expect(await screen.findByText('2 / 2')).toBeTruthy();
+  expect(screen.getByText('#2 in basket · Remove')).toBeTruthy();
+  expect(screen.queryByLabelText('Next photo')).toBeNull();
+}, 30000);
