@@ -59,7 +59,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   const row = screen.getByLabelText(`${LONG}, posted`);
   const reuse = screen.getAllByText('Reuse').find((n) => { for (let p = n.parent; p; p = p.parent) if (p === row) return true; return false; })!;
   await fireEvent.press(reuse);
-  expect(await screen.findByText(`${LONG} (2)`)).toBeTruthy();
+  expect(await screen.findByDisplayValue(`${LONG} (2)`)).toBeTruthy();
   const all = await list();
   expect(all).toHaveLength(before + 1);
   const copy = all.find((d) => d.title === `${LONG} (2)`)!;
