@@ -188,11 +188,6 @@ function ProfileBody() {
 
       <SubCard sub={sub} />
 
-      <Section title="Connected accounts">
-        <Row label="Connect Instagram" right={<Soon />} />
-        <Row label="Connect TikTok" right={<Soon />} last />
-      </Section>
-
       <Section title="Social post & size defaults" note="New dumps start with the size, frame and quality set here.">
         <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
@@ -387,15 +382,6 @@ function Toggle({ on }: { on: boolean }) {
   return (
     <View style={{ width: 36, height: 20, borderRadius: 10, padding: 2, backgroundColor: on ? t.ink : t.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)' }}>
       <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: t.bgScreen, transform: [{ translateX: on ? 16 : 0 }] }} />
-    </View>
-  );
-}
-
-function Soon() {
-  const { t } = useTheme();
-  return (
-    <View style={{ borderWidth: 1, borderColor: t.borderStrong, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
-      <Text style={[label(9, 0.1), { color: t.inkMuted }]}>Soon</Text>
     </View>
   );
 }

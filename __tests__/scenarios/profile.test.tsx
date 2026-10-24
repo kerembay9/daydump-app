@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { act, fireEvent, screen, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen } from 'expo-router/testing-library';
 import { bootApp, dump, settle } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
 import { cashmere, espresso } from '../../src/theme/tokens';
@@ -54,13 +54,11 @@ test('5 taps on Version unlock the developer tools', async () => {
   expect((await getProfile()).dev).toBe(true);
 }, 30000);
 
-test('Connect rows say Soon', async () => {
+test('Profile: no Connected accounts section', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
-  for (const name of ['Connect Instagram', 'Connect TikTok']) {
-    const row = screen.getByText(name).parent!.parent!;
-    expect(within(row).getByText('Soon')).toBeTruthy();
-  }
+  expect(screen.queryByText('Connected accounts')).toBeNull();
+  expect(screen.queryByText('Connect Instagram')).toBeNull();
 }, 30000);
 
 test('Profile: Go Pro says coming soon; no Done, no bio', async () => {
