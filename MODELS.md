@@ -4,7 +4,14 @@ Keep this current. Update it in the same change whenever a model or asset is add
 (asset pack / download), gets a new fallback, or a feature starts or stops depending on one. Android only: the native
 module (`modules/clip-embedder`) doesn't exist on iOS or in Expo Go, where `ClipEmbedder` is null.
 
-Last checked against the code: 2026-10-21 (models split into three download packs, on top of 599f2db).
+Last checked against the code: 2026-10-24 (CLIP is our distilled model, tag distill-v2).
+
+CLIP: image tower MobileNetV4-M (timm, Apache 2.0) distilled from PE-Core L/14-336 on Open Images; text tower TinyCLIP-45M's
+(MIT) fine-tuned into its space (`DISTILLED` in `scripts/build_assets.py`, `research/distill/PLAN.md`). It replaced TinyCLIP-45M/32,
+which used both of TinyCLIP's towers. Calibrated so cosines sit where 45M's did, so the app's fixed cutoffs hold (search floor 0.2,
+same shot 0.92 / 0.95): photo vectors centered by 0.2 x their mean, and text vectors (and concept rows) are 1.33 long, not unit.
+VIST val vs 45M: R@1 41.7 vs 42.1, tags 36.0 vs 36.1, R@5 68.4 vs 72.7. A new `clipGolden.json` model name makes every phone
+re-read its library once (`photoIndex.db()`), keeping its dumps.
 
 ## Shipped assets
 
@@ -13,12 +20,12 @@ Release builds download the packs from Play after the install (`ModelPacks.kt`);
 
 | Asset | Where | On disk | Download | What it is | Loaded |
 |---|---|---|---|---|---|
-| `vision_dw8.tflite` | **visionpack** | 46.1 MB | 40.6 MB | CLIP image tower, int8 weights, CPU (XNNPACK) | first `embedImages` |
-| `concepts.tflite` | **visionpack** | 3.7 MB | 2.2 MB | 3,566 precomputed concept-word vectors | first `topConcepts` |
+| `vision_dw8.tflite` | **visionpack** | 10.3 MB | 9.0 MB | CLIP image tower, int8 weights (depthwise convs fp32), CPU (XNNPACK) | first `embedImages` |
+| `concepts.tflite` | **visionpack** | 3.7 MB | 1.9 MB | 3,566 precomputed concept-word vectors | first `topConcepts` |
 | `sface.tflite` | **facepack** | 15.1 MB | 11.5 MB | face recognition (who is it), fp16 + int8 FCs | first `faces(…, embed=true)` |
-| `text.tflite` | **textpack** | 45.0 MB | 40.4 MB | CLIP text tower, CPU | first `embedTexts` of a non-fixed phrase |
+| `text.tflite` | **textpack** | 45.1 MB | 40.5 MB | CLIP text tower, CPU | first `embedTexts` of a non-fixed phrase |
 | `tokenizer.json` | **textpack** | 2.2 MB | 0.6 MB | text tokenizer | same |
-| `vision_gpu.skel` | APK | 90.4 MB | 0.4 MB | GPU image model minus its weights; `VisionGpu` fills them from dw8 into `cacheDir/litert/vision-<install>.tflite` (90 MB, ~1 s on the A54). Stays in the APK: a pack would unpack it to 90 MB | first `embedImages` |
+| `vision_gpu.skel` | APK | 18.4 MB | 0.6 MB | GPU image model minus its int8 weights; `VisionGpu` fills them from dw8 into `cacheDir/litert/vision-<install>.tflite` (18 MB). Stays in the APK: a pack would unpack it to 18 MB | first `embedImages` |
 | `phrases.json` | APK | 8 KB | ~0 | the selfie finder's 3 phrases, already embedded (`FIXED_PHRASES` in build_assets.py) | first `embedTexts` |
 | `vocab.json` | APK | 0.05 MB | ~0 | the 3,566 concept names | `loadLibrary` (app start) |
 | `yunet_320.tflite` | APK | 0.3 MB | 0.2 MB | face detection (where are faces) | first `faces` |
@@ -26,7 +33,7 @@ Release builds download the packs from Play after the install (`ModelPacks.kt`);
 | ML Kit language ID | APK (`com.google.mlkit:language-id`) | ~1 MB | ~1 MB | which language a search is in (`QueryTranslateModule.kt`) | first search in a non-English search language |
 | ML Kit translation, one per search language | Google, on request (`com.google.mlkit:translate`) | ~30 MB each | ~30 MB each | translates a search to English on the phone (`index/queryLang.ts`). The phone's language is fetched at app start; Settings → Search languages adds or deletes others | first search that isn't confidently English |
 
-Download (bundletool, arm64, 2026-10-22): **33.0 MB at install** (48.3 MB before R8, lucide deep imports, dropping Compose and cutting Inter; models are 5.4 MB of it), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (128.3 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
+Download (estimated from the 2026-10-22 bundletool numbers + the distill-v2 files): **~33.2 MB at install**, then visionpack ~10.9 MB, facepack 11.5 MB, textpack 41.0 MB (~96.6 MB in all). Measured 2026-10-22 with TinyCLIP-45M: **33.0 MB at install** (48.3 MB before R8, lucide deep imports, dropping Compose and cutting Inter; models are 5.4 MB of it), then visionpack 42.8 MB, facepack 11.5 MB, textpack 41.0 MB (128.3 MB in all; was 98 MB at install with only the text pack split out, 138 MB before any). Built from `scripts/build_assets.py`. No other models in release
 builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. Debug builds add EdgeBench (Gemma, ML Kit).
 
 ## Download order (release builds)

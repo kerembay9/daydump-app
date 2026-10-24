@@ -4,9 +4,9 @@ Setup:  python -m venv --system-site-packages .venv && .venv/bin/pip install wor
         (needs torch + transformers already installed; the TinyCLIP open_clip fork is cloned on first run)
 Run:    .venv/bin/python scripts/build_assets.py [clip] [phrases] [gpu] [vocab] [concepts] [cities] [bench] [yunet] [sface] [gate] [fonts]   (no args = all but bench)
 
-clip   - TinyCLIP (MIT, see MODELS) -> LiteRT text.tflite (int8 weights, CPU) + tokenizer.json (both the textpack asset pack), golden vectors,
+clip   - DISTILLED's text tower -> LiteRT text.tflite (int8 weights, CPU) + tokenizer.json (both the textpack asset pack), golden vectors,
          phrases.json (FIXED_PHRASES embedded, so they work before the pack arrives)
-gpu    - the same vision tower -> LiteRT vision_dw8.tflite (int8 weights, CPU; visionpack) + vision_gpu.skel (bundled) (the phone rebuilds the fp16 GPU model
+gpu    - DISTILLED's vision tower -> LiteRT vision_dw8.tflite (int8 weights, CPU; visionpack) + vision_gpu.skel (bundled) (the phone rebuilds the fp16 GPU model
          from both, see gpu_skel). vision_dw8 is the CPU helper
          (and the fallback when the GPU can't run). Everything runs on LiteRT; there is no ONNX Runtime in the app.
 vocab  - Open Images V7 class names (CC BY 4.0) + hand-written concepts -> text embeddings -> concepts.tflite (visionpack)
@@ -37,7 +37,16 @@ MODELS = {
     "40m": ("hf", "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"),  # 57.5%, 64 ms
     "22m": ("TinyCLIP-auto-ViT-22M-32-Text-10M", "LAION400M"),  # 52.0%, 38 ms
 }
-SHIPPED = "45m"
+SHIPPED = "45m"  # the TinyCLIP whose text tower (and tokenizer) DISTILLED's text starts from
+# The shipped CLIP since Oct 2026 (git tag distill-v2, research/distill/PLAN.md): MobileNetV4-M (timm, Apache 2.0) distilled
+# from PE-Core L/14-336 on 1.38M Open Images photos (full_m1460k_e40, epoch 21 EMA) + SHIPPED's text tower fine-tuned into its
+# space (train_text.py text_m1460k). Calibrated so cosines sit where TinyCLIP-45M's did (the app's absolute cutoffs: search
+# floor 0.2, same shot 0.92 / 0.95): 0.2 x the mean photo vector (2048 Open Images photos) is off the head bias (_cal), and
+# text vectors (so the concepts too) are TEXT_SCALE long, not unit. VIST val: matched text-photo cosine median 0.314 (45M 0.311),
+# photos with a neighbour > 0.92 24.5% (24.4%); R@1 41.7 (42.0 uncalibrated).
+DISTILLED = ("mnv4m", CACHE / "distill/m1460k_ep21_ema_cal.pt", CACHE / "distill/text_m1460k.pt")
+DISTILLED_NAME = "distill-v2-mnv4m-m1460k-ep21-cal"  # clipGolden.json "model": a new name re-indexes every phone
+TEXT_SCALE = 1.33
 TOKENIZER = "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"  # OpenAI CLIP BPE, shared by every TinyCLIP model
 TINYCLIP = CACHE / "tinyclip"
 CTX = 77
@@ -103,6 +112,26 @@ def load_model(name=SHIPPED):
         m = open_clip.create_model(arch, pretrained=tag, cache_dir=str(TINYCLIP)).eval().requires_grad_(False)
     tok_file = hf_hub_download(TOKENIZER, "tokenizer.json")
     return m, CLIPTokenizerFast(tokenizer_file=tok_file), tok_file
+
+
+def load_shipped():
+    """The shipped towers as exportable modules: (vision, text, tok, tok_file). vision outputs raw vectors (as the GPU runs
+    it; Kotlin L2-normalizes), text TEXT_SCALE x unit vectors."""
+    import torch
+    sys.path.insert(0, str(ROOT / "research/distill"))
+    from student import Student
+    key, vw, tw = DISTILLED
+    m, tok, tok_file = load_model()
+    m.text_encoder_without_ddp.load_state_dict(torch.load(tw, map_location="cpu"))
+    v = Student(key, pretrained=False).eval().requires_grad_(False)
+    v.load_state_dict(torch.load(vw, map_location="cpu"))
+    unit = Towers(m).text
+
+    class Text(torch.nn.Module):
+        def __init__(self): super().__init__(); self.t = unit
+        def forward(self, input_ids): return TEXT_SCALE * self.t(input_ids)
+
+    return v, Text(), tok, tok_file
 
 
 def token_ids(tok, texts):
@@ -175,16 +204,15 @@ def export_tflite(mod, x, out, rp=None, floor=0.98):
 
 def build_clip():
     import torch, shutil
-    m, tok, tok_file = load_model()
-    t = Towers(m)
+    v, text, tok, tok_file = load_shipped()
     pix = torch.from_numpy(preprocess(GOLDEN_IMAGE))
     ids = torch.tensor(token_ids(tok, GOLDEN_PHRASES), dtype=torch.long)
     with torch.no_grad():
-        q_v = t.vision(pix).numpy()  # fp32 reference: the GPU's fp16 tower matches it to cosine 1.0
-    q_t = export_tflite(t.text, ids, PACK / "text.tflite")
+        q_v = torch.nn.functional.normalize(v(pix), dim=-1).numpy()  # fp32 reference: the GPU's fp16 tower matches it to cosine 1.0
+    q_t = export_tflite(text, ids, PACK / "text.tflite")
     shutil.copy(tok_file, PACK / "tokenizer.json")
     JS.mkdir(parents=True, exist_ok=True)
-    golden = {"model": "-".join(MODELS[SHIPPED]), "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
+    golden = {"model": DISTILLED_NAME, "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
               "image": {"file": GOLDEN_IMAGE.name, "vec": q_v[0].round(5).tolist()}}
     (JS / "clipGolden.json").write_text(json.dumps(golden))
     build_phrases()
@@ -206,41 +234,30 @@ def build_phrases(text=PACK / "text.tflite", dest=NATIVE / "phrases.json"):
 
 
 def build_gpu():
-    """Vision tower for the Mali GPU delegate (LiteRT CompiledModel), batch 1, same weights with the forward rewritten:
-    the delegate rejects TinyCLIP's 3D class-token concat and 2D broadcasts, and fails "Unrecognized Write selector" on
-    any batch > 1 (tried NLD, batch-first 4D and all-2D graphs). Output is NOT L2-normalized (the converter turns that
-    into L2_NORMALIZATION, CPU-only); Kotlin does it. int8 weights don't compile on the GPU, so fp16 (cosine 1.0 vs fp32)."""
-    import numpy as np, torch, torch.nn.functional as F, litert_torch
-    from ai_edge_quantizer import quantizer, recipe, recipe_manager, algorithm_manager
+    """Vision tower for the Mali GPU delegate (LiteRT CompiledModel), batch 1, fp16 weights (int8 ones don't compile on the
+    GPU). Output is NOT L2-normalized (the converter turns that into L2_NORMALIZATION, CPU-only); Kotlin does it. Its CPU
+    twin vision_dw8: dynamic int8 CONV_2D + FULLY_CONNECTED, depthwise convs left fp32 (XNNPACK has no dynamic-int8
+    depthwise kernel; TFLite's hybrid ones ran 1.6x slower, research/distill/PLAN.md 2026-10-23)."""
+    import numpy as np, torch, litert_torch
+    from ai_edge_quantizer import quantizer, recipe_manager, algorithm_manager
     from ai_edge_quantizer.qtyping import TFLOperationName
     from ai_edge_litert.interpreter import Interpreter
-    m = load_model()[0].eval()
-    v = next(x for x in m.modules() if hasattr(x, "class_embedding"))
-
-    class Vision(torch.nn.Module):
-        def __init__(self):
-            super().__init__()
-            tok = v.positional_embedding.detach().clone()
-            tok[0] += v.class_embedding.detach()
-            self.tok = torch.nn.Parameter(tok[None], requires_grad=False)  # [1, 50, D]: pos, with cls folded into row 0
-        def forward(self, px):
-            x = v.conv1(px).flatten(2).transpose(1, 2)  # [1, 49, D]
-            x = F.pad(x, (0, 0, 1, 0)) + self.tok  # empty row 0 becomes cls + pos
-            x = v.transformer(v.ln_pre(x).permute(1, 0, 2)).permute(1, 0, 2)
-            return (v.ln_post(x[:, :1]) @ v.proj).flatten(1)  # 3D through ln_post: its 2D broadcasts fall off the GPU
-
+    v = load_shipped()[0]
     x = torch.from_numpy(preprocess(GOLDEN_IMAGE))
     with torch.no_grad():
-        ref = Towers(m).vision(x).numpy()[0]
+        ref = torch.nn.functional.normalize(v(x), dim=-1).numpy()[0]
     f32 = CACHE / "fp32" / "vision.tflite"; f32.parent.mkdir(parents=True, exist_ok=True)
-    litert_torch.convert(Vision().eval(), (x,)).export(str(f32))
+    litert_torch.convert(v, (x,)).export(str(f32))
     rm = recipe_manager.RecipeManager()
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
+    dw = recipe_manager.RecipeManager()
+    for op in (TFLOperationName.CONV_2D, TFLOperationName.FULLY_CONNECTED):
+        dw.add_dynamic_config(regex=".*", operation_name=op, num_bits=8)
     # vision_dw8: int8 weights, fp32 math (XNNPACK quantizes activations per run), for the CPU helping the GPU.
     # The fp16 vision.tflite isn't shipped: the phone builds its GPU twin from vision_dw8 (gpu_skel). It stays in the cache.
     gpu = CACHE / "gpu"; gpu.mkdir(parents=True, exist_ok=True); VPACK.mkdir(parents=True, exist_ok=True)
-    for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", recipe.dynamic_wi8_afp32(), 0.98),
+    for name, rp, floor in [("vision", rm.get_quantization_recipe(), 0.999), ("vision_dw8", dw.get_quantization_recipe(), 0.98),
                             ("vision_from_dw8", None, 0.98)]:
         out = (VPACK if name == "vision_dw8" else gpu) / f"{name}.tflite"
         if rp:
@@ -267,20 +284,27 @@ def gpu_skel(fp16, dw8, skel):
     def load(p):
         b = p.read_bytes(); m = S.Model.GetRootAs(b, 0); sg = m.Subgraphs(0)
         return b, m, {sg.Tensors(i).Name(): sg.Tensors(i) for i in range(sg.TensorsLength())}
+
+    def span(bu):  # (file offset, bytes) of a buffer's data: appended after the flatbuffer, or inline (small ones)
+        return (bu.Offset(), bu.Size()) if bu.Size() else (bu._tab.Vector(bu._tab.Offset(4)), bu.DataLength())
     fb, f, ft = load(fp16)
     db, d, dt = load(dw8)
     built, zeroed, rows = bytearray(fb), bytearray(fb), []
     for name, x in ft.items():
         if x.Type() != S.TensorType.FLOAT16:
             continue
-        y = dt[name]; q = y.Quantization(); bf, bd = f.Buffers(x.Buffer()), d.Buffers(y.Buffer())
+        y = dt[name]
+        if y.Type() == S.TensorType.FLOAT32:  # left float in dw8 (MNV4's depthwise convs): stays in the skel as is
+            continue
+        q = y.Quantization(); (fo, fs), (do, ds) = span(f.Buffers(x.Buffer())), span(d.Buffers(y.Buffer()))
         assert y.Type() == S.TensorType.INT8 and q.QuantizedDimension() == 0 and not q.ZeroPointAsNumpy().any()
         n, s = q.ScaleLength(), q._tab.Vector(q._tab.Offset(8))  # QuantizationParameters.scale
         assert (np.frombuffer(db, "<f4", n, s) == q.ScaleAsNumpy()).all()
-        w = np.frombuffer(db, np.int8, bd.Size(), bd.Offset()).reshape(n, -1)
-        built[bf.Offset():bf.Offset() + bf.Size()] = (w.astype(np.float32) * q.ScaleAsNumpy()[:, None]).astype(np.float16).tobytes()
-        zeroed[bf.Offset():bf.Offset() + bf.Size()] = bytes(bf.Size())
-        rows += [bf.Offset(), w.size, n, bd.Offset(), s]
+        w = np.frombuffer(db, np.int8, ds, do).reshape(n, -1)
+        assert fs == 2 * w.size
+        built[fo:fo + fs] = (w.astype(np.float32) * q.ScaleAsNumpy()[:, None]).astype(np.float16).tobytes()
+        zeroed[fo:fo + fs] = bytes(fs)
+        rows += [fo, w.size, n, do, s]
     skel.write_bytes(b"DDG1" + struct.pack(f">Ii{len(rows)}i", zlib.crc32(built), len(rows) // 5, *rows) + zeroed)
     return bytes(built)
 
@@ -488,7 +512,7 @@ GATE_REJECT = ["web site", "envelope", "menu", "book jacket", "comic book", "cro
 
 def build_vocab():
     import numpy as np, torch
-    m, tok, _ = load_model()
+    _, text, tok, _ = load_shipped()
     csv_path = fetch("https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions.csv", "oidv7-class-descriptions.csv")
     import re, wordfreq
     entries, seen = [], set()
@@ -511,8 +535,7 @@ def build_vocab():
     with torch.no_grad():
         for i in range(0, len(entries), 512):
             ids = torch.tensor(token_ids(tok, [p for _, p in entries[i:i + 512]]), dtype=torch.long)
-            e = m.encode_text(ids)
-            vecs.append((e / e.norm(dim=-1, keepdim=True)).numpy())
+            vecs.append(text(ids).numpy())
     v = np.concatenate(vecs).astype(np.float32)
     # Row layout: float32 scale + 512 int8. Per-row scale keeps every concept at full int8 resolution.
     scale = np.abs(v).max(1) / 127
@@ -528,7 +551,7 @@ def build_vocab():
 
 def build_concepts(v=None, out=VPACK / "concepts.tflite"):
     """scores = q . vocab^T for one vector (the app takes the top k): the vocab as fp16 weights of one FULLY_CONNECTED,
-    fp32 math. Dynamic int8 would quantize q per run and reorder close concepts. v: [n, 512] unit rows (default vocab.bin)."""
+    fp32 math. Dynamic int8 would quantize q per run and reorder close concepts. v: [n, 512] text vectors (default vocab.bin)."""
     import numpy as np, torch
     from ai_edge_quantizer import recipe_manager, algorithm_manager
     from ai_edge_quantizer.qtyping import TFLOperationName

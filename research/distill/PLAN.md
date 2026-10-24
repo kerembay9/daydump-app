@@ -135,3 +135,21 @@ knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the fast
   M GPU only 34 (24); M GPU + helper 33 (23), the CPU took only 32/256 photos (tc45's helper takes 95-105). Dynamic-int8 MNV4 on
   XNNPACK is ~7x slower than M on the GPU (depthwise convs stay fp32), so the helper adds ~nothing. Trained M vs shipped:
   1.2-1.3x faster end to end, -3.7 R@1.
+- 2026-10-23: M helper formats, and a correction to the entry above: dynamic_wi8_afp32 DOES quantize MNV4's depthwise convs
+  (quantized dim 3), and XNNPACK runs those as slow hybrid kernels. Desktop 4 threads, trained M, 64 OI photos vs torch:
+  fp32 4.0 ms; dw8 (all dynamic int8) 7.0 ms, cosine 0.9961; dwf (dynamic int8 for CONV_2D + FC only, depthwise fp32)
+  4.5 ms, 0.9986, +0.5 MB; s8 (static int8, int8 I/O) cosine 0.863, rejected. export_speed.py now writes dwf as
+  vision_<key>_dw8. A54 n=256, ms/photo end to end: M GPU only 37-38; M + dw8 / dwf / fp16-on-CPU helper all 33-36, the CPU
+  takes 12-21 photos. Helper format doesn't matter: embedLite starts the helper only after all of a batch's decodes finish
+  (jobs.awaitAll), and M's GPU (~25 ms) keeps pace with decode, so the helper only gets the ~0.3 s tail of each 128-photo
+  batch. Levers left are outside the helper: info + concepts (~9 ms/photo, serial after the embed) and decode. tc45 rows in
+  this run are invalid (dev model M was set, so the tc45 reference rows ran M). build_assets.gpu_skel now handles inline
+  (small) buffers and tensors left float in the int8 file; the tc45 skel is byte-identical, M from dwf rebuilds at cosine
+  0.999 vs fp32, skel 0.62 MB deflated.
+- 2026-10-24: distill-v2 ships (tag distill-v2). full_m1460k_e40 stopped after epoch 30 (best EMA epoch 21, 42.8 R@1 with teacher
+  text); text_m1460k (5 epochs, BATCH 512, resumable) brings the phone setup to 42.0 R@1 / tags 35.4 on VIST val, tying tc45
+  within CI except R@5/R@10 (-3). Its cosines were off tc45's scale (matched text-photo median 0.22 vs 0.31, random photo pair
+  0.59 vs 0.42), which the app's fixed cutoffs (search floor 0.2, same shot 0.92/0.95) assume. Calibrated without retraining:
+  0.2 x the mean photo vector (2048 OI photos) off the head bias (centering more cost R@1: a=1.0 38.4) and text x 1.33. Result
+  41.7 R@1, tags 36.0, matched median 0.314, photos with a neighbour > 0.92 24.5% (tc45 24.4%). build_assets.py now builds
+  the shipped CLIP from DISTILLED. visionpack 42.8 -> ~10.9 MB, skel 90 -> 18 MB on disk.

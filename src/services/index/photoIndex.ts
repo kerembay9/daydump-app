@@ -265,7 +265,7 @@ export async function loadLibrary(): Promise<Library> {
   return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder };
 }
 
-/** One text query -> normalized 512-d vector, or null without CLIP. */
+/** One text query -> 512-d vector, 1.33 long (build_assets.py TEXT_SCALE: cosines on 45M's scale), or null without CLIP. */
 export async function embedText(text: string): Promise<Float32Array | null> {
   return ClipEmbedder ? b64ToFloats(await ClipEmbedder.embedTexts([text])) : null;
 }

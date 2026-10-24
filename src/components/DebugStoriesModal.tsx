@@ -90,7 +90,8 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
       else lines.push(`tokens differ: "${golden.phrases[i]}"`);
     }
     const t = b64ToFloats(await ClipEmbedder.embedTexts(golden.phrases));
-    const cos = golden.text.map((g, i) => g.reduce((a, v, j) => a + v * t[i * DIM + j], 0));
+    // text vectors aren't unit length (build_assets.py TEXT_SCALE): divide by both lengths
+    const cos = golden.text.map((g, i) => g.reduce((a, v, j) => a + v * t[i * DIM + j], 0) / Math.hypot(...g) / Math.hypot(...t.subarray(i * DIM, (i + 1) * DIM)));
     lines.unshift(`tokenizer ${idsOk}/${golden.phrases.length}`, `text cos ${cos.map((c) => c.toFixed(3)).join(' ')}`);
     const img = lib?.photos.find((p) => p.uri.endsWith(golden.image.file));
     if (img && lib) {
