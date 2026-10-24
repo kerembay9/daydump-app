@@ -6,7 +6,7 @@ import { act, fireEvent, screen } from 'expo-router/testing-library';
 import { bootApp, dump, settle } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
 import { cashmere, espresso } from '../../src/theme/tokens';
-import { getProfile } from '../../src/services/profile';
+import { getProfile, setProfile } from '../../src/services/profile';
 
 jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: async () => ({ canceled: false, assets: [{ uri: 'file:///cache/picked.jpg' }] }) }));
 
@@ -52,6 +52,19 @@ test('5 taps on Version unlock the developer tools', async () => {
   expect(screen.getByText('Stories debug')).toBeTruthy();
   expect(screen.queryByText(/more taps? for developer tools/)).toBeNull();
   expect((await getProfile()).dev).toBe(true);
+}, 30000);
+
+test('release build: no developer tools, even if unlocked before', async () => {
+  const dev = __DEV__;
+  (global as any).__DEV__ = false;
+  try {
+    await setProfile({ dev: true });
+    await bootApp('/profile');
+    await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+    for (let i = 0; i < 5; i++) await fireEvent.press(screen.getByText('Version'));
+    expect(screen.queryByText('Developer tools')).toBeNull();
+    expect(screen.queryByText(/more taps? for developer tools/)).toBeNull();
+  } finally { (global as any).__DEV__ = dev; }
 }, 30000);
 
 test('Profile: no Connected accounts section', async () => {
