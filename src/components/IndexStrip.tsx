@@ -65,7 +65,8 @@ export function IndexStrip({ progress, paused, hasStories, coverageSince = null,
   const done = progress ? ticking : paused!.done, total = progress?.total ?? paused!.total;
 
   // total 0 = the placeholder before the first listing (first run): no count yet
-  const line1 = progress ? `Reading your library…${total ? ` ${n(done)}/${n(total)}` : ''} · ${eta(progress.etaSec)}` : `Paused at ${n(done)} of ${n(total)}`;
+  const head = progress ? `Reading your library…${total ? ` ${n(done)}/${n(total)}` : ''}` : `Paused at ${n(done)} of ${n(total)}`;
+  const time = progress ? ` · ${eta(progress.etaSec)}` : '';
   const line2 = !progress ? 'Continues by itself next time you charge.'
     : fast ? `Keeps going if you leave · ${battery(progress.batteryPct ?? null)}`
     // board 11: with dumps up, the line says how far back they reach
@@ -81,8 +82,12 @@ export function IndexStrip({ progress, paused, hasStories, coverageSince = null,
       style={{ paddingVertical: 9, paddingHorizontal: 12, marginBottom: 6 }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${line1}. ${line2}`}>
-          <Text style={[ui(11.5, 600), { color: t.ink }]}>{line1}</Text>
+        <View style={{ flex: 1, gap: 2 }} accessible accessibilityLabel={`${head}${time}. ${line2}`}>
+          {/* the ticking count is fixed-width and the time left wraps as one piece, so it doesn't hop between lines */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <Text style={[ui(11.5, 600), { color: t.ink, fontVariant: ['tabular-nums'] }]}>{head}</Text>
+            {!!time && <Text style={[ui(11.5, 600), { color: t.ink }]}>{time}</Text>}
+          </View>
           <Text style={[ui(10.5, 400), { color: t.inkMuted }]}>{line2}</Text>
         </View>
         {action && (

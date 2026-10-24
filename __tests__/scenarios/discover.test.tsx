@@ -38,9 +38,12 @@ test('indexing strip: fast-mode progress with Pause; paused shows Resume', async
   // The native worker is mid-run (fast mode, on battery): the app follows it and offers Pause.
   world.bg = { state: 'running', total: 3000, left: 2000, batteryPct: 12, msPerPhoto: 50 };
   await bootApp('/');
-  const line = /^Reading your library… 1,(\d{3})\/3,000 · About 2 min left$/;
+  const line = /^Reading your library… 1,(\d{3})\/3,000$/;
   const progress = await screen.findByText(line, {}, { timeout: 10000 });
-  const strip = progress.parent!.parent!.parent!;
+  const strip = progress.parent!.parent!.parent!.parent!;
+  // the ticking count is fixed-width and the time left is its own piece, so it doesn't hop between lines as the count changes
+  expect(progress.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ fontVariant: ['tabular-nums'] })]));
+  expect(within(strip).getByText(' · About 2 min left')).toBeTruthy();
   // between the worker's 3 s reports the count runs on at ~0.9 × its rate (20 photos/s here)
   const count = () => +within(strip).getByText(line).props.children.match(line)[1];
   const c0 = count();
