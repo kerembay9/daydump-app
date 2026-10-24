@@ -118,6 +118,15 @@ class ClipEmbedderModule : Module() {
       withContext(Dispatchers.Default) { clip.benchDecode(uris) }
     }
 
+    // Developer tools' CLIP model switch: persists, then restarts the app (every model and the index DB load per process).
+    Function("devModel") { clip.dev }
+    Function("setDevModel") { model: String? ->
+      ctx.getSharedPreferences("clip", 0).edit().putString("model", model).commit()
+      BackgroundIndex.cancel(ctx)  // its queue is the old model's
+      ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.let { ctx.startActivity(Intent.makeRestartActivityTask(it.component)) }
+      Process.killProcess(Process.myPid())
+    }
+
     AsyncFunction("embedTexts") Coroutine { texts: List<String> ->
       withContext(Dispatchers.Default) { encode(clip.embedTexts(texts)) }
     }
@@ -342,7 +351,13 @@ class ClipEngine private constructor(private val ctx: Context) {
   // decodeScaled; gold = decodeClip at 1/2 scale, no thumbnails (the bench's quality reference, slow).
   @Volatile var decoder = "fast"
   private val thumbs = AtomicInteger() // photos of the current call decoded from their EXIF thumbnail
-  private var visionFile: String? = null
+  // Developer tools' model switch (setDevModel): a distilled model's vision/text/concepts/phrases, pushed by hand to
+  // files/models (research/distill/export_speed.py + export_text.py). Read once per process; null = the shipped models,
+  // also when any of its files is missing (a vision tower without its text would put queries in the wrong space).
+  val dev = ctx.getSharedPreferences("clip", 0).getString("model", null)
+    ?.takeIf { m -> listOf("vision_$m.tflite", "text_$m.tflite", "concepts_$m.tflite", "phrases_$m.json").all { File(ctx.filesDir, "models/$it").exists() } }
+  private fun devFile(kind: String, ext: String = "tflite") = dev?.let { File(ctx.filesDir, "models/${kind}_$it.$ext").path }
+  private var visionFile: String? = devFile("vision")
   // Indexing threads run below the UI and JS threads so scrolling stays smooth while it runs; they still get every idle
   // core. Nice 9, not THREAD_PRIORITY_BACKGROUND (10): from 10 Android may also move the thread to the little cores.
   // XNNPACK's workers inherit it from the thread that creates the model (so helperModel() is only called on cpuThread).
@@ -359,7 +374,7 @@ class ClipEngine private constructor(private val ctx: Context) {
   private val textLock = Any()
   // These lazies throw (and retry on the next call) while their pack hasn't landed.
   private fun packFile(p: ModelPacks.Pack, name: String) = ModelPacks.dir(ctx, p)?.resolve(name)?.path
-  private val text by lazy { cpuModel("text", packFile(ModelPacks.Pack.TEXT, "text.tflite")) }
+  private val text by lazy { cpuModel(dev?.let { "text_$it" } ?: "text", devFile("text") ?: packFile(ModelPacks.Pack.TEXT, "text.tflite")) }
   private fun cpuModel(name: String, file: String? = null): Triple<CompiledModel, List<TensorBuffer>, List<TensorBuffer>> {
     val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$name-$installed.xnnpack").path
     val opts = CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) }
@@ -368,7 +383,7 @@ class ClipEngine private constructor(private val ctx: Context) {
   }
   // The app's fixed phrases (selfie finder), embedded at build time (phrases.json): they work before the text model arrives.
   private val fixed by lazy {
-    val o = JSONObject(asset("phrases.json").decodeToString())
+    val o = JSONObject(devFile("phrases", "json")?.let { File(it).readText() } ?: asset("phrases.json").decodeToString())
     o.keys().asSequence().associateWith { decode(o.getString(it)) }
   }
   val tokenizer by lazy { ClipTokenizer(packFile(ModelPacks.Pack.TEXT, "tokenizer.json")?.let { File(it).readText() } ?: asset("tokenizer.json").decodeToString()) }
@@ -378,19 +393,22 @@ class ClipEngine private constructor(private val ctx: Context) {
   }
   // q (1 x 512) -> scores against every vocab row (fp16 weights, fp32 math), one vector per run.
   private val conceptsLock = Any()
-  private val concepts by lazy { cpuModel("concepts", packFile(ModelPacks.Pack.VISION, "concepts.tflite")) }
+  private val concepts by lazy { cpuModel(dev?.let { "concepts_$it" } ?: "concepts", devFile("concepts") ?: packFile(ModelPacks.Pack.VISION, "concepts.tflite")) }
   var timings = mapOf<String, Any>()
     private set
 
   private fun asset(name: String) = ctx.assets.open("clip/$name").use { it.readBytes() }
 
-  // Serial decode (lazy jobs) would all start at once when the helper awaits them; a bench visionFile has no dw8 twin.
-  private val helps get() = parallel && visionFile == null
+  // Serial decode (lazy jobs) would all start at once when the helper awaits them. A bench visionFile helps only with
+  // its int8 twin (files/models/vision_<model>_dw8.tflite, research/distill/export_speed.py).
+  private val twin get() = visionFile?.removeSuffix(".tflite")?.plus("_dw8.tflite")?.takeIf { File(it).exists() }
+  private val helps get() = parallel && (visionFile == null || twin != null)
 
   // Batch 1: the Mali GPU delegate rejects batched graphs. Compiled GPU programs are cached (~3 s compile on first load).
   private fun makeLite(): CompiledModel {
     if (engine == "cpu8") return makeCpu8()
-    val key = "$engine-" + (visionFile?.let { File(it).run { "$name-${length()}" } } ?: "bundled-$installed")
+    // A re-pushed file of the same size (another checkpoint) must not reuse the old program: mtime in seconds, under the sweep's 12 digits.
+    val key = "$engine-" + (visionFile?.let { File(it).run { "$name-${length()}-${lastModified() / 1000}" } } ?: "bundled-$installed")
     val opts = CompiledModel.Options(Accelerator.GPU).apply {
       gpuOptions = CompiledModel.GpuOptions(
         serializationDir = File(ctx.cacheDir, "litert").apply { mkdirs() }.path, modelCacheKey = key, serializeProgramCache = true,
@@ -410,16 +428,17 @@ class ClipEngine private constructor(private val ctx: Context) {
 
   // Dynamic int8 (weights int8, activations quantized per run) on XNNPACK, 4 threads. In the app it runs 43-52 ms/photo
   // (16-18 alone): decode threads share the big cores. Packed weights cached next to the GPU cache.
-  private fun makeCpu8(name: String = "dw8"): CompiledModel {
-    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$name-$installed.xnnpack").path
+  private fun makeCpu8(name: String = "dw8", file: String? = null): CompiledModel {
+    val key = file?.let { File(it).run { "$nameWithoutExtension-${length()}" } } ?: name
+    val cache = File(ctx.cacheDir, "litert").apply { mkdirs() }.resolve("$key-$installed.xnnpack").path
     val opts = CompiledModel.Options(Accelerator.CPU).apply { cpuOptions = CompiledModel.CpuOptions(4, null, cache) }
-    val f = packFile(ModelPacks.Pack.VISION, "vision_dw8.tflite")
+    val f = file ?: packFile(ModelPacks.Pack.VISION, "vision_dw8.tflite")
     return if (f != null) CompiledModel.create(f, opts) else CompiledModel.create(ctx.assets, "clip/vision_dw8.tflite", opts)
   }
 
   private fun helperModel(): CompiledModel? {
     if (helper == null && !helperFailed && engine == "gpu-cpu8" && helps) {
-      helper = runCatching(::makeCpu8).onFailure { helperFailed = true; Log.w("ClipEmbedder", "LiteRT CPU unavailable, GPU alone", it) }.getOrNull()
+      helper = runCatching { makeCpu8(file = twin) }.onFailure { helperFailed = true; Log.w("ClipEmbedder", "LiteRT CPU unavailable, GPU alone", it) }.getOrNull()
     }
     return helper
   }
@@ -443,7 +462,7 @@ class ClipEngine private constructor(private val ctx: Context) {
   suspend fun configure(parallelDecode: Boolean, eng: String, model: String?) = mutex.withLock {
     parallel = parallelDecode
     engine = eng
-    visionFile = model?.let { File(ctx.filesDir, "models/vision_$it.tflite") }?.takeIf { it.exists() }?.path
+    visionFile = (model ?: dev)?.let { File(ctx.filesDir, "models/vision_$it.tflite") }?.takeIf { it.exists() }?.path  // null: the app's model
     val t0 = SystemClock.elapsedRealtime()
     // Load now so loadMs is measured here.
     val ok = withContext(liteThread) { lite?.close(); lite = null; liteFailed = false; liteModel() != null }

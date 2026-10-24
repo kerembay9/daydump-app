@@ -40,7 +40,7 @@ const IDX_N = 256; // ≥ the biggest batch below, or that mode measures a small
 const IDX_BATCH = 128;
 // MediaStore thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so not those.
 // decoder (setDecoder): skia = the old full decode, fast = the app's (EXIF thumbnail, else 1/2-1/8 scaled decode).
-// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = bundled.
+// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = the app's (bundled or dev model).
 // other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = GPU alone on the gold decode.
 // batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
 type Decoder = 'fast' | 'sample8' | 'skia' | 'gold';

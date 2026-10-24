@@ -1,6 +1,6 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { db } from './index/photoIndex';
+import { mainDb } from './index/photoIndex';
 import type { Story } from './stories';
 import { copyTitle, matches, photoRange } from './dumpLabels';
 import { getProfile, profileNow } from './profile';
@@ -39,7 +39,7 @@ type Row = { id: string; title: string; status: DumpStatus; source: DumpSource; 
 // Lives in photo-index.db next to the photos table; resetIndex() only empties photos, so dumps survive a reindex.
 // The partial unique index makes "one draft per story" a DB rule, so a double tap can't make two.
 let ready: Promise<SQLiteDatabase> | null = null;
-const dbx = () => (ready ??= db().then(async (d) => {
+const dbx = () => (ready ??= mainDb().then(async (d) => {
   await d.execAsync(`CREATE TABLE IF NOT EXISTS dumps (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL, story_id TEXT,
     photos TEXT NOT NULL, ratio TEXT NOT NULL, fit TEXT, layout TEXT, filter TEXT, caption TEXT, platform TEXT,

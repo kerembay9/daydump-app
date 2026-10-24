@@ -19,9 +19,13 @@ type ClipEmbedderModule = {
   benchDecode?(uris: string[]): Promise<{ ms: number; thumbs: number; failed: number }>;
   /**
    * Benchmark knobs; rebuilds the vision model. engine: gpu-cpu8 (default; LiteRT GPU, vision.tflite, with LiteRT CPU dynamic int8, vision_dw8.tflite, taking photos once decoding is done) | gpu-only | cpu8 (LiteRT CPU dynamic int8 alone; also gpu-cpu8 without a usable GPU).
-   * model: files/models/vision_<model>.tflite on the device, null = bundled. ok = false: LiteRT can't run here (embedImages will throw).
+   * model: files/models/vision_<model>.tflite on the device, null = the app's (bundled, or devModel's). ok = false: LiteRT can't run here (embedImages will throw).
    */
   configure(parallelDecode: boolean, engine: ClipEngine, model: string | null): Promise<{ loadMs: number; found: boolean; ok: boolean }>;
+  /** Developer tools' CLIP model switch: a distilled model pushed to files/models (research/distill), null = shipped. */
+  devModel(): string | null;
+  /** Persists the choice and restarts the app. */
+  setDevModel(model: string | null): void;
   /** Rejects while the text model hasn't arrived (modelState), except for the selfie finder's fixed phrases. */
   embedTexts(texts: string[]): Promise<string>;
   /**
