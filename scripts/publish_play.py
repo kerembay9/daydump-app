@@ -13,10 +13,14 @@ Usage:
 
 import argparse
 import os
+import socket
 import sys
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+
+# Increase socket timeout for large App Bundle uploads (170MB+)
+socket.setdefaulttimeout(600)
 
 PACKAGE_NAME = "com.horizonzeta.picdump"
 DEFAULT_KEY = os.path.expanduser("~/.gemini/antigravity/play-service-account.json")
@@ -51,14 +55,19 @@ def main():
 
     try:
         print(f"Uploading {args.aab} ({os.path.getsize(args.aab) / (1024 * 1024):.1f} MB)...")
-        media = MediaFileUpload(args.aab, mimetype="application/octet-stream", resumable=True)
+        media = MediaFileUpload(args.aab, mimetype="application/octet-stream", chunksize=10 * 1024 * 1024, resumable=True)
         bundle_req = service.edits().bundles().upload(
             packageName=PACKAGE_NAME,
             editId=edit_id,
             media_body=media,
             ackBundleInstallationWarning=True,
         )
-        bundle_resp = bundle_req.execute()
+        response = None
+        while response is None:
+            upload_status, response = bundle_req.next_chunk()
+            if upload_status:
+                print(f"Uploaded {int(upload_status.progress() * 100)}%...")
+        bundle_resp = response
         version_code = bundle_resp["versionCode"]
         print(f"Bundle uploaded successfully! Version Code: {version_code}")
 

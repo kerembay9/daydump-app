@@ -2,7 +2,7 @@
   "expo": {
     "name": "PicDump",
     "slug": "picdump",
-    "version": "0.0.5",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
