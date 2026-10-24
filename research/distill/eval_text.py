@@ -49,7 +49,8 @@ def rare():
 def embed(path, texts):
     from transformers import CLIPTokenizerFast
     from ai_edge_litert.interpreter import Interpreter
-    tok = CLIPTokenizerFast(tokenizer_file=str(B.PACK / "tokenizer.json"))
+    own = path.removesuffix(".tflite") + ".tokenizer.json"  # a candidate with its own (e.g. pruned) tokenizer
+    tok = CLIPTokenizerFast(tokenizer_file=own if os.path.exists(own) else str(B.PACK / "tokenizer.json"))
     it = Interpreter(model_path=path, num_threads=os.cpu_count()); it.allocate_tensors()
     inp, out = it.get_input_details()[0], it.get_output_details()[0]
     vecs = []
