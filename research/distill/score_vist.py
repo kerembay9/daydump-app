@@ -5,7 +5,7 @@ import numpy as np
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 CACHE = f"{REPO}/scripts/.cache"
-BASE = "tc45"
+BASE = os.environ.get("BASE", "tc45")  # the model every other is compared to (paired bootstrap)
 rng = np.random.default_rng(0)
 SPLIT = os.environ.get("SPLIT", "test")
 EMB = f"{CACHE}/distill/vist_emb" + ("" if SPLIT == "test" else "_" + SPLIT)
@@ -35,7 +35,7 @@ qmask = np.array([p in col for p in E[keys[0]]["q_photo"]])
 qown = np.array([col[p] for p in E[keys[0]]["q_photo"][qmask]])
 have = set(ids)
 full = [a for a, ps in album_all.items() if ps <= have and len(ps) >= 5]
-alb_rows = {a: np.array(sorted((col[p] for p in album_all[a]), key=lambda i: meta[ids[i]]["datetaken"])) for a in full}
+alb_rows = {a: np.array(sorted((col[p] for p in album_all[a]), key=lambda i: (meta[ids[i]]["datetaken"], i))) for a in full}  # i breaks time ties: set order changes per process
 alb_st = {a: [s for s in stories.values() if s <= album_all[a]] for a in full}
 alb_st = {a: s for a, s in alb_st.items() if s}
 STOP = set("with from that this they their there have photo picture image".split())
@@ -99,7 +99,7 @@ for k, e in E.items():
         cur.append(np.mean([share[r] for r in pick(rows, img, wq, 5, thr)]))
     res[k] = {"R@1": 100 * (rank < 1).mean(), "R@5": 100 * (rank < 5).mean(), "R@10": 100 * (rank < 10).mean(),
               "album R@1": 100 * np.mean(inalb), "tag hit": 100 * np.mean(taghit), "curation": 100 * np.mean(cur)}
-    per[k] = {"R@1": (rank < 1).astype(float), "album R@1": np.array(inalb), "tag hit": np.array(taghit), "curation": np.array(cur)}
+    per[k] = {"R@1": (rank < 1).astype(float), "R@5": (rank < 5).astype(float), "R@10": (rank < 10).astype(float), "album R@1": np.array(inalb), "tag hit": np.array(taghit), "curation": np.array(cur)}
 
 # model-free reference points for curation
 rand, tb, best = [], [], []
@@ -120,7 +120,6 @@ if BASE in res:
     print("\n95% CI of the difference vs", BASE)
     for k in keys:
         if k != BASE:
-            print(k.ljust(10), "  ".join(("[%+.1f, %+.1f]" % tuple(100 * boot(per[k][c], per[BASE][c]))).rjust(13)
-                                       for c in ["R@1", "album R@1", "tag hit", "curation"]))
+            print(k.ljust(10), "  ".join(("[%+.1f, %+.1f]" % tuple(100 * boot(per[k][c], per[BASE][c]))).rjust(13) for c in cols))
 print(f"\ncuration reference: random {100 * np.mean(rand):.1f}, time buckets only {100 * np.mean(tb):.1f}, "
       f"best possible {100 * np.mean(best):.1f}")
