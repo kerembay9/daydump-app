@@ -38,20 +38,21 @@ builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. D
 
 ## Download order (release builds)
 
-All three download on their own, one at a time, so each gets the whole connection. vision is always first; after it, the pack a screen asked for (`useModels(want)` → `wantModel`) jumps ahead; otherwise this order:
+All three are fast-follow: Play downloads them right after the install, app opened or not, in its own order. The app only re-fetches a pack Play didn't finish (failed, cancelled; and every pack under `--local-testing`), one at a time: vision first, then the pack a screen asked for (`useModels(want)` → `wantModel`), otherwise this order:
 
 | # | Pack | Delivery | Unlocks |
 |---|---|---|---|
-| 1 | visionpack | fast-follow: Play starts it at install, app opened or not | indexing → Discover dumps, Create's photo grid, topics |
-| 2 | facepack | on-demand: the app fetches it when visionpack lands. Wanted by onboarding's selfie step, /selfie, People (any `faces(embed)` call) | People; sharper selfie pick (works without it) |
-| 3 | textpack | on-demand: fetched when facepack lands. Wanted by Create (first visit): then it goes before facepack | Create search by words |
+| 1 | visionpack | fast-follow | indexing → Discover dumps, Create's photo grid, topics |
+| 2 | facepack | fast-follow. Wanted by onboarding's selfie step, /selfie, People (any `faces(embed)` call) | People; sharper selfie pick (works without it) |
+| 3 | textpack | fast-follow. Wanted by Create (first visit): then it goes before facepack in a re-fetch | Create search by words |
 
 ```mermaid
 flowchart TD
-  INST{how was the app installed?} -->|Google Play| FF[Play downloads visionpack right after the install]
+  INST{how was the app installed?} -->|Google Play| FF[Play downloads all three packs right after the install]
   INST -->|sideloaded / adb release APK| UNAV[every pack: unavailable, never arrives]
   INST -->|bundletool --local-testing| LT[packs copied to the phone; each fetched when the app asks]
-  FF --> V[visionpack downloading]
+  FF --> PLAY[Play's own order] -->|one failed or was cancelled| V[visionpack, or the next missing pack, downloading]
+  PLAY -->|COMPLETED| DONE
   LT --> V
   V -->|COMPLETED: the listener calls next| W{a screen wanted textpack?}
   W -->|no: default| F[facepack downloading]

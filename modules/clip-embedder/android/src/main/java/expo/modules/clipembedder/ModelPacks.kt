@@ -11,10 +11,10 @@ import java.io.File
 
 /**
  * The big models ship as Play asset packs in release builds (android/<pack>/build.gradle); debug builds carry them in the APK.
- * All three download on their own, one at a time, so each gets the whole connection: vision (indexing, Discover, Create)
- * first, as fast-follow, so Play starts it at install; then the pack a screen asked for (want: Create wants text, the
- * selfie finder and People want faces), then the rest in Pack order. faces and text are on-demand, fetched here as the
- * one before lands. A release APK installed without Play (sideloaded, adb) never gets them: every pack stays "unavailable".
+ * All three are fast-follow: Play starts them at install, app opened or not. Here only a pack Play didn't finish (failed,
+ * cancelled, or --local-testing installs, which fetch on request) is fetched again, one at a time: vision (indexing, Discover,
+ * Create) first, then the pack a screen asked for (want: Create wants text, the selfie finder and People want faces), then
+ * Pack order. A release APK installed without Play (sideloaded, adb) never gets them: every pack stays "unavailable".
  * ponytail: a want waits for the pack already downloading (no cancel: Play may drop its bytes); cancel it if 41 MB waits hurt.
  * ponytail: WAITING_FOR_WIFI / REQUIRES_USER_CONFIRMATION just report "waiting"; add showConfirmationDialog if it shows up in the field.
  */

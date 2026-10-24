@@ -1,6 +1,6 @@
-// sface.tflite: second in the download order (ModelPacks.kt), fetched by the app once visionpack is in.
+// sface.tflite: fast-follow: Play fetches it after the install, like visionpack (ModelPacks.kt fetches it again if that failed).
 plugins { id 'com.android.asset-pack' }
 assetPack {
   packName = 'facepack'
-  dynamicDelivery { deliveryType = 'on-demand' }
+  dynamicDelivery { deliveryType = 'fast-follow' }
 }
