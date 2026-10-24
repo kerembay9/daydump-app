@@ -117,8 +117,14 @@ test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for
   expect(screen.getAllByText(/^2 yours \+ 4 suggested/)).toHaveLength(2);
   expect(screen.queryByLabelText('Refresh for 2 picks')).toBeNull();
 
+  // the card's Preview button opens the same sheet; Close shuts it
+  await fireEvent.press(screen.getByLabelText('Open preview of way 2'));
+  expect(await screen.findByText('Way 2 of 2')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Close preview'));
+  await waitFor(() => expect(screen.queryByText('Way 2 of 2')).toBeNull());
+
   // Use this (6) takes the whole way; Undo would put it back
-  await fireEvent.press(screen.getByLabelText('Preview way 1'));
+  await fireEvent.press(screen.getByLabelText('Open preview of way 1'));
   await fireEvent.press(await screen.findByText('Use this (6)'));
   expect(screen.getByText('6/6')).toBeTruthy();
   expect(screen.getByText(/^Added 4 photos/)).toBeTruthy();

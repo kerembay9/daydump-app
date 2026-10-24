@@ -174,14 +174,14 @@ function Fan({ photos, w, h, sparkle }: { photos: DumpPhoto[]; w: number; h: num
   );
 }
 
-function Pill({ text, on, onPress, icon, a11y }: { text: string; on?: boolean; onPress: () => void; icon?: React.ReactNode; a11y: string }) {
+function Pill({ text, on, onPress, icon, a11y, flex }: { text: string; on?: boolean; onPress: () => void; icon?: React.ReactNode; a11y: string; flex?: boolean }) {
   const { t } = useTheme();
   return (
     <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ selected: !!on }} hitSlop={4}
-      style={[{ height: 24, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 },
-        on ? { backgroundColor: t.ink } : { borderWidth: 1, borderColor: t.borderStrong }]}>
+      style={[{ height: 36, paddingHorizontal: 14, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+        flex ? { flex: 1 } : null, on ? { backgroundColor: t.ink } : { borderWidth: 1, borderColor: t.borderStrong }]}>
       {icon}
-      <Text style={[ui(9.5, 600), { color: on ? t.bgScreen : t.ink }]}>{text}</Text>
+      <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]} numberOfLines={1}>{text}</Text>
     </Tap>
   );
 }
@@ -216,14 +216,14 @@ export function FinishSection({ f }: { f: Finishes }) {
           </Tap>
         </View>
       ) : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
-        <Tap onPress={() => f.setOpen(!f.open)} accessibilityRole="button" accessibilityState={{ expanded: f.open }} accessibilityLabel="2 ways to finish" hitSlop={8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
-          <Icons.sparkle size={12} color={t.ink} />
-          <Text style={[label(9.5, 0.11), { color: t.inkMuted }]} numberOfLines={1}>2 ways to finish</Text>
-          <View style={{ transform: [{ rotate: f.open ? '90deg' : '0deg' }] }}><Icons.chevron size={13} color={t.inkMuted} /></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 8, paddingHorizontal: 2, gap: 8 }}>
+        <Tap onPress={() => f.setOpen(!f.open)} accessibilityRole="button" accessibilityState={{ expanded: f.open }} accessibilityLabel="2 ways to finish" hitSlop={10}
+          style={{ minHeight: 28, flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 }}>
+          <Icons.sparkle size={14} color={t.ink} />
+          <Text style={[label(11, 0.11), { color: t.inkMuted }]} numberOfLines={1}>2 ways to finish</Text>
+          <View style={{ transform: [{ rotate: f.open ? '90deg' : '0deg' }] }}><Icons.chevron size={16} color={t.inkMuted} /></View>
         </Tap>
-        {f.busy ? <ActivityIndicator size={12} color={t.ink} /> : null}
+        {f.busy ? <ActivityIndicator size={14} color={t.ink} /> : null}
       </View>
 
       {!f.open ? null : !sets ? (
@@ -240,7 +240,7 @@ export function FinishSection({ f }: { f: Finishes }) {
               {ways.map(({ y, i }, j) => {
                 const on = f.added(i), saved = f.saved.includes(i);
                 return (
-                  <FrameCard key={i} radius={18} style={[{ width: cardW, paddingHorizontal: 10, paddingTop: 12, paddingBottom: 8, alignItems: 'center' },
+                  <FrameCard key={i} radius={18} style={[{ width: cardW, paddingHorizontal: 10, paddingTop: 12, paddingBottom: 10, alignItems: 'center' },
                     on ? { boxShadow: `0 0 0 2px ${t.ink}, ${t.shadowCard}` } : null]}>
                     <Tap onPress={() => setPeek({ j, ids: new Set() })} accessibilityRole="button" accessibilityLabel={`Preview way ${j + 1}`} style={{ alignItems: 'center' }}>
                       <Fan photos={sets.x} w={cardW - 20} h={Math.round(56 * k)} />
@@ -249,14 +249,17 @@ export function FinishSection({ f }: { f: Finishes }) {
                       </View>
                       <Fan photos={y} w={cardW - 20} h={Math.round(80 * k)} sparkle />
                     </Tap>
-                    <View style={{ alignSelf: 'stretch', marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text onPress={() => setPeek({ j, ids: new Set() })} style={[ui(9.5), { color: t.inkMuted, flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {sets.x.length} yours + {y.length} suggested · <Text style={[ui(9.5, 700), { color: t.ink, textDecorationLine: 'underline' }]}>Preview</Text>
+                    <View style={{ alignSelf: 'stretch', marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={[ui(11), { color: t.inkMuted, flex: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {sets.x.length} yours + {y.length} suggested
                       </Text>
-                      <Pill text={saved ? 'Saved' : 'Save as draft'} onPress={() => f.save(i)} a11y={saved ? 'Saved to Drafts' : 'Save this way as a draft'}
-                        icon={saved ? <Icons.check size={10} color={t.ink} /> : null} />
-                      <Pill text={on ? 'Added' : 'Use this'} on={on} onPress={() => f.use(i)} a11y={on ? 'Added. Tap to take these out' : 'Use these suggestions'}
-                        icon={on ? <Icons.check size={10} color={t.bgScreen} /> : null} />
+                      <Pill text="Preview" onPress={() => setPeek({ j, ids: new Set() })} a11y={`Open preview of way ${j + 1}`} icon={<Icons.expand size={13} color={t.ink} />} />
+                    </View>
+                    <View style={{ alignSelf: 'stretch', marginTop: 8, flexDirection: 'row', gap: 8 }}>
+                      <Pill flex text={saved ? 'Saved' : 'Save as draft'} onPress={() => f.save(i)} a11y={saved ? 'Saved to Drafts' : 'Save this way as a draft'}
+                        icon={saved ? <Icons.check size={13} color={t.ink} /> : null} />
+                      <Pill flex text={on ? 'Added' : 'Use this'} on={on} onPress={() => f.use(i)} a11y={on ? 'Added. Tap to take these out' : 'Use these suggestions'}
+                        icon={on ? <Icons.check size={13} color={t.bgScreen} /> : null} />
                     </View>
                   </FrameCard>
                 );
@@ -276,9 +279,9 @@ export function FinishSection({ f }: { f: Finishes }) {
             ) : null}
           </View>
           {ways.length > 1 ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 2 }}>
               {ways.map((w, j) => (
-                <View key={w.i} style={{ height: 6, width: j === page ? 16 : 6, borderRadius: 3, backgroundColor: j === page ? t.ink : t.borderStrong }} />
+                <View key={w.i} style={{ height: 7, width: j === page ? 18 : 7, borderRadius: 3.5, backgroundColor: j === page ? t.ink : t.borderStrong }} />
               ))}
             </View>
           ) : null}
