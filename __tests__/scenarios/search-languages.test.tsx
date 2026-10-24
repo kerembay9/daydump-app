@@ -1,10 +1,10 @@
-import { act, fireEvent, screen } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor } from 'expo-router/testing-library';
 import { bootApp } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
 
 beforeAll(() => seedWorld());
 
-test('a Turkish search waits for its download, then also searches the English translation', async () => {
+test('a Turkish search waits for its download, then also searches the English translation, silently', async () => {
   world.lang.device = 'tr';
   let release!: () => void;
   world.lang.gate = new Promise<void>((r) => { release = r; });
@@ -15,23 +15,20 @@ test('a Turkish search waits for its download, then also searches the English tr
   await fireEvent.changeText(search, 'sunset');
   const sunsets = Number((await screen.findByText(/^Matches for "sunset"/)).props.children.match(/\((\d+)\)/)[1]);
   expect(sunsets).toBeGreaterThan(0);
-  expect(screen.queryByText(/^Also searching/)).toBeNull(); // English: searched as typed only
 
   // Turkish isn't downloaded yet: says so, searches as typed
   await fireEvent.changeText(search, 'gün batımı');
   expect(await screen.findByText(/Turkish is still downloading \(about 30 MB\)/)).toBeTruthy();
-  expect(screen.queryByText(/^Also searching/)).toBeNull();
 
-  // the download lands: searched again with the translation, the note gives way to the chip
+  // the download lands: searched again with the translation, the note goes, no "Also searching" chip
   await act(async () => { release(); });
-  expect(await screen.findByText('Also searching: sunset')).toBeTruthy();
-  expect(screen.getByText(`Matches for "gün batımı" (${sunsets})`)).toBeTruthy();
-  expect(screen.queryByText(/still downloading/)).toBeNull();
+  await waitFor(() => expect(screen.queryByText(/still downloading/)).toBeNull());
+  expect(await screen.findByText(`Matches for "gün batımı" (${sunsets})`)).toBeTruthy();
+  expect(screen.queryByText(/Also searching/)).toBeNull();
 
   // emoji are searched by name too
   await fireEvent.changeText(search, '🌇');
   expect(await screen.findByText(`Matches for "🌇" (${sunsets})`)).toBeTruthy();
-  expect(screen.getByText('Also searching: sunset')).toBeTruthy();
 });
 
 test('Settings lists search languages with their download state; turning one off deletes it', async () => {

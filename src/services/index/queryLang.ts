@@ -70,8 +70,6 @@ export async function setSearchLangs(langs: string[]) {
 export type Expanded = {
   /** the query first, then its emoji-as-words and English versions */
   texts: string[];
-  /** texts after the first, for "Also searching: …" */
-  also: string[];
   /** search languages this query may be in that aren't downloaded yet */
   pending: string[];
 };
@@ -89,7 +87,7 @@ export function expandQuery(clip: string): Promise<Expanded> {
 async function expand(clip: string, langs: string[], ready: string[]): Promise<Expanded> {
   const words = emojiToWords(clip);
   const texts = words && words !== clip ? [clip, words] : [clip];
-  const done = (pending: string[] = []) => ({ texts, also: texts.slice(1), pending });
+  const done = (pending: string[] = []) => ({ texts, pending });
   const qt = QT;
   if (!qt || !langs.length || !words) return done();
   const ids = await qt.identify(words).catch(() => []);

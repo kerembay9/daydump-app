@@ -366,15 +366,8 @@ export default function Create() {
     return failed ? `${names} didn’t download, so this searches only what you typed. Retry in Settings.`
       : `${names} is still downloading (about 30 MB). Until then this searches only what you typed.`;
   })() : null;
-  const langNote = query.trim() && (expanded?.also.length || pending) ? (
-    <View style={{ gap: 4, marginBottom: 6, paddingHorizontal: 2 }}>
-      {expanded?.also.length ? (
-        <View style={{ alignSelf: 'flex-start', borderWidth: 1, borderColor: t.borderSubtle, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
-          <Text style={[ui(10.5), { color: t.inkMuted }]} numberOfLines={1}>Also searching: {expanded.also.join(', ')}</Text>
-        </View>
-      ) : null}
-      {pending ? <Text style={[ui(10.5), { color: t.inkMuted }]}>{pending}</Text> : null}
-    </View>
+  const langNote = pending ? (
+    <Text style={[ui(10.5), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 2 }]}>{pending}</Text>
   ) : null;
 
   const header = (
