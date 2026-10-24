@@ -3,8 +3,8 @@ import { Platform, Text, ToastAndroid, useWindowDimensions, View } from 'react-n
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../state/AppState';
-import { markSeen, Story, storyById } from '../../services/stories';
-import { draftForStory, Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
+import { Story, storyById } from '../../services/stories';
+import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
 import { filterOf } from '../../services/filters';
 import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
@@ -177,23 +177,6 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     if (st && st.routes[st.index - 1]?.name === 'edit/[id]') return router.back();
     router.replace({ pathname: '/edit/[id]', params: { id: dump.storyId ?? dump.id } });
   };
-  // Save as draft: a Discover story not yet in Library becomes its draft (the same one Edit opens)
-  const toDraft = async () => {
-    if (!story || running.current) return;
-    running.current = true;
-    try {
-      const d = await draftForStory(story);
-      markSeen([story.id]);
-      setDump(d);
-      toast('Saved to Drafts');
-    } catch (e) {
-      console.warn('[preview] save as draft failed:', e);
-      toast("Couldn't save the draft. Try again.");
-    } finally {
-      running.current = false;
-    }
-  };
-
   const cardW = win.width - 32;
   // TikTok frame: 9:16, short enough that header + frame + Post button fit on one screen
   const tkH = Math.min(((cardW - 2) * 16) / 9, win.height - insets.top - insets.bottom - 210);
@@ -237,11 +220,6 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
             <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
           </Tap>
-          {isDumpId(dump.id) ? null : (
-            <Tap onPress={toDraft} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save as draft">
-              <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save as draft</Text>
-            </Tap>
-          )}
           <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump">
             <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>Quality: <Text style={{ color: t.ink, fontWeight: '600' }}>{hd ? 'HD' : 'Standard'}</Text></Text>
           </Tap>
