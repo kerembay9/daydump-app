@@ -1,0 +1,392 @@
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as MediaLibrary from 'expo-media-library/legacy';
+import { ClipEmbedder, ClipEngine, EdgeBench, FaceResult, GemmaResult, MlkitResult } from '../../modules/clip-embedder';
+import { IndexedPhoto, Library } from '../services/index/photoIndex';
+import { b64ToFloats, DIM } from '../services/index/vectors';
+import { findSelfies, selfieFace } from '../services/selfie';
+
+const GEMMA_URL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm';
+const PROMPT = 'Give 5 short tags and a one-line caption for this photo.\nFormat:\ntags: a, b, c, d, e\ncaption: ...';
+const N = 10;
+const GEMMA_SIDE = 512; // shortest side sent to Gemma's vision encoder
+const MLKIT_SIDE = 480;
+const GEMMA_MAX_TOKENS = 48;
+
+const CAPTION = 'Write one short caption for this photo. Reply with the caption only.';
+const STORY = 'These photos are one story from a camera roll. Reply with a short title and a one-line caption.\nFormat:\ntitle: ...\ncaption: ...';
+type Variant = { name: string; prompt: string; side: number; max: number; thinking?: boolean; story?: boolean; text?: boolean };
+/** Same photos through each config; "story" sends 6 photos in one call. */
+const VARIANTS: Variant[] = [
+  { name: 'base 512 tags+cap', prompt: PROMPT, side: 512, max: GEMMA_MAX_TOKENS },
+  // 256 px and thinking=false measured no faster than 384 on GPU (encoder resizes; thinking is off by default).
+  { name: 'caption 384', prompt: CAPTION, side: 384, max: 24 },
+  { name: 'text only (no image)', prompt: 'Write one short caption for a photo of a beach at sunset. Reply with the caption only.', side: 0, max: 24, text: true },
+  { name: 'story 6 photos 384', prompt: STORY, side: 384, max: 32, story: true },
+];
+const OPT_N = 5;
+const MODES = [
+  { gpu: true, visionGpu: true },
+  { gpu: false, visionGpu: true },
+  { gpu: true, visionGpu: false },
+  { gpu: false, visionGpu: false },
+];
+const modeName = (m: { gpu: boolean; visionGpu: boolean }) => `LLM ${m.gpu ? 'GPU' : 'CPU'} · vision ${m.visionGpu ? 'GPU' : 'CPU'}`;
+type OptRow = { backend: string; v: Variant; runs: GemmaResult[]; photos: number };
+
+/** Indexer path (batches of IDX_BATCH: asset info for GPS, embed, top concepts), old vs fast decode. */
+const IDX_N = 256; // ≥ the biggest batch below, or that mode measures a smaller one
+const IDX_BATCH = 128;
+// MediaStore thumbnails (thumb > 0) measured: decode 83 -> 23-47 ms but top concept changed for ~40% of photos, so not those.
+// decoder (setDecoder): skia = the old full decode, fast = the app's (EXIF thumbnail, else 1/2-1/8 scaled decode).
+// model: files/models/vision_<model>.tflite pushed by hand (scripts/build_assets.py bench); null = the app's (bundled or dev model).
+// other: a different TinyCLIP tower (different vector space, so no vs-reference line). Reference = GPU alone on the gold decode.
+// batch: photos per embedImages call (default IDX_BATCH, as photoIndex).
+type Decoder = 'fast' | 'sample8' | 'skia' | 'gold';
+const IDX_MODES: { name: string; parallel: boolean; engine: ClipEngine; model: string | null; decoder: Decoder; batch?: number; other?: boolean }[] = [
+  // Alternating, so heat hits old and new the same.
+  { name: 'GPU + CPU helper · old decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'skia' },
+  { name: 'GPU + CPU helper · fast decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'fast' },
+  { name: 'GPU only · old decode', parallel: true, engine: 'gpu-only', model: null, decoder: 'skia' },
+  { name: 'GPU only · fast decode', parallel: true, engine: 'gpu-only', model: null, decoder: 'fast' },
+  { name: 'GPU + CPU helper · old decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'skia' },
+  { name: 'GPU + CPU helper · fast decode', parallel: true, engine: 'gpu-cpu8', model: null, decoder: 'fast' },
+];
+
+/** YuNet face bench: files/models/yunet_<size>.tflite (scripts/build_assets.py yunet), on the selfie candidates + random photos. */
+const FACE_SIZES = [320, 640];
+const FACE_MIN = 0.6; // OpenCV's default score threshold
+const FACE_RANDOM = 64;
+type FaceRow = { p: IndexedPhoto; clipRank: number; bySize: Record<number, FaceResult> };
+const faceArea = (r?: FaceResult) => (r?.faces.length ? r.faces[0].w * r.faces[0].h : 0);
+
+type Row = { p: IndexedPhoto; clip?: { ms: number; words: string[] }; mlkit?: MlkitResult; gemma?: GemmaResult; err?: string };
+
+const sample = (lib: Library, n = N) => [...lib.photos].sort(() => Math.random() - 0.5).slice(0, n);
+// TinyCLIP photos per embedImages call in "Run random photos"; the indexer ships with 16.
+const BATCHES = [1, 4, 8, 16, 64];
+const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : NaN);
+const timed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
+  const t0 = Date.now();
+  const r = await f();
+  return [r, Date.now() - t0];
+};
+const med = (rs: GemmaResult[], f: (r: GemmaResult) => number) => median(rs.map(f));
+const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
+const GEMMA_BYTES = 2.6e9;
+
+/** Caution popup; resolves true only on the confirm button. */
+const confirm = (title: string, message: string, ok: string) =>
+  new Promise<boolean>((resolve) =>
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: ok, onPress: () => resolve(true) },
+    ], { cancelable: true, onDismiss: () => resolve(false) })
+  );
+
+/** Same N random photos through CLIP, ML Kit labeling and Gemma 4 E2B; per-photo wall time including decode. */
+export const ModelBench: React.FC<{ lib: Library | null }> = ({ lib }) => {
+  const [file, setFile] = useState({ bytes: 0, partial: 0 });
+  const [dl, setDl] = useState('');
+  const [mode, setMode] = useState(0); // index into MODES
+  const { gpu, visionGpu } = MODES[mode];
+  const [loadMs, setLoadMs] = useState<number | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [busy, setBusy] = useState('');
+  const [opt, setOpt] = useState<OptRow[]>([]);
+  const [idx, setIdx] = useState<string[]>([]);
+  const [faces, setFaces] = useState<{ lines: string[]; rows: FaceRow[] }>({ lines: [], rows: [] });
+  const [batch, setBatch] = useState(16); // same as the indexer
+  const count = batch === 1 ? N : Math.max(16, batch); // small batches still time 16 photos, in several calls
+
+  const refresh = () => EdgeBench?.gemmaFile().then(setFile);
+  useEffect(() => {
+    refresh();
+    const sub = EdgeBench?.addListener('onDownload', (e) => setDl(`${mb(e.bytes)} / ${mb(e.total)} (${((100 * e.bytes) / e.total).toFixed(0)}%)`));
+    return () => sub?.remove();
+  }, []);
+
+  if (!EdgeBench || !ClipEmbedder) return <Text style={s.meta}>Benchmark needs the Android dev build.</Text>;
+  const bench = EdgeBench;
+  const clip = ClipEmbedder;
+
+  const guard = (label: string, f: () => Promise<void>) => async () => {
+    if (busy) return;
+    setBusy(label);
+    try {
+      await f();
+    } catch (e) {
+      setDl(`${label} failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy('');
+      refresh();
+    }
+  };
+
+  const download = guard('download', async () => {
+    const left = mb(GEMMA_BYTES - file.partial);
+    const ok = await confirm(
+      'Download Gemma 4 E2B?',
+      `This downloads ${left} for benchmarking only. Use Wi-Fi: on mobile data it can use up your plan. It needs about 3 GB of free storage, and you can delete it here afterwards.`,
+      `Download ${left}`
+    );
+    if (!ok) return;
+    await bench.downloadGemma(GEMMA_URL);
+    setDl('downloaded');
+  });
+
+  const load = guard('load', async () => {
+    setLoadMs(null);
+    setLoadMs(await bench.loadGemma(gpu, visionGpu));
+  });
+
+  const run = guard('run', async () => {
+    if (!lib) return;
+    // ML Kit's model comes from Play services on first use; ask before fetching it, else run without ML Kit.
+    let mlkit = await bench.mlkitReady();
+    if (!mlkit && (await confirm(
+      'Download ML Kit model?',
+      'Google Play services downloads a small image labeling model (a few MB) once, for this benchmark only. Cancel runs the benchmark without ML Kit.',
+      'Download'
+    ))) {
+      setBusy('downloading ML Kit model');
+      mlkit = await bench.mlkitInstall();
+      if (!mlkit) setDl('ML Kit model still downloading; this run skips ML Kit');
+      setBusy('run');
+    }
+    const out: Row[] = sample(lib, count).map((p) => ({ p }));
+    setRows([...out]);
+    if (!out.length) return;
+    await clip.embedImages([out[0].p.uri]); // untimed warm-up: model load isn't per-photo cost
+    if (batch > 1) {
+      // One call per `batch` photos, like the indexer; per-photo time = call time / photos in it.
+      for (let j = 0; j < out.length; j += batch) {
+        const chunk = out.slice(j, j + batch);
+        const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages(chunk.map((r) => r.p.uri)), 3));
+        chunk.forEach((r, i) => (r.clip = { ms: Math.round(ms / chunk.length), words: c.ids.slice(i * 3, i * 3 + 3).map((id) => lib.conceptNames[id]) }));
+        setRows([...out]);
+      }
+    }
+    for (let i = 0; i < out.length; i++) {
+      const r = out[i];
+      try {
+        if (batch === 1) {
+          const [c, ms] = await timed(async () => clip.topConcepts(await clip.embedImages([r.p.uri]), 3));
+          r.clip = { ms, words: c.ids.map((id) => lib.conceptNames[id]) };
+          setRows([...out]);
+        }
+        if (mlkit) r.mlkit = await bench.mlkitLabels(r.p.uri, MLKIT_SIDE); // no batch API: one photo per call
+        setRows([...out]);
+        if (loadMs != null && i < N) r.gemma = await bench.gemmaDescribe([r.p.uri], PROMPT, GEMMA_SIDE, GEMMA_MAX_TOKENS, null);
+      } catch (e) {
+        r.err = e instanceof Error ? e.message : String(e);
+      }
+      setRows([...out]);
+    }
+  });
+
+  const runVariants = guard('variants', async () => {
+    if (!lib || loadMs == null) return;
+    const photos = sample(lib).slice(0, 6);
+    const backend = modeName(MODES[mode]);
+    for (const v of VARIANTS) {
+      const row: OptRow = { backend, v, runs: [], photos: v.story ? photos.length : 1 };
+      setOpt((o) => [...o, row]);
+      const calls = v.story ? [photos.map((p) => p.uri)] : photos.slice(0, OPT_N).map((p) => (v.text ? [] : [p.uri]));
+      for (const uris of calls) {
+        row.runs.push(await bench.gemmaDescribe(uris, v.prompt, v.side, v.max, v.thinking ?? null));
+        setOpt((o) => [...o]);
+      }
+    }
+  });
+
+  const runIndexBench = guard('index bench', async () => {
+    if (!lib) return;
+    const photos = [...lib.photos].sort(() => Math.random() - 0.5).slice(0, IDX_N);
+    const n = photos.length;
+    const lines: string[] = [];
+    const uris = await Promise.all(photos.map(async (a) => (await MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))?.localUri ?? a.uri));
+    // Untimed pass on the GPU alone with the gold decode: warms the file cache (fair to every mode) and gives the reference vectors.
+    await clip.configure(true, 'gpu-only', null);
+    clip.setDecoder?.('gold');
+    const pass = async (B = IDX_BATCH) => {
+      const t = { info: 0, decode: 0, model: 0, concepts: 0, cpu: 0, thumbs: 0 };
+      let size = '';
+      const vecs = new Float32Array(n * DIM);
+      const top5: number[][] = [];
+      for (let i = 0; i < n; i += B) {
+        const batch = photos.slice(i, i + B);
+        const [, infoMs] = await timed(() => Promise.all(batch.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null))));
+        t.info += infoMs;
+        const b64 = await clip.embedImages(uris.slice(i, i + B));
+        const lt = clip.lastEmbedTimings();
+        t.decode += lt.decodeMs;
+        t.model += lt.modelMs;
+        t.cpu += lt.cpuPhotos ?? 0;
+        t.thumbs += lt.thumbs ?? 0;
+        size ||= lt.size;
+        const [c, cMs] = await timed(() => clip.topConcepts(b64, 10));
+        t.concepts += cMs;
+        for (let j = 0; j < batch.length; j++) top5.push(c.ids.slice(j * 10, j * 10 + 5));
+        vecs.set(b64ToFloats(b64), i * DIM);
+      }
+      return { t, size, vecs, top5 };
+    };
+    setBusy('index bench: warm-up');
+    const ref = await pass();
+    // The decode pool alone (no model), all IDX_N photos per run, alternating.
+    for (const d of ['skia', 'sample8', 'fast', 'skia', 'sample8', 'fast'] as const) {
+      if (!clip.benchDecode) break;
+      setBusy(`index bench: decode only, ${d}`);
+      clip.setDecoder?.(d);
+      const r = await clip.benchDecode(uris);
+      lines.push(`decode only · ${d}: ${(r.ms / n).toFixed(1)} ms/photo${r.thumbs ? ` · EXIF thumbnail ${r.thumbs}/${n}` : ''}${r.failed ? ` · failed ${r.failed}` : ''}`);
+      setIdx([...lines]);
+    }
+    for (const [k, m] of IDX_MODES.entries()) {
+      setBusy(`index bench ${k + 1}/${IDX_MODES.length}: ${m.name}`);
+      const cfg = await clip.configure(m.parallel, m.engine, m.model).catch((e) => ({ found: false, ok: false, loadMs: 0, error: String(e) }));
+      if (!cfg.found || !cfg.ok) {
+        lines.push(`${m.name}: skipped (${'error' in cfg ? cfg.error : !cfg.found ? `no files/models/vision_${m.model}` : 'LiteRT failed to load, see logcat'})`);
+        setIdx([...lines]);
+        continue;
+      }
+      clip.setDecoder?.(m.decoder);
+      const { t, size, vecs, top5 } = await pass(m.batch);
+      const per = (x: number) => (x / n).toFixed(0);
+      const cos = photos.map((_, k) => {
+        let d = 0;
+        for (let x = 0; x < DIM; x++) d += vecs[k * DIM + x] * ref.vecs[k * DIM + x];
+        return d;
+      });
+      const same = top5.filter((ids, k) => ids[0] === ref.top5[k][0]).length;
+      const overlap = top5.reduce((a, ids, k) => a + ids.filter((id) => ref.top5[k].includes(id)).length, 0) / (5 * n);
+      // Another model's vectors live in a different space: only its timings mean anything.
+      const vs = m.other ? '' : `\n   vs gold: cosine mean ${(cos.reduce((a, b) => a + b, 0) / n).toFixed(3)} min ${Math.min(...cos).toFixed(3)} · top concept same ${((100 * same) / n).toFixed(0)}% · top-5 overlap ${(100 * overlap).toFixed(0)}%`;
+      const total = t.info + t.decode + t.model + t.concepts;
+      lines.push(`${m.name}: ${per(total)} ms/photo · ${Math.round((3.6e6 * n) / total).toLocaleString()} photos/h (n=${n}, load ${cfg.loadMs} ms)\n   info ${per(t.info)} · decode ${per(t.decode)} · model ${per(t.model)} · concepts ${per(t.concepts)}${t.cpu ? ` · CPU took ${t.cpu}/${n}` : ''}${t.thumbs ? ` · EXIF thumbnail ${t.thumbs}/${n}` : ''} · src ${size}${vs}`);
+      setIdx([...lines]);
+    }
+    clip.setDecoder?.('fast');
+    await clip.configure(true, 'gpu-cpu8', null); // back to shipped defaults
+  });
+
+  const runFaces = guard('face bench', async () => {
+    if (!lib) return;
+    const cands = await findSelfies(lib);
+    const random = sample(lib, FACE_RANDOM);
+    const rows: FaceRow[] = cands.map((c, i) => ({ p: c.p, clipRank: i + 1, bySize: {} }));
+    const lines: string[] = [];
+    for (const size of FACE_SIZES) {
+      setBusy(`face bench: YuNet ${size}`);
+      const r = await bench.yunetFaces([random[0].uri], size, FACE_MIN).catch((e) => String(e)); // untimed warm-up (model load)
+      if (typeof r === 'string') { lines.push(`YuNet ${size}: skipped (${r})`); continue; }
+      const sel = await bench.yunetFaces(cands.map((c) => c.p.uri), size, FACE_MIN);
+      const rnd = await bench.yunetFaces(random.map((p) => p.uri), size, FACE_MIN);
+      sel.forEach((f, i) => (rows[i].bySize[size] = f));
+      const all = [...sel, ...rnd];
+      lines.push(`YuNet ${size}: model ${median(all.map((f) => f.modelMs))} ms · decode+letterbox ${median(all.map((f) => f.decodeMs))} ms (median, n=${all.length})\n` +
+        `   random photos with a face: ${rnd.filter((f) => f.faces.length).length}/${rnd.length} · selfie candidates with 1 face ≥ 10%: ${sel.filter((f) => selfieFace(f.faces) > 0).length}/${sel.length}`);
+      setFaces({ lines: [...lines], rows: [...rows] });
+    }
+  });
+
+  const have = file.bytes > 0;
+  const stat = (k: 'clip' | 'mlkit' | 'gemma') => {
+    const ms = rows.flatMap((r) => (r[k] ? [r[k]!.ms] : []));
+    return ms.length ? `median ${median(ms).toFixed(0)} ms · mean ${(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(0)} ms (n=${ms.length})` : '—';
+  };
+  const g = rows.flatMap((r) => (r.gemma ? [r.gemma] : []));
+
+  return (
+    <View>
+      <Text style={s.meta}>
+        Gemma 4 E2B: {have ? `on device, ${mb(file.bytes)}` : file.partial ? `partial ${mb(file.partial)}` : 'not downloaded (2.6 GB)'}
+        {dl ? `\n${dl}` : ''}
+        {loadMs != null ? `\nloaded (${modeName(MODES[mode])}) in ${(loadMs / 1000).toFixed(1)} s` : ''}
+        {busy ? `\n${busy}…` : ''}
+      </Text>
+      <View style={s.row}>
+        {!have && <Btn label={file.partial ? 'Resume download' : 'Download Gemma'} onPress={download} />}
+        {have && <Btn label={modeName(MODES[mode])} onPress={() => { setMode((mode + 1) % MODES.length); setLoadMs(null); bench.unloadGemma(); }} />}
+        {have && <Btn label="Load" onPress={load} />}
+        {have && <Btn label="Delete" onPress={guard('delete', async () => { await bench.deleteGemma(); setLoadMs(null); })} />}
+      </View>
+      <View style={s.row}>
+        <Btn label={`TinyCLIP batch ${batch}`} onPress={() => setBatch(BATCHES[(BATCHES.indexOf(batch) + 1) % BATCHES.length])} />
+        <Btn label={`Run ${count} random photos${loadMs == null ? ' (no Gemma)' : count > N ? ` (Gemma on ${N})` : ''}`} onPress={run} />
+        {loadMs != null && <Btn label="Gemma variants" onPress={runVariants} />}
+        <Btn label="TinyCLIP index bench" onPress={runIndexBench} />
+        <Btn label="Face bench (YuNet)" onPress={runFaces} />
+      </View>
+      {idx.length > 0 && <Text style={s.mono}>{idx.join('\n')}</Text>}
+      {faces.lines.length > 0 && <Text style={s.mono}>{faces.lines.join('\n')}{'\n'}Selfie candidates in findSelfies order (rank in #; it uses YuNet 320):</Text>}
+      {faces.rows.map((r) => (
+        <View key={r.p.id} style={s.result}>
+          <Image source={{ uri: r.p.uri }} style={s.thumb} contentFit="cover" />
+          <View style={{ flex: 1 }}>
+            {FACE_SIZES.map((size) => {
+              const f = r.bySize[size];
+              return (
+                <Text key={size} style={s.line}>
+                  <Text style={s.k}>#{r.clipRank} YuNet {size} </Text>
+                  {f ? `${f.faces.length} face${f.faces.length === 1 ? '' : 's'}${f.faces.length ? ` · top face ${(100 * faceArea(f)).toFixed(0)}% of photo · score ${f.faces[0].score.toFixed(2)}` : ''} · ${f.modelMs} ms` : '…'}
+                </Text>
+              );
+            })}
+          </View>
+        </View>
+      ))}
+
+      {opt.map((o, i) => (
+        <Text key={i} style={s.line}>
+          <Text style={s.k}>
+            {o.backend} {o.v.name}: {o.runs.length ? `${(med(o.runs, (r) => r.ms) / 1000).toFixed(1)} s/call${o.photos > 1 ? ` (${(med(o.runs, (r) => r.ms) / 1000 / o.photos).toFixed(1)} s/photo)` : ''}` : '…'}
+          </Text>
+          {o.runs.length
+            ? `  n=${o.runs.length} · prep ${med(o.runs, (r) => r.prepMs)} ms · ttft ${(med(o.runs, (r) => r.ttftMs) / 1000).toFixed(1)} s · prefill ${med(o.runs, (r) => r.prefillTokens)} tok @ ${med(o.runs, (r) => r.prefillTps).toFixed(0)}/s · decode ${med(o.runs, (r) => r.decodeTokens)} tok @ ${med(o.runs, (r) => r.decodeTps).toFixed(1)}/s\n  “${o.runs[0].text.replace(/\s+/g, ' ')}”`
+            : ''}
+        </Text>
+      ))}
+
+      {rows.length > 0 && <Text style={s.mono}>
+        TinyCLIP {stat('clip')}{'\n'}
+        ML Kit   {stat('mlkit')}{'\n'}
+        Gemma    {stat('gemma')}
+        {g.length ? `\n         ttft ${median(g.map((x) => x.ttftMs)).toFixed(0)} ms · ${median(g.map((x) => x.prefillTokens))} prefill tok · decode ${median(g.map((x) => x.decodeTps)).toFixed(1)} tok/s` : ''}
+      </Text>}
+
+      {rows.map((r) => (
+        <View key={r.p.id} style={s.result}>
+          <Image source={{ uri: r.p.uri }} style={s.thumb} contentFit="cover" />
+          <View style={{ flex: 1 }}>
+            <Text style={s.line}><Text style={s.k}>TinyCLIP {r.clip ? `${r.clip.ms} ms` : '…'} </Text>{r.clip?.words.join(', ')}</Text>
+            <Text style={s.line}>
+              <Text style={s.k}>MLKit {r.mlkit ? `${r.mlkit.ms} ms` : '…'} </Text>
+              {r.mlkit?.labels.slice(0, 4).map((l) => `${l.text} ${l.conf.toFixed(2)}`).join(', ')}
+            </Text>
+            {r.gemma && <Text style={s.line}><Text style={s.k}>Gemma {r.gemma.ms} ms </Text>{r.gemma.text}</Text>}
+            {r.err && <Text style={[s.line, { color: '#FF453A' }]}>{r.err}</Text>}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
+  <TouchableOpacity style={s.btn} onPress={onPress}><Text style={s.btnText}>{label}</Text></TouchableOpacity>
+);
+
+const s = StyleSheet.create({
+  meta: { color: '#8E8E93', fontSize: 12, lineHeight: 17 },
+  mono: { color: '#C7C7CC', fontSize: 11, fontFamily: 'monospace', marginVertical: 6 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginVertical: 4 },
+  btn: { backgroundColor: '#2C2C2E', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  btnText: { color: '#fff', fontWeight: '700' },
+  result: { flexDirection: 'row', gap: 8, backgroundColor: '#1C1C1E', borderRadius: 10, padding: 8, marginBottom: 6 },
+  thumb: { width: 64, height: 64, borderRadius: 6, backgroundColor: '#2C2C2E' },
+  line: { color: '#E5E5EA', fontSize: 11, lineHeight: 15 },
+  k: { color: '#FF9500', fontWeight: '700' },
+});

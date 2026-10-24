@@ -1,0 +1,28 @@
+# Photo access denied in the system dialog: Discover and Create explain it and offer Open settings.
+appId: com.horizonzeta.picdump
+name: 24 photo access denied
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+- extendedWaitUntil:
+    visible: "Allow DayDump to send you notifications\\?|Turn camera roll chaos into dumps"
+    timeout: 30000
+- runFlow: subflows/dismiss_notifications.yaml
+- tapOn: "Continue"
+- tapOn: "Continue"
+- tapOn: "Allow photos & start"
+# Android can ask twice (photos, then photos and videos): deny every prompt
+- repeat:
+    while:
+      visible: "Don.t allow|Deny"
+    commands:
+      - tapOn: "Don.t allow|Deny"
+- runFlow: subflows/dismiss_notifications.yaml
+- extendedWaitUntil:
+    visible: "Let DayDump see your photos"
+    timeout: 15000
+- assertVisible: "Open settings"
+- tapOn: "Create"
+- assertVisible: "DayDump needs your photos"

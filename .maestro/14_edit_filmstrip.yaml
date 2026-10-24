@@ -1,0 +1,31 @@
+# Edit filmstrip: hold menu (make cover, remove, swap for similar), Add photos sheet.
+appId: com.horizonzeta.picdump
+name: 14 edit filmstrip
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/edit.yaml
+    env:
+      N: 3
+- scrollUntilVisible:
+    element: "Add photos"
+- longPressOn: "Photo 2\\. Hold.*"
+- assertVisible: "Photo 2"
+- tapOn: "Make cover"
+- assertVisible: "Photo 1, cover\\. Hold.*"
+- longPressOn: "Photo 3\\. Hold.*"
+- tapOn: "Remove from dump"
+- assertNotVisible: "Photo 3\\. Hold.*"
+- tapOn: "Add photos"
+- tapOn:
+    text: "Use this photo"
+    index: 0
+- tapOn: "Done"
+- assertVisible: "Photo 3\\. Hold.*"
+- longPressOn: "Photo 1, cover\\. Hold.*"
+- tapOn: "Swap for a similar photo"
+- assertVisible: "Swap photo 1"
+- tapOn:
+    text: "Use this photo"
+    index: 0
+- assertVisible: "Sizes · Filter %"

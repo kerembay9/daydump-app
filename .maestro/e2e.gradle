@@ -1,0 +1,15 @@
+// Gradle init script (used only via `--init-script`, never by normal builds): adds an `e2e` build type
+// to :app that copies `release` (bundled JS, Hermes, same R8/shrink settings, release source sets in
+// libraries) but builds into its own outputs/apk/e2e/, so release and debug artifacts stay untouched.
+allprojects {
+    pluginManager.withPlugin('com.android.application') {
+        androidComponents {
+            finalizeDsl { android ->
+                android.buildTypes.create('e2e') {
+                    initWith(android.buildTypes.getByName('release'))
+                    matchingFallbacks.add('release')
+                }
+            }
+        }
+    }
+}

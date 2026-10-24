@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "DayDump",
-    "slug": "daydump-app",
-    "version": "1.0.2",
+    "name": "PicDump",
+    "slug": "picdump",
+    "version": "0.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.daydump.app",
+      "bundleIdentifier": "com.horizonzeta.picdump",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "DayDump scans your photos locally to curate aesthetic Instagram carousels and suggest daily themes.",
-        "NSPhotoLibraryAddUsageDescription": "DayDump needs permission to save your curated carousel slides to your camera roll."
+        "NSPhotoLibraryUsageDescription": "PicDump scans your photos locally to curate aesthetic Instagram carousels and suggest daily themes.",
+        "NSPhotoLibraryAddUsageDescription": "PicDump needs permission to save your curated carousel slides to your camera roll."
       }
     },
     "android": {
-      "package": "com.daydump.app",
+      "package": "com.horizonzeta.picdump",
       "permissions": [
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",
@@ -27,22 +27,96 @@
         "backgroundColor": "#0A0A0C",
         "foregroundImage": "./assets/icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "category": [
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "mimeType": "image/*"
+            }
+          ]
+        },
+        {
+          "action": "SEND_MULTIPLE",
+          "category": [
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "mimeType": "image/*"
+            }
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "mimeType": "image/*"
+            }
+          ]
+        },
+        {
+          "action": "EDIT",
+          "category": [
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "mimeType": "image/*"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./modules/clip-embedder/app.plugin.js",
       "expo-image",
       "expo-sharing",
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow DayDump to access your photos to curate daily aesthetic carousels.",
-          "savePhotosPermission": "Allow DayDump to save curated posts to your gallery.",
+          "photosPermission": "Allow PicDump to access your photos to curate daily aesthetic carousels.",
+          "savePhotosPermission": "Allow PicDump to save curated posts to your gallery.",
           "isAccessMediaLocationEnabled": true
         }
+      ],
+      "expo-sqlite",
+      "expo-router",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./node_modules/@expo-google-fonts/source-serif-4/400Regular/SourceSerif4_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/source-serif-4/500Medium/SourceSerif4_500Medium.ttf",
+            "./node_modules/@expo-google-fonts/source-serif-4/600SemiBold/SourceSerif4_600SemiBold.ttf",
+            "./node_modules/@expo-google-fonts/source-serif-4/500Medium_Italic/SourceSerif4_500Medium_Italic.ttf",
+            "./assets/fonts/Inter_400Regular.ttf",
+            "./assets/fonts/Inter_500Medium.ttf",
+            "./assets/fonts/Inter_600SemiBold.ttf",
+            "./assets/fonts/Inter_700Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
       ]
-    ]
+    ],
+    "scheme": "picdump"
   }
 }

@@ -1,0 +1,13 @@
+# Deep links (the 8 PM recap opens picdump://preview/today): stubs for no photos today and for unknown ids.
+appId: com.horizonzeta.picdump
+name: 25 deep links
+---
+- runFlow: subflows/ready.yaml
+- openLink: picdump://preview/today
+- assertVisible: "Nothing taken today yet.*"
+- tapOn: "Back"
+- openLink: picdump://preview/nope
+- assertVisible: "This dump is no longer available\\."
+- tapOn: "Back"
+- openLink: picdump://edit/nope
+- assertVisible: "This dump is no longer available\\."

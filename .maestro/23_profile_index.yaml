@@ -1,0 +1,27 @@
+# Profile: recap and sensitive-photo switches; Reindex (after a confirm) reads the library again.
+appId: com.horizonzeta.picdump
+name: 23 profile switches + reindex
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- scrollUntilVisible:
+    element: "Reindex"
+- tapOn: "8 PM recap.*"
+- assertVisible:
+    text: "8 PM recap.*"
+    checked: false
+- tapOn: "Hide sensitive photos.*"
+- assertVisible:
+    text: "Hide sensitive photos.*"
+    checked: false
+- tapOn: "Reindex"
+- assertVisible: "Reindex your library\\?"
+- tapOn:
+    text: "Reindex"
+    index: -1
+- extendedWaitUntil:
+    visible: "Reading .*"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "100 photos ready"
+    timeout: 600000

@@ -1,0 +1,27 @@
+# Create search by month and by place, and a month with no photos (all 100 test photos are from June 2025).
+appId: com.horizonzeta.picdump
+name: 09 search month, place, no match
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- tapOn: "Search keyword, place, date..."
+- inputText: "june 2025"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Matches for \"june 2025\" \\(100\\)"
+    timeout: 30000
+- tapOn: "Clear search"
+- tapOn: "Search keyword, place, date..."
+- inputText: "paris"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Matches for \"paris\" \\(20\\)"
+    timeout: 30000
+- tapOn: "Clear search"
+- tapOn: "Search keyword, place, date..."
+- inputText: "march 2024"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "No matches"
+    timeout: 30000
+- assertVisible: "Nothing in your library matches .*"

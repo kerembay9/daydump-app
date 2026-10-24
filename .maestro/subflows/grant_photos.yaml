@@ -1,0 +1,17 @@
+# System photo-permission dialog. Labels differ per OS version, so every tap is optional.
+appId: com.horizonzeta.picdump
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: "Allow all|Allow"
+          optional: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Allow Full Access|Allow Access to All Photos"
+          optional: true
