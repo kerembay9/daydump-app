@@ -306,6 +306,17 @@ private fun ClipEmbedderModule.shareImages(uris: List<String>, caption: String, 
   val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
   // file:// (rendered slides in cache) go through expo-sharing's FileProvider; content:// pass as is.
   val authority = "${activity.packageName}.SharingFileProvider"
+  // Instagram's Reels screen drops a batch of images (lands on the feed): several slides go as one slideshow mp4.
+  if (target == "instagram-reel" && uris.size > 1) {
+    val mp4 = File(activity.cacheDir, "reel.mp4")
+    slideshowVideo(uris.map { File(Uri.parse(it).path!!) }, mp4)
+    val uri = FileProvider.getUriForFile(activity, authority, mp4)
+    val send = Intent(Intent.ACTION_SEND).setType("video/mp4").putExtra(Intent.EXTRA_STREAM, uri)
+      .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).apply { clipData = ClipData.newRawUri(null, uri) }
+    forTarget(activity.packageManager, send, target)?.let { activity.startActivity(it); return it.`package`!! }
+    activity.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+    return "chooser"
+  }
   val list = ArrayList(uris.map { u ->
     val uri = Uri.parse(u)
     if (uri.scheme == "file" || uri.scheme == null) FileProvider.getUriForFile(activity, authority, File(uri.path!!)) else uri
