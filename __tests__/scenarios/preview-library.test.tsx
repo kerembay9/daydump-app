@@ -21,7 +21,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   // done sheet (board 10)
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
-  expect(screen.getByText('Caption copied · 7 slides saved to the DayDump album.')).toBeTruthy();
+  expect(screen.getByText('7 slides saved to the DayDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByText('Back to Discover'));
   await waitFor(() => expect(app.getPathname()).toBe('/'));
   expect(share()).toHaveBeenCalledTimes(1);
@@ -29,11 +29,11 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   expect(target).toBe('instagram');
   expect(uris).toHaveLength(7); // one 1-photo slide per pick
   expect(uris.every((u: string) => u.endsWith('.jpg'))).toBe(true);
-  expect(typeof caption).toBe('string');
+  expect(caption).toBe(''); // no caption: the share carries only the slides
   await settle();
   const posted = (await list()).filter((d) => d.status === 'posted');
   expect(posted).toHaveLength(1);
-  expect(posted[0]).toMatchObject({ title: LONG, platform: 'instagram', caption });
+  expect(posted[0]).toMatchObject({ title: LONG, platform: 'instagram', caption: null });
 
   // TikTok from the app picker
   // back on Discover the Seattle trip is the hero again

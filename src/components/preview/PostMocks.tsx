@@ -29,8 +29,6 @@ export type PostView = {
   /** profile photo uri, '' = initial letter */
   avatar: string;
   bio: string;
-  caption: string;
-  tags: string[];
   place?: string;
   liked: boolean;
   onLike: () => void;
@@ -185,9 +183,6 @@ export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (
           </Tap>
         </View>
         <Text style={[ui(12, 600), { color: t.ink, marginTop: 6 }]}>Liked by {(LIKES + (v.liked ? 1 : 0)).toLocaleString('en-US')} others</Text>
-        <Text style={[ui(12), { color: t.ink, marginTop: 2, lineHeight: 16 }]}>
-          <Text style={ui(12, 700)}>{shown(v.handle)} </Text>{v.caption}
-        </Text>
         <Text style={[ui(11), { color: t.inkMuted, marginTop: 4 }]}>View all 38 comments</Text>
       </View>
     </FrameCard>
@@ -242,7 +237,7 @@ function RailItem({ icon, label, onPress, name }: { icon: React.ReactNode; label
   );
 }
 
-/** TikTok photo mode, 9:16: the slide letterboxed on black like TikTok shows other ratios, right rail, caption, sound, progress. */
+/** TikTok photo mode, 9:16: the slide letterboxed on black like TikTok shows other ratios, right rail, sound, progress. */
 export function TikTok({ v, w, h }: { v: PostView; w: number; h: number }) {
   const n = v.slides.length;
   return (
@@ -268,7 +263,6 @@ export function TikTok({ v, w, h }: { v: PostView; w: number; h: number }) {
             <Text style={[ui(10), { color: WHITE }]}>Photo Mode · {v.index + 1}/{n}</Text>
           </View>
         </View>
-        <Text style={[ui(12), { color: 'rgba(255,255,255,0.9)', marginTop: 2, lineHeight: 16 }]}>{v.caption} {v.tags.slice(0, 2).join(' ')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
           <Icons.music size={14} color="rgba(255,255,255,0.8)" />
           <Text style={[ui(11), { color: 'rgba(255,255,255,0.8)' }]}>original sound · {shown(v.handle)}</Text>

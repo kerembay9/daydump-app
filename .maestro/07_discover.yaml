@@ -6,7 +6,7 @@ name: 07 discover hero, tiles, shuffle
 - assertVisible: "Hi there"
 - assertVisible: "Other dumps"
 - tapOn: "Edit .*"
-- assertVisible: "Sizes · Filter % · Captions"
+- assertVisible: "Sizes · Filter %"
 - tapOn: "Back"
 - assertVisible: "Other dumps"
 - tapOn:

@@ -23,7 +23,6 @@ export function PostSheet({ targets, slides, onPick, onClose, visible }: {
   return (
     <Sheet visible={visible} onClose={onClose}>
       <Text style={[display(20, 1.15), { color: t.ink }]}>Post to</Text>
-      <Text style={[ui(12), { color: t.inkMuted, marginBottom: 4 }]}>Your caption goes on the clipboard: paste it there.</Text>
       {targets.map((k) => {
         const a = APPS[k];
         return (

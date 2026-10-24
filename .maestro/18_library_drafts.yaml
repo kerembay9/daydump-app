@@ -4,7 +4,7 @@ name: 18 library drafts
 ---
 - runFlow: subflows/ready.yaml
 - tapOn: "Edit .*"
-- assertVisible: "Sizes · Filter % · Captions"
+- assertVisible: "Sizes · Filter %"
 - tapOn: "Back"
 - tapOn: "Library"
 - assertVisible: "Nothing posted yet"

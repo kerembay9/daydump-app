@@ -13,7 +13,6 @@ import { copyTitle, kindLabel, matches, photoRange, rowLine, statusLine } from '
 import type { Dump } from '../src/services/dumps';
 import { chunk, exportSize, LAYOUTS, slideCells } from '../src/services/layouts';
 import { IDENTITY, lookFor, matrixFor, PRESETS } from '../src/services/filters';
-import { captionIdeas, captionInput, clipText, hashtags } from '../src/services/captions';
 import { postDump, PostDeps, saveOnly } from '../src/services/post';
 
 const H = 3_600_000, D = 24 * H;
@@ -263,24 +262,6 @@ assert.equal(lookFor(fs, 'p1').key, 'warm35');
 assert.equal(lookFor({ ...fs, all: false }, 'p1').key, 'noir');
 assert.equal(lookFor({ ...fs, all: false }, 'p2').key, 'warm35');
 
-// captions: 6 distinct ideas per kind, no template holes; hashtags start with #photodump
-const cs = new Date(2026, 4, 12).getTime(), ce = new Date(2026, 4, 18).getTime();
-for (const kind of ['trip', 'topic', 'search', 'today', 'dump'] as const) {
-  const c = { kind, title: kind === 'trip' ? 'A week in Seattle' : 'Coffee', place: kind === 'trip' ? 'Seattle, US' : undefined, concepts: kind === 'topic' ? ['latte (coffee)'] : [], start: cs, end: ce, count: 6 };
-  const ideas = captionIdeas(c, DN);
-  assert.equal(ideas.length, 6, kind);
-  for (const i of ideas) assert.ok(i.length > 4 && !/undefined|null|NaN|\(|\)/.test(i), `${kind}: ${i}`);
-  assert.equal(hashtags(c)[0], '#photodump');
-  assert.ok(hashtags(c).every((h) => /^#[a-z0-9]+$/.test(h)), hashtags(c).join(' '));
-}
-assert.ok(captionIdeas({ kind: 'trip', title: 'A week in Seattle', place: 'Seattle, US', start: cs, end: ce, count: 6 }, DN).some((i) => i.includes('in seattle')));
-assert.ok(captionIdeas({ kind: 'topic', title: 'Lattes', concepts: ['latte (coffee)'], start: cs, end: ce, count: 6 }, DN)[0].startsWith('lattes season'));
-assert.equal(clipText('hi', ['#a', '#b']), 'hi\n\n#a #b');
-
-// captionInput: dates from the dump's own photos; a story lends kind / place / concepts
-const ci = captionInput({ title: 'Mine', created: 5, photos: [{ created: 30 }, {}, { created: 10 }, { created: 0 }] }); // 0 = undated (WhatsApp)
-assert.deepEqual([ci.kind, ci.start, ci.end, ci.count], ['dump', 10, 30, 4]);
-assert.equal(captionInput({ title: 'x', created: 5, photos: [] }, { kind: 'trip', title: 'A day in Paris', place: 'Paris, FR' }).place, 'Paris, FR');
 // an undated photo (created 0) must not stretch the range back to 1970
 const jun = new Date(2026, 5, 13).getTime();
 assert.equal(photoRange({ photos: [{ id: 'a', uri: 'a', created: 0 }, { id: 'b', uri: 'b', created: jun }], created: jun }, jun),
@@ -292,30 +273,28 @@ async function posting() {
   const fake = (o: { share?: string; album?: boolean; fail?: boolean; markFail?: boolean } = {}): PostDeps => ({
     exportSlides: async (d) => { calls.push(`export ${d.id}`); return ['file:///c/export/1.jpg', 'file:///c/export/2.jpg']; },
     saveToAlbum: async (u) => { calls.push(`album ${u.length}`); if (o.album === false) throw new Error('denied'); },
-    copy: async (text) => { calls.push(`copy ${JSON.stringify(text)}`); },
-    share: async (u, c, target) => { calls.push(`share ${u.join(',')} | ${c} | ${target}`); if (o.fail) throw new Error('no activity'); return o.share ?? 'com.instagram.android'; },
+    share: async (u, target) => { calls.push(`share ${u.join(',')} | ${target}`); if (o.fail) throw new Error('no activity'); return o.share ?? 'com.instagram.android'; },
     persist: async (d) => { calls.push(`persist ${d.id}`); return { ...d, id: 'd_new' }; },
-    markPosted: async (id, platform, caption) => { calls.push(`posted ${id} ${platform} ${caption}`); if (o.markFail) throw new Error('db'); },
+    markPosted: async (id, platform) => { calls.push(`posted ${id} ${platform}`); if (o.markFail) throw new Error('db'); },
   });
   const draft = dump({ id: 'd_1' });
-  let r = await postDump(fake(), draft, 'cap', ['#photodump', '#paris'], 'instagram');
+  let r = await postDump(fake(), draft, 'instagram');
   assert.deepEqual(calls.splice(0), [
-    'export d_1', 'copy "cap\\n\\n#photodump #paris"',
-    'share file:///c/export/1.jpg,file:///c/export/2.jpg | cap | instagram', 'album 2', 'posted d_1 instagram cap',
+    'export d_1', 'share file:///c/export/1.jpg,file:///c/export/2.jpg | instagram', 'album 2', 'posted d_1 instagram',
   ]);
   assert.deepEqual(r, { to: 'com.instagram.android', saved: true, marked: true, slides: 2, id: 'd_1' });
   // a story preview gets its draft only once the share opened; the chooser (no TikTok app) posts with no platform
-  r = await postDump(fake({ share: 'chooser' }), dump({ id: 'trip:paris' }), 'c', [], 'tiktok');
-  assert.deepEqual(calls.splice(0).slice(2), ['share file:///c/export/1.jpg,file:///c/export/2.jpg | c | tiktok', 'album 2', 'persist trip:paris', 'posted d_new null c']);
+  r = await postDump(fake({ share: 'chooser' }), dump({ id: 'trip:paris' }), 'tiktok');
+  assert.deepEqual(calls.splice(0).slice(1), ['share file:///c/export/1.jpg,file:///c/export/2.jpg | tiktok', 'album 2', 'persist trip:paris', 'posted d_new null']);
   assert.equal(r.id, 'd_new');
   // album refused: still posts; share failed: nothing marked, error surfaces
-  r = await postDump(fake({ album: false }), draft, 'c', [], 'instagram');
+  r = await postDump(fake({ album: false }), draft, 'instagram');
   assert.equal(r.saved, false);
   assert.ok(calls.splice(0).some((c) => c.startsWith('posted')));
-  await assert.rejects(postDump(fake({ fail: true }), draft, 'c', [], 'instagram'));
+  await assert.rejects(postDump(fake({ fail: true }), draft, 'instagram'));
   assert.ok(!calls.splice(0).some((c) => c.startsWith('posted') || c.startsWith('persist')));
   // the app already opened: a mark failure is reported (marked = false), not thrown as "couldn't open"
-  r = await postDump(fake({ markFail: true }), draft, 'c', [], 'instagram');
+  r = await postDump(fake({ markFail: true }), draft, 'instagram');
   assert.equal(r.marked, false);
   calls.splice(0);
   // Save only: export + album, never share or mark; a story preview gets its draft

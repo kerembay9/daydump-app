@@ -3,4 +3,4 @@ appId: com.daydump.app
 ---
 - runFlow: pick.yaml
 - tapOn: "Continue with .*"
-- assertVisible: "Sizes · Filter % · Captions"
+- assertVisible: "Sizes · Filter %"

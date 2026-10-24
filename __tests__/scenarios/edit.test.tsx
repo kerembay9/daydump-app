@@ -17,6 +17,7 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   await screen.findByLabelText('1:1 Square');
   const id = app.getPathname().split('/').pop()!;
   expect(app.getPathname()).toBe(`/edit/${id}`);
+  expect(screen.queryByText('Caption ideas')).toBeNull(); // caption suggestions removed
   const draft = await get(id);
   expect(draft).toMatchObject({ status: 'draft', title: 'Seattle', ratio: '4:5' });
   expect(draft!.photos).toHaveLength(3);

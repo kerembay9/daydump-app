@@ -1,5 +1,4 @@
 // The native side of Post / Save only (services/post.ts runs the steps).
-import * as Clipboard from 'expo-clipboard';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { shareImages } from '../../modules/clip-embedder';
 import { draftForStory, markPosted } from './dumps';
@@ -26,8 +25,7 @@ export async function saveToAlbum(uris: string[]): Promise<void> {
 export const postDeps = (stories: Story[]): PostDeps => ({
   exportSlides: (d, hd) => exportSlides(d, { highRes: hd }),
   saveToAlbum,
-  copy: async (text) => { await Clipboard.setStringAsync(text); },
-  share: shareImages,
+  share: (uris, target) => shareImages(uris, '', target),
   persist: async (d) => {
     const s = storyById(stories, d.storyId ?? d.id);
     if (!s) throw new Error('story gone');

@@ -8,7 +8,6 @@ import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
 import { Fit, fitOf, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
 import { filterOf, FilterState, Look, lookFor } from '../../services/filters';
-import { captionInput } from '../../services/captions';
 import type { Library } from '../../services/index/photoIndex';
 import type { PhotoAsset } from '../../types';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -21,7 +20,6 @@ import { Icons } from '../../components/ui/Icons';
 import { Tap } from '../../components/ui/Tap';
 import { SlidePager, usePreviewImages } from '../../components/edit/SlidePager';
 import { FilterCard } from '../../components/edit/FilterCard';
-import { CaptionCard } from '../../components/edit/CaptionCard';
 import { Filmstrip } from '../../components/edit/Filmstrip';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -55,7 +53,7 @@ export default function Edit() {
   return <Studio dump={dump} story={stories.find((s) => s.id === dump.storyId)} library={library} />;
 }
 
-type Saved = Pick<Dump, 'photos' | 'ratio' | 'fit' | 'layout' | 'filter' | 'caption'>;
+type Saved = Pick<Dump, 'photos' | 'ratio' | 'fit' | 'layout' | 'filter'>;
 
 /** Debounced auto-save; returns flush(), which saves a pending change now (before Preview reads it, and on close). */
 function useAutosave(id: string, value: Saved) {
@@ -88,12 +86,11 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   const [fit, setFit] = useState<Fit>(fitOf(dump.fit));
   const [layout, setLayout] = useState<LayoutKey>(layoutOf(dump.layout).key);
   const [filter, setFilter] = useState<FilterState>(filterOf(dump.filter));
-  const [caption, setCaption] = useState(dump.caption);
   const [slide, setSlide] = useState(0);
   /** the filmstrip photo picked by a tap; tapping it again makes it the cover */
   const [sel, setSel] = useState<string | null>(null);
 
-  const saved = useMemo(() => ({ photos, ratio, fit, layout, filter: filter as Record<string, unknown>, caption }), [photos, ratio, fit, layout, filter, caption]);
+  const saved = useMemo(() => ({ photos, ratio, fit, layout, filter: filter as Record<string, unknown> }), [photos, ratio, fit, layout, filter]);
   const flush = useAutosave(dump.id, saved);
   // Posted from the Preview pushed on top of this Edit: back here would edit the posted record (update() drops it
   // anyway), so leave instead. Reuse makes the editable copy.
@@ -145,8 +142,6 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       .finally(() => setTimeout(() => { opening.current = false; }, 600));
   };
 
-  const cap = useMemo(() => captionInput({ title: dump.title, created: dump.created, photos }, story), [story, dump.title, dump.created, photos]);
-
   const swapsFor = (i: number) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, photos[i]), 16).map(fromAsset) : []);
   const addable = () => {
     const have = new Set(photos.map((p) => p.id));
@@ -162,7 +157,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
         <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
         <View style={{ flex: 1, alignItems: 'center', minWidth: 0 }}>
           <Text style={[display(18.5), { color: t.ink }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>{dump.title}</Text>
-          <Text style={[ui(10), { color: t.inkMuted }]}>Sizes · Filter % · Captions</Text>
+          <Text style={[ui(10), { color: t.inkMuted }]}>Sizes · Filter %</Text>
         </View>
         <Tap onPress={toPreview}
           accessibilityRole="button" accessibilityLabel="Preview"
@@ -192,7 +187,6 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       <SlidePager slides={slides} ratio={ratio} fit={fit} layout={layout} filter={filter} index={cur}
         images={images} onIndex={setSlide} onFit={setFit} onLayout={(l) => { setLayout(l); setSlide(0); }} />
       <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} />
-      <CaptionCard input={cap} onCopy={setCaption} />
       <Filmstrip
         photos={photos}
         active={active}

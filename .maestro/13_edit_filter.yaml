@@ -1,6 +1,6 @@
-# Edit: filter preset, apply-to-all (on by default), strength slider; caption ideas paging and Copy.
+# Edit: filter preset, apply-to-all (on by default), strength slider.
 appId: com.daydump.app
-name: 13 edit filter + captions
+name: 13 edit filter
 ---
 - runFlow: subflows/ready.yaml
 - runFlow:
@@ -21,10 +21,3 @@ name: 13 edit filter + captions
 - takeScreenshot: vr_edit_bw
 - tapOn: "Original"
 - assertVisible: "4:5 · Original"
-- scrollUntilVisible:
-    element: "More caption ideas"
-- tapOn: "More caption ideas"
-- tapOn:
-    text: "Copy caption: .*"
-    index: 0
-- assertVisible: "Copied"

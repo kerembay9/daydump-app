@@ -13,11 +13,10 @@ name: 17 post -> posted -> reuse
 - extendedWaitUntil:
     visible: "Shared"
     timeout: 30000
-- assertVisible: "Caption copied.*"
 - tapOn: "View in Library"
 - assertVisible: "Posted \\(1\\)"
 - tapOn: "Reuse"
-- assertVisible: "Sizes · Filter % · Captions"
+- assertVisible: "Sizes · Filter %"
 - tapOn: "Back"
 - tapOn: "Drafts.*"
 - assertVisible: "Drafts \\(1\\)"
