@@ -33,7 +33,7 @@ android/app/build/outputs/bundle/release/app-release.aab
 
 Whenever you make code updates and want to build a new release bundle:
 
-1. Update the `versionCode` (e.g., from `1` to `2`) and `versionName` (e.g., `"1.0.1"`) in `android/app/build.gradle`.
+1. Bump `expo.android.versionCode` in `app.json` by 1 (every upload), then run `npx expo prebuild -p android` to sync it into `android/app/build.gradle`. Only change `expo.version` when preparing a release (see AGENTS.md → Versioning).
 2. Bundle the latest JS:
    ```bash
    npx expo export:embed --platform android --dev false --entry-file index.ts --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
