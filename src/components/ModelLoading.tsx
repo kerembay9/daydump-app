@@ -23,7 +23,7 @@ export function packCopy(pack: ModelPack, s: PackState): [string, string, number
     case 'queued': return [title, `Next in line after the other downloads. ${after}`, null];
     case 'waiting': return [title, `Waiting for Wi-Fi. ${after}`, null];
     case 'failed': return [title, 'The download stopped. PicDump tries again when you come back.', 0];
-    default: return [title, 'This copy of PicDump can’t download it. Install it from Google Play.', 0];
+    default: return [title, `This copy of PicDump can’t download it. Install it from Google Play.${s.error ? ` (Play error ${s.error})` : ''}`, 0];
   }
 }
 

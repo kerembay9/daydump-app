@@ -3,6 +3,7 @@ package expo.modules.clipembedder
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.google.android.gms.tasks.Tasks
+import com.google.android.play.core.assetpacks.AssetPackException
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
@@ -11,18 +12,18 @@ import java.io.File
 
 /**
  * The big models ship as Play asset packs in release builds (android/<pack>/build.gradle); debug builds carry them in the APK.
- * All three are fast-follow: Play starts them at install, app opened or not. Here only a pack Play didn't finish (failed,
- * cancelled, or --local-testing installs, which fetch on request) is fetched again, one at a time: vision (indexing, Discover,
- * Create) first, then the pack a screen asked for (want: Create wants text, the selfie finder and People want faces), then
- * Pack order. A release APK installed without Play (sideloaded, adb) never gets them: every pack stays "unavailable".
+ * All three are fast-follow, so Play starts them at install, app opened or not, in an order Play picks. Whatever isn't on
+ * the phone yet is fetched here one at a time: faces (onboarding's selfie step, which comes first) first, then the pack a
+ * screen asked for (want: Create wants text), then the rest in Pack order. A release APK installed without Play
+ * (sideloaded, adb) never gets them: every pack stays "unavailable".
  * ponytail: a want waits for the pack already downloading (no cancel: Play may drop its bytes); cancel it if 41 MB waits hurt.
  * ponytail: WAITING_FOR_WIFI / REQUIRES_USER_CONFIRMATION just report "waiting"; add showConfirmationDialog if it shows up in the field.
  */
 internal object ModelPacks {
   /** Declaration order = download order. probe: a file of the pack, to tell a debug APK that carries it. */
   enum class Pack(val pack: String, val probe: String) {
-    VISION("visionpack", "vision_dw8.tflite"),
     FACES("facepack", "sface.tflite"),
+    VISION("visionpack", "vision_dw8.tflite"),
     TEXT("textpack", "text.tflite");
 
     val key = name.lowercase()
@@ -30,7 +31,7 @@ internal object ModelPacks {
 
   class Missing(p: Pack) : IllegalStateException("${p.key} model not downloaded yet")
 
-  /** The pack the latest screen asked for: next after vision. */
+  /** The pack the latest screen asked for: next after faces. */
   @Volatile private var wanted: Pack? = null
   /** The pack being fetched (null: none, or one a previous process started that state() hasn't seen yet). */
   @Volatile private var fetching: Pack? = null
@@ -55,7 +56,7 @@ internal object ModelPacks {
   fun next(ctx: Context) {
     val missing = Pack.entries.filterNot { ready(ctx, it) }
     if (fetching in missing) return
-    val p = missing.firstOrNull { it == Pack.VISION } ?: wanted?.takeIf { it in missing } ?: missing.firstOrNull() ?: return
+    val p = missing.firstOrNull { it == Pack.FACES } ?: wanted?.takeIf { it in missing } ?: missing.firstOrNull() ?: return
     fetching = p
     manager(ctx).fetch(listOf(p.pack))
   }
@@ -63,15 +64,17 @@ internal object ModelPacks {
   /** {vision|faces|text: {state, progress}}. Blocking (Play's IPC), call off the main thread. */
   fun state(ctx: Context): Map<String, Any> {
     val missing = Pack.entries.filterNot { ready(ctx, it) }
+    var why = 0 // Play's reason when it can't (AssetPackErrorCode: -1 app unavailable, -2 pack unavailable, -6 network…), shown on the card
     val states = if (missing.isEmpty()) emptyMap() else
-      runCatching { Tasks.await(manager(ctx).getPackStates(missing.map { it.pack })).packStates() }.getOrNull()
+      runCatching { Tasks.await(manager(ctx).getPackStates(missing.map { it.pack })).packStates() }
+        .onFailure { why = ((it.cause ?: it) as? AssetPackException)?.errorCode ?: 0 }.getOrNull()
     // what Play is really doing: a failed pack is fetched again, one a previous process started isn't doubled
     if (states != null) fetching = missing.firstOrNull { states[it.pack]?.status() in ACTIVE }
     next(ctx)
     return Pack.entries.associate { p ->
       p.key to when {
         p !in missing -> READY
-        else -> states?.get(p.pack)?.let(::toMap) ?: UNAVAILABLE // no Play, or Play doesn't know this install
+        else -> states?.get(p.pack)?.let(::toMap) ?: (UNAVAILABLE + ("error" to why)) // no Play, or Play doesn't know this install
       }
     }
   }

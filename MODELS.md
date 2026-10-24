@@ -38,33 +38,35 @@ builds: sensitive-photo hiding uses the concept tags, and Gemini isn't called. D
 
 ## Download order (release builds)
 
-All three are fast-follow: Play downloads them right after the install, app opened or not, in its own order. The app only re-fetches a pack Play didn't finish (failed, cancelled; and every pack under `--local-testing`), one at a time: vision first, then the pack a screen asked for (`useModels(want)` → `wantModel`), otherwise this order:
+All three are fast-follow: Play starts them at install, app opened or not, in an order Play picks (not documented;
+check on an internal-app-sharing build). Whatever isn't on the phone yet when the app runs is fetched by the app, one at
+a time, so each gets the whole connection: faces first (onboarding's selfie step comes first and needs it to tell the
+owner from friends), then the pack a screen asked for (`useModels(want)` → `wantModel`), then this order:
 
 | # | Pack | Delivery | Unlocks |
 |---|---|---|---|
-| 1 | visionpack | fast-follow | indexing → Discover dumps, Create's photo grid, topics |
-| 2 | facepack | fast-follow. Wanted by onboarding's selfie step, /selfie, People (any `faces(embed)` call) | People; sharper selfie pick (works without it) |
-| 3 | textpack | fast-follow. Wanted by Create (first visit): then it goes before facepack in a re-fetch | Create search by words |
+| 1 | facepack | fast-follow. Wanted by onboarding's selfie step, /selfie, People (any `faces(embed)` call) | People; the selfie pick groups faces into people (works without it) |
+| 2 | visionpack | fast-follow | indexing → Discover dumps, Create's photo grid, topics; sharper selfie filtering (the gate stands in) |
+| 3 | textpack | fast-follow. Wanted by Create (first visit): then it goes before visionpack | Create search by words |
 
 ```mermaid
 flowchart TD
-  INST{how was the app installed?} -->|Google Play| FF[Play downloads all three packs right after the install]
+  INST{how was the app installed?} -->|Google Play| FF[Play downloads all three right after the install, in its own order]
   INST -->|sideloaded / adb release APK| UNAV[every pack: unavailable, never arrives]
   INST -->|bundletool --local-testing| LT[packs copied to the phone; each fetched when the app asks]
-  FF --> PLAY[Play's own order] -->|one failed or was cancelled| V[visionpack, or the next missing pack, downloading]
-  PLAY -->|COMPLETED| DONE
-  LT --> V
-  V -->|COMPLETED: the listener calls next| W{a screen wanted textpack?}
-  W -->|no: default| F[facepack downloading]
+  FF -->|app opens: what's still missing| F
+  LT --> F[facepack downloading]
+  F -->|COMPLETED: the listener calls next| W{a screen wanted textpack?}
+  W -->|no: default| V[visionpack downloading]
   W -->|yes: Create opened| T2[textpack downloading]
-  F -->|COMPLETED| T[textpack downloading]
-  T2 -->|COMPLETED| F2[facepack downloading]
-  T & F2 -->|COMPLETED| DONE[all ready]
-  V & F & T -.->|network etc.| FAILED[failed: restarted by the next modelState, i.e. the app coming back to the front]
-  V & F & T -.->|Play wants Wi-Fi or the user's OK| WAIT[waiting]
+  V -->|COMPLETED| T[textpack downloading]
+  T2 -->|COMPLETED| V2[visionpack downloading]
+  T & V2 -->|COMPLETED| DONE[all ready]
+  F & V & T -.->|network etc.| FAILED[failed: restarted by the next modelState, i.e. the app coming back to the front]
+  F & V & T -.->|Play wants Wi-Fi or the user's OK| WAIT[waiting]
 ```
 
-`ModelPacks.next()` fetches the next missing pack (vision, then the last wanted, then Pack order) unless one is already
+`ModelPacks.next()` fetches the next missing pack (faces, then the last wanted, then Pack order) unless one is already
 downloading. It runs when the module starts (app launch), when a pack completes, from `modelState()`, when a call needs a
 missing pack (that also wants it), and from the background worker. Packs behind it report `queued`. A want doesn't stop
 the pack already downloading (ponytail: Play may drop a cancelled pack's bytes; cancel it if waiting behind it hurts).
@@ -145,12 +147,12 @@ Denied: straight to the app. The slides are two taps. The notification permissio
 
 | Scenario | How it happens | What changes in the UI |
 |---|---|---|
-| Play install, first open within a minute | visionpack (42.8 MB) still downloading | Discover and Create: **"Getting your dumps ready"**, "Downloading (N%)…". Onboarding's selfie step doesn't wait: the gate stands in for CLIP. Dumps start as soon as it lands |
-| Play install, opened later | Play fetched visionpack meanwhile | indexing starts at once; faces then text download in the background |
-| Word search before textpack | behind vision (and facepack if that had started) | Create: **"Word search is on its way"**, "Downloading (N%). Places and months work now." or "Next in line after the other downloads." |
+| Play install, first open within a minute | packs still downloading | Discover and Create: **"Getting your dumps ready"**, "Downloading (N%)…". Onboarding's selfie step doesn't wait: the gate stands in for CLIP. Dumps start as soon as it lands |
+| Play install, opened later | Play fetched the packs meanwhile | indexing starts at once; whatever is missing downloads in the background, faces first |
+| Word search before textpack | behind facepack (and visionpack if that had started) | Create: **"Word search is on its way"**, "Downloading (N%). Places and months work now." or "Next in line after the other downloads." |
 | A pack waiting | Play holds it (Wi-Fi, needs the user's OK) | that pack's card: "Waiting for Wi-Fi." |
 | A pack failed | network error | "The download stopped. DayDump tries again when you come back." Restarted on the next foreground |
-| No packs at all | release APK sideloaded or installed with adb | every card: "This copy of DayDump can't download it. Install it from Google Play." Discover never fills |
+| No packs at all | release APK sideloaded or installed with adb | every card: "This copy of DayDump can't download it. Install it from Google Play." plus "(Play error N)" when Play gave a reason. Discover never fills |
 | Debug build | Metro / `expo run:android` | every pack is in the APK: always ready |
 | Vision model fails (no GPU, no CPU) | very old / broken device | Indexing stops silently (console warning); no new topics, search hits |
 | Face models fail | broken asset | yunet: selfie finder finds none ("No other selfie on your phone"), People finds nobody. facepack: selfie finder picks the biggest single face, People finds nobody |
