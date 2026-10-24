@@ -73,3 +73,19 @@ test('dumps open with 4 to 8 photos, mostly 6, and a story keeps its count', () 
   expect(n.filter((x) => x === 6).length / n.length).toBeGreaterThan(0.35);
   expect(slideCount('trip:42')).toBe(slideCount('trip:42'));
 });
+
+test('screenshots make no story unless Include screenshots is on: weekly book-page screenshots tagged "reading"', async () => {
+  const { buildStories } = require('../../src/services/stories');
+  const lib = (folder: string) => ({
+    // 8 weekly "reading" shots among 40 (a topic's tag must not cover over 25% of the library)
+    photos: Array.from({ length: 40 }, (_, w) => ({
+      id: String(w), uri: `file:///storage/emulated/0/${w < 8 ? folder : 'DCIM/Camera'}/IMG_${w}.jpg`, creationTime: new Date(2025, 4, 1 + 7 * w).getTime(),
+      width: 1080, height: 2400, concepts: w < 8 ? [0] : [], conceptScores: w < 8 ? [0.3] : [],
+    })),
+    vecs: new Float32Array(40 * 512), conceptNames: ['reading'], hasClip: true,
+  });
+  expect((await buildStories(lib('DCIM/Camera'))).stories.map((s: { title: string }) => s.title)).toEqual([expect.stringMatching(/reading/i)]);
+  expect((await buildStories(lib('Pictures/Screenshots'))).stories).toEqual([]);
+  expect((await buildStories(lib('DCIM/Screenshots'))).stories).toEqual([]);
+  expect((await buildStories(lib('Pictures/Screenshots'), undefined, undefined, { hideSensitive: true, screenshots: true })).stories).toHaveLength(1);
+});

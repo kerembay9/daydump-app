@@ -37,7 +37,7 @@ type AppStateValue = {
   incoming: ShareIntent | null;
   clearIncoming: () => void;
   refreshStories: () => Promise<void>;
-  /** Rebuilds from the loaded index, after a setting the stories depend on changed (Hide sensitive photos). */
+  /** Rebuilds from the loaded index, after a setting the stories depend on changed (Hide sensitive photos, Include screenshots). */
   rebuildStories: () => Promise<void>;
   /** Marks the given (default: top) stories seen and rebuilds, so others surface. */
   shuffleStories: (seenIds?: string[]) => Promise<void>;
@@ -85,7 +85,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const cover = s.find((x) => x.kind === 'today')?.picks[0]?.uri;
     if (cover) ClipEmbedder?.setRecapCover(cover);
   };
-  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, (await getProfile()).hideSensitive);
+  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, await getProfile());
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [paused, setPaused] = useState<{ done: number; total: number } | null>(null);

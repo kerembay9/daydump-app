@@ -55,7 +55,7 @@ export const DebugStoriesModal: React.FC<Props> = ({ visible, onClose, onResetIn
   const rebuild = (o: TopicOptions) =>
     loadLibrary().then(async (l) => {
       setLib(l);
-      setStories((await buildStories(l, o, undefined, profileNow().hideSensitive)).stories);
+      setStories((await buildStories(l, o, undefined, profileNow())).stories);
     });
 
   useEffect(() => {

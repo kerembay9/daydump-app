@@ -4,7 +4,8 @@ import { embedText, IndexedPhoto, Library } from '../index/photoIndex';
 import { dot, isZero, scoreAll } from '../index/vectors';
 import { DEFAULT_TOPIC_OPTIONS, findTopics, TopicOptions } from './topics';
 import { capitalize, dateRange, disambiguate, topicTitle } from './titles';
-import { isCameraPhoto } from '../galleryService';
+import { isCameraPhoto, isScreenshot } from '../galleryService';
+import type { Profile } from '../profile';
 import { findTrips, tripTitle } from './trips';
 import { boost, curate, EVENT_GROUPS, isSensitive, photoWorth, tagGroup, tagWorth, worthFits } from './curate';
 
@@ -47,16 +48,17 @@ const DAY = 86_400_000;
  * Ranked stories, best first: the top `limit` get their picks (the costly part: embeddings + near-duplicate checks),
  * the rest are only counted (`available`) so Discover can offer "Show more" without building them.
  * With CLIP tags the order is curated (curate.ts): worth folded into the score, group caps per page, and with
- * hideSensitive no sensitive topic or photo anywhere.
+ * hideSensitive no sensitive topic or photo anywhere. Without screenshots, no Screenshots-folder photo.
  */
-export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS, limit = Infinity, hideSensitive = true): Promise<{ stories: Story[]; available: number }> {
+export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS, limit = Infinity, { hideSensitive, screenshots }: Pick<Profile, 'hideSensitive' | 'screenshots'> = { hideSensitive: true, screenshots: false }): Promise<{ stories: Story[]; available: number }> {
   const row = new Map(lib.photos.map((p, i) => [p.id, i]));
   const seen = await getSeen();
   const now = Date.now();
   const recency = (end: number) => Math.exp(-(now - end) / (180 * DAY));
   // no CLIP = no tags to judge by
   const curated = lib.hasClip && worthFits(lib.conceptNames.length);
-  const photos = curated && hideSensitive ? lib.photos.filter((p) => !isSensitive(p)) : lib.photos;
+  // screenshots (a book page, a chat) get content tags like "reading" and would make dumps of themselves
+  const photos = lib.photos.filter((p) => (screenshots || !isScreenshot(p.uri)) && !(curated && hideSensitive && isSensitive(p)));
   const pw = new Map(curated ? photos.map((p) => [p.id, photoWorth(p)]) : []);
   const meanWorth = (ps: IndexedPhoto[]) => ps.reduce((a, p) => a + (pw.get(p.id) ?? 0.5), 0) / ps.length;
 

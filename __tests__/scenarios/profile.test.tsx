@@ -125,3 +125,15 @@ test('a new avatar shows only once its file is written, and Discover\'s header p
   await screen.findByText('Other dumps');
   expect(avatars()).toEqual([uri]);
 }, 30000);
+
+test('Include screenshots starts off and saves when switched on', async () => {
+  await bootApp('/profile');
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  expect((await getProfile()).screenshots).toBe(false);
+  const row = () => screen.getByRole('switch', { name: /Include screenshots/ });
+  expect(row().props.accessibilityState.checked).toBe(false);
+  await fireEvent.press(row());
+  await settle();
+  expect(row().props.accessibilityState.checked).toBe(true);
+  expect((await getProfile()).screenshots).toBe(true);
+}, 30000);

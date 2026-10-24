@@ -115,9 +115,9 @@ function ProfileBody() {
     if (!ok) { setRecap(false); toast('Notifications are off for PicDump in Android settings'); }
   };
 
-  const toggleSensitive = () => {
-    setP((x) => ({ ...x, hideSensitive: !x.hideSensitive }));
-    setProfile({ hideSensitive: !p.hideSensitive }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
+  const toggleStories = (k: 'hideSensitive' | 'screenshots') => () => {
+    setP((x) => ({ ...x, [k]: !x[k] }));
+    setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
@@ -229,7 +229,8 @@ function ProfileBody() {
           ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
-        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleSensitive} toggle={p.hideSensitive} />
+        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
+        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
         <Row label="Index" sub={indexLine} last right={
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={app.pause} />}

@@ -8,6 +8,8 @@ export const EVAL_ALBUM = process.env.EXPO_PUBLIC_EVAL_ALBUM || null;
  * ponytail: path heuristic, Android only; iOS ph:// URIs never match, so iOS indexes plain newest-first.
  */
 export const isCameraPhoto = (uri: string) => /\/DCIM\/(?!Screenshots\/)/i.test(uri);
+/** In a Screenshots folder (Pictures/ or DCIM/). Same Android-only path heuristic as isCameraPhoto. */
+export const isScreenshot = (uri: string) => /\/Screenshots\//i.test(uri);
 // our own posted renders (Pictures/PicDump or legacy DayDump) are not photos to build dumps from
 const notOurs = (p: PhotoAsset) => !/\/Pictures\/(PicDump|DayDump)\//i.test(p.uri);
 
