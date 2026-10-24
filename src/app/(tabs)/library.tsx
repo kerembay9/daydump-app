@@ -49,13 +49,13 @@ function Pill({ text, primary, onPress }: { text: string; primary?: boolean; onP
 }
 
 /** One saved dump: fanned 3-photo stack, status pill + kind, serif title, meta; Edit|Reuse over Preview (+ Delete on drafts). */
-function Row({ d, onReuse, onDelete }: { d: Dump; onReuse: () => void; onDelete: () => void }) {
+const Row = React.memo(function Row({ d, onReuse, onDelete }: { d: Dump; onReuse: (d: Dump) => void; onDelete: (d: Dump) => void }) {
   const { t } = useTheme();
   const draft = d.status === 'draft';
   return (
     <Tap
       onPress={() => (draft ? edit(d.id) : preview(d.id))}
-      onLongPress={onDelete}
+      onLongPress={() => onDelete(d)}
       accessibilityRole="button"
       accessibilityLabel={`${d.title}, ${draft ? 'draft' : 'posted'}`}
       accessibilityHint={`${draft ? 'Opens it in Edit' : 'Opens the preview'}. Long-press to delete.`}
@@ -74,13 +74,13 @@ function Row({ d, onReuse, onDelete }: { d: Dump; onReuse: () => void; onDelete:
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 2 }]} numberOfLines={2}>{metaLines(d).join('\n')}</Text>
       </View>
       <View style={{ gap: 4 }}>
-        {draft ? <Pill primary text="Edit" onPress={() => edit(d.id)} /> : <Pill primary text="Reuse" onPress={onReuse} />}
+        {draft ? <Pill primary text="Edit" onPress={() => edit(d.id)} /> : <Pill primary text="Reuse" onPress={() => onReuse(d)} />}
         <Pill text="Preview" onPress={() => preview(d.id)} />
-        {draft ? <Pill text="Delete" onPress={onDelete} /> : null}
+        {draft ? <Pill text="Delete" onPress={() => onDelete(d)} /> : null}
       </View>
     </Tap>
   );
-}
+});
 
 function Empty({ title, body, action, onAction }: { title: string; body: string; action: string; onAction: () => void }) {
   const { t } = useTheme();
@@ -115,21 +115,21 @@ export default function Library() {
 
   // One copy per tap: a double tap must not make "X (2)" and "X (3)".
   const reusing = useRef(false);
-  const reuse = async (d: Dump) => {
+  const reuse = useCallback(async (d: Dump) => {
     if (reusing.current) return;
     reusing.current = true;
     try {
       const copy = await duplicate(d.id);
       if (copy) edit(copy.id);
     } finally { reusing.current = false; }
-  };
+  }, []);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
-  const confirmDelete = (d: Dump) => setConfirm({
+  const confirmDelete = useCallback((d: Dump) => setConfirm({
     title: d.status === 'draft' ? 'Delete draft?' : 'Remove from Library?',
     body: `“${d.title}” will be removed from Library. Your photos stay on your phone.`,
     action: d.status === 'draft' ? 'Delete' : 'Remove', danger: true,
     onConfirm: () => { remove(d.id).then(load); },
-  });
+  }), [load, setConfirm]);
 
   return (
     <Screen keyboardShouldPersistTaps="handled">
@@ -157,7 +157,7 @@ export default function Library() {
       </View>
       {all == null ? null : shown.length ? (
         <View style={{ gap: 10 }}>
-          {shown.map((d) => <Row key={d.id} d={d} onReuse={() => reuse(d)} onDelete={() => confirmDelete(d)} />)}
+          {shown.map((d) => <Row key={d.id} d={d} onReuse={reuse} onDelete={confirmDelete} />)}
         </View>
       ) : items.length ? (
         <Empty title="No matches" body={`Nothing in your ${NOUN[tab]} matches “${query.trim()}”.`} action="Clear search" onAction={() => setQuery('')} />

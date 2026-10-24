@@ -28,10 +28,6 @@ type AppStateValue = {
   showMoreStories: () => Promise<void>;
   /** stories have been built from the saved index once (so an empty list really means none yet) */
   loaded: boolean;
-  /** indexing in progress (foreground or the background worker's fast mode); null = idle */
-  progress: IndexProgress | null;
-  /** creation time of the oldest dated photo indexed so far (how far back dumps reach); null = none yet */
-  coverageSince: number | null;
   /** indexing paused with work left */
   paused: { done: number; total: number } | null;
   /** photo permission; null = not asked yet */
@@ -55,6 +51,15 @@ type AppStateValue = {
 };
 
 const Ctx = createContext<AppStateValue | null>(null);
+
+type ProgressValue = {
+  /** indexing in progress (foreground or the background worker's fast mode); null = idle */
+  progress: IndexProgress | null;
+  /** creation time of the oldest dated photo indexed so far (how far back dumps reach); null = none yet */
+  coverageSince: number | null;
+};
+/** Apart from Ctx: it changes every indexing batch, and only the screens showing it should re-render then. */
+const ProgressCtx = createContext<ProgressValue>({ progress: null, coverageSince: null });
 
 /**
  * Finger on the screen, or lifted < 2 s ago (a fling still moving): the root view feeds it (_layout). Indexing pauses
@@ -176,7 +181,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const edge = Math.min(oldest, progress && progress.since >= DATED ? progress.since : Infinity);
 
   const value = useMemo<AppStateValue>(() => ({
-    library, stories, loaded, progress, coverageSince: edge === Infinity ? null : edge, moreStories: Math.max(0, available - stories.length),
+    library, stories, loaded, moreStories: Math.max(0, available - stories.length),
     showMoreStories: async () => {
       if (!library?.photos.length) return; // mid-Reindex: keep the old dumps
       limit.current += STORY_PAGE;
@@ -203,9 +208,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       await NotificationService.init();
     },
     showOnboarding: () => setOnboarding(true),
-  }), [library, stories, available, loaded, progress, edge, paused, permission, onboarding, incoming, refreshStories, start]);
+  }), [library, stories, available, loaded, paused, permission, onboarding, incoming, refreshStories, start]);
+  const progressValue = useMemo(() => ({ progress, coverageSince: edge === Infinity ? null : edge }), [progress, edge]);
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={value}><ProgressCtx.Provider value={progressValue}>{children}</ProgressCtx.Provider></Ctx.Provider>;
 }
 
 export function useApp(): AppStateValue {
@@ -213,6 +219,8 @@ export function useApp(): AppStateValue {
   if (!v) throw new Error('useApp outside AppStateProvider');
   return v;
 }
+
+export const useProgress = () => useContext(ProgressCtx);
 
 /** next's stories in prev's order; new ones go in at their rank in next (a gallery sync shouldn't reshuffle Discover). */
 export function keepOrder<S extends { id: string }>(prev: S[], next: S[]): S[] {

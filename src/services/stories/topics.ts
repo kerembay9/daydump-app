@@ -73,8 +73,10 @@ export function findTopics(photos: IndexedPhoto[], names: string[], o: TopicOpti
   // Merge near-identical topics ("cinnamon roll" vs "pastry" on the same photos).
   const kept: Topic[] = [];
   for (const t of topics) {
-    const ids = new Set(t.photos.map((p) => p.id));
-    const dup = kept.find((k) => jaccard(ids, k.photos) > 0.5);
+    // jaccard ≤ smaller / bigger size, so most pairs need no set at all
+    let ids: Set<IndexedPhoto> | undefined;
+    const dup = kept.find((k) => Math.min(t.photos.length, k.photos.length) > 0.5 * Math.max(t.photos.length, k.photos.length)
+      && jaccard((ids ??= new Set(t.photos)), k.photos) > 0.5);
     if (dup) dup.related.push(t.name);
     else kept.push(t);
   }
@@ -101,8 +103,8 @@ export function densestCluster<T extends { p: { creationTime: number } }>(sorted
   return sorted.slice(best[0], best[1]);
 }
 
-function jaccard(a: Set<string>, b: { id: string }[]): number {
+function jaccard<T>(a: Set<T>, b: T[]): number {
   let inter = 0;
-  for (const p of b) if (a.has(p.id)) inter++;
+  for (const p of b) if (a.has(p)) inter++;
   return inter / (a.size + b.length - inter);
 }

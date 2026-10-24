@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Linking, RefreshControl, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApp } from '../../state/AppState';
+import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
 import { useProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -122,7 +122,8 @@ function Hero({ s }: { s: Story }) {
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, progress, paused, coverageSince, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { stories, loaded, permission, paused, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
   const [refreshing, setRefreshing] = useState(false);

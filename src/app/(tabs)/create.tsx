@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { useApp } from '../../state/AppState';
+import { useApp, useProgress } from '../../state/AppState';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
 import { expandQuery, Expanded, langName, useLangStates } from '../../services/index/queryLang';
@@ -161,14 +161,54 @@ const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, on
       })}
     </View>
   );
+}, (a, b) => a.w === b.w && a.h === b.h && a.now === b.now && a.onToggle === b.onToggle && a.onOpen === b.onOpen
+  // a pick redraws only the rows whose badges change; a library rebuild (new photo objects, same photos) redraws none
+  && a.item.length === b.item.length && a.item.every((p, i) => p.id === b.item[i].id && p.uri === b.item[i].uri
+    && badge(p.id, a.order, a.basket) === badge(p.id, b.order, b.basket)));
+/** What a grid photo's badge shows: 0 = not picked, n = picked n-th, -n = picked n-th by Suggest. */
+const badge = (id: string, order: Map<string, number>, basket: DumpPhoto[]) => {
+  const k = order.get(id);
+  return k == null ? 0 : basket[k].suggested ? -(k + 1) : k + 1;
+};
+
+/** "Similar to your N selected": a strip of photos to add (the grid's look, smaller). */
+const SimilarStrip = React.memo(function SimilarStrip({ photos, onAdd, onOpen }: {
+  photos: IndexedPhoto[]; onAdd: (p: IndexedPhoto, suggested: boolean) => void; onOpen: (photos: IndexedPhoto[], p: IndexedPhoto) => void;
+}) {
+  const { t } = useTheme();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 4 }}>
+      {photos.map((p) => (
+        <Tap key={p.id} onPress={() => onAdd(p, true)} onLongPress={() => onOpen(photos, p)} delayLongPress={350}
+          accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
+          style={{ width: 62, height: 64, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: t.borderStrong }}>
+          <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} />
+          <View style={{ position: 'absolute', top: 4, right: 4, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.65)' }}>
+            <Text style={[ui(8, 600), { color: '#fff' }]}>+ Add</Text>
+          </View>
+        </Tap>
+      ))}
+    </ScrollView>
+  );
 });
+
+/** "Your gallery (N)"; while indexing, how many are read so far. Its own component: progress ticks every batch. */
+function GalleryCount({ n }: { n: number }) {
+  const { progress } = useProgress();
+  return <>{progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${n})`}</>;
+}
 
 /** Create (ph3.png): search the library, pick photos into the basket (auto-saved Create draft), Continue to Edit. */
 export default function Create() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const win = useWindowDimensions();
-  const { library: lib, permission, progress } = useApp();
+  const { library, permission } = useApp();
+  // the library as of the last time Create was on screen: indexing rebuilds it every 15 s, and a hidden Create
+  // re-searching and re-rendering its grid each time took the JS thread from the screen in use
+  const focused = useIsFocused();
+  const [lib, setLib] = useState(library);
+  if (focused && lib !== library) setLib(library);
   const { shared } = useLocalSearchParams<{ shared?: string }>();
 
   const [query, setQuery] = useState('');
@@ -358,14 +398,15 @@ export default function Create() {
   // the grid only re-renders when the basket or the results change, not per keystroke / keyboard toggle
   const toggleRef = useRef(toggle);
   useEffect(() => { toggleRef.current = toggle; });
-  const onToggle = useCallback((p: IndexedPhoto) => toggleRef.current(toPhoto(p)), []);
-  const view = (photos: DumpPhoto[], id: string) => {
+  const onToggle = useCallback((p: IndexedPhoto, suggested?: boolean) => toggleRef.current(toPhoto(p, suggested)), []);
+  const view = useCallback((photos: DumpPhoto[], id: string) => {
     Haptics.selectionAsync().catch(() => {});
     setViewing({ photos, i: Math.max(0, photos.findIndex((p) => p.id === id)) });
-  };
+  }, []);
   const rowsRef = useRef(rows);
   useEffect(() => { rowsRef.current = rows; });
-  const onOpen = useCallback((p: IndexedPhoto) => view((rowsRef.current ?? []).map((x) => toPhoto(x)), p.id), []);
+  const onOpen = useCallback((p: IndexedPhoto) => view((rowsRef.current ?? []).map((x) => toPhoto(x)), p.id), [view]);
+  const onOpenSimilar = useCallback((ps: IndexedPhoto[], p: IndexedPhoto) => view(ps.map((x) => toPhoto(x, true)), p.id), [view]);
   const renderRow = useCallback(({ item }: { item: IndexedPhoto[] }) => (
     <GridRow item={item} order={order} basket={basket} w={cellW} h={cellH} now={now} onToggle={onToggle} onOpen={onOpen} />
   ), [order, basket, cellW, cellH, now, onToggle, onOpen]);
@@ -386,7 +427,7 @@ export default function Create() {
       {langNote}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
         <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
-          {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${rows?.length ?? 0})`}
+          {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : <GalleryCount n={rows?.length ?? 0} />}
         </Text>
         <Text style={[ui(9.5), { color: t.inkMuted }]}>Hold to enlarge</Text>
       </View>
@@ -467,20 +508,7 @@ export default function Create() {
                 </View>
                 <Text style={[ui(9), { color: t.inkMuted }]} numberOfLines={1}>{vibe ? `+ "${vibe}" vibe` : 'AI Match'}</Text>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 4 }}>
-                {similar.map((p) => {
-                  return (
-                    <Tap key={p.id} onPress={() => toggle(toPhoto(p, true))} onLongPress={() => view(similar.map((x) => toPhoto(x, true)), p.id)} delayLongPress={350}
-                      accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
-                      style={{ width: 62, height: 64, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: t.borderStrong }}>
-                      <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} />
-                      <View style={{ position: 'absolute', top: 4, right: 4, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.65)' }}>
-                        <Text style={[ui(8, 600), { color: '#fff' }]}>+ Add</Text>
-                      </View>
-                    </Tap>
-                  );
-                })}
-              </ScrollView>
+              <SimilarStrip photos={similar} onAdd={onToggle} onOpen={onOpenSimilar} />
             </View>
           ) : null}
 

@@ -233,3 +233,25 @@ test('hold a photo to enlarge it: swipe with the arrows, add / remove from the v
   expect(screen.getByText('#2 in basket · Remove')).toBeTruthy();
   expect(screen.queryByLabelText('Next photo')).toBeNull();
 }, 30000);
+
+test('unpicking a photo renumbers the later picks in the grid', async () => {
+  await bootApp('/create');
+  await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
+  await settle();
+  if (!screen.queryByLabelText('0 selected. Review')) { // an earlier test's basket: start empty
+    await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+    await fireEvent.press(await screen.findByText(/^Start a new dump/));
+    await settle();
+  }
+
+  // the grid rows only redraw when their own badges change: the 2nd and 3rd picks must still move up
+  const cells = screen.getAllByLabelText(/^Photo from /);
+  for (const i of [0, 4, 8]) await fireEvent.press(cells[i]);
+  expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(3);
+  await fireEvent.press(screen.getAllByLabelText(/number 1 in the basket$/)[0]);
+  expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(2);
+  expect(screen.getAllByLabelText(/number 1 in the basket$/)).toHaveLength(1);
+  expect(screen.getAllByLabelText(/number 2 in the basket$/)).toHaveLength(1);
+  expect(screen.queryByLabelText(/number 3 in the basket$/)).toBeNull();
+  expect(screen.getByText('2/6')).toBeTruthy();
+}, 30000);

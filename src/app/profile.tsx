@@ -20,7 +20,7 @@ import { LegalDocType, LegalModal } from '../components/LegalModal';
 import { PrivacyModal } from '../components/OnboardingModal';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
-import { useApp } from '../state/AppState';
+import { useApp, useProgress } from '../state/AppState';
 import { display, label, ui } from '../theme/type';
 import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../services/profile';
 import { list } from '../services/dumps';
@@ -137,7 +137,8 @@ function ProfileBody() {
     setDevHint(left > 0 && left <= 2 ? `${left} more tap${left > 1 ? 's' : ''} for developer tools` : '');
   };
 
-  const { progress, paused } = app;
+  const { paused } = app;
+  const { progress } = useProgress();
   const indexLine = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
     : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
     : app.library ? `${app.library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
