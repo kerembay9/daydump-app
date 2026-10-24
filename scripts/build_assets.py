@@ -209,7 +209,12 @@ def build_clip():
     ids = torch.tensor(token_ids(tok, GOLDEN_PHRASES), dtype=torch.long)
     with torch.no_grad():
         q_v = torch.nn.functional.normalize(v(pix), dim=-1).numpy()  # fp32 reference: the GPU's fp16 tower matches it to cosine 1.0
-    q_t = export_tflite(text, ids, PACK / "text.tflite")
+    from ai_edge_quantizer import recipe_manager
+    from ai_edge_quantizer.qtyping import TFLOperationName
+    rm = recipe_manager.RecipeManager()  # int8 matmuls; the 49408x510 token table (56% of weights) as int4 per row: -13 MB,
+    for op, bits in [(TFLOperationName.FULLY_CONNECTED, 8), (TFLOperationName.EMBEDDING_LOOKUP, 4)]:  # VIST CIs within 1 pt
+        rm.add_dynamic_config(regex=".*", operation_name=op, num_bits=bits)  # (research/distill/eval_text.py); 510 rules out blockwise
+    q_t = export_tflite(text, ids, PACK / "text.tflite", rm.get_quantization_recipe())
     shutil.copy(tok_file, PACK / "tokenizer.json")
     JS.mkdir(parents=True, exist_ok=True)
     golden = {"model": DISTILLED_NAME, "phrases": GOLDEN_PHRASES, "ids": ids.tolist(), "text": q_t.round(5).tolist(),
