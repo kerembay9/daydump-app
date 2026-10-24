@@ -7,8 +7,11 @@ import { EVAL_ALBUM, GalleryService } from '../galleryService';
 import { b64ToFloats, DIM, floatsToB64 } from './vectors';
 
 const BATCH = 128; // 52 ms/photo vs 62 at 32 and 67 at 16 (GPU + CPU, MODEL_BENCHMARKS.md); input buffer 128 × 600 KB = 77 MB
-/** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py). */
-const MODEL = (require('./clipGolden.json') as { model: string }).model;
+/** Developer tools' CLIP model switch (ClipEmbedder.devModel): a distilled model, indexed into its own DB; null = shipped. */
+export const DEV_MODEL = ClipEmbedder?.devModel?.() ?? null;
+/** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py), or the dev model. */
+const MODEL = DEV_MODEL ?? (require('./clipGolden.json') as { model: string }).model;
+const FILE = EVAL_ALBUM ? 'photo-index-eval' : 'photo-index';
 const TOP_CONCEPTS = 10;
 /** ~2 min of indexing in the app: worth the notification that lets it keep going once the user leaves (BackgroundIndex.kt fast mode). */
 const FAST_MIN = 2500;
@@ -28,7 +31,7 @@ let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 /** Also holds the dumps table (services/dumps.ts); resetIndex only clears photos, so dumps survive a reindex. */
 export function db() {
   // Separate DB in eval mode so the validation index never mixes with the real library.
-  return (dbPromise ??= SQLite.openDatabaseAsync(EVAL_ALBUM ? 'photo-index-eval.db' : 'photo-index.db').then(async (d) => {
+  return (dbPromise ??= SQLite.openDatabaseAsync(DEV_MODEL ? `${FILE}-${DEV_MODEL}.db` : `${FILE}.db`).then(async (d) => {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY, uri TEXT NOT NULL, created INTEGER NOT NULL, w INTEGER, h INTEGER,
       lat REAL, lon REAL, emb BLOB, concepts TEXT);
@@ -41,6 +44,13 @@ export function db() {
     return d;
   }));
 }
+
+let mainPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+/** The dumps' DB (services/dumps.ts): the main file whichever model indexes. */
+export const mainDb = () => !DEV_MODEL ? db() : (mainPromise ??= SQLite.openDatabaseAsync(`${FILE}.db`).then(async (d) => {
+  await d.execAsync('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+  return d;
+}));
 
 let running: Promise<number> | null = null;
 

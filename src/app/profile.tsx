@@ -26,7 +26,7 @@ import { display, label, ui } from '../theme/type';
 import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../services/profile';
 import { list } from '../services/dumps';
 import { ratioOf } from '../services/layouts';
-import { resetIndex } from '../services/index/photoIndex';
+import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
@@ -256,6 +256,8 @@ function ProfileBody() {
         <Section title="Developer tools">
           <Row label="Stories debug" onPress={() => setDebug(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Model bench" onPress={() => setBench(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />}
+          {__DEV__ && <Row label="CLIP model" sub={`${DEV_MODEL ?? 'Shipped'}. Tap to switch to ${DEV_MODEL ? 'shipped' : 'mnv4m'}: restarts the app, each keeps its own index`}
+            onPress={() => ClipEmbedder?.setDevModel(DEV_MODEL ? null : 'mnv4m')} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
