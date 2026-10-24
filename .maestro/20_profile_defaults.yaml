@@ -20,6 +20,6 @@ name: 20 profile name + defaults
     file: subflows/edit.yaml
     env:
       N: 1
-- assertVisible: "9:16 · Original"
 - tapOn: "Preview"
+- assertVisible: "9:16 · .*"
 - assertVisible: "Quality: Standard"

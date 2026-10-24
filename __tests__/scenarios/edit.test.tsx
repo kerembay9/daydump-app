@@ -47,6 +47,16 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   expect(f).toMatchObject({ all: true, key: 'noir', per: {} });
   expect(screen.queryByText('Changes apply to this slide only.')).toBeNull();
 
+  // strength: one value label; drag follows the finger's page x even when locationX jumps to a child's frame
+  expect(screen.getAllByText('68%')).toHaveLength(1);
+  const slider = screen.getByLabelText('Filter strength');
+  await fireEvent(slider, 'layout', { nativeEvent: { layout: { width: 200 } } });
+  await fireEvent(slider, 'responderGrant', { nativeEvent: { pageX: 120, locationX: 100 } }); // track starts at page x 20
+  await fireEvent(slider, 'responderMove', { nativeEvent: { pageX: 70, locationX: 5 } });
+  await settle();
+  expect(filterOf((await get(id))!.filter).pct).toBe(25);
+  expect(screen.getAllByText('25%')).toHaveLength(1);
+
   // reopened later: the saved state comes back
   screen.unmount();
   await bootApp(`/edit/${id}`);
@@ -54,11 +64,10 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   expect(screen.getByRole('checkbox', { name: 'Apply to all photos' }).props.accessibilityState).toEqual({ checked: true });
 }, 30000);
 
-test('Crop: dragging a photo in Crop mode picks the part shown, saved with the dump', async () => {
+test('Crop: dragging / pinching a photo picks the part shown, saved with the dump', async () => {
   const [p] = world.photos;
   const d = await createDraft({ source: 'create', photos: [{ id: p.id, uri: p.uri }], ratio: '9:16' });
   await bootApp(`/edit/${d.id}`);
-  await fireEvent.press(await screen.findByRole('button', { name: 'Crop' }));
   expect(await screen.findByText('Drag or pinch a photo')).toBeTruthy();
   // the mocked photo is 4:5, so in a 9:16 cell it overflows sideways: dragging left shows more of its right side
   await act(async () => fireGestureHandler(getByGestureTestId('crop-pan'), [
@@ -71,6 +80,16 @@ test('Crop: dragging a photo in Crop mode picks the part shown, saved with the d
   const crop = (await get(d.id))!.photos[0].crop!;
   expect(crop.x).toBeGreaterThan(0.5);
   expect(crop.y).toBe(0.5);
-  await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
-  expect(await screen.findByLabelText('9:16 TikTok')).toBeTruthy();
+
+  // pinch: zooms in from the dragged crop, which stays where it was
+  await act(async () => fireGestureHandler(getByGestureTestId('crop-pinch'), [
+    { state: State.BEGAN, focalX: 50, focalY: 50, scale: 1 },
+    { state: State.ACTIVE, focalX: 50, focalY: 50, scale: 1.5 },
+    { state: State.ACTIVE, focalX: 50, focalY: 50, scale: 2 },
+    { state: State.END, focalX: 50, focalY: 50, scale: 2 },
+  ]));
+  await settle();
+  const zoomed = (await get(d.id))!.photos[0].crop!;
+  expect(zoomed.z).toBeCloseTo(2);
+  expect(zoomed.x).toBeCloseTo(crop.x);
 }, 30000);

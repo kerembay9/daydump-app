@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { label, ui } from '../../theme/type';
@@ -9,19 +9,22 @@ import { Tap } from '../ui/Tap';
 import { useRevealActive } from '../ui/useRevealActive';
 import { FilterKey, Look, PRESETS } from '../../services/filters';
 
-/** 0-100 slider: drag or tap anywhere on the track. Accent = ink, so it follows the theme (mock bug: fixed #261F1B). */
+/** 0-100 slider: drag or tap anywhere on the track. Accent = ink, so it follows the theme (mock bug: fixed #261F1B).
+ *  Moves use pageX against the track's page origin taken at grant: locationX is relative to whatever view is under
+ *  the finger, so it jumps back and forth mid-drag. */
 function Slider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const { t } = useTheme();
   const [w, setW] = useState(1);
-  const set = (x: number) => onChange(Math.round(Math.max(0, Math.min(1, x / w)) * 100));
+  const origin = useRef(0);
+  const set = (pageX: number) => onChange(Math.round(Math.max(0, Math.min(1, (pageX - origin.current) / w)) * 100));
   return (
     <View
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
       onResponderTerminationRequest={() => false}
-      onResponderGrant={(e) => set(e.nativeEvent.locationX)}
-      onResponderMove={(e) => set(e.nativeEvent.locationX)}
+      onResponderGrant={(e) => { origin.current = e.nativeEvent.pageX - e.nativeEvent.locationX; set(e.nativeEvent.pageX); }}
+      onResponderMove={(e) => set(e.nativeEvent.pageX)}
       accessibilityRole="adjustable"
       accessibilityLabel="Filter strength"
       accessibilityValue={{ min: 0, max: 100, now: value }}
@@ -37,7 +40,7 @@ function Slider({ value, onChange }: { value: number; onChange: (v: number) => v
 
 type Props = { look: Look; all: boolean; onLook: (l: Look) => void; onAll: (on: boolean) => void };
 
-/** FILTER card: strength pill, Apply-to-all checkbox, presets with swatches, 0-100% slider. */
+/** FILTER card: Apply-to-all checkbox, presets with swatches, 0-100% slider with its value on the right. */
 export function FilterCard({ look, all, onLook, onAll }: Props) {
   const { t } = useTheme();
   const pct = look.key === 'none' ? 0 : look.pct;
@@ -46,12 +49,7 @@ export function FilterCard({ look, all, onLook, onAll }: Props) {
   return (
     <FrameCard radius={16} padding={10} style={{ marginBottom: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={[label(10, 0.1), { color: t.inkMuted }]}>Filter</Text>
-          <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: t.ink }}>
-            <Text style={[ui(9.5, 700), { color: t.bgScreen }]}>{pct}%</Text>
-          </View>
-        </View>
+        <Text style={[label(10, 0.1), { color: t.inkMuted }]}>Filter</Text>
         <Tap onPress={() => onAll(!all)} accessibilityRole="checkbox" accessibilityState={{ checked: all }} hitSlop={8}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: t.ink, backgroundColor: all ? t.ink : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
@@ -69,7 +67,6 @@ export function FilterCard({ look, all, onLook, onAll }: Props) {
         ))}
       </ScrollView>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={[ui(9.5, 600), { color: t.inkMuted, width: 26 }]}>0%</Text>
         {/* dragging while on Original picks Warm 35mm (mock) */}
         <Slider value={pct} onChange={(v) => onLook({ key: look.key === 'none' ? 'warm35' : look.key, pct: v })} />
         <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{pct}%</Text>

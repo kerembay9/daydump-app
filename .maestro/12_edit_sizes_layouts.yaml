@@ -7,10 +7,9 @@ name: 12 edit sizes + layouts
     file: subflows/edit.yaml
     env:
       N: 4
-- assertVisible: "4:5 · Original"
+- assertVisible: "Drag or pinch a photo"
 - assertVisible: "1/4"
 - tapOn: "9:16 TikTok"
-- assertVisible: "9:16 · Original"
 - tapOn: "2×2 Grid"
 - assertVisible: "1/1"
 - tapOn: "2 Split"

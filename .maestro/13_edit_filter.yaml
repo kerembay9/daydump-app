@@ -8,7 +8,10 @@ name: 13 edit filter
     env:
       N: 2
 - tapOn: "B&W Roll"
-- assertVisible: "4:5 · B&W Roll 68%"
+- assertVisible:
+    text: "B&W Roll"
+    selected: true
+- assertVisible: "68%"
 - assertVisible:
     text: "Apply to all photos"
     checked: true
@@ -16,8 +19,10 @@ name: 13 edit filter
 - tapOn: "Apply to all photos"
 - assertVisible: "Changes apply to this slide only."
 - tapOn: "Filter strength"
-- assertVisible: "4:5 · B&W Roll 50%"
+- assertVisible: "50%"
 - waitForAnimationToEnd
 - takeScreenshot: vr_edit_bw
 - tapOn: "Original"
-- assertVisible: "4:5 · Original"
+- assertVisible:
+    text: "Original"
+    selected: true

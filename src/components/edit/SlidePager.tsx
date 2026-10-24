@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, PixelRatio, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSharedValue } from 'react-native-reanimated';
 import { Canvas, SkImage } from '@shopify/react-native-skia';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ui } from '../../theme/type';
@@ -10,11 +9,14 @@ import { Icons } from '../ui/Icons';
 import { Pill } from '../ui/Pill';
 import { useRevealActive } from '../ui/useRevealActive';
 import type { DumpPhoto } from '../../services/dumps';
-import { FilterState, lookFor, matrixFor, presetOf } from '../../services/filters';
+import { FilterState, lookFor, matrixFor } from '../../services/filters';
 import { cellAt, Crop, Fit, LAYOUTS, LayoutKey, placePhoto, ratioOf, slideCells } from '../../services/layouts';
 import { previewImage, SlideDrawing, SlidePhoto } from '../../services/slides';
 
 export type Slide = { layout: LayoutKey; photos: DumpPhoto[] };
+
+/** One drag / pinch on a photo: its cell and photo size, the crop it started from and is at, fingers down. */
+type Drag = { id: string; w: number; h: number; iw: number; ih: number; start: Crop; crop: Crop; tx: number; ty: number; zoom: number; down: number };
 
 /** Canvas never taller than this share of the window, so 9:16 / 4:5 keep their true shape and leave room below. */
 const MAX_H = 0.42;
@@ -51,13 +53,13 @@ type Props = {
   images: Images;
   onIndex: (i: number) => void;
   onLayout: (l: LayoutKey) => void;
-  /** a photo dragged / pinched to a new crop (Crop mode) */
+  /** a photo dragged / pinched to a new crop */
   onCrop: (id: string, crop: Crop) => void;
 };
 
 /**
- * Canvas card: the slides at their true ratio, paged sideways (tap = next), size/filter badge, n/total, Crop,
- * layouts. In Crop mode paging stops and a drag / pinch on a photo picks the part of it its cell shows.
+ * Canvas card: the slides at their true ratio (tap = next slide), n/total, layouts. Dragging / pinching a photo picks
+ * the part of it its cell shows, so the pager doesn't swipe: slides change by tap or the filmstrip.
  */
 export function SlidePager({ slides, ratio, fit, layout, filter, index, images, onIndex, onLayout, onCrop }: Props) {
   const { t } = useTheme();
@@ -67,11 +69,14 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
   const ch = (cw * r.h) / r.w;
   const [badgeW, setBadgeW] = useState(0);
   const layouts = useRevealActive(layout);
-  const [cropping, setCropping] = useState(false);
   // the crop while a finger is down (only this card redraws); handed up once every finger lifts
   const [live, setLive] = useState<{ id: string; crop: Crop } | null>(null);
-  // a shared value, not a ref: the gesture callbacks are built during render, where the compiler lint forbids refs
-  const drag = useSharedValue<{ id: string; w: number; h: number; iw: number; ih: number; start: Crop; crop: Crop; tx: number; ty: number; zoom: number; down: number } | null>(null);
+  // A plain synchronous slot: pan and pinch both update it every frame, so a shared value (async from JS) would have
+  // each overwrite the other's stale copy, and the compiler lint forbids refs in the gesture callbacks built in render.
+  const [drag] = useState(() => {
+    let d: Drag | null = null;
+    return { get: () => d, set: (v: Drag | null) => { d = v; } };
+  });
   const list = useRef<FlatList<Slide & { drawn: SlidePhoto[] }>>(null);
 
   // Keep the pager on the active slide when it changes from outside (filmstrip tap, fewer slides after a layout change).
@@ -79,8 +84,6 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
     if (index < slides.length) list.current?.scrollToOffset({ offset: index * pageW, animated: true });
   }, [index, slides.length, pageW]);
 
-  const activeLook = slides[index]?.photos[0] ? lookFor(filter, slides[index].photos[0].id) : filter;
-  const badge = `${r.key} · ${presetOf(activeLook.key).label}${activeLook.key !== 'none' ? ` ${activeLook.pct}%` : ''}`;
   const chip = { position: 'absolute', top: 8, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.6)', flexDirection: 'row', alignItems: 'center', gap: 4 } as const;
   const left = (pageW - cw) / 2;
 
@@ -91,8 +94,8 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
 
   // Pan and pinch run together (two fingers move and zoom at once); the photo is picked where the first finger lands.
   const begin = (x: number, y: number) => {
-    const d = drag.value;
-    if (d) return void (drag.value = { ...d, down: d.down + 1 });
+    const d = drag.get();
+    if (d) return drag.set({ ...d, down: d.down + 1 });
     const s = slides[index];
     if (!s) return;
     const { cells } = slideCells(s.layout, fit, cw, ch);
@@ -101,23 +104,24 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
     if (!img) return;
     const c = cells[i], w = c.w - 2 * c.border, h = c.h - 2 * c.border;
     const start = placePhoto(w, h, img.width(), img.height(), s.photos[i].crop).crop;
-    drag.value = { id: s.photos[i].id, w, h, iw: img.width(), ih: img.height(), start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 };
+    drag.set({ id: s.photos[i].id, w, h, iw: img.width(), ih: img.height(), start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 });
   };
   const move = (m: Partial<{ tx: number; ty: number; zoom: number }>) => {
-    if (!drag.value) return;
-    const d = { ...drag.value, ...m };
+    const prev = drag.get();
+    if (!prev) return;
+    const d = { ...prev, ...m };
     const z = d.start.z * d.zoom;
     const { dw, dh } = placePhoto(d.w, d.h, d.iw, d.ih, { ...d.start, z });
     d.crop = placePhoto(d.w, d.h, d.iw, d.ih, { x: d.start.x - d.tx / dw, y: d.start.y - d.ty / dh, z }).crop;
-    drag.value = d;
+    drag.set(d);
     setLive({ id: d.id, crop: d.crop });
   };
   const end = () => {
-    const d = drag.value;
+    const d = drag.get();
     if (!d) return;
-    if (d.down > 1) return void (drag.value = { ...d, down: d.down - 1 });
-    drag.value = null;
-    onCrop(d.id, d.crop);
+    if (d.down > 1) return drag.set({ ...d, down: d.down - 1 });
+    drag.set(null);
+    if (d.crop !== d.start) onCrop(d.id, d.crop); // a tap (no move) leaves the photo as it was
     setLive(null);
   };
   const pan = Gesture.Pan().runOnJS(true).withTestId('crop-pan')
@@ -140,13 +144,12 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
           windowSize={3}
           initialNumToRender={2}
           onMomentumScrollEnd={(e) => onIndex(Math.round(e.nativeEvent.contentOffset.x / pageW))}
-          scrollEnabled={!cropping}
-          extraData={cropping}
+          scrollEnabled={false}
           renderItem={({ item, index: i }) => (
             <View style={{ width: pageW, alignItems: 'center' }}>
-              <Pressable onPress={() => onIndex((index + 1) % slides.length)} disabled={cropping} accessibilityLabel="Next slide"
+              <Pressable onPress={() => onIndex((index + 1) % slides.length)} accessibilityLabel="Next slide"
                 style={{ width: cw, height: ch, borderRadius: 13, overflow: 'hidden' }}>
-                {cropping && i === index ? (
+                {i === index ? (
                   <GestureDetector gesture={gesture}>
                     <Canvas style={{ width: cw, height: ch }}>
                       <SlideDrawing layout={item.layout} fit={fit} width={cw} height={ch} photos={item.drawn} />
@@ -165,16 +168,15 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
         />
         <View pointerEvents="none" style={[chip, { left: left + 8 }]} onLayout={(e) => setBadgeW(e.nativeEvent.layout.width)}>
           <Icons.crop size={10} color="#fff" />
-          <Text style={[ui(9.5, 600), { color: '#fff' }]}>{cropping ? 'Drag or pinch a photo' : badge}</Text>
+          <Text style={[ui(9.5, 600), { color: '#fff' }]}>Drag or pinch a photo</Text>
         </View>
-        {/* the counter drops to the bottom only when it would hit the badge (9:16 with a long preset name) */}
+        {/* the counter drops to the bottom only when it would hit the badge (9:16) */}
         <View pointerEvents="none" style={[chip, { right: left + 8 }, badgeW + 56 > cw ? { top: undefined, bottom: 8 } : null]}>
           <Text style={[ui(9.5, 600), { color: '#fff' }]}>{Math.min(index + 1, slides.length)}/{slides.length}</Text>
         </View>
       </View>
 
       <View style={{ paddingTop: 6, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Pill height={24} size={9.5} label={cropping ? 'Done' : 'Crop'} on={cropping} onPress={() => setCropping((c) => !c)} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingVertical: 4, paddingRight: 4 }} {...layouts.scroll}>
           {LAYOUTS.map((l) => (
             <View key={l.key} onLayout={layouts.item(l.key)}>
