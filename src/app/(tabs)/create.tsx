@@ -246,8 +246,8 @@ export default function Create() {
         // on in Edit (layout, filter, caption, size): that one stays in Drafts and is only unlinked from Create.
         if (id) {
           const d = await get(id);
-          const { ratio, fit } = await getProfile();
-          if (d?.status === 'draft' && !d.layout && !d.filter && !d.caption && d.ratio === ratio && d.fit === fit) await remove(id);
+          const { ratio } = await getProfile();
+          if (d?.status === 'draft' && !d.layout && !d.filter && !d.caption && d.ratio === ratio) await remove(id);
           await setCurrentCreateDraft(null);
           draftId.current = null;
         }

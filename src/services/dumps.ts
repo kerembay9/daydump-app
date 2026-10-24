@@ -75,12 +75,12 @@ async function save(d: Dump): Promise<Dump> {
  * in Library gets a " (2)" suffix.
  */
 export async function createDraft(init: Pick<Dump, 'source' | 'photos'> & Partial<Pick<Dump, 'title' | 'storyId' | 'ratio' | 'fit' | 'layout' | 'filter' | 'caption'>>): Promise<Dump> {
-  const { ratio, fit } = await getProfile();
+  const { ratio } = await getProfile();
   const now = Date.now();
   const title = init.title ?? photoRange({ photos: init.photos, created: now }, now);
   const taken = (await list()).map((x) => x.title);
   return insert({
-    storyId: null, ratio, fit, layout: null, filter: null, caption: null, ...init,
+    storyId: null, ratio, fit: null, layout: null, filter: null, caption: null, ...init,
     title: taken.includes(title) ? copyTitle(title, taken) : title, // two "Cat" drafts → "Cat", "Cat (2)"
     id: `d_${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     status: 'draft', platform: null, created: now, edited: now, postedAt: null,
@@ -155,7 +155,7 @@ export async function storyDraft(storyId: string): Promise<Dump | null> {
 export const storyAsDump = (s: Story): Dump => ({
   id: s.id, title: s.title, status: 'draft', source: 'story', storyId: s.id,
   photos: s.picks.map((p) => ({ id: p.id, uri: p.uri, created: p.creationTime })),
-  ratio: profileNow().ratio, fit: profileNow().fit, layout: null, filter: null, caption: null, platform: null, created: s.end, edited: s.end, postedAt: null,
+  ratio: profileNow().ratio, fit: null, layout: null, filter: null, caption: null, platform: null, created: s.end, edited: s.end, postedAt: null,
 });
 
 /** Opening a Discover story in Edit: its draft, made from the story's picks the first time. */

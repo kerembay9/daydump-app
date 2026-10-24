@@ -50,17 +50,16 @@ type Props = {
   index: number;
   images: Images;
   onIndex: (i: number) => void;
-  onFit: (f: Fit) => void;
   onLayout: (l: LayoutKey) => void;
   /** a photo dragged / pinched to a new crop (Crop mode) */
   onCrop: (id: string, crop: Crop) => void;
 };
 
 /**
- * Canvas card: the slides at their true ratio, paged sideways (tap = next), size/filter badge, n/total, Bleed|Border,
- * Crop, layouts. In Crop mode paging stops and a drag / pinch on a photo picks the part of it its cell shows.
+ * Canvas card: the slides at their true ratio, paged sideways (tap = next), size/filter badge, n/total, Crop,
+ * layouts. In Crop mode paging stops and a drag / pinch on a photo picks the part of it its cell shows.
  */
-export function SlidePager({ slides, ratio, fit, layout, filter, index, images, onIndex, onFit, onLayout, onCrop }: Props) {
+export function SlidePager({ slides, ratio, fit, layout, filter, index, images, onIndex, onLayout, onCrop }: Props) {
   const { t } = useTheme();
   const { pageW, maxH } = pageBox(useWindowDimensions());
   const r = ratioOf(ratio);
@@ -175,11 +174,6 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
       </View>
 
       <View style={{ paddingTop: 6, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <View style={{ flexDirection: 'row', padding: 2, gap: 2, borderRadius: 14, backgroundColor: t.dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}>
-          {(['bleed', 'border'] as const).map((f) => (
-            <Pill key={f} variant="plain" height={22} size={9.5} label={f === 'bleed' ? 'Bleed' : 'Border'} on={fit === f} onPress={() => onFit(f)} />
-          ))}
-        </View>
         <Pill height={24} size={9.5} label={cropping ? 'Done' : 'Crop'} on={cropping} onPress={() => setCropping((c) => !c)} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingVertical: 4, paddingRight: 4 }} {...layouts.scroll}>
           {LAYOUTS.map((l) => (

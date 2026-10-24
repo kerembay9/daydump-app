@@ -6,7 +6,7 @@ import { useApp } from '../../state/AppState';
 import { markSeen, Story, storyById } from '../../services/stories';
 import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
-import { Fit, fitOf, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
+import { fitOf, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
 import { filterOf, FilterState, Look, lookFor } from '../../services/filters';
 import type { Library } from '../../services/index/photoIndex';
 import type { PhotoAsset } from '../../types';
@@ -83,7 +83,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   const bottom = useSafeAreaInsets().bottom;
   const [photos, setPhotos] = useState(dump.photos);
   const [ratio, setRatio] = useState<string>(ratioOf(dump.ratio).key);
-  const [fit, setFit] = useState<Fit>(fitOf(dump.fit));
+  const fit = fitOf(dump.fit);
   const [layout, setLayout] = useState<LayoutKey>(layoutOf(dump.layout).key);
   const [filter, setFilter] = useState<FilterState>(filterOf(dump.filter));
   const [slide, setSlide] = useState(0);
@@ -185,7 +185,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       </View>
 
       <SlidePager slides={slides} ratio={ratio} fit={fit} layout={layout} filter={filter} index={cur}
-        images={images} onIndex={setSlide} onFit={setFit} onLayout={(l) => { setLayout(l); setSlide(0); }}
+        images={images} onIndex={setSlide} onLayout={(l) => { setLayout(l); setSlide(0); }}
         onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
       <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} />
       <Filmstrip

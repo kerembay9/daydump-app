@@ -1,4 +1,4 @@
-# Edit: post sizes, layouts (slide count), slide paging, Bleed/Border; Preview follows the size.
+# Edit: post sizes, layouts (slide count), slide paging; Preview follows the size.
 appId: com.horizonzeta.picdump
 name: 12 edit sizes + layouts
 ---
@@ -17,8 +17,6 @@ name: 12 edit sizes + layouts
 - assertVisible: "1/2"
 - tapOn: "Next slide"
 - assertVisible: "2/2"
-- tapOn: "Border"
-- waitForAnimationToEnd
-- takeScreenshot: vr_edit_split_border
+- takeScreenshot: vr_edit_split
 - tapOn: "Preview"
 - assertVisible: "9:16 · 2 Split layout"

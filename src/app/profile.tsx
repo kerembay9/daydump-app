@@ -190,11 +190,9 @@ function ProfileBody() {
 
       <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
 
-      <Section title="Social post & size defaults" note="New dumps start with the size, frame and quality set here.">
+      <Section title="Social post & size defaults" note="New dumps start with the size and quality set here.">
         <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
-        <Row label="Default Frame Style" onPress={() => save({ fit: p.fit === 'border' ? 'bleed' : 'border' })}
-          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.fit === 'border' ? 'Cashmere Border' : 'Full Bleed Crop'}</Text>} />
         <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
           right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? 'HD (2160 px)' : 'Standard (1080 px)'}</Text>} />
         <Row label="Posting also saves to gallery" sub="Keeps a copy of the slides in the PicDump album" onPress={() => save({ saveOnPost: !p.saveOnPost })} toggle={p.saveOnPost} last />
