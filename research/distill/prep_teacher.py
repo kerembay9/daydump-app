@@ -1,8 +1,9 @@
 """Teacher targets, computed once (MobileCLIP's reinforced-dataset trick): per photo K crops (crop 0 = the app's view,
 shortest side -> center square; the rest random-resized + flip), each crop's params and teacher image embedding; plus the
 teacher's text embeddings of the text bank (the app's concept prompts + VIST *train* descriptions).
-usage (repo root): .venv/bin/python research/distill/prep_teacher.py [teacher key] -> scripts/.cache/distill/teacher_<key>.npz"""
-import json, os, random, sys
+usage (repo root): .venv/bin/python -I research/distill/prep_teacher.py [teacher key] -> scripts/.cache/distill/teacher_<key>.npz,
+then one teacher_<key>.<k>.npz per later run with the photos fetched since (rerun it while fetch_oi.py downloads)."""
+import json, os, random, sys, zipfile
 import numpy as np, torch
 from PIL import Image
 
@@ -42,6 +43,33 @@ def apply_crop(im, c, size):
     return np.asarray(im, np.float32) / 255
 
 
+def parts(key):
+    """teacher_<key>.npz, then each later run's teacher_<key>.<k>.npz: extending one file needs twice its RAM"""
+    pre = f"teacher_{key}."
+    ks = sorted(int(f[len(pre):-4]) for f in os.listdir(D) if f.startswith(pre) and f[len(pre):-4].isdigit() and f.endswith(".npz"))
+    return [f"{D}/teacher_{key}.npz"] * os.path.exists(f"{D}/teacher_{key}.npz") + [f"{D}/{pre}{k}.npz" for k in ks]
+
+
+def load_teacher(key):
+    """All of key's parts as one dict; emb is streamed into one array, so peak RAM is the total, not twice it"""
+    fs = parts(key)
+    zs = [np.load(f) for f in fs]
+    ids = [z["ids"] for z in zs]
+    T = {"ids": np.concatenate(ids), "crops": np.concatenate([z["crops"] for z in zs]), "bank": zs[0]["bank"],
+         "logit_scale": zs[0]["logit_scale"], "n_concepts": zs[0]["n_concepts"]}
+    o, emb = 0, None
+    for f, n in zip(fs, map(len, ids)):
+        with zipfile.ZipFile(f) as zf, zf.open("emb.npy") as fh:
+            shape, _, dt = np.lib.format.read_array_header_1_0(fh) if np.lib.format.read_magic(fh) == (1, 0) else np.lib.format.read_array_header_2_0(fh)
+            emb = np.empty((len(T["ids"]),) + shape[1:], dt) if emb is None else emb
+            buf = memoryview(emb[o:o + n].reshape(-1).view(np.uint8))
+            for i in range(0, len(buf), 1 << 28):
+                assert fh.readinto(buf[i:i + (1 << 28)]) == len(buf[i:i + (1 << 28)])
+        o += n
+    T["emb"] = emb
+    return T
+
+
 class Photos(torch.utils.data.Dataset):
     def __init__(self, files, size, mean, std): self.files, self.size, self.mean, self.std = files, size, mean, std
     def __len__(self): return len(self.files)
@@ -57,13 +85,14 @@ if __name__ == "__main__":
     key = sys.argv[1] if len(sys.argv) > 1 else "pel336"
     m, tok, size, mean, std = load(key, "cuda")
     m.eval()
-    out = f"{D}/teacher_{key}.npz"
-    old = dict(np.load(out)) if os.path.exists(out) else None  # extend, don't redo: photos already there are skipped
-    done = set(old["ids"]) if old else set()
+    fs = parts(key)
+    out = f"{D}/teacher_{key}.{len(fs)}.npz" if fs else f"{D}/teacher_{key}.npz"
+    done = {i for f in fs for i in np.load(f)["ids"]}  # extend, don't redo: photos already done are skipped
     files = sorted(f"{D}/oi/{f}" for f in os.listdir(f"{D}/oi") if f.endswith(".jpg") and f[:-4] not in done)
+    if not files:
+        sys.exit(print("no new photos", flush=True))
     dl = torch.utils.data.DataLoader(Photos(files, size, mean, std), batch_size=32, num_workers=12)
-    emb, crops = ([torch.from_numpy(old["emb"])], [torch.from_numpy(old["crops"])]) if old else ([], [])
-    ids = list(old["ids"]) if old else []
+    emb, crops, ids = [], [], []
     with torch.no_grad(), torch.autocast("cuda", torch.bfloat16):
         for b, (x, c) in enumerate(dl):
             e = m.encode_image(x.flatten(0, 1).cuda(non_blocking=True)).float()

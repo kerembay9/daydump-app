@@ -190,19 +190,19 @@ def build_clip():
     build_phrases()
 
 
-def build_phrases():
+def build_phrases(text=PACK / "text.tflite", dest=NATIVE / "phrases.json"):
     import base64, numpy as np
     from transformers import CLIPTokenizerFast
     from ai_edge_litert.interpreter import Interpreter
     tok = CLIPTokenizerFast(tokenizer_file=str(PACK / "tokenizer.json"))
-    it = Interpreter(model_path=str(PACK / "text.tflite")); it.allocate_tensors()
+    it = Interpreter(model_path=str(text)); it.allocate_tensors()
     inp, out = it.get_input_details()[0], it.get_output_details()[0]
     vecs = {}
     for p, ids in zip(FIXED_PHRASES, token_ids(tok, FIXED_PHRASES)):
         it.set_tensor(inp["index"], np.array([ids], dtype=inp["dtype"])); it.invoke()
         vecs[p] = base64.b64encode(it.get_tensor(out["index"])[0].astype("<f4").tobytes()).decode()
-    (NATIVE / "phrases.json").write_text(json.dumps(vecs))
-    print(f"  phrases.json: {len(vecs)} phrases")
+    dest.write_text(json.dumps(vecs))
+    print(f"  {dest.name}: {len(vecs)} phrases")
 
 
 def build_gpu():
@@ -526,14 +526,15 @@ def build_vocab():
     build_concepts()
 
 
-def build_concepts():
+def build_concepts(v=None, out=VPACK / "concepts.tflite"):
     """scores = q . vocab^T for one vector (the app takes the top k): the vocab as fp16 weights of one FULLY_CONNECTED,
-    fp32 math. Dynamic int8 would quantize q per run and reorder close concepts."""
+    fp32 math. Dynamic int8 would quantize q per run and reorder close concepts. v: [n, 512] unit rows (default vocab.bin)."""
     import numpy as np, torch
     from ai_edge_quantizer import recipe_manager, algorithm_manager
     from ai_edge_quantizer.qtyping import TFLOperationName
-    raw = np.fromfile(VOCAB, dtype=np.uint8).reshape(-1, 4 + 512)
-    v = raw[:, 4:].copy().view(np.int8).astype(np.float32) * raw[:, :4].copy().view("<f4")
+    if v is None:
+        raw = np.fromfile(VOCAB, dtype=np.uint8).reshape(-1, 4 + 512)
+        v = raw[:, 4:].copy().view(np.int8).astype(np.float32) * raw[:, :4].copy().view("<f4")
     w = torch.from_numpy(v)
 
     class Concepts(torch.nn.Module):
@@ -544,7 +545,7 @@ def build_concepts():
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16,
                               algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
     q = torch.from_numpy(v[:8] / np.linalg.norm(v[:8], axis=-1, keepdims=True))
-    export_tflite(Concepts(), q, VPACK / "concepts.tflite", rm.get_quantization_recipe(), floor=0.9999)
+    export_tflite(Concepts(), q, out, rm.get_quantization_recipe(), floor=0.9999)
 
 
 def build_cities():

@@ -3,7 +3,7 @@ usage (repo root): .venv/bin/python research/distill/train.py <student key> <run
 v1 loss (git tag distill-v1) on faster code: uint8 workers + GPU normalize, torch.compile, resume (RESUME=1), per-epoch checkpoints.
 Each epoch: VIST-val search R@1 of student image + teacher text (both in the 512-d PCA space), then writes
 scripts/.cache/distill/vist_emb_val/<run>.npz for score_vist.py (SPLIT=val), the checkpoints and <run>_state.pt."""
-import math, os, random, sys, time
+import io, math, os, random, sys, time
 import numpy as np, torch, torch.nn.functional as F
 from PIL import Image
 from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
@@ -11,7 +11,7 @@ from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 os.environ["SPLIT"] = "val"  # before embed_vist reads it: tuning never touches VIST test
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from embed_vist import CACHE, CLIP_MEAN, CLIP_STD, prep
-from prep_teacher import apply_crop
+from prep_teacher import apply_crop, load_teacher
 from student import Student
 
 D, DIM, SIZE, BATCH = f"{CACHE}/distill", 512, 224, 256
@@ -32,6 +32,21 @@ def pca(img, txt, dim):
     return torch.linalg.eigh(gram(img) + gram(txt))[1].flip(1)[:, :dim].float()  # [D, dim], descending
 
 
+PACK = []  # pack_oi.py's one-file photos (sorted ids, offsets, fd), if built: one disk read per photo instead of ~2.5
+
+
+def photo(id):
+    if not PACK and os.path.exists(f"{D}/oi.pack"):
+        PACK.extend([np.load(f"{D}/oi_pack_ids.npy"), np.load(f"{D}/oi_pack_off.npy"), os.open(f"{D}/oi.pack", os.O_RDONLY)])
+        os.posix_fadvise(PACK[2], 0, 0, os.POSIX_FADV_RANDOM)  # no readahead: it read ~1.7x the bytes needed
+    if not PACK:
+        return f"{D}/oi/{id}.jpg"
+    ids, off, fd = PACK
+    j = np.searchsorted(ids, id.encode())
+    assert ids[j] == id.encode(), id
+    return io.BytesIO(os.pread(fd, int(off[j + 1] - off[j]), int(off[j])))
+
+
 class Crops(torch.utils.data.Dataset):
     """One random stored crop per photo per epoch, at the app's input size (bilinear, CLIP mean/std)."""
     def __init__(self, ids, crops, k=None): self.ids, self.crops, self.k = ids, crops, k
@@ -39,7 +54,7 @@ class Crops(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         k = random.randrange(self.crops.shape[1]) if self.k is None else self.k
-        im = Image.open(f"{D}/oi/{self.ids[i]}.jpg").convert("RGB")
+        im = Image.open(photo(self.ids[i])).convert("RGB")
         x = (apply_crop(im, self.crops[i, k], SIZE) * 255).round().astype(np.uint8)  # exact: apply_crop is uint8 / 255
         return torch.from_numpy(x.transpose(2, 0, 1).copy()), i, k
 
@@ -89,30 +104,32 @@ if __name__ == "__main__":
     key, run = sys.argv[1], sys.argv[2]
     epochs = int(sys.argv[3]) if len(sys.argv) > 3 else 10
     tk = sys.argv[4] if len(sys.argv) > 4 else "pel336"
-    T = np.load(f"{D}/teacher_{tk}.npz")
+    T = load_teacher(tk)
     ref = dict(np.load(f"{D}/vist_emb_val/{tk}.npz"))  # teacher on VIST val: ids, img, q_photo, q, concepts
     n = int(os.environ.get("N", 0)) or None  # first N photos only: one point on the data-scaling curve
-    E = T["emb"]  # every T[key] re-reads the zip: the 7 GB array once, not twice (13.6 GB peak fed systemd-oomd)
+    E = T.pop("emb")  # 15 GB at 1.46M photos; popped so the del below frees it
     emb = torch.from_numpy(E[:n])  # [N, K, Dt] unit, fp16
     bank = torch.from_numpy(T["bank"]).cuda()
     S = f"{D}/{run}_state.pt"  # RESUME=1: continue after the last finished epoch. Weights alone would reset AdamW and the LR schedule
     st = torch.load(S) if os.environ.get("RESUME") else None
     P = st["P"].cuda() if st else pca(emb[:, 0].cuda(), bank, DIM)  # saved: eigenvector signs must not flip
-    tgt = torch.cat([F.normalize(c.cuda().float() @ P, dim=-1).half() for c in emb.split(50000)])  # [N, K, 512]; ponytail: all on the GPU (~1.5 GB per 300k photos)
+    tgt = torch.empty(emb.shape[:2] + (DIM,), dtype=torch.half)  # [N, K, 512] in RAM: 7.5 GB at 1.46M photos won't fit on the GPU beside training
+    for j in range(0, len(emb), 50000):
+        tgt[j:j + 50000] = F.normalize(emb[j:j + 50000].cuda().float() @ P, dim=-1).half().cpu()
     B = F.normalize(bank.float() @ P, dim=-1)  # [T, 512]
     scale = float(T["logit_scale"])
     tref = {**ref, "img": F.normalize(torch.from_numpy(ref["img"]).cuda() @ P, dim=-1).cpu().numpy(),
             "q": F.normalize(torch.from_numpy(ref["q"]).cuda() @ P, dim=-1).cpu().numpy(),
             "concepts": F.normalize(torch.from_numpy(ref["concepts"]).cuda() @ P, dim=-1).cpu().numpy()}
     H = 5000  # overfitting probe: first H trained photos vs the H right after N (precomputed, never trained on)
-    probe = [(T["ids"][:H], T["crops"][:H], tgt[:H, 0].float())]
+    probe = [(T["ids"][:H], T["crops"][:H], tgt[:H, 0].cuda().float())]
     if n and len(T["ids"]) >= n + H:
         held = F.normalize(torch.from_numpy(E[n:n + H, 0]).cuda().float() @ P, dim=-1)
         probe.append((T["ids"][n:n + H], T["crops"][n:n + H], held))
     os.makedirs(f"{D}/vist_emb_val", exist_ok=True)
     np.savez(f"{D}/vist_emb_val/{tk}_pca.npz", **tref)
     print(f"{len(emb)} photos x {emb.shape[1]} crops; teacher VIST-val R@1 {r1(ref):.1f} full, {r1(tref):.1f} at 512-d PCA", flush=True)
-    del emb, E  # ~7 GB at 660k photos; only tgt (on the GPU) is needed from here
+    del emb, E  # only tgt is needed from here
 
     model = Student(key, DIM).cuda().to(memory_format=torch.channels_last)
     dl = torch.utils.data.DataLoader(Crops(T["ids"][:n], T["crops"][:n]), batch_size=BATCH, shuffle=True, num_workers=14,
@@ -129,7 +146,7 @@ if __name__ == "__main__":
     s0, t0 = step, time.time()
     for ep in range(st["ep"] + 1 if st else 0, epochs):
         for x, i, k in dl:
-            t = tgt[i.cuda(), k.cuda()].float()
+            t = tgt[i, k].cuda(non_blocking=True).float()
             with torch.autocast("cuda", torch.bfloat16):
                 s = F.normalize(cmodel(gpu(x)).float(), dim=-1)
             cos = (1 - (s * t).sum(-1)).mean()
