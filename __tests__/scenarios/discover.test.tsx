@@ -20,6 +20,8 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
   }
   // the 7-day trip outranks the weekly topics
   expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
+  // no Edit chip on the hero: Edit is reached from Preview
+  expect(screen.queryByLabelText(/^Edit /)).toBeNull();
 
   // The long title is the whole string, shrunk to fit on two lines rather than cut with an ellipsis.
   const tile = screen.getAllByText(LONG).find((x) => x.props.adjustsFontSizeToFit)!;

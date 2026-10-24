@@ -49,7 +49,7 @@ Every `NN_*.yaml` is independent, so any subset runs in any order on any emulato
 | Area | Flows |
 |---|---|
 | First run | `01` onboarding + photo permission, `02` indexing, `24` access denied |
-| Discover | `04` open a dump, `07` hero Edit chip, tiles, pull-to-refresh shuffle |
+| Discover | `04` open a dump, `07` tiles, pull-to-refresh shuffle |
 | Create search | `03` text search, `08` clear search (the suggestions dropdown is unreachable, see the flow), `09` month / place / no match |
 | Create basket | `05` create → edit → share step, `10` Total stepper + review sheet, `11` Suggest fills (2 ways, Use this, take out, Save as draft, Add N picked) |
 | Edit | `12` sizes, layouts, paging; `13` filter, strength, apply to all; `14` filmstrip cover, remove, swap, add |

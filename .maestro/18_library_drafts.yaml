@@ -1,9 +1,10 @@
-# Library drafts: a draft from Discover's Edit, search in drafts, delete (cancel, then long-press + confirm), empty state.
+# Library drafts: a draft from Discover's Preview → Edit, search in drafts, delete (cancel, then long-press + confirm), empty state.
 appId: com.horizonzeta.picdump
 name: 18 library drafts
 ---
 - runFlow: subflows/ready.yaml
-- tapOn: "Edit .*"
+- tapOn: "Preview"
+- tapOn: "Edit"
 - assertVisible: "Sizes · Filter %"
 - tapOn: "Back"
 - tapOn: "Library"

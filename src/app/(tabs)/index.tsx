@@ -7,20 +7,17 @@ import type { Story } from '../../services/stories';
 import { useProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, label, ui } from '../../theme/type';
-import { fixed } from '../../theme/tokens';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { Tape } from '../../components/ui/Tape';
 import { PhotoStack, StackKind } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
-import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
-const edit = (id: string) => router.push({ pathname: '/edit/[id]', params: { id } });
 const uris = (s: Story) => s.picks.map((p) => p.uri);
 
 /** Titles always fit: up to 2 lines, shrinking to 85% before giving up (user nit: never "…"). */
@@ -98,10 +95,6 @@ function Hero({ s }: { s: Story }) {
       <FrameCard radius={16} padding={10} rotate={-1}>
         <Tap onPress={() => preview(s.id)} accessibilityRole="button" accessibilityLabel={`Preview ${s.title}`}>
           <PhotoStack kind="hero" uris={uris(s)} />
-          <Tap onPress={() => edit(s.id)} accessibilityRole="button" accessibilityLabel={`Edit ${s.title}`} hitSlop={6} style={{ position: 'absolute', top: 6, right: 6, height: 24, paddingHorizontal: 10, borderRadius: 12, backgroundColor: fixed.chipBg, borderWidth: 1, borderColor: fixed.chipBorder, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Icons.edit size={12} color={fixed.chipText} />
-            <Text style={[ui(11, 500), { color: fixed.chipText }]}>Edit</Text>
-          </Tap>
         </Tap>
         <View style={{ paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}>

@@ -1,13 +1,9 @@
-# Discover: hero Edit chip, a bento tile opens its preview, pull-to-refresh shuffle.
+# Discover: a bento tile opens its preview, pull-to-refresh shuffle.
 appId: com.horizonzeta.picdump
 name: 07 discover hero, tiles, shuffle
 ---
 - runFlow: subflows/ready.yaml
 - assertVisible: "Hi there"
-- assertVisible: "Other dumps"
-- tapOn: "Edit .*"
-- assertVisible: "Sizes · Filter %"
-- tapOn: "Back"
 - assertVisible: "Other dumps"
 - tapOn:
     text: ".+, .+"
