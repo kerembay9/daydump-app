@@ -1,5 +1,5 @@
 # Profile: privacy explainer, Terms, Privacy Policy; 5 taps on Version unlock developer tools; Show onboarding.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 22 profile about + dev tools
 ---
 - runFlow: subflows/ready.yaml

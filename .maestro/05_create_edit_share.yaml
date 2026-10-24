@@ -1,6 +1,6 @@
 # Pick 2 photos -> Edit -> Preview, stopping at the share/export step
 # (doesn't tap Post / Save only: those leave the app or write to the photo album).
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 05 create -> edit -> share step
 ---
 - runFlow: subflows/ready.yaml

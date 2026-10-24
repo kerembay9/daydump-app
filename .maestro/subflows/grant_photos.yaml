@@ -1,5 +1,5 @@
 # System photo-permission dialog. Labels differ per OS version, so every tap is optional.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 ---
 - runFlow:
     when:

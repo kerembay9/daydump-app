@@ -1,5 +1,5 @@
 # Library drafts: a draft from Discover's Edit, search in drafts, delete (cancel, then long-press + confirm), empty state.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 18 library drafts
 ---
 - runFlow: subflows/ready.yaml

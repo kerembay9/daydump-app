@@ -57,6 +57,36 @@ jest.mock('react-native/Libraries/Components/ToastAndroid/ToastAndroid', () => (
   default: { SHORT: 0, LONG: 1, TOP: 0, BOTTOM: 1, CENTER: 2, show: jest.fn(), showWithGravity: jest.fn(), showWithGravityAndOffset: jest.fn() },
 }));
 
+jest.mock('react-native-purchases', () => ({
+  __esModule: true,
+  default: {
+    setLogLevel: jest.fn(),
+    configure: jest.fn(),
+    addCustomerInfoUpdateListener: jest.fn(),
+    getCustomerInfo: jest.fn(async () => ({ entitlements: { active: {} } })),
+    getOfferings: jest.fn(async () => ({
+      current: {
+        availablePackages: [
+          {
+            identifier: '$rc_annual',
+            packageType: 'ANNUAL',
+            product: { identifier: 'picdump_yearly', priceString: '$29.99/year' },
+          },
+          {
+            identifier: '$rc_weekly',
+            packageType: 'WEEKLY',
+            product: { identifier: 'picdump_weekly', priceString: '$2.99/week' },
+          },
+        ],
+      },
+    })),
+    purchasePackage: jest.fn(async () => ({ customerInfo: { entitlements: { active: { daydump_pro: { productIdentifier: 'picdump_yearly', willRenew: true, expirationDateMillis: Date.now() + 365 * 86400000 } } } } })),
+    restorePurchases: jest.fn(async () => ({ entitlements: { active: {} } })),
+  },
+  LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
+  PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: '1' },
+}));
+
 // Reanimated's jest mock (installed by expo-router/testing-library) needs the worklets one.
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));

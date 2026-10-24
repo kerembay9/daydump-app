@@ -1,6 +1,6 @@
 # Create search: a "Try" suggestion runs a search and lands in Last searches, Remove takes it out again,
 # and a search can be cleared back to the full gallery.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 08 search suggestions, recents, clear
 ---
 - runFlow: subflows/ready.yaml

@@ -19,7 +19,7 @@ beforeAll(() => seedWorld());
 test('theme override sticks', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
-  expect(screen.getByRole('button', { name: /^System/, selected: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Cashmere/, selected: true })).toBeTruthy();
   expect(painted(cashmere.bgScreen)).toBe(true);
 
   await fireEvent.press(screen.getByRole('button', { name: /^Espresso/ }));
@@ -61,14 +61,15 @@ test('Profile: no Connected accounts section', async () => {
   expect(screen.queryByText('Connect Instagram')).toBeNull();
 }, 30000);
 
-test('Profile: Go Pro says coming soon; no Done, no bio', async () => {
+test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
-  expect(screen.getByText('DayDump Pro')).toBeTruthy();
+  expect(screen.getByText('PicDump Pro')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'Go Pro' }));
-  expect(toasts()).toContain('DayDump Pro is coming soon');
+  expect(await screen.findByText('Curate and export without limits.')).toBeTruthy();
   expect(screen.queryByText('Done')).toBeNull();
   expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('Close paywall'));
 }, 30000);
 
 test('a renewing subscription shows its renewal date and Manage', async () => {

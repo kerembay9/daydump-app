@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * exportHD: export slides at 2160 px (HD, the default) instead of 1080; Preview can switch it per dump. dev: developer tools unlocked (5 taps on the version).
  * hideSensitive: IDs, bank cards and medical papers stay out of stories (stories/curate.ts).
  * searchLangs: search languages besides English (index/queryLang.ts); null = the phone's language.
- * saveOnPost: Post also saves the slides to the DayDump album (Save only always does).
+ * saveOnPost: Post also saves the slides to the PicDump album (Save only always does).
  */
 export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; fit: 'bleed' | 'border'; exportHD: boolean; dev: boolean; hideSensitive: boolean; searchLangs: string[] | null; saveOnPost: boolean };
 

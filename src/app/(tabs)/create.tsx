@@ -436,7 +436,7 @@ export default function Create() {
 
   const empty = permission === false ? (
     <FrameCard padding={16} style={{ gap: 8 }}>
-      <Text style={[display(18), { color: t.ink }]}>DayDump needs your photos</Text>
+      <Text style={[display(18), { color: t.ink }]}>PicDump needs your photos</Text>
       <Text style={[ui(12), { color: t.inkMuted }]}>Allow photo access to search and pick from your library. Nothing leaves your phone.</Text>
       <Tap onPress={() => Linking.openSettings()} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center' }}>
         <Text style={[ui(12, 600), { color: t.bgScreen }]}>Open settings</Text>
@@ -453,7 +453,7 @@ export default function Create() {
       {(() => {
         const [title, body] = query.trim()
             ? ['No matches', `Nothing in your library matches “${query.trim()}”. Try a place, a month or a simpler word.`]
-            : ['No photos yet', 'Photos appear here as DayDump reads your library.'];
+            : ['No photos yet', 'Photos appear here as PicDump reads your library.'];
         return (
           <>
             <Text style={[display(18), { color: t.ink }]}>{title}</Text>

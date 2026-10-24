@@ -18,12 +18,12 @@ CP=$(for j in bundletool-1.18.1 aapt2-proto-8.13.2-14304508 auto-value-annotatio
   slf4j-api-2.0.17 failureaccess-1.0.3 gson-2.13.2 kotlin-stdlib-2.2.21; do jar "$j.jar"; done | paste -sd:)
 BT="$JAVA_HOME/bin/java -cp $CP com.android.tools.build.bundletool.BundleToolMain"
 
-APKS=build/daydump-local.apks
+APKS=build/picdump-local.apks
 rm -f $APKS
 $BT build-apks --bundle=app/build/outputs/bundle/release/app-release.aab --output=$APKS --local-testing \
   --aapt2="$(ls -d "$ANDROID_HOME"/build-tools/*/ | tail -1)aapt2" \
   --ks=app/debug.keystore --ks-pass=pass:android --ks-key-alias=androiddebugkey --key-pass=pass:android
-$ADB uninstall com.daydump.app || true
+$ADB uninstall com.horizonzeta.picdump || true
 # "run-as: package not debuggable … Failed to remove working directory" is harmless: the uninstall already cleared it
 $BT install-apks --apks=$APKS --adb="$ADB"
-echo "Installed. Open DayDump on the phone."
+echo "Installed. Open PicDump on the phone."

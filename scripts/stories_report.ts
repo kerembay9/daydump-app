@@ -1,5 +1,5 @@
 // Run the story engine on a phone's index, on the desktop, and score it against the eval manifest.
-// 1. adb exec-out run-as com.daydump.app cat files/SQLite/photo-index-eval.db > scripts/.cache/photo-index-eval.db
+// 1. adb exec-out run-as com.horizonzeta.picdump cat files/SQLite/photo-index-eval.db > scripts/.cache/photo-index-eval.db
 // 2. npx -y tsx scripts/stories_report.ts
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';

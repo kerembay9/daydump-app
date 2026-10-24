@@ -44,7 +44,7 @@ function Root() {
     colors: { ...DefaultTheme.colors, background: 'transparent', card: t.bgCard, text: t.ink, border: t.borderStrong, primary: t.ink },
   }), [t]);
 
-  // Photos shared to / "opened with" DayDump start a Create draft, or join the one in progress if the user says so.
+  // Photos shared to / "opened with" PicDump start a Create draft, or join the one in progress if the user says so.
   // On a cold start the intent is there on the first render, so wait for the navigator before navigating.
   const navReady = !!useRootNavigationState()?.key;
   const [ask, setAsk] = useState<DumpPhoto[] | null>(null);
@@ -88,7 +88,7 @@ function Root() {
       <Sheet visible={!!ask} onClose={() => { if (ask) discardShared(ask); setAsk(null); ToastAndroid.show('Shared photos not added', ToastAndroid.SHORT); }}>
         <Text style={[display(20, 1.15), { color: t.ink }]}>Add to your draft or start a new one?</Text>
         <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>
-          {ask?.length === 1 ? '1 photo' : `${ask?.length} photos`} shared to DayDump. Your current draft is safe in Library → Drafts.
+          {ask?.length === 1 ? '1 photo' : `${ask?.length} photos`} shared to PicDump. Your current draft is safe in Library → Drafts.
         </Text>
         <Tap onPress={() => ask && toCreate(ask, 'add')} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={[ui(13, 600), { color: t.bgScreen }]}>Add to my draft</Text>

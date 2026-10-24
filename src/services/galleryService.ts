@@ -8,8 +8,8 @@ export const EVAL_ALBUM = process.env.EXPO_PUBLIC_EVAL_ALBUM || null;
  * ponytail: path heuristic, Android only; iOS ph:// URIs never match, so iOS indexes plain newest-first.
  */
 export const isCameraPhoto = (uri: string) => /\/DCIM\/(?!Screenshots\/)/i.test(uri);
-// our own posted renders (Pictures/DayDump) are not photos to build dumps from
-const notOurs = (p: PhotoAsset) => !/\/Pictures\/DayDump\//i.test(p.uri);
+// our own posted renders (Pictures/PicDump or legacy DayDump) are not photos to build dumps from
+const notOurs = (p: PhotoAsset) => !/\/Pictures\/(PicDump|DayDump)\//i.test(p.uri);
 
 export class GalleryService {
   private static async evalAlbum(): Promise<MediaLibrary.Album | undefined> {

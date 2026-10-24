@@ -1,5 +1,5 @@
 # Profile: name + handle, post size and export quality defaults; a new dump picks them up.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 20 profile name + defaults
 ---
 - runFlow: subflows/ready.yaml

@@ -1,5 +1,5 @@
 # Preview: IG post / grid / TikTok mocks, like + save, HD toggle; the handle edited here shows in Profile.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 15 preview mocks + handle
 ---
 - runFlow: subflows/ready.yaml

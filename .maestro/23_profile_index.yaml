@@ -1,5 +1,5 @@
 # Profile: recap and sensitive-photo switches; Reindex (after a confirm) reads the library again.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 23 profile switches + reindex
 ---
 - runFlow: subflows/ready.yaml

@@ -1,5 +1,5 @@
 # Edit: filter preset, apply-to-all (on by default), strength slider.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 13 edit filter
 ---
 - runFlow: subflows/ready.yaml

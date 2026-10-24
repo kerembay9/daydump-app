@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Purchases, {
   PurchasesPackage,
   CustomerInfo,
@@ -8,6 +9,8 @@ import Purchases, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SubscriptionPlanId, UserSubscriptionState } from '../types';
 import { MAX_FREE_DAILY_DUMPS } from '../constants/plans';
+
+export type { PurchasesPackage, CustomerInfo, PurchasesOfferings };
 
 // Storage keys for offline / tracking state
 const STORAGE_KEYS = {
@@ -23,12 +26,14 @@ const STORAGE_KEYS = {
 export const REVENUECAT_CONFIG = {
   // Official project API keys
   API_KEYS: {
+    APPLE: 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ',
     GOOGLE: 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
     TEST_STORE: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
   },
-  // In development/test builds, default to test store key for instant mock purchases.
-  // In production builds, default to Google Play Store production key.
-  API_KEY: __DEV__ ? 'test_ylRDWCJBJadzsPOeIwXNCitplYA' : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
+  // In production and dev on Android, use Google Play key; on iOS use Apple key.
+  API_KEY: Platform.OS === 'ios'
+    ? 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ'
+    : 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
   // Primary Pro Entitlement Identifier
   ENTITLEMENT_ID: 'daydump_pro',
   // Product Identifiers
@@ -94,8 +99,11 @@ export class RevenueCatService {
       return false;
     }
 
-    // Primary check for requested 'daydump_pro' entitlement
-    if (customerInfo.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] !== undefined) {
+    // Primary check for requested 'daydump_pro' or 'picdump_pro' entitlement
+    if (
+      customerInfo.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] !== undefined ||
+      customerInfo.entitlements.active['picdump_pro'] !== undefined
+    ) {
       return true;
     }
 
@@ -268,6 +276,27 @@ export class RevenueCatService {
         return { success: false, error: 'User cancelled' };
       }
       console.warn('[RevenueCat] Purchase failed:', err);
+      return { success: false, error: err.message || 'Purchase could not be completed' };
+    }
+  }
+
+  /**
+   * 5b. Purchase a specific RevenueCat package directly
+   */
+  static async purchasePackage(
+    targetPackage: PurchasesPackage
+  ): Promise<{ success: boolean; customerInfo?: CustomerInfo; error?: string }> {
+    if (!this.isConfigured) await this.init();
+
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(targetPackage);
+      const isPro = this.isEntitledToPro(customerInfo);
+      return { success: isPro, customerInfo };
+    } catch (err: any) {
+      if (err.userCancelled || err.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return { success: false, error: 'User cancelled' };
+      }
+      console.warn('[RevenueCat] Purchase package failed:', err);
       return { success: false, error: err.message || 'Purchase could not be completed' };
     }
   }

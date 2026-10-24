@@ -1,5 +1,5 @@
 # Create search by month and by place, and a month with no photos (all 100 test photos are from June 2025).
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 09 search month, place, no match
 ---
 - runFlow: subflows/ready.yaml

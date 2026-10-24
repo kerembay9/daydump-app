@@ -31,7 +31,7 @@ test('shared while a draft is in progress: opens Create and asks; Add joins it, 
   await shareIn([media('10'), media('11')]);
   expect(await screen.findByText(ASK, {}, { timeout: 10000 })).toBeTruthy();
   expect(app.getPathname()).toBe('/create'); // on Create already, under the question
-  expect(screen.getByText(/^2 photos shared to DayDump\./)).toBeTruthy();
+  expect(screen.getByText(/^2 photos shared to PicDump\./)).toBeTruthy();
   await fireEvent.press(screen.getByText('Add to my draft'));
   expect(await screen.findByLabelText('4 selected. Review')).toBeTruthy();
   expect((await currentCreateDraft())!.id).toBe(first);
@@ -39,7 +39,7 @@ test('shared while a draft is in progress: opens Create and asks; Add joins it, 
 
   await settle(); // Create reloads on a new `shared` param (Date.now()): let the fake clock move
   await shareIn([media('12')]);
-  expect(await screen.findByText(/^1 photo shared to DayDump\./)).toBeTruthy();
+  expect(await screen.findByText(/^1 photo shared to PicDump\./)).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
   expect(await screen.findByLabelText('1 selected. Review')).toBeTruthy();
   await settle();

@@ -1,5 +1,5 @@
 # Edit filmstrip: hold menu (make cover, remove, swap for similar), Add photos sheet.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 14 edit filmstrip
 ---
 - runFlow: subflows/ready.yaml

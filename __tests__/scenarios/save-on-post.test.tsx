@@ -28,7 +28,7 @@ test('"Posting also saves to gallery" off: Post shares but writes nothing to the
   await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
-  expect(screen.queryByText(/saved to the DayDump album/)).toBeNull();
+  expect(screen.queryByText(/saved to the PicDump album/)).toBeNull();
   expect(saves.mock.calls.length + albums.mock.calls.length).toBe(before);
   await setProfile({ saveOnPost: true });
 }, 30000);

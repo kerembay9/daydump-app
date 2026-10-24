@@ -33,7 +33,7 @@ type AppStateValue = {
   /** photo permission; null = not asked yet */
   permission: boolean | null;
   onboarding: boolean;
-  /** photos shared / "opened with" DayDump, until the Create flow takes them */
+  /** photos shared / "opened with" PicDump, until the Create flow takes them */
   incoming: ShareIntent | null;
   clearIncoming: () => void;
   refreshStories: () => Promise<void>;

@@ -1,6 +1,6 @@
 # Startup for every flow except 01, 02 and 24: wipe app data, launch with photo access granted, skip onboarding,
 # wait until the whole library is indexed (strip gone) and Discover has a dump.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 ---
 - launchApp:
     clearState: true

@@ -7,9 +7,9 @@ import { storyById } from './stories';
 import type { Story } from './stories';
 import type { PostDeps } from './post';
 
-export const ALBUM = 'DayDump';
+export const ALBUM = 'PicDump';
 
-/** Rendered slides (file://) into the DayDump album (Pictures/DayDump), in order. */
+/** Rendered slides (file://) into the PicDump album (Pictures/PicDump), in order. */
 export async function saveToAlbum(uris: string[]): Promise<void> {
   if (!uris.length) return;
   const { status } = await MediaLibrary.requestPermissionsAsync(false, ['photo']);

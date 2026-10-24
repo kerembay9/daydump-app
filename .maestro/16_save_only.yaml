@@ -1,5 +1,5 @@
 # writes-album: Save only exports the slides to the DayDump album; the Done sheet leads to Library -> Drafts.
-appId: com.daydump.app
+appId: com.horizonzeta.picdump
 name: 16 save only -> drafts
 ---
 - runFlow: subflows/ready.yaml
