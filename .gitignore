@@ -48,3 +48,4 @@ modules/clip-embedder/android/src/*/assets/clip/
 modules/clip-embedder/android/*pack/src/
 modules/clip-embedder/android/*pack/build/
 modules/*/android/build/
+__pycache__/
