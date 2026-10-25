@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState as RNAppState } from 'react-native';
-import { indexLibrary, Library, loadLibrary, pausedIndex, pauseIndexing, resumeIndexing, wasHandedOff } from '../services/index/photoIndex';
+import { indexLibrary, Library, loadLibrary, pausedIndex, pauseIndexing, resumeIndexing } from '../services/index/photoIndex';
 import { buildStories, markSeen, Story } from '../services/stories';
 import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
@@ -163,11 +163,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [start]);
 
-  // Back in front: pick up photos taken / deleted meanwhile (a quick diff when nothing changed). Indexing handed to the
-  // background worker when the app left: merge its results and finish here, as a full refresh.
+  // Back in front: pick up photos taken / deleted meanwhile (a quick diff when nothing changed), and merge what the
+  // background worker indexed. Always a sync: Discover keeps its order (a reshuffle remounts every tile, reloading
+  // every photo) and the JS thread skips a rebuild from the index it already shows.
   useEffect(() => {
     if (!permission) return; // onboarding / no access yet: nothing to read
-    const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active') refreshStories(!wasHandedOff()); });
+    const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active') refreshStories(true); });
     return () => sub.remove();
   }, [refreshStories, permission]);
 

@@ -66,17 +66,12 @@ let running: Promise<number> | null = null;
  */
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
-let handedOff = false;
-/** True once a run left work to the background worker: call indexLibrary() again on return to pick it up. */
-export const wasHandedOff = () => handedOff;
-
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
   return (running ??= run(onProgress).finally(() => (running = null)));
 }
 
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
-  handedOff = false;
   const bg = await ClipEmbedder?.backgroundIndexStatus();
   // A fast or paused run is the user's to stop; a charging-only job just yields to the app.
   if (bg && bg.state !== 'running' && bg.state !== 'paused') await ClipEmbedder!.cancelBackgroundIndex();
@@ -103,10 +98,7 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   // deleted photos count as a change too: their stories must go
   const retagged = (await retagIfVocabChanged(d)) + undated.length + gone.length;
   if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
-  if (bg?.state === 'paused') { // waits for Resume or the next charge
-    handedOff = true;
-    return merged + retagged;
-  }
+  if (bg?.state === 'paused') return merged + retagged; // waits for Resume or the next charge
 
   const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
   if (ClipEmbedder && bg?.canFast && todo.length >= FAST_MIN) {
@@ -121,7 +113,6 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);
       await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL, false);
-      handedOff = true;
       console.log(`[photoIndex] app left the foreground: ${rest.length} photos handed to the background worker`);
       break;
     }
@@ -176,10 +167,7 @@ async function follow(d: SQLite.SQLiteDatabase, byId: ById, onProgress?: IndexPr
     n += m.n;
     last = m.last ?? last;
     if (last) onProgress?.(s.total - s.left, s.total, last, { batteryPct: s.batteryPct, etaSec: s.msPerPhoto == null ? null : (s.left * s.msPerPhoto) / 1000 });
-    if (s.state !== 'running') {
-      handedOff = s.state !== 'done';
-      return n;
-    }
+    if (s.state !== 'running') return n;
   }
 }
 

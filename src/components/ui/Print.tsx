@@ -25,7 +25,8 @@ export function Print({ uri, w, h, r = 8, rotate, border, borderColor, style }: 
       {/* Android: a hard offset backdrop, not a blur. Blurred or elevated shadows on these rotated prints cost Discover ~35-100 ms a frame (A54). */}
       {Platform.OS === 'android' ? <View style={{ position: 'absolute', top: 2, left: 1, right: -1, bottom: -2, borderRadius: r, backgroundColor: t.dark ? 'rgba(0,0,0,0.45)' : 'rgba(55,38,28,0.2)' }} /> : null}
       <View style={{ flex: 1, borderRadius: r, overflow: 'hidden', backgroundColor: t.borderStrong, borderWidth: border, borderColor }}>
-        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={uri} transition={120} /> : null}
+        {/* memory: a remounted print (Discover reorders, back in front) shows at once instead of decoding the full-size camera JPEG again */}
+        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" cachePolicy="memory-disk" recyclingKey={uri} transition={120} /> : null}
       </View>
     </View>
   );
