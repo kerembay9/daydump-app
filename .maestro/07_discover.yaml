@@ -1,0 +1,19 @@
+# Discover: a bento tile opens its preview, pull-to-refresh shuffle.
+appId: com.horizonzeta.picdump
+name: 07 discover hero, tiles, shuffle
+---
+- runFlow: subflows/ready.yaml
+- assertVisible: "Hi there"
+- assertVisible: "Other dumps"
+- tapOn:
+    text: ".+, .+"
+    below: "Other dumps"
+- assertVisible: "Post on Instagram or TikTok"
+- tapOn: "Back"
+- assertVisible: "Other dumps"
+- swipe:
+    start: 50%, 25%
+    end: 50%, 75%
+- extendedWaitUntil:
+    visible: "Preview"
+    timeout: 10000

@@ -1,0 +1,16 @@
+# Fresh install state with access already granted: indexing must start, then finish.
+appId: com.horizonzeta.picdump
+name: 02 indexing starts and finishes
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Reading your library.*"
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: "Reading your library.*"
+    timeout: 600000
+- assertVisible: "Preview"

@@ -1,470 +1,241 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import {
-  X,
-  Sparkles,
-  Check,
-  Crown,
-  Film,
-  Zap,
-  PenTool,
-  CheckCircle2,
-} from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { AGGRESSIVE_CREATOR_PLANS, PRO_FEATURES } from '../constants/plans';
-import { SubscriptionPlanId } from '../types';
-import { RevenueCatService } from '../services/revenuecat';
-import { LegalModal, LegalDocType } from './LegalModal';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, ScrollView, Text, ToastAndroid, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeProvider';
+import { display, ui } from '../theme/type';
+import { Icons } from './ui/Icons';
+import { FrameCard } from './ui/FrameCard';
+import { Tap } from './ui/Tap';
+import { RevenueCatService, type PurchasesPackage } from '../services/revenuecat';
+import { LegalModal, type LegalDocType } from './LegalModal';
 
-interface PaywallModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
+const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[paywall]', m));
 
-export const PaywallModal: React.FC<PaywallModalProps> = ({
+export function PaywallModal({
   visible,
   onClose,
-  onSuccess,
-}) => {
-  // Default to the highest-converting plan: Weekly with 3-Day Trial
-  const [selectedPlanId, setSelectedPlanId] = useState<SubscriptionPlanId>('weekly');
-  const [isPurchasing, setIsPurchasing] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(null);
+  onPurchased,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onPurchased?: () => void;
+}) {
+  const { t } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [selected, setSelected] = useState<'yearly' | 'weekly'>('yearly');
+  const [, setLoading] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [legal, setLegal] = useState<LegalDocType | null>(null);
 
-  const selectedPlan =
-    AGGRESSIVE_CREATOR_PLANS.find((p) => p.id === selectedPlanId) ||
-    AGGRESSIVE_CREATOR_PLANS[0];
+  useEffect(() => {
+    if (!visible) return;
+    let active = true;
+    setLoading(true);
+    RevenueCatService.getOfferings().then((offerings) => {
+      if (!active) return;
+      const pkgs = offerings?.current?.availablePackages ?? [];
+      setPackages(pkgs);
+      setLoading(false);
+    }).catch(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [visible]);
 
-  const handleSelectPlan = (planId: SubscriptionPlanId) => {
-    Haptics.selectionAsync();
-    setSelectedPlanId(planId);
-  };
+  // Find packages
+  const annualPkg = packages.find(
+    (p) => p.packageType === 'ANNUAL' || p.identifier.includes('annual') || p.identifier.includes('year')
+  );
+  const weeklyPkg = packages.find(
+    (p) => p.packageType === 'WEEKLY' || p.identifier.includes('week')
+  );
 
-  const handlePurchase = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsPurchasing(true);
+  const annualPrice = annualPkg?.product.priceString ?? '$29.99/year';
+  const weeklyPrice = weeklyPkg?.product.priceString ?? '$2.99/week';
 
+  const handleSubscribe = async () => {
+    setPurchasing(true);
     try {
-      const result = await RevenueCatService.purchasePlan(selectedPlanId);
-      if (result.success) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Welcome to DayDump Pro!', 'You now have unlimited access to all AI themes and aesthetic frames.');
-        onSuccess();
-        onClose();
-      } else if (result.error && result.error !== 'User cancelled') {
-        Alert.alert('Purchase Error', result.error);
+      const targetPkg = selected === 'yearly' ? (annualPkg ?? packages[0]) : (weeklyPkg ?? packages[0]);
+      let res;
+      if (targetPkg) {
+        res = await RevenueCatService.purchasePackage(targetPkg);
+      } else {
+        res = await RevenueCatService.purchasePlan(selected);
       }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not complete transaction');
+
+      if (res.success) {
+        toast('Welcome to PicDump Pro!');
+        onPurchased?.();
+        onClose();
+      } else if (res.error) {
+        toast(res.error);
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        toast(e.message || 'Purchase failed. Please try again.');
+      }
     } finally {
-      setIsPurchasing(false);
+      setPurchasing(false);
     }
   };
 
   const handleRestore = async () => {
-    setIsRestoring(true);
+    setPurchasing(true);
     try {
-      const result = await RevenueCatService.restorePurchases();
-      if (result.isPro) {
-        Alert.alert('Restored!', 'Your Pro subscription has been restored.');
-        onSuccess();
+      const res = await RevenueCatService.restorePurchases();
+      if (res.isPro) {
+        toast('Purchases restored. Welcome back to Pro!');
+        onPurchased?.();
         onClose();
       } else {
-        Alert.alert('No Subscription Found', 'We could not find an active subscription for your Apple / Google account.');
+        toast('No active PicDump Pro subscription found.');
       }
     } catch (e: any) {
-      Alert.alert('Restore Failed', e.message);
+      toast(e.message || 'Restore failed.');
     } finally {
-      setIsRestoring(false);
-    }
-  };
-
-  const getFeatureIcon = (index: number) => {
-    switch (index) {
-      case 0:
-        return <Sparkles size={16} color="#FF9500" />;
-      case 1:
-        return <Film size={16} color="#FF9500" />;
-      case 2:
-        return <PenTool size={16} color="#FF9500" />;
-      case 3:
-        return <CheckCircle2 size={16} color="#FF9500" />;
-      default:
-        return <Zap size={16} color="#FF9500" />;
+      setPurchasing(false);
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        {/* Top Dismiss Button */}
-        <TouchableOpacity
-          style={styles.closeBtn}
-          onPress={onClose}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <X size={20} color="#8E8E93" />
-        </TouchableOpacity>
-
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero Header */}
-          <View style={styles.heroSection}>
-            <View style={styles.badgeWrapper}>
-              <Crown size={14} color="#000" />
-              <Text style={styles.badgeText}>DAYDUMP CREATOR PASS</Text>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: t.bgScreen, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }}>
+        {/* Top Header */}
+        <View style={{ paddingHorizontal: 20, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
+              <Icons.sparkle size={14} color={t.accentFabText} />
             </View>
+            <Text style={[display(18), { color: t.ink }]}>PicDump Pro</Text>
+          </View>
+          <Tap onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close paywall"
+            style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
+            <Icons.close size={16} color={t.ink} />
+          </Tap>
+        </View>
 
-            <Text style={styles.heroTitle}>Never Wonder What to Post.</Text>
-            <Text style={styles.heroSubtitle}>
-              Transform your camera roll into viral aesthetic Instagram carousels in seconds.
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
+          {/* Hero Value Statement */}
+          <View style={{ gap: 6 }}>
+            <Text style={[display(26, 1.1), { color: t.ink }]}>Curate and export without limits.</Text>
+            <Text style={[ui(13), { color: t.inkMuted, lineHeight: 18 }]}>
+              Standout moments, unlimited daily carousels, and high-definition exports for Instagram and TikTok.
             </Text>
           </View>
 
-          {/* Value Checklist */}
-          <View style={styles.featuresCard}>
-            {PRO_FEATURES.map((feat, idx) => (
-              <View key={idx} style={styles.featureRow}>
-                <View style={styles.iconCircle}>{getFeatureIcon(idx)}</View>
-                <View style={styles.featureTextWrapper}>
-                  <Text style={styles.featureTitle}>{feat.title}</Text>
-                  <Text style={styles.featureDesc}>{feat.description}</Text>
+          {/* Feature highlights */}
+          <FrameCard radius={18} padding={14} style={{ gap: 12 }}>
+            <FeatureRow icon={Icons.carousel} title="Unlimited Daily Dumps" sub="Create, curate, and save as many dumps as you take." />
+            <FeatureRow icon={Icons.sparkle} title="Ultra HD 2160 px Export" sub="Pristine slide quality optimized for social feeds and stories." />
+            <FeatureRow icon={Icons.search} title="Natural Language Search" sub="Find any trip, food, outfit, or scene using on-device AI." />
+            <FeatureRow icon={Icons.crop} title="Exclusive Frame Styles" sub="Full access to cashmere borders, film look, and split ratios." />
+          </FrameCard>
+
+          {/* Plan Selector */}
+          <View style={{ gap: 10, marginTop: 4 }}>
+            {/* Annual Plan */}
+            <Tap onPress={() => setSelected('yearly')} accessibilityRole="button"
+              style={{
+                borderWidth: selected === 'yearly' ? 2 : 1,
+                borderColor: selected === 'yearly' ? t.ink : t.borderSubtle,
+                borderRadius: 16,
+                padding: 14,
+                backgroundColor: t.bgCard,
+                position: 'relative',
+              }}>
+              <View style={{ position: 'absolute', top: -10, right: 16, backgroundColor: t.accentFab, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                <Text style={[ui(10, 700), { color: t.accentFabText }]}>BEST VALUE · SAVE 80%</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ gap: 2 }}>
+                  <Text style={[ui(15, 600), { color: t.ink }]}>Annual Access</Text>
+                  <Text style={[ui(11.5), { color: t.inkMuted }]}>{annualPrice} (Just ~$2.49 / month)</Text>
+                </View>
+                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: selected === 'yearly' ? t.ink : t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+                  {selected === 'yearly' && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: t.ink }} />}
                 </View>
               </View>
-            ))}
+            </Tap>
+
+            {/* Weekly Plan */}
+            <Tap onPress={() => setSelected('weekly')} accessibilityRole="button"
+              style={{
+                borderWidth: selected === 'weekly' ? 2 : 1,
+                borderColor: selected === 'weekly' ? t.ink : t.borderSubtle,
+                borderRadius: 16,
+                padding: 14,
+                backgroundColor: t.bgCard,
+              }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ gap: 2 }}>
+                  <Text style={[ui(15, 600), { color: t.ink }]}>Weekly Access</Text>
+                  <Text style={[ui(11.5), { color: t.inkMuted }]}>{weeklyPrice}</Text>
+                </View>
+                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: selected === 'weekly' ? t.ink : t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+                  {selected === 'weekly' && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: t.ink }} />}
+                </View>
+              </View>
+            </Tap>
           </View>
 
-          {/* Subscription Plans Selection */}
-          <Text style={styles.plansSectionTitle}>SELECT YOUR PASS</Text>
-
-          <View style={styles.plansContainer}>
-            {AGGRESSIVE_CREATOR_PLANS.map((plan) => {
-              const isSelected = plan.id === selectedPlanId;
-              return (
-                <TouchableOpacity
-                  key={plan.id}
-                  style={[styles.planCard, isSelected && styles.planCardSelected]}
-                  onPress={() => handleSelectPlan(plan.id)}
-                  activeOpacity={0.8}
-                >
-                  {plan.badge && (
-                    <View
-                      style={[
-                        styles.planBadge,
-                        isSelected ? styles.planBadgeSelected : styles.planBadgeDefault,
-                      ]}
-                    >
-                      <Text style={styles.planBadgeText}>{plan.badge}</Text>
-                    </View>
-                  )}
-
-                  <View style={styles.planInfo}>
-                    <Text style={[styles.planTitle, isSelected && styles.planTitleSelected]}>
-                      {plan.title}
-                    </Text>
-                    <Text style={styles.planBilling}>{plan.billingPeriod}</Text>
-                  </View>
-
-                  <View style={styles.planPriceWrapper}>
-                    <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
-                      {plan.priceString}
-                    </Text>
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                      {isSelected && <Check size={12} color="#000" />}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Primary Call to Action */}
-          <TouchableOpacity
-            style={styles.ctaButton}
-            onPress={handlePurchase}
-            disabled={isPurchasing}
-            activeOpacity={0.85}
-          >
-            {isPurchasing ? (
-              <ActivityIndicator color="#000000" />
+          {/* CTA Button */}
+          <Tap onPress={handleSubscribe} disabled={purchasing} accessibilityRole="button"
+            style={{
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: t.ink,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 4,
+            }}>
+            {purchasing ? (
+              <ActivityIndicator color={t.bgScreen} size="small" />
             ) : (
-              <Text style={styles.ctaButtonText}>
-                {selectedPlan.trialDays
-                  ? `Start ${selectedPlan.trialDays}-Day Free Trial`
-                  : 'Unlock DayDump Pro'}
+              <Text style={[ui(14, 600), { color: t.bgScreen }]}>
+                {selected === 'yearly' ? 'Start Free Trial & Continue' : 'Continue'}
               </Text>
             )}
-          </TouchableOpacity>
+          </Tap>
 
-          <Text style={styles.trialNote}>
-            {selectedPlan.trialDays
-              ? `Free for ${selectedPlan.trialDays} days, then ${selectedPlan.priceString}. Cancel anytime.`
-              : selectedPlan.billingPeriod}
-          </Text>
-
-          {/* Footer Actions */}
-          <View style={styles.footerRow}>
-            <TouchableOpacity onPress={handleRestore} disabled={isRestoring}>
-              <Text style={styles.footerLink}>
-                {isRestoring ? 'Restoring...' : 'Restore Purchases'}
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.footerDivider}>•</Text>
-            <TouchableOpacity onPress={() => setLegalDoc('terms')}>
-              <Text style={styles.footerLink}>Terms of Service</Text>
-            </TouchableOpacity>
-            <Text style={styles.footerDivider}>•</Text>
-            <TouchableOpacity onPress={() => setLegalDoc('privacy')}>
-              <Text style={styles.footerLink}>Privacy Policy</Text>
-            </TouchableOpacity>
+          {/* Restore & Legal footer */}
+          <View style={{ alignItems: 'center', gap: 10, marginTop: 8 }}>
+            <Tap onPress={handleRestore} disabled={purchasing} hitSlop={8}>
+              <Text style={[ui(12, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Restore purchases</Text>
+            </Tap>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Tap onPress={() => setLegal('terms')} hitSlop={6}>
+                <Text style={[ui(10.5), { color: t.inkMuted }]}>Terms of Service</Text>
+              </Tap>
+              <Text style={[ui(10.5), { color: t.inkMuted }]}>·</Text>
+              <Tap onPress={() => setLegal('privacy')} hitSlop={6}>
+                <Text style={[ui(10.5), { color: t.inkMuted }]}>Privacy Policy</Text>
+              </Tap>
+            </View>
+            <Text style={[ui(10), { color: t.inkMuted, textAlign: 'center', lineHeight: 14 }]}>
+              Payment will be charged to your store account upon confirmation. Subscription auto-renews unless cancelled at least 24 hours before the end of the current period.
+            </Text>
           </View>
         </ScrollView>
 
-        <LegalModal
-          visible={legalDoc !== null}
-          type={legalDoc || 'terms'}
-          onClose={() => setLegalDoc(null)}
-        />
+        <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       </View>
     </Modal>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0A0C',
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: '#1C1C1E',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 40,
-  },
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  badgeWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFD60A',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    marginBottom: 12,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#000',
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 10,
-  },
-  featuresCard: {
-    backgroundColor: '#161618',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#242426',
-    marginBottom: 24,
-    gap: 14,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 149, 0, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureTextWrapper: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  featureDesc: {
-    fontSize: 11,
-    color: '#8E8E93',
-    lineHeight: 15,
-  },
-  plansSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#8E8E93',
-    letterSpacing: 1.2,
-    marginBottom: 12,
-  },
-  plansContainer: {
-    gap: 10,
-    marginBottom: 24,
-  },
-  planCard: {
-    position: 'relative',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#161618',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#242426',
-  },
-  planCardSelected: {
-    borderColor: '#FFD60A',
-    backgroundColor: '#1E1C14',
-  },
-  planBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  planBadgeSelected: {
-    backgroundColor: '#FFD60A',
-  },
-  planBadgeDefault: {
-    backgroundColor: '#2C2C2E',
-  },
-  planBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#000000',
-    letterSpacing: 0.5,
-  },
-  planInfo: {
-    flex: 1,
-  },
-  planTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  planTitleSelected: {
-    color: '#FFD60A',
-  },
-  planBilling: {
-    fontSize: 11,
-    color: '#8E8E93',
-  },
-  planPriceWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  planPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  planPriceSelected: {
-    color: '#FFD60A',
-  },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#3A3A3C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCircleSelected: {
-    backgroundColor: '#FFD60A',
-    borderColor: '#FFD60A',
-  },
-  ctaButton: {
-    backgroundColor: '#FFD60A',
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD60A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  ctaButtonText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#000000',
-    letterSpacing: 0.3,
-  },
-  trialNote: {
-    fontSize: 11,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 24,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  footerLink: {
-    fontSize: 11,
-    color: '#636366',
-  },
-  footerDivider: {
-    fontSize: 11,
-    color: '#3A3A3C',
-  },
-});
+function FeatureRow({ icon: Icon, title, sub }: { icon: any; title: string; sub: string }) {
+  const { t } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon size={16} color={t.ink} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[ui(13, 600), { color: t.ink }]}>{title}</Text>
+        <Text style={[ui(11), { color: t.inkMuted }]}>{sub}</Text>
+      </View>
+    </View>
+  );
+}

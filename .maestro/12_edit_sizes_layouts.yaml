@@ -1,0 +1,21 @@
+# Edit: post sizes, layouts (slide count), slide paging; Preview follows the size.
+appId: com.horizonzeta.picdump
+name: 12 edit sizes + layouts
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/edit.yaml
+    env:
+      N: 4
+- assertVisible: "Drag or pinch a photo"
+- assertVisible: "1/4"
+- tapOn: "9:16 TikTok"
+- tapOn: "2×2 Grid"
+- assertVisible: "1/1"
+- tapOn: "2 Split"
+- assertVisible: "1/2"
+- tapOn: "Next slide"
+- assertVisible: "2/2"
+- takeScreenshot: vr_edit_split
+- tapOn: "Preview"
+- assertVisible: "9:16 · 2 Split layout"

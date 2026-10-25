@@ -1,0 +1,155 @@
+# Distilled image tower (MobileCLIP-style recipe, our own teacher)
+
+Goal: an image tower faster and/or better than TinyCLIP-45M/32 (73 ms on the A54, VIST search R@1 43.0), every
+weight commercially usable. MobileCLIP's *weights* are research-only (AMLR); its *method* (multi-crop teacher
+embeddings stored once, student trained against them) is public and is what we copy.
+
+## Picks
+- **Teacher:** PE-Core-L14-336 (Apache-2.0), pending a VIST-val bake-off vs SigLIP2-So400m-384 (Apache-2.0) and
+  OpenCLIP L/14 DataComp-XL (MIT). Runs offline only, so its size doesn't matter. Concept vectors come from its text tower,
+  offline; its 1024-d space is PCA'd to 512 so the app's vectors keep their size.
+- **Student image:** timm MobileNetV4-Conv-Medium (Apache-2.0, ImageNet-12k init) + linear head -> 512. Conv-only for the
+  Mali GPU delegate. Fallback: Conv-Large. Speed measured on the A54 with untrained weights before training.
+- **Student text:** TinyCLIP-45M's text tower (MIT) + new projection, trained to the teacher's text space.
+
+## Training
+1. Data: Open Images V4 train (all CC BY 2.0) from the public S3 mirror, 288 px shortest side (`fetch_oi.py`).
+   Pilot 100k photos; full run ~1.2M.
+2. Teacher embeddings once per photo for 5 augmented crops (crop params stored with them): no teacher at train time.
+3. Image loss: cosine to the teacher embedding of the same crop + KL to the teacher's softmax over a text bank
+   (the app's 3,566 concept prompts + ~100k captions).
+4. Text loss: cosine to teacher text embeddings on ~3M captions + KL vs a bank of teacher image embeddings.
+5. Export: the existing int8 LiteRT path; parity cosine >= 0.99 vs torch; real ms on the A54.
+
+## Evaluation (no overfitting)
+- Train: Open Images. Tune: VIST val + COCO Karpathy val (look freely). Test (locked): VIST test 5 GB subset +
+  COCO 5k / ECCV, run only on finalists, every look logged in `CLIP_ALTERNATIVES.md`.
+- Leakage: drop training photos with teacher cosine > 0.95 to any test photo; no VIST/COCO-test text in text training.
+- Ship rule (fixed in advance): test search R@1 CI lower bound >= -1 at <= 60% of today's ms, or CI > 0 at <= today's ms.
+- Training on the app's own concept vocab is the product, not leakage (tag metric uses Flickr tags).
+
+## Log
+Code version per run: everything through `pilot_m700k_lr1e-4` ran on v1 (`git show distill-v1:research/distill/train.py`).
+From `pilot_m100k_v2` to `full_m660k_cand`, entries ran on "v2 code" (commit e33b28e + TF32 knob, 46e0cff) and name any non-default
+knobs (KL_W / REL_W / PCA_TXT / TF32). From `full_s660k` on: v1 loss on the faster code, knobs removed (none beat v1; see 2026-10-23).
+- 2026-10-22: untrained MNV4-S/M/L exported for the bench (`export_speed.py`; 3.8M / 9.7M / 32M params). Pilot
+  download started.
+- 2026-10-22: teacher bake-off on VIST val (2,284 photos, 1,929 queries), R@1 / album / tags / curation:
+  tc45 42.1 / 65.1 / 36.1 / 34.4; PE-Core-L/336 57.2 / 72.3 / 42.0 / 33.2; SigLIP2-SO400M/384 57.3 / 74.0 / 38.8 / 35.8;
+  OpenCLIP L/14 DataComp 49.8 / 68.9 / 38.4 / 34.9. PE-L and SigLIP2 tie on search (+15, CI [+12.8, +17.4]); PE-L wins
+  tags (+5.9 vs +2.7); curation flat for all. Teacher stays PE-Core-L. Teacher precompute started on the first ~40k photos.
+- 2026-10-22: pilot `pilot_m40k` = MNV4-M, 37.5k OI photos x 5 crops, 20 epochs (15 min): VIST-val R@1 24.7 / R@5 48.1 /
+  album 51.8 / tags 23.2 / curation 33.9 (tc45 42.1 / 72.7 / 65.1 / 36.1 / 34.7; teacher at 512-d PCA 57.0). Pipeline works,
+  but plateaued from epoch ~12 while train KL kept falling (4.2 -> 1.7): data-bound. Next point on the scaling curve: 100k.
+- 2026-10-22: A54 speed gate (TinyCLIP index bench, n=256, GPU only, ms/photo end-to-end / model only): tc45 56-57 / 48-49;
+  MNV4-S 25 / 15; MNV4-M 31 / 23; MNV4-L 42 / 34. Shipped tc45 path (GPU + LiteRT CPU int8 helper) 35-37. Gate passed: M is
+  ~2x faster than tc45 on GPU, and even L is faster, so L is affordable if M can't reach tc45 quality.
+- 2026-10-22: `pilot_m100k` = MNV4-M, 99.7k OI photos x 5 crops, 20 epochs (25 min): VIST-val R@1 27.6 / R@5 54.6 / album 55.0 /
+  tags 26.2 / curation 34.7 (vs tc45 CI [-16.9, -12.2]). 37.5k -> 100k (2.7x) bought +2.9 R@1, ~+2 per data doubling: all of
+  Open Images (1.74M) extrapolates to ~36, short of tc45's 42. Data alone with this recipe won't get there; next lever: capacity (MNV4-L).
+- 2026-10-22: `pilot_l100k` = MNV4-L, same 100k data/recipe (40 min): VIST-val R@1 28.6 / R@5 54.6 / album 54.8 / tags 27.7
+  (M: 27.6 / 54.6 / 55.0 / 26.2). 3.5x the params buys ~+1: capacity isn't the limit, data is. Stay on MNV4-M. Fetching photos to 200k.
+- 2026-10-22: `pilot_m200k` = MNV4-M, first 200k OI photos x 5 crops, 20 epochs (60 min): VIST-val R@1 31.4 / R@5 58.6 / album 56.6 /
+  tags 29.2 (vs tc45 CI [-13.1, -8.3]). 100k -> 200k bought +3.8 R@1, more than the +2.9 of 37.5k -> 100k: the curve isn't flattening
+  yet. At ~+3.5 per doubling, tc45's 42.1 needs ~1.6M photos, i.e. about all of Open Images. Next: 300k point to pin the slope.
+- 2026-10-22: `pilot_m100k_e40` = MNV4-M, 100k photos x 40 epochs (same 15.6k steps as pilot_m200k): VIST-val R@1 27.7 / R@5 52.9 /
+  album 53.2 / tags 27.4, no better than 20 epochs (27.6). Overfitting probe (student-teacher cos on crop 0, 5k trained vs 5k unseen
+  OI photos): 0.772 / 0.730 at the end, gap grew steadily from 0.003; unseen OI kept rising but VIST R@1 sat at ~28 from epoch 20 on.
+  So the 200k gain (31.4) is the photos, not the steps: data is the lever. Next: `pilot_m300k_e20` (294k, last 5.8k held out for the probe).
+- 2026-10-22: `pilot_m300k_e20` = MNV4-M, 294k photos x 20 epochs (70 min): VIST-val R@1 33.6 / R@5 61.2 / album 58.1 / tags 29.3
+  (vs tc45 CI [-10.8, -6.1]). 200k -> 294k = +2.2 R@1, ~+4 per doubling: still not flattening, tc45 still extrapolates to
+  ~1.5M photos. Probe at the end 0.764 / 0.745 (gap 0.019): no harmful overfitting. VIST R@1 per epoch jumps +-1 (1.9k queries),
+  peaked 34.4 at epoch 13. LR 1e-3 was never swept: next `pilot_m100k_lr3e-4` / `_lr3e-3` against pilot_m100k (27.6).
+- 2026-10-22: LR sweep at 100k x 20 epochs: `pilot_m100k_lr3e-4` VIST-val R@1 29.4 vs 27.6 at 1e-3 (+1.8, about what doubling the
+  data bought); probe 0.760 / 0.731, gap 0.028 (more memorization than 1e-3, but unseen still higher). 1e-3 was too high for the
+  pretrained backbone. 3e-3 dropped (direction already clear); `pilot_m100k_lr1e-4` next, then 294k at the winning LR.
+- 2026-10-22: `pilot_m100k_lr1e-4` VIST-val R@1 30.9 (vs 29.4 at 3e-4, 27.6 at 1e-3): lower keeps winning, +3.3 total from the LR
+  alone at 100k. Probe 0.747 / 0.725, gap 0.022 (less than 3e-4). Next: `pilot_m300k_lr1e-4` (294k), then 3e-5 at 100k to find the floor.
+- 2026-10-22: `pilot_m300k_lr1e-4` (294k x 20 epochs, LR 1e-4) VIST-val R@1 35.9 / R@5 63.6 / album 60.4 / tags 31.3 / curation 34.8
+  (tc45 42.1 / 72.7 / 65.1 / 36.1 / 34.5; R@1 CI vs tc45 [-8.6, -3.9], was [-10.8, -6.1] at 1e-3). LR gain shrinks with data
+  (+3.3 at 100k, +2.3 at 294k). At 1e-4: 100k -> 294k = +5.0, ~+3.2 per doubling, so closing the 6.2 gap by data alone needs
+  ~4x (~1.2M photos). Plateau from epoch ~11 (34.8-36.2). Probe 0.772 / 0.753, gap 0.019: no overfitting. Curation already ties tc45.
+- 2026-10-22: `pilot_m100k_lr3e-5` stopped at epoch 10/20: VIST-val R@1 25.8 vs 29.6 for 1e-4 at the same epoch (23.5 vs 27.9 at
+  epoch 5). Too slow; 1e-4 is the LR for this recipe.
+- 2026-10-23: ImageNet zero-shot (6.7k val, one prompt): pel336 86.7, tc45 63.5, tc22 52.8, pilot_m300k_lr1e-4 48.5,
+  pilot_m100k_lr1e-4 44.1, pilot_m300k_e20 37.8. Same ranking as VIST, gaps magnified.
+- 2026-10-23: `pilot_tc22_100k_lr3e-5` (TinyCLIP-22M image tower as init, 100k x 20 epochs) VIST-val R@1 30.1 / R@5 56.8 /
+  album 56.6 / tags 30.4 / curation 33.9; ImageNet 30.3. tc22 out of the box: 34.9 / 62.6 / 60.4 / 33.8 / 33.4, ImageNet 52.8.
+  Distillation at 100k DESTROYS the CLIP init (-4.8 VIST, -22.5 ImageNet) and lands where MNV4-M from IN-12k lands (30.9).
+  The 100k teacher signal, not the init, sets the ceiling. tc22/tc45-init runs at LR 1e-4 not run (stopped per user).
+- 2026-10-23: `pilot_m700k_lr1e-4` (MNV4-M, 658.8k OI photos x 20 epochs, LR 1e-4; 664,830 fetched, last 6k = unseen probe)
+  VIST-val R@1 37.7 / R@5 66.1 / album 61.2 / tags 32.7 / curation 32.7; EMA 38.2 / 66.3 / 61.7 / 32.7 / 32.5
+  (tc45 42.1 / 72.7 / 65.1 / 36.1 / 34.7). R@1 CI vs tc45 [-6.2, -1.7] for EMA (was [-8.5, -3.8] at 294k). ImageNet zero-shot
+  50.8 / EMA 50.7 (294k: 48.5, tc45 63.5). 294k -> 659k (2.2x) = +2.3 R@1, ~+2 per doubling: returns shrinking, ~4 more doublings
+  to tc45 by data alone. Curation fell 34.9 -> 32.7 (CI vs tc45 [-4.6, +0.2]).
+  Per epoch: R@1 peaked 39.0 / EMA 39.3 at epochs 12-14, then EMA fell 5 epochs in a row to 37.9 while the probe cos kept rising
+  (0.780 -> 0.787 trained, 0.768 -> 0.773 unseen, gap ~0.013): the loss (cos + KL on OI) and VIST ranking diverge late. The
+  per-epoch save overwrote the best epoch: keep a best-VIST checkpoint, or ~12 epochs. Probe gap small at all points, so not
+  memorization; cos 0.787 even on trained photos = student capacity / loss shape is the ceiling, not data.
+  Ops: first attempt was killed at epoch 16 by systemd-oomd (training ran inside the Claude app scope; 40.8G cgroup peak from file
+  cache + a 12-process VIST Pool forked twice per epoch). Fixes: VIST val pixels prepped once (PIX), `del emb` after targets, save
+  every epoch, run as its own systemd user unit. PCA moved from full SVD (CUDA OOM at 660k rows) to Gram + eigh (identical basis).
+- 2026-10-23: `pilot_m100k_v2` (**v2 code**, default knobs = v1 loss; MNV4-M, N=99,700 x 20 epochs, LR 1e-4) VIST-val R@1 30.1 / R@5 57.4 /
+  album 55.0 / tags 29.2 / curation 33.4; EMA 29.9 / 56.0 / 55.4 / 28.1 / 33.0 (v1 `pilot_m100k_lr1e-4`: 30.9 / 57.9 / 54.9 / 29.4 /
+  36.8). Search, album, tags within noise of v1; curation -3.4 but v1 runs alone spread 32.7-36.8 on it (128 albums), and inputs are
+  bit-identical, so read as noise; re-check on the next run. Speed: ~0.12 s/step steady (an earlier 0.090 reading was wrong) after a ~75 s compile/autotune
+  warmup; 16 min wall vs 25 for the same run; GPU now ~97% busy, so the data loader is no longer the limit. Resume (RESUME=1) smoke
+  test continued at epoch 20 with the same probe cos (0.7473 vs 0.7474): optimizer, schedule, EMA and PCA restore correctly.
+- 2026-10-23: 100k e20 knob sweep (v2 code, MNV4-M, N=99,700, LR 1e-4). R@1 / R@5 / R@10 / album / tags / curation:
+  v2 30.1 / 57.4 / 67.9 / 55.0 / 29.2 / 33.5 and v2b 30.3 / 57.0 / 65.4 / 56.3 / 29.0 / 34.3 (v1 30.9 / 57.9 / 67.7 / 54.9 / 29.4 / ~36).
+  KL_W=2: 29.0 / 56.9 / 66.7 / 54.6 / 28.1 / 35.6 (rejected). REL_W=10: 28.9 / 55.0 / 65.7 / 54.4 / 29.4 / 33.5 (rejected).
+  PCA_TXT=1: 31.4 / 58.3 / 68.0 / 56.0 / 28.1 / 34.4, replicate 30.2 / 57.6 / 67.1 / 55.5 / 28.8 / 33.1 (wash, dropped; teacher-only PCA
+  ceiling at 512-d: v1 basis 56.6, lambda=1 56.8, full 57.2, so the basis barely matters at 512). KL_W=0.5: 30.3 / 58.6 / 68.7 / 56.0 /
+  30.4 / 34.1. TF32=0: 30.9 / 58.0 / 68.4 / 56.2 / 29.6 / 34.5 (v2 turned on TF32 for matmuls; off recovers v1 numbers, ~3% slower).
+  Candidate KL_W=0.5 TF32=0: 32.0 / 58.3 / 68.5 / 57.1 / 30.0 / 32.6, replicate 30.0 / 56.8 / 67.0 / 55.5 / 29.5 / 32.4; mean vs the
+  v2 pair +0.8 / +0.4 / +1.1 / +0.6 / +0.7 / -1.5 curation, probe cos 0.769 vs 0.746. Noise: same config +-1.2 R@1 run to run,
+  curation +-0.7 on re-scoring the same weights. Loss knobs move ~1 point; data (100k -> 659k) moved +7: the student is
+  capacity-limited. Next: candidate at full 659k (`full_m660k_cand`) vs `pilot_m700k_lr1e-4`.
+- 2026-10-23: `full_m660k_cand` (v2 code, KL_W=0.5 TF32=0; MNV4-M, 658.8k x 20 epochs, LR 1e-4) VIST-val R@1 / R@5 / R@10 / album /
+  tags / curation: 38.7 / 66.7 / 75.2 / 60.4 / 32.6 / 32.1; EMA 38.4 / 66.6 / 75.0 / 60.5 / 32.6 / 33.1 (v1 `pilot_m700k_lr1e-4`
+  37.7 / 66.1 / 75.3 / 61.2 / 32.7 / 32.8, EMA 38.2 / 66.3 / 75.7 / 61.7 / 32.7 / 32.7; tc45 42.1 / 72.7 / 79.9 / 65.1 / 36.1 / 34.9).
+  Per epoch (live / EMA, epochs 1-based): 5: 34.9 / 36.9, 7: 38.2 / 38.6, 10: 37.0 / 39.0 (best EMA), 14: 38.6 / 38.2, 20: 38.7 / 38.4;
+  flat 37-38.9 from epoch 7, no late EMA decline (v1 fell 39.3 -> 38.2). Every metric within noise of v1: the loss knobs buy nothing
+  at full data either. 81 min wall (v1 code ~2 h).
+  Decision: v2 loss changes REMOVED from train.py (KL_W, REL_W, PCA_TXT balanced basis, TF32 matmul switch); kept = speed work only
+  (uint8 workers + GPU normalize, torch.compile, cudnn autotune, fused AdamW, prefetch 4, RESUME, per-epoch checkpoints, Gram+eigh
+  PCA). What was tried and why it lost, all at 100k e20 unless noted: KL_W=2 (-1.1 R@1, -1.1 tags), REL_W=10 (-1.2 R@1, -2.4 R@5),
+  PCA_TXT=1 (wash over 2 runs, tags -0.8; teacher-only ceiling shows the basis barely matters at 512-d), KL_W=0.5 alone (wash),
+  TF32 on (v2 default; ~-0.8 R@1 vs off, the only "regression" in v2), KL_W=0.5 + TF32 off (+0.8 R@1 at 100k, gone at 659k).
+  Conclusion: MNV4-M is capacity-limited (probe cos 0.787 even on trained photos); next lever is the student, not the loss.
+  `full_s660k` (MNV4-S, same recipe) started 13:35 to size the speed tier.
+- 2026-10-23: A54 index bench re-run with the TRAINED `full_m660k_cand` (export_speed.py mnv4m=<weights>; S and L untrained,
+  speed is weights-independent), n=256, ms/photo end-to-end (model only): shipped tc45 GPU + CPU-int8 helper 36 (27-28);
+  tc45 GPU only 56-57 (49); tc45 CPU int8 42 (34); MNV4-S 26 (16); MNV4-M 33 (24); MNV4-L 43 (35). Matches the 10-22 gate.
+  Trained M vs the shipped path: 1.1x faster, -3.4 R@1. GPU-only vs GPU-only: M 1.7x faster than tc45. The shipped path's edge
+  is the CPU int8 helper taking ~45% of photos; students don't have one yet.
+- 2026-10-23: `full_s660k` (MNV4-S, v1 loss on the cleaned code, LR 1e-4, N=658,830, 20 epochs; ~0.078 s/step, 69 min wall).
+  VIST-val R@1 / R@5 / R@10 / album / tags / curation: 30.4 / 58.1 / 69.4 / 56.0 / 29.0 / 33.8, EMA 30.7 / 58.8 / 69.6 / 55.9 / 28.9 / 34.0
+  (same scoring run: tc45 42.1 / 72.7 / 79.9 / 65.1 / 36.1 / 34.1; M cand EMA 38.4 / 66.6 / 75.0 / 60.5 / 32.6 / 32.4).
+  Per epoch EMA (1-based): 5: 28.3, 10: 30.7, 13: 31.7 (best), 20: 30.7; flat ~31 from epoch 11. Probe cos 0.726 / 0.719
+  (trained / unseen), M 0.787. S is ~8 R@1 below M and ~11 below tc45 for 1.3x M's speed: not a useful tier. Curation is
+  noisy (tc45 34.1 here vs 34.9 before), S's 34.0 there isn't a signal.
+- 2026-10-23: CPU int8 helper for trained M (export_speed.py now also writes vision_<key>_dw8.tflite, dynamic int8, cosine 0.992
+  vs torch; ClipEngine uses files/models/vision_<model>_dw8.tflite as the gpu-cpu8 helper when it exists). A54, n=256, same run
+  (phone warmer than the morning run): shipped tc45 GPU + helper 40-43 (model 30-32); tc45 GPU only 60; tc45 CPU int8 46;
+  M GPU only 34 (24); M GPU + helper 33 (23), the CPU took only 32/256 photos (tc45's helper takes 95-105). Dynamic-int8 MNV4 on
+  XNNPACK is ~7x slower than M on the GPU (depthwise convs stay fp32), so the helper adds ~nothing. Trained M vs shipped:
+  1.2-1.3x faster end to end, -3.7 R@1.
+- 2026-10-23: M helper formats, and a correction to the entry above: dynamic_wi8_afp32 DOES quantize MNV4's depthwise convs
+  (quantized dim 3), and XNNPACK runs those as slow hybrid kernels. Desktop 4 threads, trained M, 64 OI photos vs torch:
+  fp32 4.0 ms; dw8 (all dynamic int8) 7.0 ms, cosine 0.9961; dwf (dynamic int8 for CONV_2D + FC only, depthwise fp32)
+  4.5 ms, 0.9986, +0.5 MB; s8 (static int8, int8 I/O) cosine 0.863, rejected. export_speed.py now writes dwf as
+  vision_<key>_dw8. A54 n=256, ms/photo end to end: M GPU only 37-38; M + dw8 / dwf / fp16-on-CPU helper all 33-36, the CPU
+  takes 12-21 photos. Helper format doesn't matter: embedLite starts the helper only after all of a batch's decodes finish
+  (jobs.awaitAll), and M's GPU (~25 ms) keeps pace with decode, so the helper only gets the ~0.3 s tail of each 128-photo
+  batch. Levers left are outside the helper: info + concepts (~9 ms/photo, serial after the embed) and decode. tc45 rows in
+  this run are invalid (dev model M was set, so the tc45 reference rows ran M). build_assets.gpu_skel now handles inline
+  (small) buffers and tensors left float in the int8 file; the tc45 skel is byte-identical, M from dwf rebuilds at cosine
+  0.999 vs fp32, skel 0.62 MB deflated.
+- 2026-10-24: distill-v2 ships (tag distill-v2). full_m1460k_e40 stopped after epoch 30 (best EMA epoch 21, 42.8 R@1 with teacher
+  text); text_m1460k (5 epochs, BATCH 512, resumable) brings the phone setup to 42.0 R@1 / tags 35.4 on VIST val, tying tc45
+  within CI except R@5/R@10 (-3). Its cosines were off tc45's scale (matched text-photo median 0.22 vs 0.31, random photo pair
+  0.59 vs 0.42), which the app's fixed cutoffs (search floor 0.2, same shot 0.92/0.95) assume. Calibrated without retraining:
+  0.2 x the mean photo vector (2048 OI photos) off the head bias (centering more cost R@1: a=1.0 38.4) and text x 1.33. Result
+  41.7 R@1, tags 36.0, matched median 0.314, photos with a neighbour > 0.92 24.5% (tc45 24.4%). build_assets.py now builds
+  the shipped CLIP from DISTILLED. visionpack 42.8 -> ~10.9 MB, skel 90 -> 18 MB on disk.

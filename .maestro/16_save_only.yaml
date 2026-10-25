@@ -1,0 +1,16 @@
+# writes-album: Save only exports the slides to the DayDump album; the Done sheet leads to Library -> Drafts.
+appId: com.horizonzeta.picdump
+name: 16 save only -> drafts
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Preview"
+- tapOn: "Save only, to the DayDump album"
+- extendedWaitUntil:
+    visible: "Saved to your phone"
+    timeout: 60000
+- assertVisible: ".*saved to the DayDump album\\."
+- tapOn: "View in Library"
+- assertVisible: "Drafts \\(1\\)"
+- tapOn: ".*, draft"
+- assertVisible:
+    id: "edit-title"

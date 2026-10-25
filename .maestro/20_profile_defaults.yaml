@@ -1,0 +1,25 @@
+# Profile: name + handle, post size and export quality defaults; a new dump picks them up.
+appId: com.horizonzeta.picdump
+name: 20 profile name + defaults
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- tapOn: "Your name"
+- inputText: "Ada"
+- pressKey: Enter
+- tapOn: "your_account"
+- inputText: "ada.e2e"
+- pressKey: Enter
+- tapOn: "Default Post Size"
+- assertVisible: "9:16 \\(TikTok\\)"
+- tapOn: "Default Export Quality"
+- assertVisible: "Standard \\(1080 px\\)"
+- tapOn: "Back"
+- assertVisible: "Hi, Ada"
+- runFlow:
+    file: subflows/edit.yaml
+    env:
+      N: 1
+- tapOn: "Preview"
+- assertVisible: "9:16 · .*"
+- assertVisible: "Quality: Standard"

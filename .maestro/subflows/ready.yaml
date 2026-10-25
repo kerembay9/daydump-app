@@ -1,0 +1,25 @@
+# Startup for every flow except 01, 02 and 24: wipe app data, launch with photo access granted, skip onboarding,
+# wait until the whole library is indexed (strip gone) and Discover has a dump.
+appId: com.horizonzeta.picdump
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+# onboarding always shows after clearState, sometimes late on a cold emulator; the notification
+# prompt can still come first (the "all: allow" grant sometimes lands after launch) and hides it
+- extendedWaitUntil:
+    visible: "Skip|Allow DayDump to send you notifications\\?"
+    timeout: 60000
+- runFlow: dismiss_notifications.yaml
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 60000
+- tapOn: "Skip"
+- tapOn: "Discover"
+- extendedWaitUntil:
+    visible: "Preview"
+    timeout: 300000
+- extendedWaitUntil:
+    notVisible: "Reading your library.*"
+    timeout: 600000

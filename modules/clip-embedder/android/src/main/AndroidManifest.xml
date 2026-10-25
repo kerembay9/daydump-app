@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <!-- shareTargets / shareImages: see the Post apps (package visibility) -->
+  <queries>
+    <package android:name="com.instagram.android" />
+    <package android:name="com.zhiliaoapp.musically" />
+    <package android:name="com.ss.android.ugc.trill" />
+    <package android:name="com.whatsapp" />
+    <package android:name="com.whatsapp.w4b" />
+  </queries>
+  <application>
+    <!-- LiteRT-LM GPU backend (OpenCL) -->
+    <uses-native-library android:name="libvndksupport.so" android:required="false" />
+    <uses-native-library android:name="libOpenCL.so" android:required="false" />
+    <!-- BackgroundIndex.kt fast mode: keeps indexing on battery after the app leaves the screen -->
+    <service android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType="dataSync" tools:node="merge" />
+    <receiver android:name="expo.modules.clipembedder.PauseReceiver" android:exported="false" />
+  </application>
+</manifest>

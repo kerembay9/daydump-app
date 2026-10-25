@@ -39,3 +39,10 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- Models: `MODELS.md` maps every shipped model, its fallbacks, and which features need it. Update it in the same change whenever bundle contents, model loading/fallbacks, or a feature's model dependency change.
+
+## Versioning (Google Play)
+
+- `expo.android.versionCode` in `app.json` is the build number. Bump it by 1 for **every** Play upload — Play rejects a code it has already seen.
+- `expo.version` is the user-facing version name. **Do not change it** unless the user says they are preparing a release. Re-uploading with the same name is fine.
+- `android/` is gitignored: after bumping, run `npx expo prebuild -p android` (or mirror both values into `android/app/build.gradle`) before building.

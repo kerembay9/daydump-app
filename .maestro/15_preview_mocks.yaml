@@ -1,0 +1,24 @@
+# Preview: IG post / grid / TikTok mocks, like + save, HD toggle; the handle edited here shows in Profile.
+appId: com.horizonzeta.picdump
+name: 15 preview mocks + handle
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Preview"
+- assertVisible: "IG Post"
+- tapOn: "Like"
+- assertVisible: "Unlike"
+- tapOn: "Save"
+- assertVisible: "Unsave"
+- tapOn: "HD export for this dump"
+- assertVisible: "Quality: Standard"
+- tapOn: "IG Profile Grid"
+- assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
+- tapOn: "TikTok 9:16"
+- assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
+- tapOn: "IG Post"
+- tapOn: "Edit handle"
+- inputText: "e2e_tester"
+- pressKey: Enter
+- tapOn: "Profile"
+- assertVisible: "Profile & Settings"
+- assertVisible: "e2e_tester"

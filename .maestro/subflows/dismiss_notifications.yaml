@@ -1,0 +1,8 @@
+# Fresh installs get Android's notification prompt at startup (NotificationService.init); decline it.
+appId: com.horizonzeta.picdump
+---
+- runFlow:
+    when:
+      visible: "Allow DayDump to send you notifications\\?"
+    commands:
+      - tapOn: "Don.t allow"

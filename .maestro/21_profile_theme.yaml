@@ -1,0 +1,14 @@
+# Profile: Espresso (dark) theme with a screenshot, then back to Cashmere.
+appId: com.horizonzeta.picdump
+name: 21 profile dark theme
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Profile and settings"
+- tapOn: "Espresso.*"
+- waitForAnimationToEnd
+- takeScreenshot: vr_profile_dark
+- tapOn: "Back"
+- assertVisible: "Other dumps"
+- tapOn: "Profile and settings"
+- tapOn: "Cashmere.*"
+- assertVisible: "Profile & Settings"

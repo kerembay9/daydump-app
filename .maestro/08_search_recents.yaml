@@ -1,0 +1,22 @@
+# Create search: a "Try" suggestion runs a search and lands in Last searches, Remove takes it out again,
+# and a search can be cleared back to the full gallery.
+appId: com.horizonzeta.picdump
+name: 08 search suggestions, recents, clear
+---
+- runFlow: subflows/ready.yaml
+- tapOn: "Create"
+- tapOn: "Search keyword, place, date..."
+- tapOn: "Search coffee with friends"
+- extendedWaitUntil:
+    visible: "Matches for \"coffee with friends\" .*"
+    timeout: 30000
+- tapOn: "Clear search"
+- assertVisible: "YOUR GALLERY \\(100\\)"
+- assertNotVisible: "Matches for .*"
+- tapOn: "Search keyword, place, date..."
+- assertVisible: "Remove coffee with friends"
+- tapOn: "Remove coffee with friends"
+- assertNotVisible: "Remove coffee with friends"
+- assertVisible: "Search coffee with friends"
+- tapOn: "Close"
+- assertNotVisible: "Search coffee with friends"

@@ -1,0 +1,31 @@
+# Create, Suggest fills: 2 ways to finish, Use this + take out, Save as draft, way preview with Add N picked.
+appId: com.horizonzeta.picdump
+name: 11 suggest fills
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/pick.yaml
+    env:
+      N: 2
+- tapOn: "Suggest fills"
+- extendedWaitUntil:
+    visible: "Preview way 1"
+    timeout: 20000
+- tapOn:
+    text: "Use these suggestions"
+    index: 0
+- assertVisible: "Continue with 6 photos"
+# the "Added N photos · Undo" toast lasts only 4 s, too short for a loaded emulator; the Added pill takes them out too
+- tapOn: "Added\\. Tap to take these out"
+- assertVisible: "Continue with 2 photos"
+- tapOn:
+    text: "Save this way as a draft"
+    index: 0
+- assertVisible: "Saved to Drafts"
+- tapOn: "Preview way 1"
+- assertVisible: "Way 1 of 2"
+- tapOn:
+    text: "Pick this suggested photo"
+    index: 0
+- tapOn: "Add 1 picked"
+- assertVisible: "Continue with 3 photos"
