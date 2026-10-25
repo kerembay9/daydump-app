@@ -265,6 +265,8 @@ function ProfileBody() {
             NotificationService.sendTestNotification().catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Hide developer tools" onPress={() => save({ dev: false })} last />
         </Section>
       )}
@@ -285,6 +287,10 @@ function dropAvatarFile(uri: string) {
   if (!uri) return;
   try { new File(uri).delete(); } catch { /* already gone */ }
 }
+
+/** Developer tools' Bands switch, in tap order. */
+const BANDS: ProfileT['bands'][] = ['default', 'more', 'none'];
+const BAND_NAMES: Record<ProfileT['bands'], string> = { none: 'No bands', default: 'Default', more: 'Scrapbook' };
 
 /** Developer tools' CLIP switch: null = the shipped model. */
 const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);

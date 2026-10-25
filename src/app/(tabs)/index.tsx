@@ -9,7 +9,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
-import { Tape } from '../../components/ui/Tape';
+import { CornerTape, hash, Tape, TAPE_H, useBands } from '../../components/ui/Tape';
 import { PhotoStack, StackKind } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
 import { StatusScrim } from '../../components/ui/Screen';
@@ -31,11 +31,21 @@ function Meta({ s, size = 10 }: { s: Story; size?: number }) {
   return <Text style={[ui(size, 500), { color: t.inkMuted, marginTop: 2 }]}>{s.subtitle}</Text>;
 }
 
-/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. */
-function Tile({ s, kind, rotate, onPress, style }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle }) {
+/** Bands "more": where a tile's tape goes, by story (centre, a corner, or both corners). Render inside the card so it tilts with it. */
+function TileTape({ id }: { id: string }) {
+  const at = hash(id) % 4;
+  return <>
+    {at === 0 && <Tape seed={id} rotate={hash(id) % 2 ? 3 : -3} style={{ top: -TAPE_H / 2 }} />}
+    {(at === 1 || at === 3) && <CornerTape seed={`${id}:l`} side="left" />}
+    {(at === 2 || at === 3) && <CornerTape seed={`${id}:r`} side="right" />}
+  </>;
+}
+
+/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). */
+function Tile({ s, kind, rotate, onPress, style, more }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean }) {
   const wide = kind === 'wide';
   return (
-    <FrameCard radius={14} padding={8} rotate={rotate} onPress={onPress} label={`${s.title}, ${s.subtitle}`} style={style}>
+    <FrameCard radius={14} padding={8} rotate={more ? rotate * 2.6 : rotate} onPress={onPress} label={`${s.title}, ${s.subtitle}`} style={style}>
       <PhotoStack kind={kind} uris={uris(s)} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
@@ -48,25 +58,27 @@ function Tile({ s, kind, rotate, onPress, style }: { s: Story; kind: StackKind; 
           <Meta s={s} />
         </View>
       )}
+      {more && <TileTape id={s.id} />}
     </FrameCard>
   );
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-const Bento = React.memo(function Bento({ block }: { block: Story[] }) {
+const Bento = React.memo(function Bento({ block, more }: { block: Story[]; more: boolean }) {
   const [a, b, c, d] = block;
-  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => preview(s.id)} style={style} />;
+  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => preview(s.id)} style={style} more={more} />;
+  const gap = more ? 14 : 8; // more: room for the tape between tiles
   return (
-    <View style={{ gap: 8, marginBottom: 8 }}>
+    <View style={{ gap, marginBottom: gap }}>
       {block.length === 2 ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>{tile(a, 'top', 0.7, { flex: 1 })}{tile(b, 'mid', -0.6, { flex: 1 })}</View>
+        <View style={{ flexDirection: 'row', gap }}>{tile(a, 'top', 0.7, { flex: 1 })}{tile(b, 'mid', -0.6, { flex: 1 })}</View>
       ) : block.length >= 3 ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap }}>
           {tile(a, 'tall', -0.8, { flex: 1 })}
-          <View style={{ flex: 1, gap: 8 }}>{tile(b, 'top', 0.7, { flex: 1 })}{tile(c, 'mid', -0.6, { flex: 1 })}</View>
+          <View style={{ flex: 1, gap }}>{tile(b, 'top', 0.7, { flex: 1 })}{tile(c, 'mid', -0.6, { flex: 1 })}</View>
         </View>
       ) : null}
-      {block.length === 1 ? tile(a, 'wide', 0) : d ? tile(d, 'wide', 0, { marginTop: 2 }) : null}
+      {block.length === 1 ? tile(a, 'wide', more ? 0.4 : 0) : d ? tile(d, 'wide', more ? -0.4 : 0, { marginTop: 2 }) : null}
     </View>
   );
 });
@@ -88,11 +100,11 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
   );
 }
 
-function Hero({ s }: { s: Story }) {
+function Hero({ s, more }: { s: Story; more: boolean }) {
   const { t } = useTheme();
   return (
-    <View style={{ paddingTop: 8, paddingBottom: 4 }}>
-      <FrameCard radius={16} padding={10} rotate={-1}>
+    <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
+      <FrameCard radius={16} padding={10} rotate={more ? -1.8 : -1}>
         <Tap onPress={() => preview(s.id)} accessibilityRole="button" accessibilityLabel={`Preview ${s.title}`}>
           <PhotoStack kind="hero" uris={uris(s)} />
         </Tap>
@@ -105,8 +117,9 @@ function Hero({ s }: { s: Story }) {
             <Text style={[ui(11, 600), { color: t.bgScreen }]}>Preview</Text>
           </Tap>
         </View>
+        {more && <><CornerTape seed={`${s.id}:l`} side="left" /><CornerTape seed={`${s.id}:r`} side="right" /></>}
       </FrameCard>
-      <Tape />
+      {!more && <Tape />}
     </View>
   );
 }
@@ -121,13 +134,14 @@ export default function Discover() {
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
   const [refreshing, setRefreshing] = useState(false);
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
+  const more = useBands() === 'more';
 
 
   const hero = stories[0];
   const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
-  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} />, []);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} />, [more]);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
@@ -157,7 +171,7 @@ export default function Discover() {
           onAction={() => Linking.openSettings()}
         />
       ) : hero ? (
-        <Hero s={hero} />
+        <Hero s={hero} more={more} />
       ) : vision && vision.state !== 'ready' ? (
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
@@ -168,7 +182,7 @@ export default function Discover() {
           onAction={() => router.navigate('/create')}
         />
       ) : null}
-      {others.length > 0 && <View style={{ height: 12 }} />}
+      {others.length > 0 && <View style={{ height: more ? 16 : 12 }} />}
     </>
   );
 
@@ -178,6 +192,7 @@ export default function Discover() {
         data={blocks}
         keyExtractor={(b) => b[0].id}
         renderItem={renderBento}
+        extraData={more}
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}

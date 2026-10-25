@@ -1,0 +1,60 @@
+import { StyleSheet } from 'react-native';
+import { fireEvent, screen } from 'expo-router/testing-library';
+import { bootApp, settle } from '../../jest/app';
+import { seedWorld } from '../../jest/world';
+import { cashmere, espresso } from '../../src/theme/tokens';
+import { getProfile, setProfile } from '../../src/services/profile';
+import { CORNER_W, TAPE_H } from '../../src/components/ui/Tape';
+
+const HERO = 'Preview A week in Seattle';
+const TAPE = [cashmere.tapeBg, espresso.tapeBg];
+const tapes = () => screen.queryAllByTestId('tape').map((n) => StyleSheet.flatten(n.props.style).backgroundColor as string);
+
+beforeAll(() => seedWorld());
+
+test('Bands: none takes every tape off Discover', async () => {
+  await setProfile({ bands: 'none' });
+  await bootApp('/');
+  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  expect(tapes()).toEqual([]);
+}, 30000);
+
+test('Bands: default keeps the one masking tape on the hero', async () => {
+  await setProfile({ bands: 'default' });
+  await bootApp('/');
+  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  const t = tapes();
+  expect(t).toHaveLength(1);
+  expect(TAPE).toContain(t[0]);
+}, 30000);
+
+test('Bands: more tapes the hero\'s corners and every tile with washi of several colours', async () => {
+  await setProfile({ bands: 'more' });
+  await bootApp('/');
+  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  const tiles = screen.getAllByLabelText(/, \d+ photos · /).length;
+  const t = tapes();
+  expect(t.length).toBeGreaterThanOrEqual(2 + tiles);
+  expect(t.some((c) => TAPE.includes(c))).toBe(false);
+  expect(new Set(t).size).toBeGreaterThan(1);
+  // one plain strip: same height everywhere, never a stub, no stripes or dots inside
+  const strips = screen.queryAllByTestId('tape').map((n) => StyleSheet.flatten(n.props.style));
+  expect(new Set(strips.map((s) => s.height))).toEqual(new Set([TAPE_H]));
+  expect(Math.min(...strips.map((s) => s.width as number))).toBeGreaterThanOrEqual(CORNER_W);
+  expect(screen.queryAllByTestId('tape').every((n) => !n.props.children)).toBe(true);
+}, 30000);
+
+test('Developer tools → Bands cycles Default, Scrapbook, No bands and saves it', async () => {
+  await setProfile({ bands: 'default', dev: true });
+  await bootApp('/profile');
+  const row = await screen.findByText('Bands', {}, { timeout: 10000 });
+  expect(screen.getByText('Default')).toBeTruthy();
+  await fireEvent.press(row);
+  await settle();
+  expect(screen.getByText('Scrapbook')).toBeTruthy();
+  expect((await getProfile()).bands).toBe('more');
+  await fireEvent.press(row);
+  await settle();
+  expect(screen.getByText('No bands')).toBeTruthy();
+  expect((await getProfile()).bands).toBe('none');
+}, 30000);

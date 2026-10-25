@@ -284,7 +284,7 @@ function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
         <FrameCard radius={22} rotate={i % 2 ? 2 : -2} style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
           <s.icon size={40} color={t.ink} strokeWidth={1.6} />
         </FrameCard>
-        <Tape rotate={-6} style={{ top: -8 }} />
+        <Tape rotate={-6} seed={s.id} style={{ top: -8 }} />
       </View>
       <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{s.badge}</Text>
       <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>

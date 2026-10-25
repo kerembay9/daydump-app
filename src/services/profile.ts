@@ -8,11 +8,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * hideSensitive: IDs, bank cards and medical papers stay out of stories (stories/curate.ts). screenshots: Screenshots-folder photos can be in stories (off by default).
  * searchLangs: search languages besides English (index/queryLang.ts); null = the phone's language.
  * saveOnPost: Post also saves the slides to the PicDump album (Save only always does).
+ * bands: masking tape on cards (developer tools): none, default, or more (scrapbook washi tape on Discover and onboarding).
  */
-export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean };
+export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean; bands: 'none' | 'default' | 'more' };
 
 const KEY = '@daydump_profile';
-const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true };
+const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true, bands: 'default' };
 
 let last = EMPTY;
 /** The profile as last read or written (sync, for code that can't wait; EMPTY before the first read). */
