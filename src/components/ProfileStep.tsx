@@ -11,7 +11,7 @@ import { Tap } from './ui/Tap';
 import { Icons } from './ui/Icons';
 import { Pill } from './ui/Pill';
 import { useSelfiePick } from './SelfieFinder';
-import { FaceCircle, faceFile } from './FaceCircle';
+import { FaceCircle, faceFile, FaceThumb } from './FaceCircle';
 import { Bar } from './ModelLoading';
 import type { Selfie } from '../services/selfie';
 import { getProfile, setProfile } from '../services/profile';
@@ -36,8 +36,8 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<'name' | 'selfie' | 'picked'>('name');
   const [named, setNamed] = useState(false); // the name has landed in the header
   const [picked, setPicked] = useState<Selfie | null>(null);
-  // what the header shows (lands after the flight), drawn at the size it flew from and scaled down: that image is in memory already
-  const [avatar, setAvatar] = useState<{ s: Selfie; size: number } | null>(null);
+  // what the header shows (lands after the flight), drawn as it flew (same size, scaled down): that image is in memory already
+  const [avatar, setAvatar] = useState<{ s: Selfie; size: number; thumb: boolean } | null>(null);
   const [fly, setFly] = useState<Fly | null>(null);
   const { best, wait, vote, mine } = useSelfiePick();
   const root = useRef<View>(null), input = useRef<View>(null), headName = useRef<View>(null), headFace = useRef<View>(null), big = useRef<View>(null);
@@ -65,11 +65,11 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
     Keyboard.dismiss();
     setPhase('selfie');
   };
-  /** s is the avatar now: flies in from `from`, its circle of this size (the big one or its strip thumb; drawn at the same size, so from memory). */
-  const take = (s: Selfie, from: RefObject<View | null>, size: number) => {
+  /** s is the avatar now: flies in from `from`, its circle of this size (the big one, or a strip thumb: its small crop; drawn the same way, so from memory). */
+  const take = (s: Selfie, from: RefObject<View | null>, size: number, thumb = false) => {
     setPicked(s);
     faceFile(s.p.uri, s.box, AVATAR_PX); // cropped now, so the avatar is ready when Continue ends onboarding
-    launch(from, headFace, () => <FaceCircle uri={s.p.uri} box={s.box} aspect={s.aspect} size={size} />, () => setAvatar({ s, size }), 40 / size);
+    launch(from, headFace, () => face(s, size, thumb), () => setAvatar({ s, size, thumb }), 40 / size);
   };
   const yes = () => { if (!best) return; vote('up'); take(best, big, BIG); setPhase('picked'); };
   const no = () => { Haptics.selectionAsync(); setPicked(null); setAvatar(null); vote('down'); setPhase('selfie'); };
@@ -97,7 +97,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
           <FrameCard radius={18} padding={12}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <View ref={headFace} collapsable={false} style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
-                {avatar ? <Animated.View key={avatar.s.p.id} entering={FadeIn.duration(120)} style={{ transform: [{ scale: 40 / avatar.size }] }}><FaceCircle uri={avatar.s.p.uri} box={avatar.s.box} aspect={avatar.s.aspect} size={avatar.size} /></Animated.View>
+                {avatar ? <Animated.View key={avatar.s.p.id} entering={FadeIn.duration(120)} style={{ transform: [{ scale: 40 / avatar.size }] }}>{face(avatar.s, avatar.size, avatar.thumb)}</Animated.View>
                   : shown ? <Text style={[ui(16, 600), { color: t.accentFabText }]}>{shown[0].toUpperCase()}</Text> : <Icons.user size={20} color={t.accentFabText} />}
               </View>
               <View style={{ flex: 1 }}>
@@ -157,10 +157,10 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
                 const on = s.p.id === picked?.p.id;
                 return (
                   <Animated.View key={s.p.id} entering={pop().delay(FLY_MS + 50 * i)}>
-                    <Tap onPress={() => { if (!on) { Haptics.selectionAsync(); take(s, { current: thumbs.current.get(s.p.id) ?? null }, THUMB); } }} accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}`}
+                    <Tap onPress={() => { if (!on) { Haptics.selectionAsync(); take(s, { current: thumbs.current.get(s.p.id) ?? null }, THUMB, true); } }} accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}`}
                       style={{ borderRadius: 32, padding: 3, borderWidth: 2, borderColor: on ? t.ink : 'transparent' }}>
                       <View ref={(v) => { thumbs.current.set(s.p.id, v); }} collapsable={false}>
-                        <FaceCircle uri={s.p.uri} box={s.box} aspect={s.aspect} size={THUMB} />
+                        <FaceThumb uri={s.p.uri} box={s.box} size={THUMB} />
                       </View>
                     </Tap>
                   </Animated.View>
@@ -205,6 +205,10 @@ function Flyer({ f }: { f: Fly }) {
     </Animated.View>
   );
 }
+
+/** The big circle zooms into the whole photo; a strip thumb is a small crop (FaceCircle's full photo, 8 at once, made the strip crawl). */
+const face = (s: Selfie, size: number, thumb: boolean) =>
+  thumb ? <FaceThumb uri={s.p.uri} box={s.box} size={size} /> : <FaceCircle uri={s.p.uri} box={s.box} aspect={s.aspect} size={size} />;
 
 const AVATAR_PX = 512;
 /** The face's square as the profile avatar: our own copy (the cache's can be cleared, the photo deleted). */
