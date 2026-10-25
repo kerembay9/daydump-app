@@ -6,7 +6,7 @@ import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
 import { useProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
-import { display, label, ui } from '../../theme/type';
+import { display, ui } from '../../theme/type';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { Tape } from '../../components/ui/Tape';
@@ -168,12 +168,7 @@ export default function Discover() {
           onAction={() => router.navigate('/create')}
         />
       ) : null}
-      {others.length > 0 && (
-        <View style={{ marginTop: 10, marginBottom: 6, paddingHorizontal: 2, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={[label(10), { color: t.inkMuted }]}>Other dumps</Text>
-          <Text style={[ui(10.5, 600), { color: t.inkMuted }]}>{others.length}</Text>
-        </View>
-      )}
+      {others.length > 0 && <View style={{ height: 12 }} />}
     </>
   );
 

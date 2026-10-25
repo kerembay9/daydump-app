@@ -10,7 +10,8 @@ beforeAll(() => seedWorld());
 
 test('stories show "{N} photos · {range}" and long titles in full; tapping a tile opens its preview', async () => {
   await bootApp('/');
-  await screen.findByText('Other dumps', {}, { timeout: 10000 });
+  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  expect(screen.queryByText('Other dumps')).toBeNull();
 
   // hero + 2 tiles, every one with its meta line
   for (const [title, meta] of [[LONG, '7 photos · Sep 22–Oct 22, 2025'], ['A week in Seattle', '6 photos · Aug 4–9, 2025'], ['Cinnamon rolls', '8 photos · May–Jun 2025']]) {
