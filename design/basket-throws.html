@@ -1,0 +1,414 @@
+<title>Basket Throws</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: the real Create screen in a phone on the left, the throw catalogue beside it; tap photos to throw them into Selected. */
+:root {
+  --page: #EAE0D3; --bg: #F6EFE6; --card: #EFE6DA; --paper: #FFFCF7;
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --tape: rgba(212,196,182,0.85); --tape-edge: rgba(140,115,95,0.3);
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.18), 0 2px 5px rgba(74,52,40,0.05);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45), 0 0 0 9px #261F1B;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --paper: #F3ECE3;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --tape: rgba(150,128,104,0.8); --tape-edge: rgba(255,232,200,0.25);
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 9px #0C0906, 0 0 0 10px rgba(255,232,200,0.12);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --paper: #F3ECE3;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --tape: rgba(150,128,104,0.8); --tape-edge: rgba(255,232,200,0.25);
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 9px #0C0906, 0 0 0 10px rgba(255,232,200,0.12);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--sans); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 48px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 5vw, 42px); line-height: 1.05; margin: 0 0 8px; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 62ch; }
+.stage { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+
+/* ---------- phone: the Create tab ---------- */
+.col-phone { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(360px, 100%); margin-inline: auto; }
+.phone { position: relative; width: 100%; height: 720px; border-radius: 34px; background: var(--bg); box-shadow: var(--phone-shadow); overflow: hidden; display: flex; flex-direction: column; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 22px 16px 8px; }
+.top h2 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #E8C3A0 0 26%, transparent 27%), radial-gradient(circle at 50% 100%, #8C5A3C 0 45%, transparent 46%), #D9C6B2; border: 1.5px solid var(--paper); box-shadow: var(--shadow); }
+.search { margin: 0 16px; height: 38px; border-radius: 19px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--muted); font-size: 12.5px; }
+.search svg { flex: none; }
+.gallery-label { margin: 14px 18px 8px; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.grid { flex: 1; overflow-y: auto; padding: 0 16px 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; align-content: start; scrollbar-width: none; }
+.grid::-webkit-scrollbar { display: none; }
+.tile { position: relative; aspect-ratio: 1 / 1.08; border-radius: 12px; border: 0; padding: 0; cursor: pointer; background: var(--line2); font: inherit; }
+.tile .img { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; }
+.tile .img::after { content: ""; position: absolute; inset: auto 0 0; height: 34%; background: linear-gradient(0deg, rgba(0,0,0,.55), rgba(0,0,0,0)); }
+.tile .date { position: absolute; left: 6px; bottom: 4px; z-index: 1; font-size: 8.5px; font-weight: 500; color: #fff; }
+.tile.on { box-shadow: 0 0 0 2px var(--ink); }
+.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.badge { position: absolute; top: 6px; right: 6px; z-index: 1; width: 20px; height: 20px; border-radius: 10px; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; color: #fff; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.6); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.tile.on .badge { background: var(--ink); color: var(--bg); border-color: transparent; }
+
+.dock { padding: 6px 16px 18px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); background: var(--bg); position: relative; z-index: 2; }
+.total { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; border-radius: 15px; background: var(--card); box-shadow: var(--shadow); font-size: 10px; color: var(--muted); }
+.total b { color: var(--ink); }
+.step { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; border: 1px solid var(--line2); color: var(--ink); font-weight: 600; }
+.pill { height: 26px; padding: 0 10px; border-radius: 13px; background: var(--ink); color: var(--bg); display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.basket { display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 6px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow), 0 4px 6px -1px rgba(0,0,0,.1); }
+.stack { position: relative; width: 48px; height: 44px; }
+.thumb { position: absolute; width: 32px; height: 32px; border-radius: 7px; border: 1.5px solid var(--paper); background: var(--line2); background-size: cover; }
+.thumb.a { top: 4px; left: 2px; transform: rotate(-16deg); }
+.thumb.b { top: 6px; right: 2px; transform: rotate(11deg); }
+.count { position: absolute; top: -4px; right: -4px; padding: 0 6px; border-radius: 9px; background: var(--ink); color: var(--bg); font-size: 9px; font-weight: 700; line-height: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.2); font-variant-numeric: tabular-nums; }
+.basket strong { display: block; font-size: 11px; }
+.basket span.sub { font-size: 9.5px; color: var(--muted); }
+.continue { height: 36px; padding: 0 16px; border-radius: 18px; background: var(--ink); color: var(--bg); display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
+.continue.off { opacity: .4; }
+
+/* the flight layer: above everything in the phone, never takes taps */
+.sky { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.fly { position: absolute; transform-origin: 50% 50%; will-change: transform, opacity; }
+.fly .frame { position: absolute; inset: 0; border-radius: 6px; background: var(--paper); opacity: 0; box-shadow: 0 7px 16px -4px rgba(55,38,28,.35); }
+.fly .img { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 22px -8px rgba(30,20,12,.45); }
+.fly .tape { position: absolute; left: 22%; right: 22%; top: -7px; height: 15px; background: var(--tape); border-left: 1px dashed var(--tape-edge); border-right: 1px dashed var(--tape-edge); border-radius: 2px; transform: rotate(-3deg) scaleX(0); transform-origin: 0 50%; }
+.spark { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--ink); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+.spark.warm { background: #E2A35B; }
+
+.caption { min-height: 20px; font-size: 13px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.caption b { color: var(--ink); font-weight: 600; }
+
+/* ---------- catalogue ---------- */
+.col-panel { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--ink); }
+.btn { font: 600 13px var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.btn:hover { background: var(--card); }
+.btn:focus-visible, .opt:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.opt { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 12px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.opt:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.opt input { position: absolute; opacity: 0; pointer-events: none; }
+.opt .name { font-family: var(--serif); font-weight: 600; font-size: 18px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.opt .ms { font-family: var(--sans); font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.opt p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.opt .land { font-size: 11.5px; color: var(--muted); }
+.opt .land b { color: var(--ink); font-weight: 600; }
+.opt .btn { align-self: flex-start; margin-top: 4px; padding: 5px 12px; font-size: 12px; }
+.opt.mix { grid-column: 1 / -1; background: var(--card); }
+.note { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 62ch; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Basket Throws</h1>
+    <p>Tap any photo on the Create grid to add it to Selected. Each add flies the photo into the basket, and the basket reacts when it lands. Pick one throw, or leave it on Mix so every add is a surprise.</p>
+  </header>
+
+  <div class="stage">
+    <div class="col-phone">
+      <div class="phone" id="phone">
+        <div class="top"><h2>Create</h2><div class="avatar" aria-hidden="true"></div></div>
+        <div class="search" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          Search your photos, like "beach sunset"
+        </div>
+        <div class="gallery-label">Your gallery (1,284)</div>
+        <div class="grid" id="grid"></div>
+        <div class="dock">
+          <div class="total" aria-hidden="true">
+            <span>Total: <span class="step">−</span> <b id="target">6</b> <span class="step">+</span> &nbsp;(You <b id="you">0</b> · App <b id="app">+6</b>)</span>
+            <span class="pill">✧ Suggest fills</span>
+          </div>
+          <div class="row">
+            <div class="basket" id="basket">
+              <div class="stack" id="stack">
+                <div class="thumb a" id="thumbA"></div>
+                <div class="thumb b" id="thumbB"></div>
+                <div class="count" id="count">0/6</div>
+              </div>
+              <div><strong>Selected</strong><span class="sub">Tap to review</span></div>
+            </div>
+            <div class="continue" id="continue">Continue (0)</div>
+          </div>
+        </div>
+        <div class="sky" id="sky"></div>
+      </div>
+      <div class="caption" id="caption" aria-live="polite">Tap a photo to throw it in.</div>
+    </div>
+
+    <div class="col-panel">
+      <div class="controls">
+        <label class="toggle"><input type="checkbox" id="slow"> Slow motion (4×)</label>
+        <button class="btn" id="empty" type="button">Empty basket</button>
+      </div>
+      <div class="opts" id="opts" role="radiogroup" aria-label="Throw animation"></div>
+      <p class="note">A small jolt of the phone marks where the app would play a light haptic on landing. All of these can be built with Reanimated, which the app already ships, so the grid doesn't redraw while a photo is in the air.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- photos (painted with gradients, standing in for camera-roll shots) ----------
+  const PHOTOS = [
+    ['Oct 18, 2026', 'radial-gradient(circle at 70% 42%, #FFE2A8 0 9%, transparent 10%), linear-gradient(180deg, #F7B267 0%, #F4845F 48%, #3D5A80 49%, #293241 100%)'],
+    ['Oct 17, 2026', 'radial-gradient(circle at 50% 56%, #3B2416 0 21%, #F2E6D8 22% 30%, transparent 31%), radial-gradient(circle at 78% 30%, #E9D7C2 0 10%, transparent 11%), #B88A62'],
+    ['Oct 15, 2026', 'linear-gradient(160deg, transparent 55%, rgba(30,50,30,.6) 56%), linear-gradient(200deg, transparent 50%, #2D4A2B 51%), linear-gradient(180deg, #CFE3D2, #6F9A6A 70%)'],
+    ['Oct 14, 2026', 'repeating-linear-gradient(90deg, rgba(255,214,120,.85) 0 3px, transparent 3px 11px) 0 55% / 100% 45% no-repeat, linear-gradient(180deg, #141E30, #243B55 60%, #0E1420)'],
+    ['Oct 12, 2026', 'repeating-linear-gradient(170deg, rgba(255,255,255,.35) 0 3px, transparent 3px 14px), linear-gradient(180deg, #7FD1F0, #2F8FC4)'],
+    ['Oct 11, 2026', 'radial-gradient(circle at 28% 34%, #F5A3B5 0 9%, transparent 10%), radial-gradient(circle at 66% 58%, #F7C6D0 0 11%, transparent 12%), radial-gradient(circle at 44% 78%, #E06C8E 0 8%, transparent 9%), linear-gradient(180deg, #A7C58A, #5E8C4A)'],
+    ['Oct 9, 2026', 'linear-gradient(172deg, transparent 52%, #C38D5E 53%), linear-gradient(188deg, transparent 62%, #A86F44 63%), linear-gradient(180deg, #FBE3BF, #E8A87C)'],
+    ['Oct 8, 2026', 'radial-gradient(circle at 50% 30%, rgba(255,255,255,.4) 0 18%, transparent 40%), linear-gradient(135deg, #FF2E88, #7B2FF7)'],
+    ['Oct 6, 2026', 'repeating-linear-gradient(0deg, rgba(200,40,50,.55) 0 10px, transparent 10px 20px), repeating-linear-gradient(90deg, rgba(200,40,50,.55) 0 10px, #FFF6EE 10px 20px)'],
+    ['Oct 5, 2026', 'linear-gradient(180deg, #5F4B8B 0%, #E69A8D 48%, #2B2D42 49%, #5F4B8B 100%)'],
+    ['Oct 3, 2026', 'radial-gradient(circle at 30% 40%, #FFE066 0 13%, transparent 14%), radial-gradient(circle at 68% 64%, #FFD43B 0 15%, transparent 16%), linear-gradient(180deg, #3A6EA5, #1F4E79)'],
+    ['Oct 2, 2026', 'linear-gradient(140deg, transparent 48%, #8696A7 49% 60%, transparent 61%), linear-gradient(220deg, transparent 44%, #6B7B8C 45%), linear-gradient(180deg, #EAF1FB, #C9D8EC)'],
+    ['Sep 30, 2026', 'radial-gradient(ellipse at 50% 100%, #3E2C23 0 30%, transparent 31%), radial-gradient(circle at 50% 40%, #FFB36B 0 16%, #FF7A3D 17% 22%, transparent 40%), #2A1B14'],
+    ['Sep 28, 2026', 'linear-gradient(180deg, #F2D8C9 0 40%, #9A7B6A 41% 44%, #D9B9A6 45%)'],
+    ['Sep 27, 2026', 'radial-gradient(circle at 40% 45%, #F8F1E5 0 20%, transparent 21%), radial-gradient(circle at 60% 50%, #E8D9C4 0 18%, transparent 19%), linear-gradient(180deg, #94B49F, #5C7F67)'],
+  ];
+
+  // ---------- easing ----------
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const outCubic = (t) => 1 - Math.pow(1 - t, 3);
+  const inCubic = (t) => t * t * t;
+  const inOutCubic = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const outBack = (t) => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2);
+
+  // ---------- the throws: each maps t (0..1) to a pose relative to the photo's start ----------
+  // P: dx, dy = basket centre minus photo centre; s = basket thumb size / photo size; rEnd = the thumb's tilt
+  const THROWS = {
+    toss: {
+      name: 'Toss', ms: 620, land: 'bounce', landText: 'a squashy bounce',
+      desc: 'A high arc with one full flip, like tossing a print onto a pile.',
+      pose(t, P) {
+        const h = Math.max(110, Math.abs(P.dy) * .4);
+        return { x: P.dx * t, y: P.dy * t - h * 4 * t * (1 - t), r: lerp(0, -360 + P.rEnd, inOutCubic(t)), s: lerp(1, P.s, inCubic(t)) * (1 + .1 * Math.sin(Math.PI * t)) };
+      },
+    },
+    flutter: {
+      name: 'Flutter', ms: 1000, land: 'settle', landText: 'a soft settle', print: true,
+      desc: 'Lifts off as a white-bordered print, then sways down like paper.',
+      pose(t, P) {
+        if (t < .18) { const k = outCubic(t / .18); return { x: 0, y: -18 * k, r: -4 * k, s: 1 + .06 * k, print: k }; }
+        const u = (t - .18) / .82, e = inOutCubic(u), sway = Math.sin(u * Math.PI * 3) * (1 - u);
+        return { x: P.dx * e + 30 * sway, y: lerp(-18, P.dy, e), r: lerp(-4, P.rEnd, e) + 16 * Math.sin(u * Math.PI * 3 + .6) * (1 - u), s: lerp(1.06, P.s, e), print: 1 };
+      },
+    },
+    slingshot: {
+      name: 'Slingshot', ms: 560, land: 'recoil', landText: 'a recoil', trail: true,
+      desc: 'Pulls back away from the basket, then snaps in with a motion trail.',
+      pose(t, P) {
+        const k0 = .38;
+        if (t < k0) { const k = outCubic(t / k0); return { x: -P.dx * .12 * k, y: -P.dy * .12 * k, r: -6 * k, s: 1 + .08 * k }; }
+        const e = Math.pow((t - k0) / (1 - k0), 2);
+        return { x: lerp(-P.dx * .12, P.dx, e), y: lerp(-P.dy * .12, P.dy, e), r: lerp(-6, P.rEnd, e), s: lerp(1.08, P.s, e) };
+      },
+    },
+    twirl: {
+      name: 'Twirl', ms: 720, land: 'spin', landText: 'a wobble',
+      desc: 'Spins twice along an S-curve, like a leaf caught in the wind.',
+      pose(t, P) {
+        const e = inOutCubic(t);
+        return { x: P.dx * e + 54 * Math.sin(Math.PI * 2 * e), y: P.dy * e, r: 720 * e + P.rEnd * e, s: lerp(1, P.s, e) * (1 + .14 * Math.sin(Math.PI * e)) };
+      },
+    },
+    pop: {
+      name: 'Pop', ms: 560, land: 'pop', landText: 'a burst of sparkles', sparks: true,
+      desc: 'Puffs up with a sparkle burst, then zips over the dock in a quick hop.',
+      pose(t, P) {
+        if (t < .16) { const k = outBack(t / .16); return { x: 0, y: 0, r: 0, s: 1 + .18 * k }; }
+        const e = inOutCubic((t - .16) / .84);
+        return { x: P.dx * e, y: P.dy * e - 46 * Math.sin(Math.PI * e), r: lerp(0, P.rEnd, e), s: lerp(1.18, P.s, e) };
+      },
+    },
+    tape: {
+      name: 'Tape', ms: 900, land: 'thud', landText: 'a taped-down thud', tape: true,
+      desc: 'Lands just above the basket, gets a strip of masking tape slapped on, then tucks in.',
+      pose(t, P) {
+        const big = P.s * 1.8;
+        if (t < .6) { const e = outCubic(t / .6); return { x: P.dx * e, y: P.dy * e - 8 * e - 70 * Math.sin(Math.PI * e), r: lerp(0, -8, e), s: lerp(1, big, e) }; }
+        if (t < .82) return { x: P.dx, y: P.dy - 8, r: -8, s: big };
+        const u = inOutCubic((t - .82) / .18);
+        return { x: P.dx, y: P.dy - 8 + 8 * u, r: lerp(-8, P.rEnd, u), s: lerp(big, P.s, u) };
+      },
+    },
+  };
+  THROWS.tossSoft = {
+    name: 'Soft toss', ms: 620, land: 'bounce', landText: 'a squashy bounce', peakSpark: true,
+    desc: 'The same arc with a single lazy half-turn spread over the whole flight, and one sparkle dropping off at the top.',
+    pose(t, P) {
+      const h = Math.max(110, Math.abs(P.dy) * .4);
+      return { x: P.dx * t, y: P.dy * t - h * 4 * t * (1 - t), r: lerp(0, -180 + P.rEnd, t), s: lerp(1, P.s, inCubic(t)) * (1 + .1 * Math.sin(Math.PI * t)) };
+    },
+  };
+  THROWS.popSlow = { ...THROWS.pop, name: 'Pop, slower', ms: 680, desc: 'Pop with a little more hang time in the hop, so the photo is easier to follow.' };
+  // catalogue order: each variant next to its original
+  const KEYS = ['toss', 'tossSoft', 'flutter', 'slingshot', 'twirl', 'pop', 'popSlow', 'tape'];
+  const fade = { pose: (t, P) => ({ x: P.dx * t, y: P.dy * t, r: P.rEnd * t, s: lerp(1, P.s, t), o: 1 - t * .3 }) };
+
+  // basket reactions on landing
+  const LANDINGS = {
+    bounce: [{ transform: 'scale(1)' }, { transform: 'scale(1.16, .88)' }, { transform: 'scale(.94, 1.08)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }],
+    settle: [{ transform: 'translateY(0)' }, { transform: 'translateY(3px) rotate(-2deg)' }, { transform: 'translateY(-1px) rotate(1deg)' }, { transform: 'none' }],
+    recoil: [{ transform: 'translate(0,0)' }, { transform: 'translate(7px, 3px) rotate(4deg)' }, { transform: 'translate(-2px, 0)' }, { transform: 'none' }],
+    spin: [{ transform: 'rotate(0)' }, { transform: 'rotate(-14deg)' }, { transform: 'rotate(8deg)' }, { transform: 'rotate(-3deg)' }, { transform: 'none' }],
+    pop: [{ transform: 'scale(1)' }, { transform: 'scale(1.22)' }, { transform: 'scale(.97)' }, { transform: 'none' }],
+    thud: [{ transform: 'translateY(0)' }, { transform: 'translateY(4px) scale(1.04, .9)' }, { transform: 'none' }],
+  };
+
+  // ---------- state + DOM ----------
+  const $ = (id) => document.getElementById(id);
+  const grid = $('grid'), sky = $('sky'), phone = $('phone'), stack = $('stack');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let basket = [2, 0]; // photo indexes, in pick order (example: two already picked)
+  let choice = 'mix', last = null;
+
+  grid.innerHTML = PHOTOS.map(([date, paint], i) =>
+    `<button class="tile" type="button" data-i="${i}" aria-label="Photo from ${date}"><div class="img" style="background:${paint}"></div><span class="date">${date}</span><span class="badge">+</span></button>`).join('');
+  const tiles = [...grid.querySelectorAll('.tile')];
+
+  function render() {
+    const target = Math.max(6, basket.length);
+    tiles.forEach((el, i) => {
+      const k = basket.indexOf(i);
+      el.classList.toggle('on', k >= 0);
+      el.querySelector('.badge').textContent = k >= 0 ? k + 1 : '+';
+      el.setAttribute('aria-pressed', k >= 0);
+      el.setAttribute('aria-label', `Photo from ${PHOTOS[i][0]}${k >= 0 ? `, number ${k + 1} in the basket` : ''}`);
+    });
+    // the app's stack shows the first two picks
+    $('thumbA').style.background = basket[0] != null ? PHOTOS[basket[0]][1] : '';
+    $('thumbB').style.background = basket[1] != null ? PHOTOS[basket[1]][1] : '';
+    $('count').textContent = `${basket.length}/${target}`;
+    $('target').textContent = target;
+    $('you').textContent = basket.length;
+    $('app').textContent = `+${target - basket.length}`;
+    $('continue').textContent = `Continue (${basket.length})`;
+    $('continue').classList.toggle('off', !basket.length);
+  }
+
+  // ---------- catalogue ----------
+  $('opts').innerHTML = [
+    `<label class="opt mix"><input type="radio" name="throw" value="mix" checked><span class="name">Mix <span class="ms">a different throw each add</span></span><p>Every add picks one of the ${KEYS.length} throws at random, never the same one twice in a row.</p></label>`,
+    ...KEYS.map((k) => { const a = THROWS[k]; return `<label class="opt"><input type="radio" name="throw" value="${k}"><span class="name">${a.name} <span class="ms">${a.ms} ms</span></span><p>${a.desc}</p><span class="land">Basket lands with <b>${a.landText}</b></span><button class="btn" type="button" data-throw="${k}">Throw one</button></label>`; }),
+  ].join('');
+  $('opts').addEventListener('change', (e) => { choice = e.target.value; });
+  $('opts').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-throw]'); if (!b) return;
+    e.preventDefault();
+    const radio = $('opts').querySelector(`input[value="${b.dataset.throw}"]`); radio.checked = true; choice = radio.value;
+    const free = tiles.map((_, i) => i).filter((i) => !basket.includes(i));
+    if (!free.length) basket = [];
+    const pool = free.length ? free : tiles.map((_, i) => i);
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    tiles[i].scrollIntoView({ block: 'nearest' });
+    requestAnimationFrame(() => add(i, b.dataset.throw));
+  });
+  $('empty').addEventListener('click', () => { basket = []; render(); $('caption').textContent = 'Basket emptied. Tap a photo to throw it in.'; });
+
+  // ---------- throwing ----------
+  const rel = (el) => { const a = el.getBoundingClientRect(), p = phone.getBoundingClientRect(); return { x: a.left - p.left, y: a.top - p.top, w: a.width, h: a.height }; };
+  const speed = () => ($('slow').checked ? 4 : 1);
+
+  function pickThrow(forced) {
+    if (forced) return forced;
+    if (choice !== 'mix') return choice;
+    const pool = KEYS.filter((k) => k !== last);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function add(i, forced) {
+    const key = pickThrow(forced); last = key;
+    const a = reduced.matches ? { ...THROWS[key], ...fade, ms: 220, trail: false, sparks: false, tape: false, print: false } : THROWS[key];
+    const from = rel(tiles[i]);
+    const thumb = basket.length === 0 ? $('thumbA') : $('thumbB');
+    const to = rel(thumb);
+    basket.push(i);
+    render();
+
+    const P = { dx: to.x + to.w / 2 - (from.x + from.w / 2), dy: to.y + to.h / 2 - (from.y + from.h / 2), s: 32 / from.w, rEnd: thumb === $('thumbA') ? -16 : 11 };
+    const ms = a.ms * speed();
+    const N = 48, frames = [], printFrames = [];
+    for (let n = 0; n <= N; n++) {
+      const t = n / N, p = a.pose(t, P);
+      frames.push({ offset: t, opacity: p.o ?? 1, transform: `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg) scale(${p.s})` });
+      if (a.print) printFrames.push({ offset: t, transform: `translateY(${-6 * (p.print ?? 0)}%) scale(${1 - .14 * (p.print ?? 0)})` });
+    }
+
+    const make = (ghost) => {
+      const el = document.createElement('div');
+      el.className = 'fly';
+      Object.assign(el.style, { left: `${from.x}px`, top: `${from.y}px`, width: `${from.w}px`, height: `${from.h}px` });
+      el.innerHTML = `<div class="frame"></div><div class="img" style="background:${PHOTOS[i][1]}"></div>${a.tape && !ghost ? '<div class="tape"></div>' : ''}`;
+      sky.appendChild(el);
+      return el;
+    };
+    const fly = make(false);
+    const run = fly.animate(frames, { duration: ms, fill: 'forwards' });
+    if (a.print) {
+      fly.querySelector('.frame').animate([{ opacity: 0 }, { opacity: 1, offset: .18 }, { opacity: 1 }], { duration: ms, fill: 'forwards' });
+      fly.querySelector('.img').animate(printFrames, { duration: ms, fill: 'forwards' });
+    }
+    if (a.tape) fly.querySelector('.tape').animate([{ transform: 'rotate(-3deg) scaleX(0)' }, { transform: 'rotate(-3deg) scaleX(1.12)', offset: .7 }, { transform: 'rotate(-3deg) scaleX(1)' }],
+      { duration: 140 * speed(), delay: ms * .6, fill: 'forwards', easing: 'ease-out' });
+    if (a.trail) [1, 2, 3].forEach((g) => {
+      const el = make(true); el.style.opacity = .28 - g * .07;
+      el.animate(frames, { duration: ms, delay: g * 26 * speed(), fill: 'forwards' }).onfinish = () => el.remove();
+    });
+    if (a.sparks) burst(from.x + from.w / 2, from.y + from.h / 2, 8, 46, 'warm');
+    if (a.peakSpark) setTimeout(() => { const p = a.pose(.5, P); burst(from.x + from.w / 2 + p.x, from.y + from.h / 2 + p.y, 1, 26, 'warm'); }, ms * .5);
+
+    $('caption').innerHTML = `<b>${THROWS[key].name}</b> · ${ms} ms${speed() > 1 ? ' (slowed)' : ''}`;
+    run.onfinish = () => {
+      fly.remove();
+      if (!reduced.matches) {
+        stack.animate(LANDINGS[a.land], { duration: 380 * speed(), easing: 'ease-out' });
+        $('count').animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 260 * speed(), easing: 'ease-out' });
+        phone.animate([{ transform: 'none' }, { transform: 'translateX(1.5px)' }, { transform: 'translateX(-1.5px)' }, { transform: 'none' }], { duration: 90 });
+        if (a.sparks) burst(to.x + to.w / 2, to.y + to.h / 2, 10, 38);
+      }
+    };
+  }
+
+  function burst(x, y, n, dist, tone) {
+    for (let k = 0; k < n; k++) {
+      const s = document.createElement('div');
+      s.className = `spark${tone ? ' ' + tone : ''}`;
+      Object.assign(s.style, { left: `${x}px`, top: `${y}px` });
+      sky.appendChild(s);
+      const ang = (k / n) * Math.PI * 2 + Math.random() * .5, d = dist * (.7 + Math.random() * .5), sc = .6 + Math.random() * .8;
+      s.animate([{ transform: 'translate(0,0) scale(0) rotate(0)', opacity: 1 },
+        { transform: `translate(${Math.cos(ang) * d}px, ${Math.sin(ang) * d}px) scale(${sc}) rotate(90deg)`, opacity: 1, offset: .6 },
+        { transform: `translate(${Math.cos(ang) * d * 1.15}px, ${Math.sin(ang) * d * 1.15}px) scale(0) rotate(140deg)`, opacity: 0 }],
+        { duration: 520 * speed(), easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => s.remove();
+    }
+  }
+
+  grid.addEventListener('click', (e) => {
+    const el = e.target.closest('.tile'); if (!el) return;
+    const i = +el.dataset.i, k = basket.indexOf(i);
+    if (k >= 0) { // tapping a picked photo takes it out, no throw
+      basket.splice(k, 1); render();
+      stack.animate([{ transform: 'none' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'none' }], { duration: 200 });
+      $('caption').textContent = 'Taken out of the basket.';
+      return;
+    }
+    add(i);
+  });
+
+  render();
+  // one throw on load, so the page shows what it does
+  setTimeout(() => { if (!document.hidden && basket.length === 2) add(4, 'toss'); }, 700);
+})();
+</script>

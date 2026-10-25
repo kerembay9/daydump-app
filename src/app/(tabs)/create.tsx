@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import Animated from 'react-native-reanimated';
 import { useApp, useProgress } from '../../state/AppState';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
@@ -26,6 +27,7 @@ import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { FinishSection, toPhoto, useFinishes } from '../../components/create/Finishes';
+import { useBasketThrow } from '../../components/create/BasketThrow';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
 
@@ -137,7 +139,7 @@ function Badge({ n, suggested }: { n: number; suggested?: boolean }) {
 
 /** One row of 3 grid photos. */
 const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, onToggle, onOpen }: {
-  item: IndexedPhoto[]; order: Map<string, number>; basket: DumpPhoto[]; w: number; h: number; now: number; onToggle: (p: IndexedPhoto) => void; onOpen: (p: IndexedPhoto) => void;
+  item: IndexedPhoto[]; order: Map<string, number>; basket: DumpPhoto[]; w: number; h: number; now: number; onToggle: (p: IndexedPhoto, suggested?: boolean, e?: GestureResponderEvent) => void; onOpen: (p: IndexedPhoto) => void;
 }) {
   const { t } = useTheme();
   return (
@@ -146,7 +148,7 @@ const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, on
         const k = order.get(p.id);
         const date = dateRange(p.creationTime, p.creationTime, now);
         return (
-          <Tap key={p.id} onPress={() => onToggle(p)} onLongPress={() => onOpen(p)} delayLongPress={350} accessibilityRole="button" accessibilityState={{ selected: k != null }}
+          <Tap key={p.id} onPress={(e) => onToggle(p, false, e)} onLongPress={() => onOpen(p)} delayLongPress={350} accessibilityRole="button" accessibilityState={{ selected: k != null }}
             accessibilityHint="Hold to enlarge" accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in the basket` : ''}`}
             style={[{ width: w, height: h, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
             <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
@@ -173,13 +175,13 @@ const badge = (id: string, order: Map<string, number>, basket: DumpPhoto[]) => {
 
 /** "Similar to your N selected": a strip of photos to add (the grid's look, smaller). */
 const SimilarStrip = React.memo(function SimilarStrip({ photos, onAdd, onOpen }: {
-  photos: IndexedPhoto[]; onAdd: (p: IndexedPhoto, suggested: boolean) => void; onOpen: (photos: IndexedPhoto[], p: IndexedPhoto) => void;
+  photos: IndexedPhoto[]; onAdd: (p: IndexedPhoto, suggested: boolean, e?: GestureResponderEvent) => void; onOpen: (photos: IndexedPhoto[], p: IndexedPhoto) => void;
 }) {
   const { t } = useTheme();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 4 }}>
       {photos.map((p) => (
-        <Tap key={p.id} onPress={() => onAdd(p, true)} onLongPress={() => onOpen(photos, p)} delayLongPress={350}
+        <Tap key={p.id} onPress={(e) => onAdd(p, true, e)} onLongPress={() => onOpen(photos, p)} delayLongPress={350}
           accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
           style={{ width: 62, height: 64, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: t.borderStrong }}>
           <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} />
@@ -356,8 +358,11 @@ export default function Create() {
   const canSuggest = basket.length > 0 && basket.length < shownTarget;
   const finishes = useFinishes({ lib: lib ?? null, basket, total: shownTarget, change, bumpTotal: setTarget, title: dumpTitle(query) });
   const suggestedN = basket.filter((p) => p.suggested).length;
-  const toggle = (p: DumpPhoto) => {
+  const { root: screenRoot, stack: basketStack, throwIn, layer: throwLayer, stackStyle, countStyle } = useBasketThrow();
+  /** `e` = the tap on a grid / Similar photo: adding it tosses it into the basket */
+  const toggle = (p: DumpPhoto, e?: GestureResponderEvent) => {
     const next = order.has(p.id) ? basket.filter((x) => x.id !== p.id) : [...basket, p];
+    if (next.length > basket.length) throwIn(p.uri, e, basket.length);
     change(next);
   };
   const move = (id: string, by: number) => {
@@ -398,7 +403,7 @@ export default function Create() {
   // the grid only re-renders when the basket or the results change, not per keystroke / keyboard toggle
   const toggleRef = useRef(toggle);
   useEffect(() => { toggleRef.current = toggle; });
-  const onToggle = useCallback((p: IndexedPhoto, suggested?: boolean) => toggleRef.current(toPhoto(p, suggested)), []);
+  const onToggle = useCallback((p: IndexedPhoto, suggested?: boolean, e?: GestureResponderEvent) => toggleRef.current(toPhoto(p, suggested), e), []);
   const view = useCallback((photos: DumpPhoto[], id: string) => {
     Haptics.selectionAsync().catch(() => {});
     setViewing({ photos, i: Math.max(0, photos.findIndex((p) => p.id === id)) });
@@ -468,7 +473,7 @@ export default function Create() {
   // the strip leans toward the search only when it has CLIP words (qvec)
   const vibe = qvec ? query.trim() : '';
   return (
-    <View style={{ flex: 1, paddingTop: insets.top + 8 }}>
+    <View ref={screenRoot} style={{ flex: 1, paddingTop: insets.top + 8 }}>
       <View style={{ paddingHorizontal: 16, zIndex: 10 }}>
         <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
       </View>
@@ -538,11 +543,13 @@ export default function Create() {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <FrameCard radius={16} onPress={() => { setSel(null); setReview(true); }} label={`${basket.length} selected. Review`}
               style={{ paddingVertical: 4, paddingRight: 12, paddingLeft: 6, flexDirection: 'row', alignItems: 'center', gap: 10, boxShadow: `${t.shadowCard}, 0 4px 6px -1px rgba(0,0,0,0.1)` }}>
-              <View>
-                <PhotoStack kind="basket" uris={basket.length ? basket.slice(0, 2).map((p) => p.uri) : ['', '']} />
-                <View style={{ position: 'absolute', top: -4, right: -4, paddingHorizontal: 6, borderRadius: 9, backgroundColor: t.ink, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
-                  <Text style={[ui(9, 700), { color: t.bgScreen }]}>{basket.length}/{shownTarget}</Text>
-                </View>
+              <View ref={basketStack}>
+                <Animated.View style={stackStyle}>
+                  <PhotoStack kind="basket" uris={basket.length ? basket.slice(0, 2).map((p) => p.uri) : ['', '']} />
+                  <Animated.View style={[{ position: 'absolute', top: -4, right: -4, paddingHorizontal: 6, borderRadius: 9, backgroundColor: t.ink, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }, countStyle]}>
+                    <Text style={[ui(9, 700), { color: t.bgScreen }]}>{basket.length}/{shownTarget}</Text>
+                  </Animated.View>
+                </Animated.View>
               </View>
               <View>
                 <Text style={[ui(11, 700), { color: t.ink }]}>Selected</Text>
@@ -564,6 +571,7 @@ export default function Create() {
         </View>
       )}
 
+      {throwLayer}
       <Sheet visible={review} onClose={() => setReview(false)}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[ui(13, 700), { color: t.ink }]}>Selected basket ({basket.length}/{shownTarget} photos)</Text>
