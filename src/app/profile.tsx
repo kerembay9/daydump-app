@@ -182,7 +182,6 @@ function ProfileBody() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.borderSubtle, marginTop: 10, paddingTop: 10 }}>
-          <Stat n={app.stories.length} label="Discover" onPress={() => router.navigate('/')} />
           <Stat n={app.library?.photos.length ?? 0} label="Total Photos" onPress={() => router.navigate('/create')} />
           <Stat n={dumps} label="Library" onPress={() => router.navigate('/library')} />
         </View>
