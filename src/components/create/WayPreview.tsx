@@ -82,7 +82,7 @@ export function WayPreview({ f, x, ways, peek, setPeek }: {
               if (!w.y.includes(p)) {
                 return (
                   <View key={p.id}>
-                    <Print uri={p.uri} w={cw} h={ch} r={8} />
+                    <Print uri={p.uri} w={cw} h={ch} r={8} date={p.created} />
                     <View style={{ position: 'absolute', left: 6, bottom: 6, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.6)' }}>
                       <Text style={[ui(10, 600), { color: '#fff' }]}>Yours</Text>
                     </View>
@@ -92,7 +92,7 @@ export function WayPreview({ f, x, ways, peek, setPeek }: {
               const sel = peek.ids.has(p.id);
               return (
                 <Tap key={p.id} onPress={() => toggle(p.id)} accessibilityRole="checkbox" accessibilityState={{ checked: sel }} accessibilityLabel="Pick this suggested photo">
-                  <Print uri={p.uri} w={cw} h={ch} r={8} />
+                  <Print uri={p.uri} w={cw} h={ch} r={8} date={p.created} />
                   <View style={{ position: 'absolute', left: 6, bottom: 6, width: 20, height: 20, borderRadius: 10, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
                     <Icons.sparkle size={11} color={t.bgScreen} />
                   </View>

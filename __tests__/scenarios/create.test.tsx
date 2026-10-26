@@ -91,6 +91,8 @@ test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for
   expect(await screen.findAllByLabelText('Use these suggestions')).toHaveLength(2);
 
   // preview: way 1 of 2, arrows switch, 2 yours tagged, 4 pick circles; Add 0 picked does nothing
+  const DATE = /^[A-Z][a-z]{2} \d{1,2}(, \d{4})?$/;
+  const gridDates = screen.getAllByText(DATE).length; // the Create grid already dates its photos
   await fireEvent.press(screen.getByLabelText('Preview way 1'));
   expect(await screen.findByText('Way 1 of 2')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Next way'));
@@ -98,6 +100,8 @@ test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for
   await fireEvent.press(screen.getByLabelText('Previous way'));
   expect(screen.getAllByText('Yours')).toHaveLength(2);
   expect(screen.getAllByLabelText('Pick this suggested photo')).toHaveLength(4);
+  // every photo carries its taken-on date ("Sep 12", ", 2024" when not this year)
+  expect(screen.getAllByText(DATE)).toHaveLength(gridDates + 6);
   expect(screen.getByText('Use this (6)')).toBeTruthy();
   await fireEvent.press(screen.getByText('Add 0 picked'));
   expect(screen.getByText('2/6')).toBeTruthy();
