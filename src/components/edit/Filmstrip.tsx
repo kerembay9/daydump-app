@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView as RNScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Canvas, ColorMatrix, Image as SkiaImage, SkImage } from '@shopify/react-native-skia';
@@ -16,6 +17,7 @@ import type { DumpPhoto } from '../../services/dumps';
 import { FilterState, lookFor, matrixFor } from '../../services/filters';
 
 const W = 46, H = 50, GAP = 6, SLOT = W + GAP;
+const buzz = () => { Haptics.selectionAsync().catch(() => {}); };
 
 type ThumbProps = { p: DumpPhoto; i: number; n: number; active: boolean; selected: boolean; image?: SkImage | null; matrix: number[] | null; onTap: (i: number) => void; onHold: (i: number) => void; onMove: (from: number, to: number) => void };
 
@@ -24,14 +26,13 @@ function Thumb({ p, i, n, active, selected, image, matrix, onTap, onHold, onMove
   const tx = useSharedValue(0);
   const lifted = useSharedValue(0);
   const pan = Gesture.Pan()
-    .activateAfterLongPress(300)
-    .runOnJS(true)
-    .onStart(() => { lifted.value = 1; Haptics.selectionAsync().catch(() => {}); })
+    .activateAfterLongPress(300) // the drag runs on the UI thread; JS only hears about the drop
+    .onStart(() => { lifted.value = 1; scheduleOnRN(buzz); })
     .onUpdate((e) => { tx.value = Math.max(-i * SLOT, Math.min((n - 1 - i) * SLOT, e.translationX)); })
     .onEnd((e) => {
       const to = Math.max(0, Math.min(n - 1, i + Math.round(e.translationX / SLOT)));
-      if (Math.abs(e.translationX) < 10) onHold(i);
-      else if (to !== i) onMove(i, to);
+      if (Math.abs(e.translationX) < 10) scheduleOnRN(onHold, i);
+      else if (to !== i) scheduleOnRN(onMove, i, to);
     })
     .onFinalize(() => { tx.value = 0; lifted.value = 0; });
   const tap = Gesture.Tap().runOnJS(true).onEnd((_e, ok) => { if (ok) onTap(i); });

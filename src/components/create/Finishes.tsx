@@ -235,7 +235,7 @@ export function FinishSection({ f }: { f: Finishes }) {
         <>
           <View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cardW + 8} decelerationRate="fast" pointerEvents={stale ? 'none' : 'auto'}
-              ref={scroller} onScroll={(e) => setPg({ round: sets.round, i: Math.round(e.nativeEvent.contentOffset.x / (cardW + 8)) })} scrollEventThrottle={32}
+              ref={scroller} onScroll={(e) => { const i = Math.round(e.nativeEvent.contentOffset.x / (cardW + 8)); setPg((p) => (p.round === sets.round && p.i === i ? p : { round: sets.round, i })); }} scrollEventThrottle={32}
               style={{ marginHorizontal: -16, opacity: stale ? 0.3 : f.busy ? 0.5 : 1 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingTop: 2, paddingBottom: 6 }}>
               {ways.map(({ y, i }, j) => {
                 const on = f.added(i), saved = f.saved.includes(i);

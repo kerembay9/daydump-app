@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Modal, NativeScrollEvent, NativeSyntheticEvent, Text, useWindowDimensions, View } from 'react-native';
 import { FlatList, Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ui } from '../../theme/type';
@@ -15,14 +16,14 @@ type Photo = { id: string; uri: string };
 /** Pinch zooms toward the fingers and springs back on release (Instagram-style: no pan, so it never fights the swipe). */
 function Zoomable({ uri, w, h, onZoom }: { uri: string; w: number; h: number; onZoom: (on: boolean) => void }) {
   const s = useSharedValue(1), tx = useSharedValue(0), ty = useSharedValue(0), fx = useSharedValue(0), fy = useSharedValue(0);
+  // on the UI thread: the zoom keeps up with the fingers even while JS is busy
   const pinch = Gesture.Pinch()
-    .runOnJS(true)
-    .onStart((e) => { fx.value = e.focalX - w / 2; fy.value = e.focalY - h / 2; onZoom(true); })
+    .onStart((e) => { fx.value = e.focalX - w / 2; fy.value = e.focalY - h / 2; scheduleOnRN(onZoom, true); })
     .onUpdate((e) => {
       s.value = Math.max(1, Math.min(4, e.scale));
       tx.value = fx.value * (1 - s.value); ty.value = fy.value * (1 - s.value); // the pinched point stays under the fingers
     })
-    .onFinalize(() => { s.value = withSpring(1); tx.value = withSpring(0); ty.value = withSpring(0); onZoom(false); });
+    .onFinalize(() => { s.value = withSpring(1); tx.value = withSpring(0); ty.value = withSpring(0); scheduleOnRN(onZoom, false); });
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: s.value }] }));
   return (
     <GestureDetector gesture={pinch}>
