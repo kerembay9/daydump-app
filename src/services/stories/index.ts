@@ -5,7 +5,7 @@ import { dot, isZero, scoreAll } from '../index/vectors';
 import { DEFAULT_TOPIC_OPTIONS, findTopics, TopicOptions } from './topics';
 import { capitalize, dateRange, disambiguate, topicTitle } from './titles';
 import { isCameraPhoto, isScreenshot } from '../galleryService';
-import type { Profile } from '../profile';
+import { profileNow, type Profile } from '../profile';
 import { findTrips, tripTitle } from './trips';
 import { boost, curate, EVENT_GROUPS, isSensitive, photoWorth, tagGroup, tagWorth, worthFits } from './curate';
 
@@ -18,7 +18,7 @@ export type Story = {
   subtitle: string;
   /** all member photos, time-ordered */
   photos: IndexedPhoto[];
-  /** the 4-8 slides (slideCount), near-duplicates removed, time-ordered */
+  /** the slides (slideCount: the Profile's range, default 4-10), near-duplicates removed, time-ordered */
   picks: IndexedPhoto[];
   concepts: string[];
   /** trips: "City, CC" */
@@ -32,11 +32,18 @@ export type Story = {
   debug: Record<string, string | number>;
 };
 
-/** Slides per dump, 4-8 but mostly 6: seeded by the story id, so a story keeps its count across rebuilds. */
-export function slideCount(id: string) {
+/**
+ * Slides per dump, min-max (Profile, default 4-10) on a gentle hump: the middle count is twice as likely as either end
+ * (4-10: 10% each end, 20% for 7). Seeded by the story id, so a story keeps its count across rebuilds.
+ */
+export function slideCount(id: string, min = 4, max = 10) {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return [4, 5, 5, 6, 6, 6, 6, 6, 7, 7, 8][Math.abs(h) % 11];
+  const n = max - min;
+  const w = Array.from({ length: n + 1 }, (_, i) => 2 - Math.abs((2 * i) / (n || 1) - 1));
+  let r = ((Math.abs(h) % 1000) / 1000) * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < n; i++) if ((r -= w[i]) < 0) return min + i;
+  return max;
 }
 const MIN_TODAY = 3;
 /** Trips and today scored like a topic: sqrt(photos) x days x this (topics also multiply by cosine x log(1/share), ~1-1.5). */
@@ -50,7 +57,7 @@ const DAY = 86_400_000;
  * With CLIP tags the order is curated (curate.ts): worth folded into the score, group caps per page, and with
  * hideSensitive no sensitive topic or photo anywhere. Without screenshots, no Screenshots-folder photo.
  */
-export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS, limit = Infinity, { hideSensitive, screenshots }: Pick<Profile, 'hideSensitive' | 'screenshots'> = { hideSensitive: true, screenshots: false }): Promise<{ stories: Story[]; available: number }> {
+export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAULT_TOPIC_OPTIONS, limit = Infinity, { hideSensitive, screenshots, slidesMin = 4, slidesMax = 10 }: Pick<Profile, 'hideSensitive' | 'screenshots'> & Partial<Pick<Profile, 'slidesMin' | 'slidesMax'>> = { hideSensitive: true, screenshots: false }): Promise<{ stories: Story[]; available: number }> {
   const row = new Map(lib.photos.map((p, i) => [p.id, i]));
   const seen = await getSeen();
   const now = Date.now();
@@ -128,7 +135,7 @@ export async function buildStories(lib: Library, topicOpts: TopicOptions = DEFAU
   const order = curated ? curate(ranked) : ranked;
   const picked = order.slice(0, limit).map((s) => {
     const id = s.kind === 'topic' ? Number(s.id.split(':')[1]) : null;
-    return withMeta({ ...s, picks: pick(s.photos, lib, row, id == null ? () => 0 : (p) => p.conceptScores[p.concepts.indexOf(id)] ?? 0, slideCount(s.id)) });
+    return withMeta({ ...s, picks: pick(s.photos, lib, row, id == null ? () => 0 : (p) => p.conceptScores[p.concepts.indexOf(id)] ?? 0, slideCount(s.id, slidesMin, slidesMax)) });
   });
   return { stories: picked, available: order.length };
 }
@@ -161,7 +168,7 @@ export async function searchStory(lib: Library, query: string, minScore = 0.2, k
     title: capitalize(query.trim()),
     subtitle: '',
     photos,
-    picks: pick(photos, lib, row, (p) => sc.get(p.id) ?? 0, slideCount(`search:${query}`)),
+    picks: pick(photos, lib, row, (p) => sc.get(p.id) ?? 0, slideCount(`search:${query}`, profileNow().slidesMin, profileNow().slidesMax)),
     concepts: [query],
     start, end,
     score: top[0].s,

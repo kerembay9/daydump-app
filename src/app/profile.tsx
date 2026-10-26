@@ -120,6 +120,12 @@ function ProfileBody() {
     setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
+  // Discover's photos per dump: min 4..max, max min..20
+  const setSlides = (k: 'slidesMin' | 'slidesMax', v: number) => {
+    setP((x) => ({ ...x, [k]: v }));
+    setProfile({ [k]: v }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
+  };
+
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
     title: 'Reindex your library?',
@@ -230,6 +236,12 @@ function ProfileBody() {
           sub={access && access !== 'all' ? accessLine : undefined} />
         <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
         <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
+        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
+            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
+            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
+          </View>} />
         <Row label="Index" sub={indexLine} last right={
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={app.pause} />}
@@ -394,6 +406,27 @@ function Toggle({ on }: { on: boolean }) {
   return (
     <View style={{ width: 36, height: 20, borderRadius: 10, padding: 2, backgroundColor: on ? t.ink : t.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)' }}>
       <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: t.bgScreen, transform: [{ translateX: on ? 16 : 0 }] }} />
+    </View>
+  );
+}
+
+/** − n + for a number in lo..hi; the label names it for screen readers ("Fewest photos, 4"). */
+function Stepper({ label: l, value, lo, hi, onChange }: { label: string; value: number; lo: number; hi: number; onChange: (v: number) => void }) {
+  const { t } = useTheme();
+  const step = (d: number, name: string) => {
+    const off = d < 0 ? value <= lo : value >= hi;
+    return (
+      <Tap onPress={off ? undefined : () => onChange(value + d)} accessibilityRole="button" accessibilityLabel={`${name} ${l.toLowerCase()}`} accessibilityState={{ disabled: off }} hitSlop={6}
+        style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+        <Text style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
+      </Tap>
+    );
+  };
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessible={false}>
+      {step(-1, 'Lower')}
+      <Text accessibilityLabel={`${l}, ${value}`} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
+      {step(1, 'Raise')}
     </View>
   );
 }

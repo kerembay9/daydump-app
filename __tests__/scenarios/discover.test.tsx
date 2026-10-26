@@ -14,7 +14,7 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
   expect(screen.queryByText('Other dumps')).toBeNull();
 
   // hero + 2 tiles, every one with its meta line
-  for (const [title, meta] of [[LONG, '7 photos · Sep 22–Oct 22, 2025'], ['A week in Seattle', '6 photos · Aug 4–9, 2025'], ['Cinnamon rolls', '8 photos · May–Jun 2025']]) {
+  for (const [title, meta] of [[LONG, '6 photos · Sep 22–Oct 22, 2025'], ['A week in Seattle', '9 photos · Aug 4–10, 2025'], ['Cinnamon rolls', '7 photos · May 1–Jun 12, 2025']]) {
     expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(meta).length).toBeGreaterThan(0);
     expect(meta).toMatch(META);
@@ -31,7 +31,7 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
   expect(screen.queryByText(/…$/)).toBeNull();
 
   // tapping a tile opens its preview; the hero stays
-  await fireEvent.press(screen.getByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`));
+  await fireEvent.press(screen.getByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`));
   expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
 }, 30000);
 
@@ -69,12 +69,14 @@ test('time-left and coverage wording', () => {
   expect([0.4, 3, 21, 120, 400, 800].map((d) => coverageLine(Date.now() - d * 864e5))).toEqual(['day', '3 days', '3 weeks', '4 months', '13 months', '2 years'].map((x) => `Dumps from your last ${x} so far`));
 });
 
-test('dumps open with 4 to 8 photos, mostly 6, and a story keeps its count', () => {
+test('dumps open with 4 to 10 photos, the middle most likely, 10 not rare, and a story keeps its count', () => {
   const { slideCount } = require('../../src/services/stories');
-  const n = Array.from({ length: 2000 }, (_, i) => slideCount(`topic:${i}`));
-  expect(Math.min(...n)).toBe(4);
-  expect(Math.max(...n)).toBe(8);
-  expect(n.filter((x) => x === 6).length / n.length).toBeGreaterThan(0.35);
+  const n = Array.from({ length: 5000 }, (_, i) => slideCount(`topic:${i}`));
+  const share = (k: number) => n.filter((x) => x === k).length / n.length;
+  expect([...new Set(n)].sort((a, b) => a - b)).toEqual([4, 5, 6, 7, 8, 9, 10]);
+  expect(share(10)).toBeGreaterThan(0.07);
+  expect(share(7)).toBeGreaterThan(share(10));
+  expect(slideCount('x', 5, 5)).toBe(5);
   expect(slideCount('trip:42')).toBe(slideCount('trip:42'));
 });
 
