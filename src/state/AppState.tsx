@@ -121,8 +121,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       };
       if (!sync) await show();
       await whenReady('vision'); // release builds download it after the install; Discover shows the download meanwhile
-      // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
-      if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
+      // No dumps up (first run, Reindex, back after leaving mid-index, relaunch after a kill): show the strip now, not
+      // after the photo listing and the first batch, or Discover says "No dumps yet" in between.
+      if (empty || !shown.current.length) setProgress((p) => p ?? { done: 0, total: empty ? known.current : 0, etaSec: null, since: 0 });
       // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
       // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free,
       // and wait while the user scrolls or taps: a 2 s stall mid-scroll is the jank people notice.
