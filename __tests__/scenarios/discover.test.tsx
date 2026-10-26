@@ -32,7 +32,7 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
 
   // tapping a tile opens its preview; the hero stays
   await fireEvent.press(screen.getByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`));
-  expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
+  expect(await screen.findByLabelText('Post')).toBeTruthy();
 }, 30000);
 
 test('indexing strip: fast-mode progress with Pause; paused shows Resume', async () => {

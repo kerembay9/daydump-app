@@ -23,7 +23,7 @@ export function PostSheet({ targets, slides, onPick, onClose, visible }: {
   const { t } = useTheme();
   return (
     <Sheet visible={visible} onClose={onClose}>
-      <Text style={[display(20, 1.15), { color: t.ink }]}>Post to</Text>
+      <Text style={[display(20, 1.15), { color: t.ink }]}>Share to</Text>
       {targets.map((k) => {
         const a = APPS[k];
         return (

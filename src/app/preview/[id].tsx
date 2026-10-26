@@ -211,10 +211,10 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
       </Screen>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: insets.bottom + 6, alignItems: 'center' }}>
-        <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post on Instagram or TikTok"
+        <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post"
           style={{ alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', opacity: busy ? 0.85 : 1 }}>
           {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
-          <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
+          <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post'}</Text>
         </Tap>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 8, paddingBottom: 2 }}>
           <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
