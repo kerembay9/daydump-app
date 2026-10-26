@@ -145,11 +145,6 @@ function ProfileBody() {
     setDevHint(left > 0 && left <= 2 ? `${left} more tap${left > 1 ? 's' : ''} for developer tools` : '');
   };
 
-  const { paused } = app;
-  const { progress } = useProgress();
-  const indexLine = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
-    : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
-    : app.library ? `${app.library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
   const accessLine = access === 'all' ? 'All photos' : access === 'limited' ? 'Selected photos only' : access === 'none' ? 'Not allowed' : '…';
   const ratio = ratioOf(p.ratio);
 
@@ -242,12 +237,7 @@ function ProfileBody() {
             <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
             <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
           </View>} />
-        <Row label="Index" sub={indexLine} last right={
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={app.pause} />}
-            {paused && !progress && <SmallBtn label="Resume" onPress={app.resume} />}
-            {!progress && <SmallBtn label="Reindex" onPress={reindex} />}
-          </View>} />
+        <IndexRow onReindex={reindex} />
       </Section>
 
       {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
@@ -357,6 +347,23 @@ function Section({ title, note, pad, children }: { title: string; note?: string;
 }
 
 /** `toggle` set: the row is one switch to accessibility (the Toggle drawn on the right is visual only). */
+/** The Index row, its own component: progress ticks every batch while indexing, and only this row redraws. */
+function IndexRow({ onReindex }: { onReindex: () => void }) {
+  const { paused, library, pause, resume } = useApp();
+  const { progress } = useProgress();
+  const line = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
+    : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
+    : library ? `${library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
+  return (
+    <Row label="Index" sub={line} last right={
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={pause} />}
+        {paused && !progress && <SmallBtn label="Resume" onPress={resume} />}
+        {!progress && <SmallBtn label="Reindex" onPress={onReindex} />}
+      </View>} />
+  );
+}
+
 function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; sub?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; toggle?: boolean }) {
   const { t } = useTheme();
   const body = (

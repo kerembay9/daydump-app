@@ -157,3 +157,10 @@ test('Include screenshots starts off and saves when switched on', async () => {
   expect(row().props.accessibilityState.checked).toBe(true);
   expect((await getProfile()).screenshots).toBe(true);
 }, 30000);
+
+test('the Index row shows the read library and offers Reindex', async () => {
+  await bootApp('/profile');
+  expect(await screen.findByText(`${world.photos.length.toLocaleString()} photos ready`, {}, { timeout: 10000 })).toBeTruthy();
+  await fireEvent.press(screen.getByText('Reindex'));
+  expect(await screen.findByText('Reindex your library?')).toBeTruthy();
+}, 30000);
