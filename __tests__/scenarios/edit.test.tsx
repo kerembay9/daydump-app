@@ -113,3 +113,19 @@ test('the title on top is editable and auto-saves; a cleared title keeps the old
   await fireEvent(input, 'endEditing');
   expect(screen.getByLabelText('Dump title').props.value).toBe('Beach day');
 }, 30000);
+
+test('slides: tapping the left third goes back, the rest forward, both wrapping', async () => {
+  const d = await createDraft({ source: 'create', photos: world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri })), layout: 'single' });
+  await bootApp(`/edit/${d.id}`);
+  expect(await screen.findByText('Tap sides · drag to crop')).toBeTruthy();
+  expect(screen.getByText('1/3')).toBeTruthy();
+
+  // every page taps relative to the active slide; jest's FlatList never scrolls, so the first page is always mounted
+  const tap = (x: number) => fireEvent.press(screen.getAllByLabelText(/^Slide \d of 3$/)[0], { nativeEvent: { locationX: x } });
+  await tap(5);
+  expect(await screen.findByText('3/3')).toBeTruthy();
+  await tap(9999);
+  expect(await screen.findByText('1/3')).toBeTruthy();
+  await tap(9999);
+  expect(await screen.findByText('2/3')).toBeTruthy();
+}, 30000);

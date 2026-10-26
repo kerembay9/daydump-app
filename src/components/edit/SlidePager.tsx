@@ -60,8 +60,9 @@ type Props = {
 };
 
 /**
- * Canvas card: the slides at their true ratio (tap = next slide), n/total, layouts. Dragging / pinching a photo picks
- * the part of it its cell shows, so the pager doesn't swipe: slides change by tap or the filmstrip.
+ * Canvas card: the slides at their true ratio (tap the left third = previous, the rest = next), n/total, layouts.
+ * Dragging / pinching a photo picks the part of it its cell shows, so the pager doesn't swipe: slides change by tap or
+ * the filmstrip.
  */
 export function SlidePager({ slides, ratio, fit, layout, filter, index, images, onIndex, onLayout, onCrop }: Props) {
   const { t } = useTheme();
@@ -83,7 +84,10 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
   }, [index, slides.length, pageW]);
 
   const chip = { position: 'absolute', top: 8, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.6)', flexDirection: 'row', alignItems: 'center', gap: 4 } as const;
+  const chevron = { position: 'absolute', top: ch / 2 - 11, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', opacity: 0.7 } as const;
   const left = (pageW - cw) / 2;
+  const n = slides.length;
+  const step = (by: number) => onIndex((index + by + n) % n);
 
   const pages = useMemo(() => slides.map((s) => ({
     ...s,
@@ -159,7 +163,11 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
           scrollEnabled={false}
           renderItem={({ item, index: i }) => (
             <View style={{ width: pageW, alignItems: 'center' }}>
-              <Pressable onPress={() => onIndex((index + 1) % slides.length)} accessibilityLabel="Next slide"
+              {/* like Stories: the left third goes back, the rest forward (both wrap); swipe is taken by the crop */}
+              <Pressable onPress={(e) => step(e.nativeEvent.locationX < cw / 3 ? -1 : 1)}
+                accessibilityRole="adjustable" accessibilityLabel={`Slide ${i + 1} of ${n}`}
+                accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+                onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'decrement' ? -1 : 1)}
                 style={{ width: cw, height: ch, borderRadius: 13, overflow: 'hidden' }}>
                 {i === index ? (
                   <GestureDetector gesture={gesture}>
@@ -174,13 +182,19 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
                 )}
                 {/* hairline slide edge: the cream matte otherwise melts into the light-theme card (preview only, not exported) */}
                 <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 13, borderWidth: 1, borderColor: t.borderStrong }} />
+                {n > 1 ? (
+                  <>
+                    <View pointerEvents="none" style={[chevron, { left: 6 }]}><Icons.back size={14} color="#fff" /></View>
+                    <View pointerEvents="none" style={[chevron, { right: 6 }]}><Icons.chevron size={14} color="#fff" /></View>
+                  </>
+                ) : null}
               </Pressable>
             </View>
           )}
         />
         <View pointerEvents="none" style={[chip, { left: left + 8 }]} onLayout={(e) => setBadgeW(e.nativeEvent.layout.width)}>
           <Icons.crop size={10} color="#fff" />
-          <Text style={[ui(9.5, 600), { color: '#fff' }]}>Drag or pinch a photo</Text>
+          <Text style={[ui(9.5, 600), { color: '#fff' }]}>{n > 1 ? 'Tap sides · drag to crop' : 'Drag or pinch a photo'}</Text>
         </View>
         {/* the counter drops to the bottom only when it would hit the badge (9:16) */}
         <View pointerEvents="none" style={[chip, { right: left + 8 }, badgeW + 56 > cw ? { top: undefined, bottom: 8 } : null]}>
