@@ -70,24 +70,25 @@ test('Crop: dragging / pinching a photo picks the part shown, saved with the dum
   await bootApp(`/edit/${d.id}`);
   expect(await screen.findByText('Drag or pinch a photo')).toBeTruthy();
   // the mocked photo is 4:5, so in a 9:16 cell it overflows sideways: dragging left shows more of its right side
-  await act(async () => fireGestureHandler(getByGestureTestId('crop-pan'), [
+  // the gestures run as worklets: the crop is handed to the screen on the next tick, so tick inside the act
+  await act(async () => { fireGestureHandler(getByGestureTestId('crop-pan'), [
     { state: State.BEGAN, x: 50, y: 50, translationX: 0 },
     { state: State.ACTIVE, x: 50, y: 50, translationX: -20 },
     { state: State.ACTIVE, x: 50, y: 50, translationX: -40 },
     { state: State.END, x: 50, y: 50, translationX: -40 },
-  ]));
+  ]); await jest.advanceTimersByTimeAsync(0); });
   await settle();
   const crop = (await get(d.id))!.photos[0].crop!;
   expect(crop.x).toBeGreaterThan(0.5);
   expect(crop.y).toBe(0.5);
 
   // pinch: zooms in from the dragged crop, which stays where it was
-  await act(async () => fireGestureHandler(getByGestureTestId('crop-pinch'), [
+  await act(async () => { fireGestureHandler(getByGestureTestId('crop-pinch'), [
     { state: State.BEGAN, focalX: 50, focalY: 50, scale: 1 },
     { state: State.ACTIVE, focalX: 50, focalY: 50, scale: 1.5 },
     { state: State.ACTIVE, focalX: 50, focalY: 50, scale: 2 },
     { state: State.END, focalX: 50, focalY: 50, scale: 2 },
-  ]));
+  ]); await jest.advanceTimersByTimeAsync(0); });
   await settle();
   const zoomed = (await get(d.id))!.photos[0].crop!;
   expect(zoomed.z).toBeCloseTo(2);

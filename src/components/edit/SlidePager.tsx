@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, PixelRatio, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Canvas, SkImage } from '@shopify/react-native-skia';
+import { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ui } from '../../theme/type';
 import { FrameCard } from '../ui/FrameCard';
@@ -10,8 +12,8 @@ import { Pill } from '../ui/Pill';
 import { useRevealActive } from '../ui/useRevealActive';
 import type { DumpPhoto } from '../../services/dumps';
 import { FilterState, lookFor, matrixFor } from '../../services/filters';
-import { cellAt, Crop, Fit, LAYOUTS, LayoutKey, placePhoto, ratioOf, slideCells } from '../../services/layouts';
-import { previewImage, SlideDrawing, SlidePhoto } from '../../services/slides';
+import { Crop, Fit, LAYOUTS, LayoutKey, paintOrder, placePhoto, ratioOf, slideCells } from '../../services/layouts';
+import { LiveCrop, previewImage, SlideDrawing, SlidePhoto } from '../../services/slides';
 
 export type Slide = { layout: LayoutKey; photos: DumpPhoto[] };
 
@@ -69,14 +71,10 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
   const ch = (cw * r.h) / r.w;
   const [badgeW, setBadgeW] = useState(0);
   const layouts = useRevealActive(layout);
-  // the crop while a finger is down (only this card redraws); handed up once every finger lifts
-  const [live, setLive] = useState<{ id: string; crop: Crop } | null>(null);
-  // A plain synchronous slot: pan and pinch both update it every frame, so a shared value (async from JS) would have
-  // each overwrite the other's stale copy, and the compiler lint forbids refs in the gesture callbacks built in render.
-  const [drag] = useState(() => {
-    let d: Drag | null = null;
-    return { get: () => d, set: (v: Drag | null) => { d = v; } };
-  });
+  // The gestures run on the UI thread: the crop under the fingers goes to Skia straight from `live` (no React render
+  // per frame) and is handed up once every finger lifts.
+  const live = useSharedValue<LiveCrop>(null);
+  const drag = useSharedValue<Drag | null>(null);
   const list = useRef<FlatList<Slide & { drawn: SlidePhoto[] }>>(null);
 
   // Keep the pager on the active slide when it changes from outside (filmstrip tap, fewer slides after a layout change).
@@ -89,24 +87,38 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
 
   const pages = useMemo(() => slides.map((s) => ({
     ...s,
-    drawn: s.photos.map((p) => ({ image: images[p.uri], matrix: matrixFor(lookFor(filter, p.id)), crop: live?.id === p.id ? live.crop : p.crop })),
-  })), [slides, images, filter, live]);
+    drawn: s.photos.map((p) => ({ id: p.id, image: images[p.uri], matrix: matrixFor(lookFor(filter, p.id)), crop: p.crop })),
+  })), [slides, images, filter]);
+
+  // The handed-up crop is in the props now (same picture), so drop the live one unless a new drag has started.
+  useEffect(() => {
+    if (!drag.get()) live.set(null);
+  }, [slides, drag, live]);
+
+  // The active slide's cells in paint order (top-most last), as plain numbers the gesture worklets can hit-test.
+  const hits = useMemo(() => {
+    const s = slides[index];
+    if (!s) return [];
+    const { cells } = slideCells(s.layout, fit, cw, ch);
+    return paintOrder(s.layout, s.photos.length).map((i) => {
+      const c = cells[i], p = s.photos[i], img = images[p.uri];
+      return { id: p.id, x: c.x, y: c.y, cw: c.w, ch: c.h, w: c.w - 2 * c.border, h: c.h - 2 * c.border, iw: img?.width() ?? 0, ih: img?.height() ?? 0, crop: p.crop };
+    });
+  }, [slides, index, images, fit, cw, ch]);
 
   // Pan and pinch run together (two fingers move and zoom at once); the photo is picked where the first finger lands.
   const begin = (x: number, y: number) => {
+    'worklet';
     const d = drag.get();
     if (d) return drag.set({ ...d, down: d.down + 1 });
-    const s = slides[index];
-    if (!s) return;
-    const { cells } = slideCells(s.layout, fit, cw, ch);
-    const i = cellAt(cells, s.layout, x, y);
-    const img = i >= 0 ? images[s.photos[i].uri] : null;
-    if (!img) return;
-    const c = cells[i], w = c.w - 2 * c.border, h = c.h - 2 * c.border;
-    const start = placePhoto(w, h, img.width(), img.height(), s.photos[i].crop).crop;
-    drag.set({ id: s.photos[i].id, w, h, iw: img.width(), ih: img.height(), start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 });
+    let c = null;
+    for (const h of hits) if (x >= h.x && x <= h.x + h.cw && y >= h.y && y <= h.y + h.ch) c = h; // tilt ignored (a few degrees)
+    if (!c?.iw) return;
+    const start = placePhoto(c.w, c.h, c.iw, c.ih, c.crop).crop;
+    drag.set({ id: c.id, w: c.w, h: c.h, iw: c.iw, ih: c.ih, start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 });
   };
   const move = (m: Partial<{ tx: number; ty: number; zoom: number }>) => {
+    'worklet';
     const prev = drag.get();
     if (!prev) return;
     const d = { ...prev, ...m };
@@ -114,19 +126,19 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
     const { dw, dh } = placePhoto(d.w, d.h, d.iw, d.ih, { ...d.start, z });
     d.crop = placePhoto(d.w, d.h, d.iw, d.ih, { x: d.start.x - d.tx / dw, y: d.start.y - d.ty / dh, z }).crop;
     drag.set(d);
-    setLive({ id: d.id, crop: d.crop });
+    live.set({ id: d.id, crop: d.crop });
   };
   const end = () => {
+    'worklet';
     const d = drag.get();
     if (!d) return;
     if (d.down > 1) return drag.set({ ...d, down: d.down - 1 });
     drag.set(null);
-    if (d.crop !== d.start) onCrop(d.id, d.crop); // a tap (no move) leaves the photo as it was
-    setLive(null);
+    if (d.tx || d.ty || d.zoom !== 1) scheduleOnRN(onCrop, d.id, d.crop); // a tap (no move) leaves the photo as it was
   };
-  const pan = Gesture.Pan().runOnJS(true).withTestId('crop-pan')
+  const pan = Gesture.Pan().withTestId('crop-pan')
     .onBegin((e) => begin(e.x, e.y)).onUpdate((e) => move({ tx: e.translationX, ty: e.translationY })).onFinalize(end);
-  const pinch = Gesture.Pinch().runOnJS(true).withTestId('crop-pinch')
+  const pinch = Gesture.Pinch().withTestId('crop-pinch')
     .onBegin((e) => begin(e.focalX, e.focalY)).onUpdate((e) => move({ zoom: e.scale })).onFinalize(end);
   const gesture = Gesture.Simultaneous(pan, pinch);
 
@@ -152,7 +164,7 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
                 {i === index ? (
                   <GestureDetector gesture={gesture}>
                     <Canvas style={{ width: cw, height: ch }}>
-                      <SlideDrawing layout={item.layout} fit={fit} width={cw} height={ch} photos={item.drawn} />
+                      <SlideDrawing layout={item.layout} fit={fit} width={cw} height={ch} photos={item.drawn} live={live} />
                     </Canvas>
                   </GestureDetector>
                 ) : (

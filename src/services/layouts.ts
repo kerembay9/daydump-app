@@ -103,6 +103,7 @@ export const MAX_ZOOM = 4;
  * allow (so it never leaves a gap). dx / dy are from the cell's top-left; crop is the clamped crop actually shown.
  */
 export function placePhoto(w: number, h: number, iw: number, ih: number, c: Crop = CENTRED) {
+  'worklet'; // also runs in the Edit canvas's crop gestures, on the UI thread
   const z = Math.min(MAX_ZOOM, Math.max(1, c.z));
   const s = Math.max(w / iw, h / ih) * z;
   const dw = iw * s, dh = ih * s;

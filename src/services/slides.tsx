@@ -2,6 +2,7 @@
 import React from 'react';
 import { ColorMatrix, drawAsImage, Group, Image, ImageFormat, rect, Rect, RoundedRect, rrect, Shadow, Skia, SkImage, vec } from '@shopify/react-native-skia';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { SharedValue, useDerivedValue } from 'react-native-reanimated';
 import { Directory, File, Paths } from 'expo-file-system';
 import type { Dump } from './dumps';
 import { getProfile } from './profile';
@@ -13,9 +14,29 @@ import { Cell, chunk, Crop, exportSize, Fit, fitOf, LayoutKey, layoutOf, paintOr
 export const MATTE = '#EFE6DA';
 const EMPTY = 'rgba(74,52,40,0.15)';
 
-export type SlidePhoto = { image: SkImage | null | undefined; matrix: number[] | null; crop?: Crop };
+export type SlidePhoto = { id?: string; image: SkImage | null | undefined; matrix: number[] | null; crop?: Crop };
+/** The crop of the photo under the fingers, set on the UI thread while dragging / pinching on the Edit canvas. */
+export type LiveCrop = { id: string; crop: Crop } | null;
 
-function PhotoCell({ c, p, u }: { c: Cell; p: SlidePhoto; u: number }) {
+/** A photo that follows the live crop when it's the one being dragged: Skia redraws it with no React render per frame. */
+function LiveImage({ id, image, matrix, crop, x, y, w, h, live }: { id: string; image: SkImage; matrix: number[] | null; crop?: Crop; x: number; y: number; w: number; h: number; live: SharedValue<LiveCrop> }) {
+  const iw = image.width(), ih = image.height();
+  const at = useDerivedValue(() => {
+    const l = live.get();
+    return placePhoto(w, h, iw, ih, l?.id === id ? l.crop : crop);
+  });
+  const dx = useDerivedValue(() => x + at.get().dx);
+  const dy = useDerivedValue(() => y + at.get().dy);
+  const dw = useDerivedValue(() => at.get().dw);
+  const dh = useDerivedValue(() => at.get().dh);
+  return (
+    <Image image={image} x={dx} y={dy} width={dw} height={dh} fit="fill">
+      {matrix ? <ColorMatrix matrix={matrix} /> : null}
+    </Image>
+  );
+}
+
+function PhotoCell({ c, p, u, live }: { c: Cell; p: SlidePhoto; u: number; live?: SharedValue<LiveCrop> }) {
   const b = c.border;
   const inner = rect(c.x + b, c.y + b, c.w - 2 * b, c.h - 2 * b);
   const at = p.image ? placePhoto(inner.width, inner.height, p.image.width(), p.image.height(), p.crop) : null;
@@ -27,7 +48,9 @@ function PhotoCell({ c, p, u }: { c: Cell; p: SlidePhoto; u: number }) {
         </RoundedRect>
       ) : null}
       <Group clip={rrect(inner, Math.max(0, c.r - b), Math.max(0, c.r - b))}>
-        {p.image && at ? (
+        {p.image && live && p.id ? (
+          <LiveImage id={p.id} image={p.image} matrix={p.matrix} crop={p.crop} x={inner.x} y={inner.y} w={inner.width} h={inner.height} live={live} />
+        ) : p.image && at ? (
           <Image image={p.image} x={inner.x + at.dx} y={inner.y + at.dy} width={at.dw} height={at.dh} fit="fill">
             {p.matrix ? <ColorMatrix matrix={p.matrix} /> : null}
           </Image>
@@ -39,8 +62,8 @@ function PhotoCell({ c, p, u }: { c: Cell; p: SlidePhoto; u: number }) {
   );
 }
 
-/** One slide at width x height: matte / scrapbook ground, then the photos in their layout cells. */
-export function SlideDrawing({ layout, fit, width, height, photos }: { layout: LayoutKey; fit: Fit; width: number; height: number; photos: SlidePhoto[] }) {
+/** One slide at width x height: matte / scrapbook ground, then the photos in their layout cells (live: see LiveCrop). */
+export function SlideDrawing({ layout, fit, width, height, photos, live }: { layout: LayoutKey; fit: Fit; width: number; height: number; photos: SlidePhoto[]; live?: SharedValue<LiveCrop> }) {
   const u = width / UNIT;
   const { inner, cells } = slideCells(layout, fit, width, height);
   return (
@@ -52,7 +75,7 @@ export function SlideDrawing({ layout, fit, width, height, photos }: { layout: L
         </RoundedRect>
       ) : null}
       <Group clip={rrect(rect(inner.x, inner.y, inner.w, inner.h), inner.r, inner.r)}>
-        {paintOrder(layout, photos.length).map((i) => <PhotoCell key={i} c={cells[i]} p={photos[i]} u={u} />)}
+        {paintOrder(layout, photos.length).map((i) => <PhotoCell key={i} c={cells[i]} p={photos[i]} u={u} live={live} />)}
       </Group>
     </Group>
   );
