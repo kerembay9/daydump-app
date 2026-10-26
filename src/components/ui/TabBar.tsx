@@ -3,6 +3,8 @@ import { Text, View } from 'react-native';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
+import { parchment } from '../../theme/tokens';
+import { useProfile } from '../../services/profile';
 import { em, sans } from '../../theme/type';
 import { CreateRays, FancyFrame, IconProps, WorkspaceEdit } from './Icons';
 import { Tap } from './Tap';
@@ -16,7 +18,10 @@ const TABS: Record<string, { label: string; Icon: (p: IconProps) => React.ReactE
 
 /** Mock bottom bar: bg-card, top hairline, 3 equal tabs; the active one is full ink, bold, on a faint ink pill; the rest muted. Fills the nav-bar inset too. */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
-  const { t } = useTheme();
+  const theme = useTheme().t;
+  // Discover's parchment (Paper grain) reaches down to the bar while Discover is showing
+  const paper = useProfile().paper && !theme.dark && state.routes[state.index]?.name === 'index';
+  const t = paper ? { ...theme, ...parchment } : theme;
   const insets = useSafeAreaInsets();
   return (
     <View

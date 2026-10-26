@@ -70,3 +70,10 @@ export const useThemeNow = () => useContext(NowCtx);
 export const ThemeNow = ({ children }: { children: React.ReactNode }) => <ThemeCtx.Provider value={useContext(NowCtx)}>{children}</ThemeCtx.Provider>;
 
 export const useTheme = () => useContext(ThemeCtx);
+
+/** Gives its subtree the theme with some tokens swapped (Discover's parchment); patch should be a constant. */
+export function ThemePatch({ patch, children }: { patch?: Partial<Theme>; children: React.ReactNode }) {
+  const c = useContext(ThemeCtx);
+  const value = useMemo(() => (patch ? { ...c, t: { ...c.t, ...patch } } : c), [c, patch]);
+  return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
+}

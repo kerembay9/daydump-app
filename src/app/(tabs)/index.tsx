@@ -1,11 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Linking, RefreshControl, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { FlatList, Linking, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
 import { useProfile } from '../../services/profile';
-import { useTheme } from '../../theme/ThemeProvider';
+import { ThemePatch, useTheme } from '../../theme/ThemeProvider';
+import { parchment } from '../../theme/tokens';
 import { display, ui } from '../../theme/type';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
@@ -29,6 +31,47 @@ function Title({ text, style }: { text: string; style: TextStyle }) {
 function Meta({ s, size = 10 }: { s: Story; size?: number }) {
   const { t } = useTheme();
   return <Text style={[ui(size, 500), { color: t.inkMuted, marginTop: 2 }]}>{s.subtitle}</Text>;
+}
+
+/** Light mode's parchment: a warm tan wash, browner edges, and sepia (not near-black ink) for the noise. */
+const PARCHMENT = 'rgba(214,168,92,0.22)';
+const PARCHMENT_EDGE = 'rgba(150,98,36,0.18)';
+const SEPIA = '#5A3A18';
+
+/** Noise to the ink colour, its alpha = k * noise + o (clamped): a positive o with small k tints evenly, a negative o shows only the peaks. */
+const tint = ([r, g, b]: Float32Array | number[], k: number, o: number) => [0, 0, 0, 0, r, 0, 0, 0, 0, g, 0, 0, 0, 0, b, k, 0, 0, 0, o];
+
+/**
+ * Developer tools → Paper grain: a static layer over the screen colour, under the cards, in three passes of ink:
+ * cloudy mottling (big, soft), fibres (thin turbulence veins), and fine specks. height: only the top strip (same noise, so it lines up).
+ */
+function Paper({ height }: { height?: number }) {
+  const { t } = useTheme();
+  const ink = Skia.Color(t.dark ? t.ink : SEPIA);
+  const { width: w, height: h } = useWindowDimensions(); // window, not canvas, so the top strip's edges match the full layer
+  return (
+    <Canvas testID="paper" style={height ? { position: 'absolute', top: 0, left: 0, right: 0, height } : StyleSheet.absoluteFill} pointerEvents="none">
+      {!t.dark && <>
+        {/* parchment: a tan wash, a touch darker towards the edges */}
+        <Fill color={PARCHMENT} />
+        <Fill>
+          <RadialGradient c={vec(w / 2, h * 0.45)} r={Math.hypot(w, h) * 0.6} colors={['transparent', PARCHMENT_EDGE]} positions={[0.45, 1]} />
+        </Fill>
+      </>}
+      <Fill>
+        <FractalNoise freqX={0.006} freqY={0.009} octaves={4} seed={3} />
+        <ColorMatrix matrix={tint(ink, 0.4, -0.15)} />
+      </Fill>
+      <Fill>
+        <Turbulence freqX={0.03} freqY={0.07} octaves={2} seed={7} />
+        <ColorMatrix matrix={tint(ink, -1.6, 0.1)} />
+      </Fill>
+      <Fill>
+        <FractalNoise freqX={1.1} freqY={1.1} octaves={1} seed={11} />
+        <ColorMatrix matrix={tint(ink, 1.5, -0.96)} />
+      </Fill>
+    </Canvas>
+  );
 }
 
 /** Bands "more": where a tile's tape goes, by story (centre, a corner, or both corners). Render inside the card so it tilts with it. */
@@ -135,6 +178,7 @@ export default function Discover() {
   const [refreshing, setRefreshing] = useState(false);
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
   const more = useBands() === 'more';
+  const paper = useProfile().paper;
 
 
   const hero = stories[0];
@@ -187,7 +231,9 @@ export default function Discover() {
   );
 
   return (
+    <ThemePatch patch={paper && !t.dark ? parchment : undefined}>
     <View style={{ flex: 1 }}>
+      {paper && <Paper />}
       <FlatList
         data={blocks}
         keyExtractor={(b) => b[0].id}
@@ -209,6 +255,8 @@ export default function Discover() {
         }
       />
       <StatusScrim />
+      {paper && <Paper height={insets.top} />}
     </View>
+    </ThemePatch>
   );
 }

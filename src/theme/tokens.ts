@@ -42,6 +42,9 @@ export const cashmere: Theme = {
   draftPill: 'rgba(0,0,0,0.05)',
 };
 
+/** Cashmere's cards, borders and tab bar over Discover's parchment (developer tools → Paper grain): warm creams a step lighter than the tan. */
+export const parchment: Partial<Theme> = { bgCard: '#F5E9D2', borderSubtle: 'rgba(120,82,36,0.12)', borderStrong: 'rgba(120,82,36,0.16)' };
+
 export const espresso: Theme = {
   dark: true,
   bgScreen: '#241D14',
