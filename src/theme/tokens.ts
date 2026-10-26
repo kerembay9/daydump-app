@@ -72,6 +72,5 @@ export const fixed = {
   igBlue: '#3897F0',
   igRing: ['#F5B26B', '#D9468C'],
   tiktokBg: '#181411',
-  tabShadow: '0 4px 10px rgba(0,0,0,0.12)',
   tapeShadow: '0 2px 5px rgba(0,0,0,0.12)',
 };
