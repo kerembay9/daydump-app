@@ -20,7 +20,6 @@ import { display, label, ui } from '../../theme/type';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { PhotoStack } from '../../components/ui/PhotoStack';
-import { Print } from '../../components/ui/Print';
 import { Sheet } from '../../components/ui/Sheet';
 import { Tap } from '../../components/ui/Tap';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
@@ -28,6 +27,7 @@ import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
 import { FinishSection, toPhoto, useFinishes } from '../../components/create/Finishes';
 import { useBasketThrow } from '../../components/create/BasketThrow';
+import { PickRow } from '../../components/create/PickRow';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
 
@@ -593,22 +593,7 @@ export default function Create() {
                 </Tap>
               );
             })()}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 6, paddingHorizontal: 2 }}>
-              {basket.map((p, i) => (
-                <Tap key={p.id} onPress={() => setSel(sel === p.id ? null : p.id)} accessibilityRole="button" accessibilityState={{ selected: sel === p.id }} accessibilityLabel={`Photo ${i + 1}`}
-                  style={[{ borderRadius: 10 }, sel === p.id ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
-                  <Print uri={p.uri} w={60} h={66} r={10} border={1} borderColor="rgba(255,255,255,0.6)" />
-                  <Tap onPress={() => change(basket.filter((x) => x.id !== p.id))} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove photo ${i + 1}`}
-                    style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icons.close size={10} color="#fff" />
-                  </Tap>
-                  <View style={{ position: 'absolute', bottom: 3, left: 3, paddingHorizontal: 4, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.6)', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                    {p.suggested ? <Icons.sparkle size={8} color="#fff" /> : null}
-                    <Text style={[ui(8, 700), { color: '#fff' }]}>#{i + 1}</Text>
-                  </View>
-                </Tap>
-              ))}
-            </ScrollView>
+            <PickRow photos={basket} sel={sel} onSelect={setSel} onRemove={(id) => change(basket.filter((x) => x.id !== id))} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {[['Move earlier', -1], ['Move later', 1]].map(([text, by]) => {
                 const i = basket.findIndex((p) => p.id === sel);
