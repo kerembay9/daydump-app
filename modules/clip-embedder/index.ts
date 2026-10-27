@@ -90,7 +90,24 @@ type ClipEmbedderModule = {
   addListener(event: 'onModels', cb: (e: PackState & { pack: ModelPack }) => void): { remove(): void };
   /** No nav-bar scrim; light = dark nav buttons. */
   setNavigationBarStyle(light: boolean): void;
+  /** Tidy (Tidy.kt, Android 11+): every photo, unpruned, as parallel lists; taken in ms, size in bytes, fav = IS_FAVORITE. */
+  tidyList?(): Promise<{ ids: string[]; paths: string[]; taken: number[]; w: number[]; h: number[]; size: number[]; bucket: string[]; fav: boolean[] }>;
+  /** Pixel checks per MediaStore id, decoded at shortest side `side` (<= 512: the cached thumbnail); null = undecodable. */
+  tidyStats?(ids: string[], side: number, faces: boolean): Promise<(TidyStats | null)[]>;
+  /** SHA-1 of each file's first 64 KB; null = unreadable. */
+  tidyHash?(ids: string[]): Promise<(string | null)[]>;
+  /** Same-shot sets over photos in time order (vecs n x 512, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
+  tidySets?(vecs: Float32Array, times: number[], strict: boolean[]): Promise<number[]>;
+  /** Ids still in MediaStore, Trash included; expires = when Trash empties it (ms, 0 = not trashed). A missing id is gone for good. */
+  trashState?(ids: string[]): Promise<Record<string, { trashed: boolean; expires: number }>>;
+  /** Android's own Move to Trash (trashed) or Restore dialog for MediaStore ids; true = the user allowed it. Never deletes. */
+  trash?(ids: string[], trashed: boolean): Promise<boolean>;
 };
+
+/** b: mean brightness 0-255, sd: its spread, lap: Laplacian variance (fine detail; compare at one side only), hi / lo: share of blown-out / crushed pixels. */
+export type TidyStats = { b: number; sd: number; lap: number; hi: number; lo: number; finger: boolean; faces?: TidyFace[] };
+/** A face (fractions of the photo): l = its brightness, sharp = its Laplacian, cut = touches the edge, yaw = nose off the eyes' midpoint in eye widths (0 = facing). */
+export type TidyFace = { score: number; x: number; y: number; w: number; h: number; l: number; sharp: number; cut: boolean; yaw: number };
 
 export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok' | 'whatsapp';
 export type ModelPack = 'vision' | 'faces' | 'text';

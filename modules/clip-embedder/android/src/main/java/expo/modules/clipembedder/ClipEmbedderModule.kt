@@ -73,6 +73,8 @@ class ClipEmbedderModule : Module() {
   private val yunet by lazy { YuNet(ctx, null, 320) }
   // selfieCheck's own: detect is synchronized, and the finder overlaps the check with the next photos' thumbnails (faces)
   private val yunetCheck by lazy { YuNet(ctx, null, 320) }
+  private val yunetTidy by lazy { YuNet(ctx, null, 320) }
+  private var pendingTrash: expo.modules.kotlin.Promise? = null
   private val selfieGate by lazy { Gate(ctx) }
   private val sface by lazy { SFace(ctx, ModelPacks.dir(ctx, ModelPacks.Pack.FACES)?.resolve("sface.tflite")?.path) }
   private var packListener: com.google.android.play.core.assetpacks.AssetPackStateUpdateListener? = null
@@ -229,6 +231,33 @@ class ClipEmbedderModule : Module() {
       }
     }
 
+    // Tidy (Tidy.kt). Stats decode 4 at a time like faces(); faces adds YuNet (on its own instance: detect is synchronized).
+    AsyncFunction("tidyList") Coroutine { -> withContext(Dispatchers.IO) { tidyList(ctx) } }
+    AsyncFunction("tidyStats") Coroutine { ids: List<String>, side: Int, faces: Boolean ->
+      withContext(Dispatchers.Default) {
+        ids.chunked(4).flatMap { c -> c.map { id -> async(Dispatchers.IO) { runCatching { tidyStats(ctx, id, side, if (faces) yunetTidy else null) }.getOrNull() } }.awaitAll() }
+      }
+    }
+    AsyncFunction("tidyHash") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { ids.map { headHash(ctx, it) } } }
+    AsyncFunction("tidySets") { vecs: expo.modules.kotlin.typedarray.Float32Array, times: List<Double>, strict: List<Boolean> ->
+      val v = FloatArray(vecs.length)
+      vecs.toDirectBuffer().order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(v)
+      tidySets(v, times.toDoubleArray(), strict.toBooleanArray())
+    }
+    AsyncFunction("trashState") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { trashState(ctx, ids) } }
+    // Android's own "Move to Trash?" (or restore) dialog; resolves true if the user allowed it. Never a permanent delete.
+    AsyncFunction("trash") { ids: List<String>, trashed: Boolean, promise: expo.modules.kotlin.Promise ->
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw IllegalStateException("Trash needs Android 11")
+      val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
+      val req = android.provider.MediaStore.createTrashRequest(ctx.contentResolver, ids.map(::imageUri), trashed)
+      pendingTrash?.resolve(false)
+      pendingTrash = promise
+      activity.startIntentSenderForResult(req.intentSender, TRASH_REQUEST, null, 0, 0, 0)
+    }.runOnQueue(expo.modules.kotlin.functions.Queues.MAIN)
+    OnActivityResult { _, r ->
+      if (r.requestCode == TRASH_REQUEST) { pendingTrash?.resolve(r.resultCode == android.app.Activity.RESULT_OK); pendingTrash = null }
+    }
+
     // The app calls this on every touch: indexing waits until then (holdIndexing).
     Function("holdIndexing") { ms: Double -> holdUntil = SystemClock.uptimeMillis() + ms.toLong() }
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
@@ -253,6 +282,7 @@ class ClipEmbedderModule : Module() {
   }
 }
 
+private const val TRASH_REQUEST = 4917
 private val SHARE_ACTIONS = setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_VIEW, Intent.ACTION_EDIT)
 private val TARGETS = mapOf(
   "instagram" to listOf("com.instagram.android"),

@@ -3,8 +3,9 @@
 // Native boundaries only: the CLIP/share module, the photo library, SQLite (node:sqlite in memory), Skia, and the
 // file/image/clipboard natives a JS test can't reach. Screens, navigation, AppState and every service run for real.
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { byUri, embed, photoVec, textVec, topConcepts, world, NAMES, bgRow } from './world';
+import { DIM } from '../src/services/index/vectors';
 
 const MODEL = (require('../src/services/index/clipGolden.json') as { model: string }).model;
 
@@ -36,7 +37,76 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   wantModel: () => {}, holdIndexing: jest.fn(), warmSelfie: async () => {},
   faces: async () => [], selfieCheck: async () => ({ scans: [], vecs: '', reject: [], gateVecs: '', sharp: [] }),
   scheduleDailyRecap: jest.fn(async () => {}), cancelDailyRecap: jest.fn(async () => {}), setRecapCover: () => {},
+  // Tidy (Tidy.kt) over world.photos; Trash moves photos out of world.photos into world.tidy.binned and back
+  tidyList: async () => {
+    const ps = world.photos;
+    return { ids: ps.map((p) => p.id), paths: ps.map((p) => p.uri.replace('file://', '')), taken: ps.map((p) => p.created), w: ps.map((p) => p.w), h: ps.map((p) => p.h),
+      size: ps.map((p) => p.size ?? 2_000_000), bucket: ps.map(() => ''), fav: ps.map((p) => !!p.fav) };
+  },
+  tidyStats: async (ids: string[]) => ids.map((id) => (id in world.tidy.stats ? world.tidy.stats[id] : { b: 120, sd: 50, lap: 300, hi: 0.01, lo: 0.01, finger: false, faces: [] })),
+  tidyHash: async (ids: string[]) => ids.map((id) => (id in world.tidy.hash ? world.tidy.hash[id] : `h${id}`)),
+  tidySets: async (v: Float32Array, t: number[], strict: boolean[]) => tidySets(v, t, strict),
+  trashState: async (ids: string[]) => {
+    const out: Record<string, { trashed: boolean; expires: number }> = {};
+    for (const id of ids) {
+      if (world.tidy.trash[id]) out[id] = { ...world.tidy.trash[id] };
+      else if (world.photos.some((p) => p.id === id)) out[id] = { trashed: false, expires: 0 };
+    }
+    return out;
+  },
+  trash: jest.fn(async (ids: string[], trashed: boolean) => {
+    const w = world.tidy;
+    if (!w.allow) return false;
+    const set = new Set(ids);
+    if (trashed) {
+      w.binned.push(...world.photos.filter((p) => set.has(p.id)));
+      world.photos = world.photos.filter((p) => !set.has(p.id));
+      for (const p of w.binned) if (set.has(p.id)) w.trash[p.id] = { trashed: true, expires: Date.now() + 30 * 86400000 };
+    } else {
+      world.photos.push(...w.binned.filter((p) => set.has(p.id)));
+      w.binned = w.binned.filter((p) => !set.has(p.id));
+      for (const id of ids) delete w.trash[id];
+    }
+    return true;
+  }),
 };
+
+/** Tidy.kt's tidySets, same thresholds: links within 10 min / 30 photos at cosine >= 0.94 (0.98 strict), split at 10 min gaps, >= 0.92 to the set mean. */
+function tidySets(v: Float32Array, t: number[], strict: boolean[]): number[] {
+  const WINDOW = 10 * 60 * 1000, n = t.length;
+  const dot = (a: number, b: Float32Array, bo: number) => { let s = 0; for (let k = 0; k < DIM; k++) s += v[a * DIM + k] * b[bo + k]; return s; };
+  const ok = Array.from({ length: n }, (_, i) => dot(i, v, i * DIM) > 0.25);
+  const par = Array.from({ length: n }, (_, i) => i);
+  const find = (x: number) => { let r = x; while (par[r] !== r) { par[r] = par[par[r]]; r = par[r]; } return r; };
+  for (let i = 0; i < n; i++) {
+    if (!ok[i]) continue;
+    for (let j = i + 1; j < Math.min(n, i + 31); j++) {
+      if (t[j] - t[i] > WINDOW) break;
+      if (ok[j] && dot(i, v, j * DIM) >= (strict[i] || strict[j] ? 0.98 : 0.94)) par[find(j)] = find(i);
+    }
+  }
+  const groups = new Map<number, number[]>();
+  for (let i = 0; i < n; i++) if (ok[i]) { const r = find(i); groups.set(r, [...(groups.get(r) ?? []), i]); }
+  const out = new Array<number>(n).fill(-1);
+  let next = 0;
+  for (const m0 of groups.values()) {
+    if (m0.length < 2) continue;
+    const parts = [[m0[0]]];
+    for (let k = 1; k < m0.length; k++) if (t[m0[k]] - t[m0[k - 1]] > WINDOW) parts.push([m0[k]]); else parts[parts.length - 1].push(m0[k]);
+    for (const m of parts) {
+      if (m.length < 2) continue;
+      const c = new Float32Array(DIM);
+      for (const i of m) for (let k = 0; k < DIM; k++) c[k] += v[i * DIM + k];
+      const len = Math.hypot(...c);
+      for (let k = 0; k < DIM; k++) c[k] /= len;
+      const keep = m.filter((i) => dot(i, c, 0) >= 0.92);
+      if (keep.length < 2) continue;
+      for (const i of keep) out[i] = next;
+      next++;
+    }
+  }
+  return out;
+}
 
 // Search in other languages (QueryTranslateModule.kt): Turkish (anything with ç ğ ı ö ş ü) and a tiny dictionary.
 (globalThis as any).expo.modules.QueryTranslate = {
@@ -51,6 +121,8 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
 
 // The app only indexes in the foreground (photoIndex hands off to the background worker otherwise).
 Object.defineProperty(AppState, 'currentState', { get: () => 'active', configurable: true });
+// jest-expo/android leaves Platform.Version undefined; Tidy needs Android 11+ (API 30).
+Object.defineProperty(Platform, 'Version', { get: () => 34, configurable: true });
 // Toasts: ToastAndroid.show is a jest.fn tests can read (toast()).
 jest.mock('react-native/Libraries/Components/ToastAndroid/ToastAndroid', () => ({
   __esModule: true,

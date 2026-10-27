@@ -35,10 +35,12 @@ export function db() {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY, uri TEXT NOT NULL, created INTEGER NOT NULL, w INTEGER, h INTEGER,
       lat REAL, lon REAL, emb BLOB, concepts TEXT);
-      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`);
+      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+      -- Tidy (services/tidy): pixel checks of every photo, and vectors of the ones the index skips (bursts, panoramas)
+      CREATE TABLE IF NOT EXISTS tidy_photos (id TEXT PRIMARY KEY, stats TEXT, faces TEXT, sharp REAL, emb BLOB, concepts TEXT)`);
     // Another model's vectors live in a different space: drop them so run() re-embeds every photo.
     if ((await d.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'model'"))?.v !== MODEL) {
-      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
+      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; UPDATE tidy_photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
       await d.runAsync("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)", [MODEL]);
     }
     return d;

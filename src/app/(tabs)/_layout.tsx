@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router/js-tabs';
 import { TabBar } from '../../components/ui/TabBar';
 
-/** Discover · Create · Library with the mock's bottom bar. Back from Create/Library returns to Discover. */
+/** Discover · Create · Tidy · Library with the mock's bottom bar. Back from the other tabs returns to Discover. */
 export default function TabsLayout() {
   return (
     <Tabs
@@ -14,6 +14,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="create" />
+      <Tabs.Screen name="tidy" />
       <Tabs.Screen name="library" />
     </Tabs>
   );

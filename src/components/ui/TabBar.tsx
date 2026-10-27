@@ -6,17 +6,18 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { parchment } from '../../theme/tokens';
 import { useProfile } from '../../services/profile';
 import { em, sans } from '../../theme/type';
-import { CreateRays, FancyFrame, IconProps, WorkspaceEdit } from './Icons';
+import { CreateRays, FancyFrame, FrameCheck, IconProps, WorkspaceEdit } from './Icons';
 import { Tap } from './Tap';
 
 // Create/Library glyphs draw smaller in the 24 box than Discover's, so they get a bigger size to match.
 const TABS: Record<string, { label: string; Icon: (p: IconProps) => React.ReactElement; size: number }> = {
   index: { label: 'Discover', Icon: FancyFrame, size: 19 },
   create: { label: 'Create', Icon: CreateRays, size: 22 },
+  tidy: { label: 'Tidy', Icon: FrameCheck, size: 21 },
   library: { label: 'Library', Icon: WorkspaceEdit, size: 22 },
 };
 
-/** Mock bottom bar: bg-card, top hairline, 3 equal tabs; the active one is full ink, bold, on a faint ink pill; the rest muted. Fills the nav-bar inset too. */
+/** Mock bottom bar: bg-card, top hairline, 4 equal tabs; the active one is full ink, bold, on a faint ink pill; the rest muted. Fills the nav-bar inset too. */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const theme = useTheme().t;
   // Discover's parchment (Paper grain) reaches down to the bar while Discover is showing

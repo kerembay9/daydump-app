@@ -1,0 +1,145 @@
+import React from 'react';
+import { FlatList, StyleProp, Text, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { Check, NOT_CHECKED, TPhoto } from '../../services/tidy/rules';
+import { PER_DIALOG } from '../../services/tidy/scan';
+import { dateRange } from '../../services/stories/titles';
+import { useTheme } from '../../theme/ThemeProvider';
+import { ui } from '../../theme/type';
+import { Icons } from '../ui/Icons';
+import { Pill } from '../ui/Pill';
+import type { ConfirmSpec } from '../ui/Sheet';
+import { Tap } from '../ui/Tap';
+
+/** 2.4 MB, 37 MB, 1.2 GB (decimal units, as Android's Files app shows them). */
+export function formatBytes(b: number) {
+  const mb = b / 1e6;
+  if (mb >= 1000) return `${(mb / 1000).toFixed(1)} GB`;
+  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+}
+
+/** A grid cell's chip: its first failed Shot check in words ("Too dark"), none when everything passed. */
+export const missChip = (c: Check[]) => c.find((x) => !x.ok)?.text;
+
+const LOCK_ASK: Record<string, string> = {
+  Favorite: 'This one’s a favorite.',
+  'In a dump': 'This one’s in a dump.',
+  'Taken in the last 2 days': 'This one’s from the last 2 days.',
+  'Looks like a moment': 'This one looks like a moment.',
+};
+/** "Trash anyway?" for a locked photo (lockOf's reasons). */
+export const lockConfirm = (lock: string, onConfirm: () => void): ConfirmSpec => ({
+  title: `${LOCK_ASK[lock] ?? `This one is marked “${lock}”.`} Trash anyway?`,
+  body: 'You can restore it from Tidy while it’s in Trash.',
+  action: 'Trash anyway',
+  onConfirm,
+});
+
+/** Our sheet before Android's own dialog(s). */
+export const moveConfirm = (n: number, bytes: number, onConfirm: () => void): ConfirmSpec => ({
+  title: `Move ${n} photo${n === 1 ? '' : 's'} to Trash?`,
+  body: `${formatBytes(bytes)} · You can restore them from Tidy until they leave Trash (usually 30 days).`
+    + (n > PER_DIALOG ? ` Android will ask ${Math.ceil(n / PER_DIALOG)} times.` : ''),
+  action: 'Move to Trash',
+  onConfirm,
+});
+
+/** Full-width ink button. */
+export function Primary({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const { t } = useTheme();
+  return (
+    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }}
+      style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+      <Text style={[ui(13.5, 600), { color: t.bgScreen }]} numberOfLines={1}>{label}</Text>
+    </Tap>
+  );
+}
+
+/** Keep / Remove pair for a PhotoViewer footer. */
+export function KeepToggle({ removing, onChange }: { removing: boolean; onChange: (remove: boolean) => void }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+      <Pill label="Keep" on={!removing} onPress={() => onChange(false)} height={32} size={12} />
+      <Pill label="Remove" on={removing} onPress={() => onChange(true)} height={32} size={12} />
+    </View>
+  );
+}
+
+/** Shot check rows (check / cross icons: the app's Inter subset has no ✓ ✗) and what it can't see; white, for PhotoViewer's dark footer unless color is given. */
+export function ShotCheckList({ checks, color = '#fff' }: { checks: Check[]; color?: string }) {
+  return (
+    <View style={{ gap: 3 }}>
+      {checks.map((c) => (
+        <View key={c.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {c.ok ? <Icons.check size={13} color={color} /> : <Icons.close size={13} color={color} />}
+          <Text style={[ui(12, 500), { color }]}>{c.text}</Text>
+        </View>
+      ))}
+      <Text style={[ui(11), { color, opacity: 0.65, marginTop: 2 }]}>{NOT_CHECKED}</Text>
+    </View>
+  );
+}
+
+export type GridItem = { p: TPhoto; badge?: string | null; chip?: string };
+
+const GAP = 6;
+
+const Cell = React.memo(function Cell({ it, on, size, index, onPress, onLongPress }: {
+  it: GridItem; on: boolean; size: number; index: number; onPress: (id: string) => void; onLongPress: (index: number) => void;
+}) {
+  const { t } = useTheme();
+  const { p, badge, chip } = it;
+  return (
+    <Tap onPress={() => onPress(p.id)} onLongPress={() => onLongPress(index)} delayLongPress={350} accessibilityRole="button"
+      accessibilityState={{ selected: on }} accessibilityHint="Hold to enlarge"
+      accessibilityLabel={`Photo from ${dateRange(p.created, p.created)}${badge ? `, ${badge}` : ''}, ${on ? 'Trash' : 'Keep'}`}
+      style={{ width: size, height: size, borderRadius: 10 }}>
+      <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+        <Image source={{ uri: p.uri }} style={{ flex: 1, opacity: on ? 0.4 : 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
+        {badge ? (
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 5, paddingTop: 10, paddingBottom: 4, experimental_backgroundImage: 'linear-gradient(0deg, rgba(0,0,0,0.65), rgba(0,0,0,0))' }}>
+            <Text style={[ui(8.5, 600), { color: '#fff' }]} numberOfLines={1}>{badge}</Text>
+          </View>
+        ) : null}
+        {chip ? (
+          <View style={{ position: 'absolute', top: 5, left: 5, right: 5, alignItems: 'flex-start' }}>
+            <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.55)' }}>
+              <Text style={[ui(8.5, 600), { color: '#fff' }]} numberOfLines={1}>{chip}</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
+      {/* what happens to it, in words: a check mark read as "picked" */}
+      <View style={[{ position: 'absolute', right: 5, bottom: badge ? 22 : 5, height: 22, paddingHorizontal: 8, borderRadius: 11, flexDirection: 'row', alignItems: 'center', gap: 3 },
+        on ? { backgroundColor: t.ink } : { backgroundColor: 'rgba(255,255,255,0.92)' }]}>
+        {on ? <Icons.trash size={11} color={t.bgScreen} /> : null}
+        <Text style={[ui(10, 600), { color: on ? t.bgScreen : '#1a1a1a' }]}>{on ? 'Trash' : 'Keep'}</Text>
+      </View>
+    </Tap>
+  );
+});
+
+/** 3-column grid; selected = marked for Trash (dimmed, tagged Trash; the rest are tagged Keep). Header/footer scroll with it. */
+export function TidyGrid({ items, selected, onPress, onLongPress, header, footer, contentContainerStyle }: {
+  items: GridItem[]; selected: Set<string>; onPress: (id: string) => void; onLongPress: (index: number) => void;
+  header?: React.ReactElement; footer?: React.ReactElement; contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
+  const w = useWindowDimensions().width;
+  const size = Math.floor((w - 32 - 2 * GAP) / 3);
+  return (
+    <FlatList
+      data={items}
+      keyExtractor={(x) => x.p.id}
+      numColumns={3}
+      columnWrapperStyle={{ gap: GAP, marginBottom: GAP }}
+      extraData={selected}
+      ListHeaderComponent={header}
+      ListFooterComponent={footer}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={24}
+      windowSize={7}
+      contentContainerStyle={[{ paddingHorizontal: 16, paddingBottom: 16 }, contentContainerStyle]}
+      renderItem={({ item, index }) => <Cell it={item} on={selected.has(item.p.id)} size={size} index={index} onPress={onPress} onLongPress={onLongPress} />}
+    />
+  );
+}
