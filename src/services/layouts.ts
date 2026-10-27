@@ -102,8 +102,9 @@ export const MAX_ZOOM = 4;
  * Where a photo (iw x ih) draws in a w x h cell: covering it, zoomed z, centred on (x, y) as far as the photo's edges
  * allow (so it never leaves a gap). dx / dy are from the cell's top-left; crop is the clamped crop actually shown.
  */
-export function placePhoto(w: number, h: number, iw: number, ih: number, c: Crop = CENTRED) {
+export function placePhoto(w: number, h: number, iw: number, ih: number, crop?: Crop) {
   'worklet'; // also runs in the Edit canvas's crop gestures, on the UI thread
+  const c = crop ?? CENTRED; // not a default param: the worklet reads its closure in the body, after params, so CENTRED was undefined there
   const z = Math.min(MAX_ZOOM, Math.max(1, c.z));
   const s = Math.max(w / iw, h / ih) * z;
   const dw = iw * s, dh = ih * s;
