@@ -24,7 +24,6 @@ import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
 import { display, label, ui } from '../theme/type';
 import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../services/profile';
-import { list } from '../services/dumps';
 import { ratioOf } from '../services/layouts';
 import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
@@ -54,7 +53,6 @@ function ProfileBody() {
   const app = useApp();
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
-  const [dumps, setDumps] = useState(0);
   const [access, setAccess] = useState<'all' | 'limited' | 'none' | null>(null);
   const [recap, setRecap] = useState(true);
   const [legal, setLegal] = useState<LegalDocType | null>(null);
@@ -75,7 +73,6 @@ function ProfileBody() {
       const v = typed.current, cur = profileNow();
       if (v.name !== cur.name || v.handle !== cur.handle) setProfile(v).catch(() => {});
     };
-    list().then((d) => setDumps(d.length), () => {});
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
     getSubscription().then(setSub);
@@ -181,10 +178,6 @@ function ProfileBody() {
                 style={[ui(11.5, 500), { color: t.inkMuted, padding: 0, flex: 1 }]} />
             </View>
           </View>
-        </View>
-        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.borderSubtle, marginTop: 10, paddingTop: 10 }}>
-          <Stat n={app.library?.photos.length ?? 0} label="Total Photos" onPress={() => router.navigate('/create')} />
-          <Stat n={dumps} label="Library" onPress={() => router.navigate('/library')} />
         </View>
       </FrameCard>
 
@@ -322,16 +315,6 @@ function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
           </Tap>
         )}
     </FrameCard>
-  );
-}
-
-function Stat({ n, label: l, onPress }: { n: number; label: string; onPress: () => void }) {
-  const { t } = useTheme();
-  return (
-    <Tap onPress={onPress} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={[display(17), { color: t.ink }]}>{n.toLocaleString()}</Text>
-      <Text style={[ui(10), { color: t.inkMuted, marginTop: 2 }]}>{l}</Text>
-    </Tap>
   );
 }
 

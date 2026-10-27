@@ -74,10 +74,11 @@ test('Profile: no Connected accounts section', async () => {
   expect(screen.queryByText('Connect Instagram')).toBeNull();
 }, 30000);
 
-test('Profile: stats show Total Photos and Library, no Discover count', async () => {
+test('Profile: no stats row (Total Photos, Library, Discover)', async () => {
   await bootApp('/profile');
-  await screen.findByText('Total Photos', {}, { timeout: 10000 });
-  expect(screen.getByText('Library')).toBeTruthy();
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  expect(screen.queryByText('Total Photos')).toBeNull();
+  expect(screen.queryByText('Library')).toBeNull();
   expect(screen.queryByText('Discover')).toBeNull();
 }, 30000);
 
