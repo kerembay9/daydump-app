@@ -18,7 +18,7 @@ test('adding a photo tosses it into the basket, which lands with a light haptic;
 
   const [first] = screen.getAllByLabelText(/^Photo from /);
   await fireEvent.press(first, tile(16, 300));
-  expect(screen.getByText('1/6')).toBeTruthy(); // the basket counts it at once...
+  expect(screen.getByLabelText('Picks: 1. Review')).toBeTruthy(); // the basket counts it at once...
   expect(screen.getAllByTestId('basket-throw')).toHaveLength(1); // ...while the copy is in the air
   expect(haptic).not.toHaveBeenCalled();
 
@@ -29,5 +29,5 @@ test('adding a photo tosses it into the basket, which lands with a light haptic;
   // taking it back out: no throw
   await fireEvent.press(screen.getByLabelText(/number 1 in your picks$/), tile(16, 300));
   expect(screen.queryByTestId('basket-throw')).toBeNull();
-  expect(screen.getByText('0/6')).toBeTruthy();
+  expect(screen.getByLabelText('Picks: 0. Review')).toBeTruthy();
 }, 30000);

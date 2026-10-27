@@ -5,7 +5,7 @@ import { placeFor } from '../src/services/index/cityLookup';
 import type { IndexedPhoto } from '../src/services/index/photoIndex';
 import { suggestSwaps } from '../src/services/stories/swaps';
 import { parseQuery, placeKey, searchLibrary } from '../src/services/stories/search';
-import { adoptWay, finishSets, similarTo } from '../src/services/stories/suggest';
+import { fillSets, similarTo } from '../src/services/stories/suggest';
 import { findTopics } from '../src/services/stories/topics';
 import { findTrips, tripTitle } from '../src/services/stories/trips';
 import { dateRange, disambiguate, topicTitle } from '../src/services/stories/titles';
@@ -134,56 +134,37 @@ assert.equal(parseQuery('yesterday', isPl, new Date(2026, 9, 20, 9).getTime()).d
   assert.deepEqual(searchLibrary(L, parseQuery('may picnic', yes), [vec(0, 1), vec(1, 0)]), [3, 2, 0]); // each photo's best of the query + its translation
 }
 
-// Create suggestions: X on axis 0; cluster A leans to axis 1, cluster B to axis 2, every member its own extra axis
-// (no two are near-duplicates); one near-copy of X. finishSets -> one Y per cluster, disjoint, no near-copy.
+// Create's "N sets": X on axis 0; moment A (4 photos, an hour apart) and moment B (3, a day later) lean off it, every
+// photo its own extra axis (no near-duplicates); 3 lone photos days apart, closer to X than A or B; one near-copy of X.
+// fillSets -> the lone ones as "Different moments" first (best match), then A and B; disjoint, never X or its copy.
 {
   const xs = [vec(1, 0, 0, 0.1), vec(1, 0, 0, -0.1)];
   const at = (a: number, b: number) => vec(...Array.from({ length: b + 1 }, (_, j) => (j === 0 ? 1 : j === a ? 0.8 : j === b ? 0.6 : 0)));
-  const A = [0, 1, 2, 3, 4, 5].map((j) => at(1, 10 + j));
-  const B = [0, 1, 2, 3, 4, 5].map((j) => at(2, 20 + j));
-  const dupX = vec(1, 0, 0, 0.1, 0.02);
-  const all = [...xs, ...A, ...B, dupX];
-  const ph = all.map((_, i) => photo(base + i * H));
+  const when = [base, base + D, base + H, base + 2 * H, base + 3 * H, base + 4 * H, base + 2 * D, base + 2 * D + H, base + 2 * D + 2 * H,
+    base + 5 * D, base + 8 * D, base + 11 * D, base];
+  const all = [...xs, ...[0, 1, 2, 3].map((j) => at(1, 10 + j)), ...[0, 1, 2].map((j) => at(2, 20 + j)), ...[0, 1, 2].map((j) => vec(...Array.from({ length: 31 + j }, (_, k) => (k === 0 ? 1 : k === 3 || k === 30 + j ? 0.3 : 0)))), vec(1, 0, 0, 0.1, 0.02)];
+  const ph = all.map((_, i) => photo(when[i]));
   const L = { photos: ph, vecs: new Float32Array(all.length * 512), conceptNames: [], hasClip: true };
   all.forEach((x, i) => L.vecs.set(x, i * 512));
   const X = [ph[0].id, ph[1].id];
-  const inA = new Set(ph.slice(2, 8).map((p) => p.id)), inB = new Set(ph.slice(8, 14).map((p) => p.id));
-  const { ys: [y1, y2] } = finishSets(L, X, 3);
-  assert.equal(y1.length, 3);
-  assert.equal(y2.length, 3);
-  assert.equal(y1.filter((p) => y2.includes(p)).length, 0); // Y1 ∩ Y2 = ∅
-  const side = (y: typeof y1) => (y.every((p) => inA.has(p.id)) ? 'A' : y.every((p) => inB.has(p.id)) ? 'B' : 'mixed');
-  assert.deepEqual([side(y1), side(y2)].sort(), ['A', 'B']);
-  assert.ok(![...y1, ...y2].some((p) => p.id === ph[14].id || X.includes(p.id)));
-  // Regenerate: earlier picks excluded, still disjoint
-  const ex = new Set([...y1, ...y2].map((p) => p.id));
-  const { ys: [z1, z2] } = finishSets(L, X, 3, ex);
-  assert.ok([...z1, ...z2].every((p) => !ex.has(p.id)));
-  assert.equal(z1.filter((p) => z2.includes(p)).length, 0);
-  // bigger than the pool: still disjoint, never repeats
-  const { ys: [w1, w2] } = finishSets(L, X, 10);
-  assert.equal(new Set([...w1, ...w2]).size, w1.length + w2.length);
-  assert.deepEqual(finishSets(L, [], 3).ys, [[], []]);
-  assert.ok(!similarTo(L, X, 8).some((p) => p.id === ph[14].id || X.includes(p.id)));
+  const sets = fillSets(L, X);
+  const ids = sets.map((st) => st.photos.map((p) => ph.indexOf(p)).sort((m, n) => m - n));
+  assert.deepEqual(sets[0].name, 'Different moments');
+  assert.deepEqual(ids[0], [9, 10, 11]);
+  assert.deepEqual(ids.slice(1).sort((m, n) => m.length - n.length), [[6, 7, 8], [2, 3, 4, 5]]);
+  assert.equal(new Set(ids.flat()).size, ids.flat().length); // disjoint
+  assert.ok(!ids.flat().some((i) => i < 2 || i === 12));
+  assert.deepEqual(fillSets(L, []), []);
+  assert.ok(!similarTo(L, X, 8).some((p) => p.id === ph[12].id || X.includes(p.id)));
 }
-
-// "Use this": add Y1 after X, swap to Y2 (Y1 out), tap Added (Y2 out); a user pick that Y2 also holds stays
+// one-off shots (a coffee a day, 12 days): no moment has 2 photos, so 3 mixed sets of 5, 5, 2
 {
-  const P = (id: string) => ({ id });
-  const ids = (b: { id: string }[]) => b.map((p) => p.id).join(',');
-  const X = [P('x1'), P('x2')], Y1 = [P('a'), P('b')], Y2 = [P('c'), P('x2')];
-  const u1 = adoptWay(X, new Set(), Y1);
-  assert.equal(ids(u1.next), 'x1,x2,a,b');
-  assert.deepEqual([...u1.placed].sort(), ['a', 'b']);
-  const u2 = adoptWay(u1.next, u1.placed, Y2);
-  assert.equal(ids(u2.next), 'x1,x2,c');
-  assert.deepEqual([...u2.placed], ['c']);
-  const u3 = adoptWay(u2.next, u2.placed, Y2); // fully in -> "Added" tapped: out again, x2 is the user's
-  assert.equal(ids(u3.next), 'x1,x2');
-  assert.equal(u3.placed.size, 0);
-  // a Y photo the user took out by hand: Use this tops it back up without duplicates
-  const u4 = adoptWay([...X, P('a')], new Set(['a']), Y1);
-  assert.equal(ids(u4.next), 'x1,x2,a,b');
+  const all = [vec(1, 0, 0, 0.1), ...Array.from({ length: 12 }, (_, j) => vec(...Array.from({ length: 41 + j }, (_, k) => (k === 0 ? 1 : k === 40 + j ? 0.7 : 0))))];
+  const ph = all.map((_, i) => photo(base + i * D));
+  const L = { photos: ph, vecs: new Float32Array(all.length * 512), conceptNames: [], hasClip: true };
+  all.forEach((x, i) => L.vecs.set(x, i * 512));
+  const sets = fillSets(L, [ph[0].id]);
+  assert.deepEqual(sets.map((st) => [st.name, st.photos.length]), [['Different moments', 5], ['More moments', 5], ['More moments', 2]]);
 }
 
 // dumps (Library rows, search, Reuse)

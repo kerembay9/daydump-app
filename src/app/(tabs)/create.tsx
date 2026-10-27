@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, Linking, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import { useApp, useProgress } from '../../state/AppState';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
 import { expandQuery, Expanded, langName, useLangStates } from '../../services/index/queryLang';
-import { similarTo } from '../../services/stories/suggest';
+import { FillSet, fillSets, similarTo } from '../../services/stories/suggest';
 import { capitalize, dateRange } from '../../services/stories/titles';
 import { createDraft, currentCreateDraft, DumpPhoto, get, remove, setCurrentCreateDraft, update } from '../../services/dumps';
 import { photoRange } from '../../services/dumpLabels';
@@ -25,14 +25,16 @@ import { Tap } from '../../components/ui/Tap';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Icons } from '../../components/ui/Icons';
 import { StatusScrim } from '../../components/ui/Screen';
-import { FinishSection, toPhoto, useFinishes } from '../../components/create/Finishes';
+import { SetsSheet, SetsTile } from '../../components/create/SetsSheet';
 import { useBasketThrow } from '../../components/create/BasketThrow';
 import { PickRow } from '../../components/create/PickRow';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
 
 const RECENTS_KEY = '@daydump_recent_searches';
-const MIN = 2, MAX = 12;
+
+const toPhoto = (p: IndexedPhoto, suggested?: boolean): DumpPhoto =>
+  ({ id: p.id, uri: p.uri, created: p.creationTime, ...(suggested ? { suggested } : null) });
 const GAP = 6;
 /** The search in Title Case; no search -> undefined, and createDraft names it by the photos' date range. */
 const dumpTitle = (q: string) => (q.trim() ? q.trim().split(/\s+/).map(capitalize).join(' ') : undefined);
@@ -114,17 +116,6 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
   );
 }
 
-/** Round 20px stepper button (bg black/10). */
-function Step({ text, onPress, disabled }: { text: string; onPress: () => void; disabled?: boolean }) {
-  const { t } = useTheme();
-  return (
-    <Tap onPress={disabled ? undefined : onPress} accessibilityRole="button" accessibilityLabel={text === '+' ? 'More photos' : 'Fewer photos'} hitSlop={6}
-      style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.4 : 1 }}>
-      <Text style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{text}</Text>
-    </Tap>
-  );
-}
-
 /** 20px corner badge: "+" when not picked, order number (or ✧ for a suggested photo) when picked. */
 function Badge({ n, suggested }: { n: number; suggested?: boolean }) {
   const { t } = useTheme();
@@ -174,13 +165,15 @@ const badge = (id: string, order: Map<string, number>, basket: DumpPhoto[]) => {
   return k == null ? 0 : basket[k].suggested ? -(k + 1) : k + 1;
 };
 
-/** "Similar to your N selected": a strip of photos to add (the grid's look, smaller). */
-const SimilarStrip = React.memo(function SimilarStrip({ photos, onAdd, onOpen }: {
-  photos: IndexedPhoto[]; onAdd: (p: IndexedPhoto, suggested: boolean, e?: GestureResponderEvent) => void; onOpen: (photos: IndexedPhoto[], p: IndexedPhoto) => void;
+/** "Similar to your picks": the "N sets" tile, then a strip of photos to add (the grid's look, smaller). */
+const SimilarStrip = React.memo(function SimilarStrip({ photos, sets, onSets, onAdd, onOpen }: {
+  photos: IndexedPhoto[]; sets: FillSet[]; onSets: () => void;
+  onAdd: (p: IndexedPhoto, suggested: boolean, e?: GestureResponderEvent) => void; onOpen: (photos: IndexedPhoto[], p: IndexedPhoto) => void;
 }) {
   const { t } = useTheme();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 4 }}>
+      {sets.length ? <SetsTile sets={sets} onPress={onSets} /> : null}
       {photos.map((p) => (
         <Tap key={p.id} onPress={(e) => onAdd(p, true, e)} onLongPress={() => onOpen(photos, p)} delayLongPress={350}
           accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
@@ -204,8 +197,8 @@ function GalleryCount({ n }: { n: number }) {
 type PicksHandle = { open: () => void; close: () => void };
 
 /** "Your picks": its own component, so opening it and selecting photos re-render the sheet, not all of Create. */
-function PicksSheet({ ref, basket, total, onChange, onMove, onGo, onStartNew, onView }: {
-  ref: React.Ref<PicksHandle>; basket: DumpPhoto[]; total: number; onChange: (next: DumpPhoto[]) => void; onMove: (id: string, by: number) => void;
+function PicksSheet({ ref, basket, onChange, onMove, onGo, onStartNew, onView }: {
+  ref: React.Ref<PicksHandle>; basket: DumpPhoto[]; onChange: (next: DumpPhoto[]) => void; onMove: (id: string, by: number) => void;
   onGo: () => void; onStartNew: () => void; onView: (photos: DumpPhoto[], id: string) => void;
 }) {
   const { t } = useTheme();
@@ -216,7 +209,7 @@ function PicksSheet({ ref, basket, total, onChange, onMove, onGo, onStartNew, on
   return (
     <Sheet visible={review} onClose={() => setReview(false)}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length}/{total} photos)</Text>
+        <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length} photo{basket.length === 1 ? '' : 's'})</Text>
         <Tap onPress={() => setReview(false)} hitSlop={8} accessibilityRole="button">
           <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Hide</Text>
         </Tap>
@@ -284,8 +277,10 @@ export default function Create() {
   const textReady = models?.text.state === 'ready';
   const [recents, setRecents] = useState<string[]>([]);
   const [basket, setBasket] = useState<DumpPhoto[]>([]);
-  const [target, setTarget] = useState(6);
   const [similar, setSimilar] = useState<IndexedPhoto[]>([]);
+  const [sets, setSets] = useState<FillSet[]>([]);
+  /** the sets as the sheet opened with them (null = closed) */
+  const [setsOpen, setSetsOpen] = useState<FillSet[] | null>(null);
   const picks = useRef<PicksHandle>(null);
   /** the enlarged photo: a copy of the list it was opened from, so a re-search or a removal doesn't shift it */
   const [viewing, setViewing] = useState<{ photos: DumpPhoto[]; i: number } | null>(null);
@@ -394,14 +389,17 @@ export default function Create() {
     return () => { live = false; clearTimeout(h); };
   }, [query, lib, textReady, langStates]);
 
-  // ---- "Similar to your N selected" (300 ms after the basket settles) ----
+  // ---- "Similar to your picks" and its sets (300 ms after the basket settles) ----
   const basketKey = basket.map((p) => p.id).join(',');
   useEffect(() => {
     if (!lib || !basket.length) return;
     const h = setTimeout(() => {
       const t0 = Date.now();
-      setSimilar(similarTo(lib, basket.map((p) => p.id), 8, qvec));
-      console.log(`[create] similar to ${basket.length} in ${Date.now() - t0} ms`);
+      const ids = basket.map((p) => p.id);
+      setSimilar(similarTo(lib, ids, 8, qvec));
+      const s = fillSets(lib, ids);
+      setSets(s);
+      console.log(`[create] similar + ${s.length} sets (${s.map((x) => x.photos.length).join('/')}) to ${basket.length} in ${Date.now() - t0} ms`);
     }, 300);
     return () => clearTimeout(h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,9 +412,6 @@ export default function Create() {
   }, []);
 
   const order = useMemo(() => new Map(basket.map((p, i) => [p.id, i])), [basket]);
-  const shownTarget = Math.max(basket.length, target);
-  const canSuggest = basket.length > 0 && basket.length < shownTarget;
-  const finishes = useFinishes({ lib: lib ?? null, basket, total: shownTarget, change, bumpTotal: setTarget, title: dumpTitle(query) });
   const suggestedN = basket.filter((p) => p.suggested).length;
   const { root: screenRoot, stack: basketStack, throwIn, layer: throwLayer, stackStyle, countStyle } = useBasketThrow();
   /** `e` = the tap on a grid / Similar photo: adding it tosses it into the basket */
@@ -472,6 +467,9 @@ export default function Create() {
   useEffect(() => { rowsRef.current = rows; });
   const onOpen = useCallback((p: IndexedPhoto) => view((rowsRef.current ?? []).map((x) => toPhoto(x)), p.id), [view]);
   const onOpenSimilar = useCallback((ps: IndexedPhoto[], p: IndexedPhoto) => view(ps.map((x) => toPhoto(x, true)), p.id), [view]);
+  const setsRef = useRef(sets);
+  useEffect(() => { setsRef.current = sets; });
+  const onSets = useCallback(() => setSetsOpen(setsRef.current), []);
   const renderRow = useCallback(({ item }: { item: IndexedPhoto[] }) => (
     <GridRow item={item} order={order} basket={basket} w={cellW} h={cellH} now={now} onToggle={onToggle} onOpen={onOpen} />
   ), [order, basket, cellW, cellH, now, onToggle, onOpen]);
@@ -530,8 +528,6 @@ export default function Create() {
     </FrameCard>
   );
 
-  // the strip leans toward the search only when it has CLIP words (qvec)
-  const vibe = qvec ? query.trim() : '';
   // +10: the avatar, centred on the 40px search bar, lands where Discover's header puts it (top + 12)
   return (
     <View ref={screenRoot} style={{ flex: 1, paddingTop: insets.top + 10 }}>
@@ -560,44 +556,15 @@ export default function Create() {
 
       {keyboard ? null : (
         <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10, opacity: loaded ? 1 : 0 }}>
-          {/* the strip steps aside while "2 ways to finish" is open, so the grid keeps room */}
-          {basket.length && similar.length && !(finishes.open && (finishes.sets || finishes.busy)) ? (
+          {basket.length && (similar.length || sets.length) ? (
             <View style={{ marginBottom: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingHorizontal: 2 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 }}>
-                  <Icons.sparkle size={12} color={t.ink} />
-                  <Text style={[label(9.5, 0.11), { color: t.inkMuted }]} numberOfLines={1}>
-                    Similar to your {basket.length} selected photo{basket.length === 1 ? '' : 's'}
-                  </Text>
-                </View>
-                {vibe ? <Text style={[ui(9), { color: t.inkMuted }]} numberOfLines={1}>{`+ "${vibe}" vibe`}</Text> : null}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 20, paddingHorizontal: 2 }}>
+                <Icons.sparkle size={12} color={t.ink} />
+                <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>Similar to your picks</Text>
               </View>
-              <SimilarStrip photos={similar} onAdd={onToggle} onOpen={onOpenSimilar} />
+              <View style={{ marginTop: 4 }}><SimilarStrip photos={similar} sets={sets} onSets={onSets} onAdd={onToggle} onOpen={onOpenSimilar} /></View>
             </View>
           ) : null}
-
-          {/* the dock: "2 ways to finish" grows up out of it, above Total */}
-          <FinishSection f={finishes} />
-          <FrameCard radius={15} style={{ paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={[ui(10, 500), { color: t.inkMuted }]}>Total:</Text>
-              <Step text="−" onPress={() => setTarget(Math.max(MIN, basket.length, shownTarget - 1))} disabled={shownTarget <= Math.max(MIN, basket.length)} />
-              <Text style={[ui(11, 700), { color: t.ink, minWidth: 14, textAlign: 'center' }]}>{shownTarget}</Text>
-              <Step text="+" onPress={() => setTarget(Math.min(MAX, shownTarget + 1))} disabled={shownTarget >= MAX} />
-              {/* ✧ photos count as the App's, like the footer's "3 + 1✧" */}
-              <Text style={[ui(9.5), { color: t.inkMuted, marginLeft: 2 }]}>
-                (You <Text style={[ui(9.5, 700), { color: t.ink }]}>{basket.length - suggestedN}</Text> · App <Text style={[ui(9.5, 700), { color: t.ink }]}>+{shownTarget - basket.length + suggestedN}</Text>)
-              </Text>
-            </View>
-            {/* nothing to suggest without picks, or when they already fill the Total */}
-            <Tap onPress={canSuggest ? finishes.suggest : () => ToastAndroid.show(basket.length ? 'Raise Total to get suggestions' : 'Pick a photo first, then Suggest fills', ToastAndroid.SHORT)}
-              accessibilityRole="button" accessibilityState={{ disabled: !canSuggest }} accessibilityLabel={finishes.again ? 'Suggest again' : 'Suggest fills'}
-              accessibilityHint={canSuggest ? 'Shows 2 ways to finish this dump' : basket.length ? 'Raise Total first' : 'Pick a photo first'} hitSlop={6}
-              style={{ height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: canSuggest ? 1 : 0.4 }}>
-              <Icons.sparkle size={11} color={t.bgScreen} />
-              <Text style={[ui(10, 600), { color: t.bgScreen }]}>{finishes.again ? 'Suggest again' : 'Suggest fills'}</Text>
-            </Tap>
-          </FrameCard>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <FrameCard radius={16} onPress={() => picks.current?.open()} label={`Picks: ${basket.length}. Review`}
@@ -606,7 +573,7 @@ export default function Create() {
                 <Animated.View style={stackStyle}>
                   <PhotoStack kind="basket" uris={basket.length ? basket.slice(0, 2).map((p) => p.uri) : ['', '']} />
                   <Animated.View style={[{ position: 'absolute', top: -4, right: -4, paddingHorizontal: 6, borderRadius: 9, backgroundColor: t.ink, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }, countStyle]}>
-                    <Text style={[ui(9, 700), { color: t.bgScreen }]}>{basket.length}/{shownTarget}</Text>
+                    <Text style={[ui(9, 700), { color: t.bgScreen }]}>{basket.length}</Text>
                   </Animated.View>
                 </Animated.View>
               </View>
@@ -623,7 +590,7 @@ export default function Create() {
             </FrameCard>
             <Tap onPress={go} accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel={`Continue with ${basket.length} photo${basket.length === 1 ? '' : 's'}`}
               style={{ height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: basket.length ? 1 : 0.4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <Text style={[ui(11, 600), { color: t.bgScreen }]}>Continue ({basket.length})</Text>
+              <Text style={[ui(11, 600), { color: t.bgScreen }]}>Continue</Text>
               <Icons.arrow size={14} color={t.bgScreen} />
             </Tap>
           </View>
@@ -631,7 +598,9 @@ export default function Create() {
       )}
 
       {throwLayer}
-      <PicksSheet ref={picks} basket={basket} total={shownTarget} onChange={change} onMove={move} onGo={go} onStartNew={startNew} onView={view} />
+      <PicksSheet ref={picks} basket={basket} onChange={change} onMove={move} onGo={go} onStartNew={startNew} onView={view} />
+      <SetsSheet sets={setsOpen} picks={basket.length} inBasket={new Set(order.keys())} onClose={() => setSetsOpen(null)} onView={onOpenSimilar}
+        onAdd={(ps) => change([...basket, ...ps.filter((p) => !order.has(p.id)).map((p) => toPhoto(p, true))])} />
       <PhotoViewer photos={viewing?.photos ?? []} index={viewing?.i ?? null} onClose={() => setViewing(null)}
         footer={(p) => {
           const k = order.get(p.id);

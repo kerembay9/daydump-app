@@ -11,7 +11,7 @@ test('Picks sheet: select, Hide, then after a tab round trip (Create frozen mean
   for (const i of [0, 4]) await fireEvent.press(cells[i]);
 
   await fireEvent.press(screen.getByLabelText('Picks: 2. Review'));
-  expect(await screen.findByText('Your picks (2/6 photos)')).toBeTruthy();
+  expect(await screen.findByText('Your picks (2 photos)')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Photo 2'));
   expect(screen.getByLabelText('Photo 2').props.accessibilityState).toMatchObject({ selected: true });
   await fireEvent.press(screen.getByText('Hide'));
@@ -23,6 +23,6 @@ test('Picks sheet: select, Hide, then after a tab round trip (Create frozen mean
   await fireEvent.press(screen.getByLabelText('Create'));
   await settle();
   await fireEvent.press(screen.getByLabelText('Picks: 2. Review'));
-  expect(await screen.findByText('Your picks (2/6 photos)')).toBeTruthy();
+  expect(await screen.findByText('Your picks (2 photos)')).toBeTruthy();
   expect(screen.getByLabelText('Photo 2').props.accessibilityState).toMatchObject({ selected: false });
 }, 30000);
