@@ -10,7 +10,7 @@ name: 15 preview mocks + handle
 - tapOn: "Save"
 - assertVisible: "Unsave"
 - tapOn: "HD export for this dump"
-- assertVisible: "Quality: Standard"
+- assertVisible: "Standard"
 - tapOn: "IG Profile Grid"
 - assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
 - tapOn: "TikTok 9:16"

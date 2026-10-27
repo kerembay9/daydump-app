@@ -67,11 +67,11 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   expect(app.getPathname()).toBe(`/edit/${copy.id}`);
 }, 30000);
 
-test('Save only shows the done sheet; Start a new dump opens Create', async () => {
+test('Save to phone shows the done sheet; Start a new dump opens Create', async () => {
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText('Save only, to the PicDump album'));
+  await fireEvent.press(await screen.findByLabelText('Save to phone'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
   expect(screen.getByText('6 slides saved to the PicDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
@@ -88,8 +88,11 @@ test('Preview renders the slides in the background; Post reuses them, a Quality 
   // nothing tapped: the 6 slides render anyway, and indexing is held while they do
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(6));
   expect(ClipEmbedder!.holdIndexing).toHaveBeenCalled();
-  // Quality → the other setting: a fresh export
-  await fireEvent.press(screen.getByLabelText('HD export for this dump'));
+  // Quality → the other setting (the header chip): a fresh export
+  const chip = screen.getByLabelText('HD export for this dump');
+  const was = chip.props.accessibilityState.checked;
+  await fireEvent.press(chip);
+  expect(screen.getByLabelText('HD export for this dump')).toHaveTextContent(was ? 'Standard' : 'HD');
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(12));
   await settle();
   share().mockClear();
