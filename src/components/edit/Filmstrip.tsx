@@ -22,7 +22,7 @@ export const PICKED = 1.12, HELD = 1.35;
 const RISE = 8;
 // room so the held, grown photo isn't clipped by the scroll view; the strip's negative margin keeps the layout as it was
 const ROOM_X = Math.ceil((W * HELD - W) / 2), ROOM_TOP = Math.ceil((H * HELD - H) / 2 + RISE);
-const pop = { damping: 10, stiffness: 300 }; // overshoots a little, so the photo visibly pops up
+const pop = { dampingRatio: 0.55, duration: 400 }; // one overshoot so the photo visibly pops up, then it settles (Reanimated 4 defaults mass to 4, so damping/stiffness alone wobbled)
 const buzz = () => { Haptics.selectionAsync().catch(() => {}); };
 
 /** The drag in progress, shared by every thumb: the held photo's index and the slot it would land in. */
