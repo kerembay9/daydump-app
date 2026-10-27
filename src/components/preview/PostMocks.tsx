@@ -62,8 +62,11 @@ function SlideCanvas({ v, i, w, h }: { v: PostView; i: number; w: number; h: num
 /** Sideways pager over the slides; tap = next slide. Follows index changes from arrows / dots. */
 function Pager({ v, w, h }: { v: PostView; w: number; h: number }) {
   const list = useRef<FlatList<number>>(null);
+  // Only a finger's settle names the page: Android also fires momentumScrollEnd for our own animated scrolls, and on
+  // their cancel (the next fast tap) with a half-way offset, which bounced the index back and forth.
+  const swiped = useRef(false);
   const n = v.slides.length;
-  useEffect(() => { list.current?.scrollToOffset({ offset: v.index * w, animated: true }); }, [v.index, w]);
+  useEffect(() => { swiped.current = false; list.current?.scrollToOffset({ offset: v.index * w, animated: true }); }, [v.index, w]);
   return (
     <FlatList
       ref={list}
@@ -77,7 +80,8 @@ function Pager({ v, w, h }: { v: PostView; w: number; h: number }) {
       initialScrollIndex={Math.min(v.index, n - 1)}
       windowSize={3}
       initialNumToRender={2}
-      onMomentumScrollEnd={(e) => v.onIndex(Math.round(e.nativeEvent.contentOffset.x / w))}
+      onScrollEndDrag={() => { swiped.current = true; }}
+      onMomentumScrollEnd={(e) => { if (swiped.current) v.onIndex(Math.round(e.nativeEvent.contentOffset.x / w)); }}
       style={{ width: w, height: h }}
       renderItem={({ item }) => (
         <Pressable onPress={() => v.onIndex((v.index + 1) % n)} accessibilityLabel={v.index === n - 1 ? 'First slide' : 'Next slide'}>

@@ -159,7 +159,6 @@ export function SlidePager({ slides, ratio, fit, layout, filter, index, images, 
           getItemLayout={(_, i) => ({ length: pageW, offset: pageW * i, index: i })}
           windowSize={3}
           initialNumToRender={2}
-          onMomentumScrollEnd={(e) => onIndex(Math.round(e.nativeEvent.contentOffset.x / pageW))}
           scrollEnabled={false}
           renderItem={({ item, index: i }) => (
             <View style={{ width: pageW, alignItems: 'center' }}>
