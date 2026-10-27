@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView as RNScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { SharedValue, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -17,32 +17,71 @@ import type { DumpPhoto } from '../../services/dumps';
 import { FilterState, lookFor, matrixFor } from '../../services/filters';
 
 const W = 46, H = 50, GAP = 6, SLOT = W + GAP;
+/** The tapped photo's size, and the held one's while it's dragged (it also rises by RISE). */
+export const PICKED = 1.12, HELD = 1.35;
+const RISE = 8;
+// room so the held, grown photo isn't clipped by the scroll view; the strip's negative margin keeps the layout as it was
+const ROOM_X = Math.ceil((W * HELD - W) / 2), ROOM_TOP = Math.ceil((H * HELD - H) / 2 + RISE);
+const pop = { damping: 10, stiffness: 300 }; // overshoots a little, so the photo visibly pops up
 const buzz = () => { Haptics.selectionAsync().catch(() => {}); };
 
-type ThumbProps = { p: DumpPhoto; i: number; n: number; active: boolean; selected: boolean; image?: SkImage | null; matrix: number[] | null; onTap: (i: number) => void; onHold: (i: number) => void; onMove: (from: number, to: number) => void };
+/** The drag in progress, shared by every thumb: the held photo's index and the slot it would land in. */
+type Drag = { on: boolean; from: number; to: number };
+type ThumbProps = { p: DumpPhoto; i: number; n: number; drag: SharedValue<Drag>; active: boolean; selected: boolean; image?: SkImage | null; matrix: number[] | null; onTap: (i: number) => void; onHold: (i: number) => void; onMove: (from: number, to: number) => void };
 
-/** Tap = select; hold = photo menu; hold and drag = move it. */
-function Thumb({ p, i, n, active, selected, image, matrix, onTap, onHold, onMove }: ThumbProps) {
-  const tx = useSharedValue(0);
-  const lifted = useSharedValue(0);
+/** Where photo k sits while `from` is held over slot `to`: the ones in between step aside into the freed slot. */
+export const slotOf = (k: number, { from, to }: Drag) => {
+  'worklet';
+  if (k === from) return to;
+  if (from < k && k <= to) return k - 1;
+  if (to <= k && k < from) return k + 1;
+  return k;
+};
+
+/**
+ * Tap = select; hold = photo menu; hold and drag = move it. Thumbs sit at absolute x = slot · SLOT, so while one is
+ * dragged the others glide to where they'll end up, and after the drop the reorder lands on what's already drawn.
+ */
+function Thumb({ p, i, n, drag, active, selected, image, matrix, onTap, onHold, onMove }: ThumbProps) {
+  const x = useSharedValue(i * SLOT), tx = useSharedValue(0);
+  const lifted = useSharedValue(0), picked = useSharedValue(selected ? 1 : 0);
+  useEffect(() => { picked.set(withSpring(selected ? 1 : 0, pop)); }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { x.set(withTiming(i * SLOT, { duration: 200 })); }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
+  // someone else is held: glide to the slot that leaves room for it
+  useAnimatedReaction(() => drag.get(), (d) => {
+    if (d.on && d.from !== i) x.set(withTiming(slotOf(i, d) * SLOT, { duration: 160 }));
+  });
   const pan = Gesture.Pan()
+    .withTestId(`strip-hold-${p.id}`)
     .activateAfterLongPress(300) // the drag runs on the UI thread; JS only hears about the drop
-    .onStart(() => { lifted.value = 1; scheduleOnRN(buzz); })
-    .onUpdate((e) => { tx.value = Math.max(-i * SLOT, Math.min((n - 1 - i) * SLOT, e.translationX)); })
-    .onEnd((e) => {
-      const to = Math.max(0, Math.min(n - 1, i + Math.round(e.translationX / SLOT)));
-      if (Math.abs(e.translationX) < 10) scheduleOnRN(onHold, i);
-      else if (to !== i) scheduleOnRN(onMove, i, to);
+    .onStart(() => { lifted.set(withSpring(1, pop)); drag.set({ on: true, from: i, to: i }); scheduleOnRN(buzz); })
+    .onUpdate((e) => {
+      tx.set(Math.max(-i * SLOT, Math.min((n - 1 - i) * SLOT, e.translationX)));
+      const to = i + Math.round(tx.get() / SLOT);
+      if (to !== drag.get().to) { drag.set({ on: true, from: i, to }); scheduleOnRN(buzz); }
     })
-    .onFinalize(() => { tx.value = 0; lifted.value = 0; });
-  const tap = Gesture.Tap().runOnJS(true).onEnd((_e, ok) => { if (ok) onTap(i); });
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { scale: lifted.value ? 1.1 : 1 }], zIndex: lifted.value ? 10 : 0 }));
+    .onEnd((e, ok) => {
+      const to = ok ? drag.get().to : i;
+      if (ok && Math.abs(e.translationX) < 10) scheduleOnRN(onHold, i);
+      else if (to !== i) scheduleOnRN(onMove, i, to);
+      if (to === i) drag.set({ on: true, from: i, to: i }); // no move: the others go back
+      // drop into the slot; the others stay where they are, which is where the reorder puts them
+      x.set(i * SLOT + tx.get());
+      tx.set(0);
+      x.set(withTiming(to * SLOT, { duration: 160 }));
+    })
+    .onFinalize(() => { drag.set({ on: false, from: -1, to: -1 }); lifted.set(withTiming(0, { duration: 160 })); });
+  const tap = Gesture.Tap().withTestId(`strip-tap-${p.id}`).runOnJS(true).onEnd((_e, ok) => { if (ok) onTap(i); });
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() + tx.get() }, { translateY: -RISE * lifted.get() }, { scale: Math.max(1 + (PICKED - 1) * picked.get(), 1 + (HELD - 1) * lifted.get()) }],
+    zIndex: lifted.get() > 0.01 ? 10 : picked.get() > 0.01 ? 1 : 0,
+  }));
   const { t } = useTheme();
   const cover = i === 0;
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
       <Animated.View accessible accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}${cover ? ', cover' : ''}. Hold for options or to move.`}
-        style={[{ width: W, height: H, borderRadius: 10, marginTop: 3 },
+        style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H, borderRadius: 10, marginTop: 3 },
           selected ? { boxShadow: `0 0 0 2.5px ${t.ink}`, marginTop: 1 } : active ? { boxShadow: `0 0 0 1.5px ${t.inkMuted}`, marginTop: 2 } : { opacity: 0.82 }, style]}>
         <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
           {/* filtered thumbs draw the canvas's own decoded image; plain ones (and until it decodes) use expo-image */}
@@ -124,6 +163,7 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
   const close = () => setOpen(null);
   const n = photos.length;
   const i = open && open.kind !== 'add' ? open.i : -1;
+  const drag = useSharedValue<Drag>({ on: false, from: -1, to: -1 });
 
   return (
     <View>
@@ -131,11 +171,14 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
         <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>Dump order (tap 2× for cover)</Text>
         <Text style={[ui(10, 400), { color: t.inkMuted }]}>Hold to move</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: GAP, paddingBottom: 6, paddingHorizontal: 2 }}>
-        {photos.map((p, k) => (
-          <Thumb key={p.id} p={p} i={k} n={n} active={active.has(p.id)} selected={selected === p.id && active.has(p.id)}
-            image={images[p.uri]} matrix={matrixFor(lookFor(filter, p.id))} onTap={onTap} onMove={onMove} onHold={(j) => setOpen({ kind: 'menu', i: j })} />
-        ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -ROOM_TOP, marginHorizontal: -ROOM_X }}
+        contentContainerStyle={{ gap: GAP, paddingTop: ROOM_TOP, paddingBottom: 6, paddingHorizontal: 2 + ROOM_X }}>
+        <View style={{ width: n * SLOT - GAP, height: H + 3 }}>
+          {photos.map((p, k) => (
+            <Thumb key={p.id} p={p} i={k} n={n} drag={drag} active={active.has(p.id)} selected={selected === p.id && active.has(p.id)}
+              image={images[p.uri]} matrix={matrixFor(lookFor(filter, p.id))} onTap={onTap} onMove={onMove} onHold={(j) => setOpen({ kind: 'menu', i: j })} />
+          ))}
+        </View>
         <Tap onPress={() => setOpen({ kind: 'add' })} accessibilityRole="button" accessibilityLabel="Add photos"
           style={{ width: W, height: H, marginTop: 3, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={[ui(20, 400), { color: t.inkMuted, marginTop: -2 }]}>+</Text>
