@@ -183,7 +183,19 @@ function ProfileBody() {
 
       <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
 
-      <Section title="Social post & size defaults" note="New dumps start with the size and quality set here.">
+      <Section title="Dump picks">
+        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
+            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
+            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
+          </View>} />
+        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
+        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
+        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} toggle={recap} last />
+      </Section>
+
+      <Section title="Export & posting" note="New dumps start with the size and quality set here.">
         <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
         <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
@@ -209,38 +221,22 @@ function ProfileBody() {
         </View>
       </Section>
 
-      <Section title="Data privacy">
-        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
-      </Section>
-
-      <Section title="Daily recap">
-        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} toggle={recap} last />
-      </Section>
-
-      <Section title="Photo library">
+      <Section title="Photo library & search">
         <Row label="Access" right={access && access !== 'all'
           ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
-        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
-        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
-        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
-            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
-            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
-          </View>} />
-        <IndexRow onReindex={reindex} />
+        <IndexRow onReindex={reindex} last={!QueryTranslate} />
+        {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
+          setP((x) => ({ ...x, searchLangs: l }));
+          setSearchLangs(l).catch((e) => console.warn('[profile] search languages failed:', e));
+        }} />}
       </Section>
 
-      {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
-        setP((x) => ({ ...x, searchLangs: l }));
-        setSearchLangs(l).catch((e) => console.warn('[profile] search languages failed:', e));
-      }} />}
-
-      <Section title="About">
-        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+      <Section title="Privacy & about">
+        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Contact" onPress={() => Linking.openURL('mailto:support@picdump.app?subject=PicDump').catch(() => toast('No mail app found. Write to support@picdump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@picdump.app</Text>} />
         <Row label="Version" sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
@@ -332,14 +328,14 @@ function Section({ title, note, pad, children }: { title: string; note?: string;
 
 /** `toggle` set: the row is one switch to accessibility (the Toggle drawn on the right is visual only). */
 /** The Index row, its own component: progress ticks every batch while indexing, and only this row redraws. */
-function IndexRow({ onReindex }: { onReindex: () => void }) {
+function IndexRow({ onReindex, last }: { onReindex: () => void; last?: boolean }) {
   const { paused, library, pause, resume } = useApp();
   const { progress } = useProgress();
   const line = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
     : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
     : library ? `${library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
   return (
-    <Row label="Index" sub={line} last right={
+    <Row label="Index" sub={line} last={last} right={
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={pause} />}
         {paused && !progress && <SmallBtn label="Resume" onPress={resume} />}
@@ -363,27 +359,31 @@ function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; s
 }
 
 /** Mock toggle: 36x20 track (ink on, 18% black off), 16px screen-coloured knob. */
-/** English always; the others are translated to English on the phone after a one-time download (index/queryLang.ts). */
+/** English always; the others are translated to English on the phone after a one-time download (index/queryLang.ts).
+ *  One row (the chosen languages, plus any download in progress or failed) that opens the picker; opening it retries failed downloads. */
 function SearchLangs({ langs, onChange }: { langs: string[]; onChange: (langs: string[]) => void }) {
   const { t } = useTheme();
   const states = useLangStates();
   const [pick, setPick] = useState(false);
   const all = useMemo(() => QueryTranslate?.languages().filter((l) => l.code !== 'en') ?? [], []);
-  const status = (l: string) => states[l] === 'ready' ? 'Ready' : states[l] === 'failed' ? 'Download failed. Tap to retry' : 'Downloading (about 30 MB)…';
+  const status = (l: string) => states[l] === 'ready' ? 'Ready' : states[l] === 'failed' ? 'Download failed. Retries when you open this' : 'Downloading (about 30 MB)…';
+  const failed = langs.filter((l) => states[l] === 'failed'), loading = langs.filter((l) => states[l] !== 'ready' && states[l] !== 'failed');
+  const names = (ls: string[]) => ls.map(langName).join(', ');
+  const sub = ['English', ...langs.map(langName)].join(', ')
+    + (failed.length ? ` · ${names(failed)} failed. Tap to retry` : loading.length ? ` · ${names(loading)} downloading…` : '');
   return (
     <>
-      <Section title="Search languages" note="Searches in these languages are translated to English on your phone. Each one is a one-time download of about 30 MB.">
-        <Row label="English" sub="Built in" />
-        {langs.map((l) => <Row key={l} label={langName(l)} sub={status(l)} onPress={states[l] === 'failed' ? () => { syncLangs().catch(() => {}); } : undefined} />)}
-        <Row label="Choose languages" onPress={() => setPick(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
-      </Section>
+      <Row label="Search languages" sub={sub} last right={<Icons.chevron size={14} color={t.inkMuted} />}
+        onPress={() => { if (failed.length) syncLangs().catch(() => {}); setPick(true); }} />
       <Sheet visible={pick} onClose={() => setPick(false)}>
         <Text style={[display(18), { color: t.ink }]}>Search languages</Text>
+        <Text style={[ui(11), { color: t.inkMuted }]}>Searches in these languages are translated to English on your phone. Each one is a one-time download of about 30 MB.</Text>
         <Text style={[ui(11), { color: t.inkMuted }]}>Turning one off deletes its download.</Text>
         <ScrollView style={{ maxHeight: 420 }}>
+          <Row label="English" sub="Built in" />
           {all.map((l, i) => {
             const on = langs.includes(l.code);
-            return <Row key={l.code} label={l.name} toggle={on} last={i === all.length - 1}
+            return <Row key={l.code} label={l.name} sub={on ? status(l.code) : undefined} toggle={on} last={i === all.length - 1}
               onPress={() => onChange(on ? langs.filter((x) => x !== l.code) : [...langs, l.code])} />;
           })}
         </ScrollView>

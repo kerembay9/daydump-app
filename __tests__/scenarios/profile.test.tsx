@@ -82,6 +82,18 @@ test('Profile: no stats row (Total Photos, Library, Discover)', async () => {
   expect(screen.queryByText('Discover')).toBeNull();
 }, 30000);
 
+test('Profile: sections grouped by what they change, no one-row sections', async () => {
+  await bootApp('/profile');
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  const json = JSON.stringify(screen.toJSON());
+  const at = (s: string) => json.indexOf(`"${s}"`);
+  const order = ['Dump picks', 'Photos per dump', '8 PM recap', 'Export & posting', 'Default Post Size', 'Appearance & theme',
+    'Photo library & search', 'Access', 'Index', 'Privacy & about', 'Everything happens on your phone', 'Privacy Policy', 'Version'];
+  order.forEach((s) => expect([s, at(s)]).not.toEqual([s, -1]));
+  expect(order.map(at)).toEqual(order.map(at).sort((a, b) => a - b));
+  for (const gone of ['Social post & size defaults', 'Data privacy', 'Daily recap', 'Photo library', 'About']) expect(screen.queryByText(gone)).toBeNull();
+}, 30000);
+
 test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
