@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, Linking, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
-import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -200,17 +200,75 @@ function GalleryCount({ n }: { n: number }) {
   return <>{progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${n})`}</>;
 }
 
+type PicksHandle = { open: () => void; close: () => void };
+
+/** "Your picks": its own component, so opening it and selecting photos re-render the sheet, not all of Create. */
+function PicksSheet({ ref, basket, total, onChange, onMove, onGo, onStartNew, onView }: {
+  ref: React.Ref<PicksHandle>; basket: DumpPhoto[]; total: number; onChange: (next: DumpPhoto[]) => void; onMove: (id: string, by: number) => void;
+  onGo: () => void; onStartNew: () => void; onView: (photos: DumpPhoto[], id: string) => void;
+}) {
+  const { t } = useTheme();
+  const winH = useWindowDimensions().height;
+  const [review, setReview] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
+  useImperativeHandle(ref, () => ({ open: () => { setSel(null); setReview(true); }, close: () => setReview(false) }), []);
+  return (
+    <Sheet visible={review} onClose={() => setReview(false)}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length}/{total} photos)</Text>
+        <Tap onPress={() => setReview(false)} hitSlop={8} accessibilityRole="button">
+          <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Hide</Text>
+        </Tap>
+      </View>
+      {basket.length ? (
+        <>
+          {(() => {
+            const k = basket.findIndex((p) => p.id === sel);
+            return k < 0 ? null : (
+              <Tap onPress={() => onView(basket, basket[k].id)} accessibilityRole="button" accessibilityLabel={`Enlarge photo ${k + 1}`}
+                style={{ height: Math.round(winH * 0.3), borderRadius: 14, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+                <Image source={{ uri: basket[k].uri }} style={{ flex: 1 }} contentFit="contain" recyclingKey={basket[k].id} transition={100} />
+                <View style={{ position: 'absolute', right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icons.expand size={14} color="#fff" />
+                </View>
+              </Tap>
+            );
+          })()}
+          <PickRow photos={basket} sel={sel} onSelect={setSel} onRemove={(id) => onChange(basket.filter((x) => x.id !== id))} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {[['Move earlier', -1], ['Move later', 1]].map(([text, by]) => {
+              const i = basket.findIndex((p) => p.id === sel);
+              const off = i < 0 || i + (by as number) < 0 || i + (by as number) >= basket.length;
+              return (
+                <FrameCard key={text} radius={14} onPress={off ? undefined : () => onMove(sel!, by as number)} label={text as string}
+                  style={{ flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+                  <Text style={[ui(11.5, 600), { color: t.ink }]}>{text}</Text>
+                </FrameCard>
+              );
+            })}
+          </View>
+          <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. × takes it out.' : 'Tap a photo to see it bigger and move it. × takes it out.'}</Text>
+          <Tap onPress={onGo} accessibilityRole="button" style={{ height: 40, borderRadius: 20, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+            <Text style={[ui(12, 600), { color: t.bgScreen }]}>Continue to Edit ({basket.length}) →</Text>
+          </Tap>
+          <Tap onPress={onStartNew} accessibilityRole="button" style={{ alignSelf: 'center', paddingVertical: 6 }}>
+            <Text style={[ui(11, 500), { color: t.inkMuted }]}>Start a new dump · this one stays in Library → Drafts</Text>
+          </Tap>
+        </>
+      ) : (
+        <Text style={[ui(12), { color: t.inkMuted, paddingVertical: 12 }]}>Nothing picked yet. Tap photos in the grid to add them.</Text>
+      )}
+    </Sheet>
+  );
+}
+
 /** Create (ph3.png): search the library, pick photos into the basket (auto-saved Create draft), Continue to Edit. */
 export default function Create() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const win = useWindowDimensions();
-  const { library, permission } = useApp();
-  // the library as of the last time Create was on screen: indexing rebuilds it every 15 s, and a hidden Create
-  // re-searching and re-rendering its grid each time took the JS thread from the screen in use
-  const focused = useIsFocused();
-  const [lib, setLib] = useState(library);
-  if (focused && lib !== library) setLib(library);
+  // indexing rebuilds the library every 15 s; a hidden Create is frozen (freezeOnBlur), so it re-searches only once shown
+  const { library: lib, permission } = useApp();
   const { shared } = useLocalSearchParams<{ shared?: string }>();
 
   const [query, setQuery] = useState('');
@@ -227,8 +285,7 @@ export default function Create() {
   const [basket, setBasket] = useState<DumpPhoto[]>([]);
   const [target, setTarget] = useState(6);
   const [similar, setSimilar] = useState<IndexedPhoto[]>([]);
-  const [review, setReview] = useState(false);
-  const [sel, setSel] = useState<string | null>(null);
+  const picks = useRef<PicksHandle>(null);
   /** the enlarged photo: a copy of the list it was opened from, so a re-search or a removal doesn't shift it */
   const [viewing, setViewing] = useState<{ photos: DumpPhoto[]; i: number } | null>(null);
   const [keyboard, setKeyboard] = useState(false);
@@ -282,7 +339,9 @@ export default function Create() {
     if (e !== edits.current) return;
     draftId.current = d?.id ?? null;
     autoTitle.current = !!d && d.title === photoRange(d);
-    setBasket(d?.photos ?? []);
+    // the same picks as on screen (every tab switch back): keep the array, so the screen doesn't re-render
+    const next = d?.photos ?? [];
+    setBasket((b) => (JSON.stringify(b) === JSON.stringify(next) ? b : next));
   }, []);
   // `shared` changes when photos are shared in while Create is already open: reload then too.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -378,13 +437,13 @@ export default function Create() {
     if (!basket.length || going.current) return;
     going.current = true;
     try {
-      setReview(false);
+      picks.current?.close();
       await persist(basket, query.trim() ? dumpTitle(query) : undefined);
       if (draftId.current) router.push({ pathname: '/edit/[id]', params: { id: draftId.current } });
     } finally { going.current = false; }
   };
   const startNew = async () => {
-    setReview(false);
+    picks.current?.close();
     await saving.current;
     await setCurrentCreateDraft(null).catch(() => {});
     draftId.current = null;
@@ -541,7 +600,7 @@ export default function Create() {
           </FrameCard>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <FrameCard radius={16} onPress={() => { setSel(null); setReview(true); }} label={`Picks: ${basket.length}. Review`}
+            <FrameCard radius={16} onPress={() => picks.current?.open()} label={`Picks: ${basket.length}. Review`}
               style={{ paddingVertical: 4, paddingRight: 12, paddingLeft: 6, flexDirection: 'row', alignItems: 'center', gap: 10, boxShadow: `${t.shadowCard}, 0 4px 6px -1px rgba(0,0,0,0.1)` }}>
               <View ref={basketStack}>
                 <Animated.View style={stackStyle}>
@@ -572,52 +631,7 @@ export default function Create() {
       )}
 
       {throwLayer}
-      <Sheet visible={review} onClose={() => setReview(false)}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length}/{shownTarget} photos)</Text>
-          <Tap onPress={() => setReview(false)} hitSlop={8} accessibilityRole="button">
-            <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Hide</Text>
-          </Tap>
-        </View>
-        {basket.length ? (
-          <>
-            {(() => {
-              const k = basket.findIndex((p) => p.id === sel);
-              return k < 0 ? null : (
-                <Tap onPress={() => view(basket, basket[k].id)} accessibilityRole="button" accessibilityLabel={`Enlarge photo ${k + 1}`}
-                  style={{ height: Math.round(win.height * 0.3), borderRadius: 14, overflow: 'hidden', backgroundColor: t.borderStrong }}>
-                  <Image source={{ uri: basket[k].uri }} style={{ flex: 1 }} contentFit="contain" recyclingKey={basket[k].id} transition={100} />
-                  <View style={{ position: 'absolute', right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icons.expand size={14} color="#fff" />
-                  </View>
-                </Tap>
-              );
-            })()}
-            <PickRow photos={basket} sel={sel} onSelect={setSel} onRemove={(id) => change(basket.filter((x) => x.id !== id))} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[['Move earlier', -1], ['Move later', 1]].map(([text, by]) => {
-                const i = basket.findIndex((p) => p.id === sel);
-                const off = i < 0 || i + (by as number) < 0 || i + (by as number) >= basket.length;
-                return (
-                  <FrameCard key={text} radius={14} onPress={off ? undefined : () => move(sel!, by as number)} label={text as string}
-                    style={{ flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
-                    <Text style={[ui(11.5, 600), { color: t.ink }]}>{text}</Text>
-                  </FrameCard>
-                );
-              })}
-            </View>
-            <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. × takes it out.' : 'Tap a photo to see it bigger and move it. × takes it out.'}</Text>
-            <Tap onPress={go} accessibilityRole="button" style={{ height: 40, borderRadius: 20, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-              <Text style={[ui(12, 600), { color: t.bgScreen }]}>Continue to Edit ({basket.length}) →</Text>
-            </Tap>
-            <Tap onPress={startNew} accessibilityRole="button" style={{ alignSelf: 'center', paddingVertical: 6 }}>
-              <Text style={[ui(11, 500), { color: t.inkMuted }]}>Start a new dump · this one stays in Library → Drafts</Text>
-            </Tap>
-          </>
-        ) : (
-          <Text style={[ui(12), { color: t.inkMuted, paddingVertical: 12 }]}>Nothing picked yet. Tap photos in the grid to add them.</Text>
-        )}
-      </Sheet>
+      <PicksSheet ref={picks} basket={basket} total={shownTarget} onChange={change} onMove={move} onGo={go} onStartNew={startNew} onView={view} />
       <PhotoViewer photos={viewing?.photos ?? []} index={viewing?.i ?? null} onClose={() => setViewing(null)}
         footer={(p) => {
           const k = order.get(p.id);

@@ -8,7 +8,9 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
       backBehavior="firstRoute"
-      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }}
+      // hidden tabs don't re-render: indexing's library / progress updates wait until a tab is shown again, and switching
+      // away no longer re-renders the screen being left
+      screenOptions={{ headerShown: false, freezeOnBlur: true, sceneStyle: { backgroundColor: 'transparent' } }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="create" />
