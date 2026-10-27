@@ -76,7 +76,9 @@ test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for
   await bootApp('/create');
   await screen.findByText(/^Your gallery/, {}, { timeout: 10000 });
   await fireEvent.press(screen.getByLabelText(/^Picks: \d+\. Review$/));
-  await fireEvent.press(await screen.findByText(/^Start a new dump/));
+  expect(await screen.findByText(/Tap × to remove\.$/)).toBeTruthy();
+  expect(screen.queryByText(/stays in Library/)).toBeNull();
+  await fireEvent.press(await screen.findByText('Start a new dump'));
   await settle();
   await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');
   await screen.findByText('Matches for "seattle" (21)');

@@ -22,7 +22,7 @@ name: 10 basket total + review
 - tapOn: "Move later"
 - tapOn: "Remove photo 3"
 - assertVisible: "Your picks \\(2/3 photos\\)"
-- tapOn: "Start a new dump · .*"
+- tapOn: "Start a new dump"
 - assertVisible: "Continue with 0 photos"
 - tapOn: "Library"
 - tapOn: "Drafts.*"

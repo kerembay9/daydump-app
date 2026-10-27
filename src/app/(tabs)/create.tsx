@@ -247,12 +247,12 @@ function PicksSheet({ ref, basket, total, onChange, onMove, onGo, onStartNew, on
               );
             })}
           </View>
-          <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. × takes it out.' : 'Tap a photo to see it bigger and move it. × takes it out.'}</Text>
+          <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. Tap × to remove.' : 'Tap a photo to see it bigger and move it. Tap × to remove.'}</Text>
           <Tap onPress={onGo} accessibilityRole="button" style={{ height: 40, borderRadius: 20, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
             <Text style={[ui(12, 600), { color: t.bgScreen }]}>Continue to Edit ({basket.length}) →</Text>
           </Tap>
           <Tap onPress={onStartNew} accessibilityRole="button" style={{ alignSelf: 'center', paddingVertical: 6 }}>
-            <Text style={[ui(11, 500), { color: t.inkMuted }]}>Start a new dump · this one stays in Library → Drafts</Text>
+            <Text style={[ui(11, 500), { color: t.inkMuted }]}>Start a new dump</Text>
           </Tap>
         </>
       ) : (
@@ -570,7 +570,7 @@ export default function Create() {
                     Similar to your {basket.length} selected photo{basket.length === 1 ? '' : 's'}
                   </Text>
                 </View>
-                <Text style={[ui(9), { color: t.inkMuted }]} numberOfLines={1}>{vibe ? `+ "${vibe}" vibe` : 'AI Match'}</Text>
+                {vibe ? <Text style={[ui(9), { color: t.inkMuted }]} numberOfLines={1}>{`+ "${vibe}" vibe`}</Text> : null}
               </View>
               <SimilarStrip photos={similar} onAdd={onToggle} onOpen={onOpenSimilar} />
             </View>
