@@ -17,7 +17,7 @@ import { photoRange } from '../../services/dumpLabels';
 import { getProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, label, ui } from '../../theme/type';
-import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
+import { AvatarButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Sheet } from '../../components/ui/Sheet';
@@ -45,9 +45,9 @@ const vecFor = (text: string) => {
 };
 
 /** Search field with the recent-searches dropdown (only while focused). */
-function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent }: {
+function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent, right }: {
   query: string; searching: boolean; onQuery: (q: string) => void; onCommit: (q: string) => void;
-  recents: string[]; suggestions: string[]; onRemoveRecent: (q: string) => void;
+  recents: string[]; suggestions: string[]; onRemoveRecent: (q: string) => void; right?: React.ReactNode;
 }) {
   const { t } = useTheme();
   const [focused, setFocused] = useState(false);
@@ -64,8 +64,8 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
   const [top, setTop] = useState(0);
   return (
     <>
-      <View onLayout={(e) => setTop(e.nativeEvent.layout.y + 44)} style={{ marginHorizontal: 16, marginBottom: 8, zIndex: 30 }}>
-        <FrameCard radius={16} style={[{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
+      <View onLayout={(e) => setTop(e.nativeEvent.layout.y + 44)} style={{ marginHorizontal: 16, marginBottom: 8, zIndex: 30, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <FrameCard radius={16} style={[{ flex: 1, height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
           {searching ? <ActivityIndicator size={16} color={t.inkMuted} accessibilityLabel="Searching" /> : <Icons.search size={16} color={t.inkMuted} />}
           <TextInput
             ref={input}
@@ -87,6 +87,7 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
             </Tap>
           ) : null}
         </FrameCard>
+        {right}
       </View>
       {focused && rows.length ? (
         <FrameCard radius={16} padding={8} style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 30, borderColor: t.borderStrong, boxShadow: `${t.shadowCard}, 0 10px 15px -3px rgba(0,0,0,0.1)` }}>
@@ -531,12 +532,11 @@ export default function Create() {
 
   // the strip leans toward the search only when it has CLIP words (qvec)
   const vibe = qvec ? query.trim() : '';
+  // +10: the avatar, centred on the 40px search bar, lands where Discover's header puts it (top + 12)
   return (
-    <View ref={screenRoot} style={{ flex: 1, paddingTop: insets.top + 8 }}>
-      <View style={{ paddingHorizontal: 16, zIndex: 10 }}>
-        <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
-      </View>
+    <View ref={screenRoot} style={{ flex: 1, paddingTop: insets.top + 10 }}>
       <SearchBar query={query} searching={searching} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
+        right={<AvatarButton onPress={() => router.push('/profile')} />}
         onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
 
       <FlatList
