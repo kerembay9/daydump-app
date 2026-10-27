@@ -149,7 +149,7 @@ const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, on
         const date = dateRange(p.creationTime, p.creationTime, now);
         return (
           <Tap key={p.id} onPress={(e) => onToggle(p, false, e)} onLongPress={() => onOpen(p)} delayLongPress={350} accessibilityRole="button" accessibilityState={{ selected: k != null }}
-            accessibilityHint="Hold to enlarge" accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in the basket` : ''}`}
+            accessibilityHint="Hold to enlarge" accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in your picks` : ''}`}
             style={[{ width: w, height: h, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
             <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
               <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
@@ -541,7 +541,7 @@ export default function Create() {
           </FrameCard>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <FrameCard radius={16} onPress={() => { setSel(null); setReview(true); }} label={`${basket.length} selected. Review`}
+            <FrameCard radius={16} onPress={() => { setSel(null); setReview(true); }} label={`Picks: ${basket.length}. Review`}
               style={{ paddingVertical: 4, paddingRight: 12, paddingLeft: 6, flexDirection: 'row', alignItems: 'center', gap: 10, boxShadow: `${t.shadowCard}, 0 4px 6px -1px rgba(0,0,0,0.1)` }}>
               <View ref={basketStack}>
                 <Animated.View style={stackStyle}>
@@ -552,7 +552,7 @@ export default function Create() {
                 </Animated.View>
               </View>
               <View>
-                <Text style={[ui(11, 700), { color: t.ink }]}>Selected</Text>
+                <Text style={[ui(11, 700), { color: t.ink }]}>Picks</Text>
                 {suggestedN ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                     <Text style={[ui(9.5), { color: t.inkMuted }]}>{basket.length - suggestedN} + {suggestedN}</Text>
@@ -574,7 +574,7 @@ export default function Create() {
       {throwLayer}
       <Sheet visible={review} onClose={() => setReview(false)}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[ui(13, 700), { color: t.ink }]}>Selected basket ({basket.length}/{shownTarget} photos)</Text>
+          <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length}/{shownTarget} photos)</Text>
           <Tap onPress={() => setReview(false)} hitSlop={8} accessibilityRole="button">
             <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Hide</Text>
           </Tap>
@@ -637,12 +637,12 @@ export default function Create() {
         footer={(p) => {
           const k = order.get(p.id);
           return (
-            <Tap onPress={() => toggle(p)} accessibilityRole="button" accessibilityLabel={k == null ? 'Add to basket' : 'Remove from basket'}
+            <Tap onPress={() => toggle(p)} accessibilityRole="button" accessibilityLabel={k == null ? 'Add to picks' : 'Remove from picks'}
               style={{ height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: k == null ? '#fff' : 'rgba(255,255,255,0.15)' }}>
-              {k == null ? <Text style={[ui(13, 600), { color: '#000' }]}>+ Add to basket</Text> : (
+              {k == null ? <Text style={[ui(13, 600), { color: '#000' }]}>+ Add to picks</Text> : (
                 <>
                   <Icons.check size={15} color="#fff" />
-                  <Text style={[ui(13, 600), { color: '#fff' }]}>#{k + 1} in basket · Remove</Text>
+                  <Text style={[ui(13, 600), { color: '#fff' }]}>Pick #{k + 1} · Remove</Text>
                 </>
               )}
             </Tap>

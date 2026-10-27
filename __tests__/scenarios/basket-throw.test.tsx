@@ -27,7 +27,7 @@ test('adding a photo tosses it into the basket, which lands with a light haptic;
   expect(haptic).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light);
 
   // taking it back out: no throw
-  await fireEvent.press(screen.getByLabelText(/number 1 in the basket$/), tile(16, 300));
+  await fireEvent.press(screen.getByLabelText(/number 1 in your picks$/), tile(16, 300));
   expect(screen.queryByTestId('basket-throw')).toBeNull();
   expect(screen.getByText('0/6')).toBeTruthy();
 }, 30000);

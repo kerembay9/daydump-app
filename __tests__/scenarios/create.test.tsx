@@ -12,15 +12,15 @@ beforeAll(() => seedWorld());
 test('search, pick 3, Suggest fills, use / swap / save a way, then a selection change asks for Refresh', async () => {
   await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
-  expect(screen.queryByText('Tap to add to basket')).toBeNull();
+  expect(screen.queryByText('Tap to add to picks')).toBeNull();
 
   // "seattle" is a place in the library: a place filter, no CLIP needed
   await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');
   await screen.findByText('Matches for "seattle" (21)');
   for (const c of screen.getAllByLabelText(/^Photo from Aug \d+, 2025$/).slice(0, 3)) await fireEvent.press(c);
-  expect(screen.getByLabelText('3 selected. Review')).toBeTruthy();
+  expect(screen.getByLabelText('Picks: 3. Review')).toBeTruthy();
   expect(screen.getByText('3/6')).toBeTruthy();
-  expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(3);
+  expect(screen.getAllByLabelText(/number \d in your picks$/)).toHaveLength(3);
 
   // Suggest fills (in the dock): two ways to finish, each 3 yours + 3 suggested; the button now reads Suggest again
   await fireEvent.press(screen.getByLabelText('Suggest fills'));
@@ -75,7 +75,7 @@ test('search, pick 3, Suggest fills, use / swap / save a way, then a selection c
 test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for N picks', async () => {
   await bootApp('/create');
   await screen.findByText(/^Your gallery/, {}, { timeout: 10000 });
-  await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+  await fireEvent.press(screen.getByLabelText(/^Picks: \d+\. Review$/));
   await fireEvent.press(await screen.findByText(/^Start a new dump/));
   await settle();
   await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');
@@ -146,7 +146,7 @@ test('the dock, the way preview (Add N picked / Use this), Undo, and Refresh for
 test('an untitled draft is named by its dates; emptying the basket keeps a draft worked on in Edit, drops a bare one', async () => {
   await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
-  await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+  await fireEvent.press(screen.getByLabelText(/^Picks: \d+\. Review$/));
   await fireEvent.press(await screen.findByText(/^Start a new dump/));
   await settle();
 
@@ -160,7 +160,7 @@ test('an untitled draft is named by its dates; emptying the basket keeps a draft
 
   // worked on in Edit (a layout picked), then emptied in Create: it stays in Drafts, unlinked from Create
   await update(d.id, { layout: 'grid' });
-  await fireEvent.press(screen.getAllByLabelText(/number 1 in the basket$/)[0]);
+  await fireEvent.press(screen.getAllByLabelText(/number 1 in your picks$/)[0]);
   await settle();
   expect(await currentCreateDraft()).toBeNull();
   expect((await list()).some((x) => x.id === d.id)).toBe(true);
@@ -169,7 +169,7 @@ test('an untitled draft is named by its dates; emptying the basket keeps a draft
   await fireEvent.press(cell());
   await settle();
   const bare = (await currentCreateDraft())!;
-  await fireEvent.press(screen.getAllByLabelText(/number 1 in the basket$/)[0]);
+  await fireEvent.press(screen.getAllByLabelText(/number 1 in your picks$/)[0]);
   await settle();
   expect((await list()).some((x) => x.id === bare.id)).toBe(false);
 }, 30000);
@@ -198,8 +198,8 @@ test('hold a photo to enlarge it: swipe with the arrows, add / remove from the v
   await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
   await settle();
-  if (!screen.queryByLabelText('0 selected. Review')) { // an earlier test's basket: start empty
-    await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+  if (!screen.queryByLabelText('Picks: 0. Review')) { // an earlier test's basket: start empty
+    await fireEvent.press(screen.getByLabelText(/^Picks: \d+\. Review$/));
     await fireEvent.press(await screen.findByText(/^Start a new dump/));
     await settle();
   }
@@ -216,25 +216,25 @@ test('hold a photo to enlarge it: swipe with the arrows, add / remove from the v
   expect(screen.getByText('2 / 77')).toBeTruthy();
 
   // add it from the viewer: the grid shows it picked; Remove takes it out again
-  await fireEvent.press(screen.getByLabelText('Add to basket'));
-  expect(screen.getByText('#1 in basket · Remove')).toBeTruthy();
-  expect(screen.getAllByLabelText(/number 1 in the basket$/)).toHaveLength(1);
-  await fireEvent.press(screen.getByLabelText('Remove from basket'));
-  expect(screen.getByLabelText('Add to basket')).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText('Add to basket'));
+  await fireEvent.press(screen.getByLabelText('Add to picks'));
+  expect(screen.getByText('Pick #1 · Remove')).toBeTruthy();
+  expect(screen.getAllByLabelText(/number 1 in your picks$/)).toHaveLength(1);
+  await fireEvent.press(screen.getByLabelText('Remove from picks'));
+  expect(screen.getByLabelText('Add to picks')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Add to picks'));
   await fireEvent.press(screen.getByLabelText('Next photo'));
-  await fireEvent.press(screen.getByLabelText('Add to basket'));
+  await fireEvent.press(screen.getByLabelText('Add to picks'));
   await fireEvent.press(screen.getByLabelText('Close photo'));
   await waitFor(() => expect(screen.queryByText('3 / 77')).toBeNull());
   expect(screen.getByText('2/6')).toBeTruthy();
 
   // the basket: tapping a photo shows it big; tapping that opens the viewer over the basket, in basket order
-  await fireEvent.press(screen.getByLabelText('2 selected. Review'));
+  await fireEvent.press(screen.getByLabelText('Picks: 2. Review'));
   expect(screen.queryByLabelText(/^Enlarge photo/)).toBeNull();
   await fireEvent.press(await screen.findByLabelText('Photo 2'));
   await fireEvent.press(screen.getByLabelText('Enlarge photo 2'));
   expect(await screen.findByText('2 / 2')).toBeTruthy();
-  expect(screen.getByText('#2 in basket · Remove')).toBeTruthy();
+  expect(screen.getByText('Pick #2 · Remove')).toBeTruthy();
   expect(screen.queryByLabelText('Next photo')).toBeNull();
 }, 30000);
 
@@ -242,8 +242,8 @@ test('unpicking a photo renumbers the later picks in the grid', async () => {
   await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
   await settle();
-  if (!screen.queryByLabelText('0 selected. Review')) { // an earlier test's basket: start empty
-    await fireEvent.press(screen.getByLabelText(/selected\. Review$/));
+  if (!screen.queryByLabelText('Picks: 0. Review')) { // an earlier test's basket: start empty
+    await fireEvent.press(screen.getByLabelText(/^Picks: \d+\. Review$/));
     await fireEvent.press(await screen.findByText(/^Start a new dump/));
     await settle();
   }
@@ -251,11 +251,11 @@ test('unpicking a photo renumbers the later picks in the grid', async () => {
   // the grid rows only redraw when their own badges change: the 2nd and 3rd picks must still move up
   const cells = screen.getAllByLabelText(/^Photo from /);
   for (const i of [0, 4, 8]) await fireEvent.press(cells[i]);
-  expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(3);
-  await fireEvent.press(screen.getAllByLabelText(/number 1 in the basket$/)[0]);
-  expect(screen.getAllByLabelText(/number \d in the basket$/)).toHaveLength(2);
-  expect(screen.getAllByLabelText(/number 1 in the basket$/)).toHaveLength(1);
-  expect(screen.getAllByLabelText(/number 2 in the basket$/)).toHaveLength(1);
-  expect(screen.queryByLabelText(/number 3 in the basket$/)).toBeNull();
+  expect(screen.getAllByLabelText(/number \d in your picks$/)).toHaveLength(3);
+  await fireEvent.press(screen.getAllByLabelText(/number 1 in your picks$/)[0]);
+  expect(screen.getAllByLabelText(/number \d in your picks$/)).toHaveLength(2);
+  expect(screen.getAllByLabelText(/number 1 in your picks$/)).toHaveLength(1);
+  expect(screen.getAllByLabelText(/number 2 in your picks$/)).toHaveLength(1);
+  expect(screen.queryByLabelText(/number 3 in your picks$/)).toBeNull();
   expect(screen.getByText('2/6')).toBeTruthy();
 }, 30000);
