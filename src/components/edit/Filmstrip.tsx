@@ -168,8 +168,8 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
   return (
     <View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingHorizontal: 2 }}>
-        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>Dump order (tap 2× for cover)</Text>
-        <Text style={[ui(10, 400), { color: t.inkMuted }]}>Hold to move</Text>
+        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>Dump order</Text>
+        <Text style={[ui(10, 400), { color: t.inkMuted }]}>Hold to edit</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -ROOM_TOP, marginHorizontal: -ROOM_X }}
         contentContainerStyle={{ gap: GAP, paddingTop: ROOM_TOP, paddingBottom: 6, paddingHorizontal: 2 + ROOM_X }}>

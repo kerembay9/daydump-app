@@ -25,6 +25,7 @@ test('Edit filmstrip: the tapped photo grows to PICKED; a dragged one lands wher
   const id = app.getPathname().split('/').pop()!;
   const ids = (await get(id))!.photos.map((p) => p.id);
   expect([scale(1), scale(2), scale(3)]).toEqual([1, 1, 1]);
+  screen.getByText('Dump order'); screen.getByText('Hold to edit');
 
   await act(async () => { fireGestureHandler(getByGestureTestId(`strip-tap-${ids[1]}`), [{ state: State.BEGAN }, { state: State.ACTIVE }, { state: State.END }]); });
   await settle();
