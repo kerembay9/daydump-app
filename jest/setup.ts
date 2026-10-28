@@ -82,6 +82,7 @@ jest.mock('react-native-purchases', () => ({
     })),
     purchasePackage: jest.fn(async () => ({ customerInfo: { entitlements: { active: { daydump_pro: { productIdentifier: 'picdump_yearly', willRenew: true, expirationDateMillis: Date.now() + 365 * 86400000 } } } } })),
     restorePurchases: jest.fn(async () => ({ entitlements: { active: {} } })),
+    setAttributes: jest.fn(async () => {}),
   },
   LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
   PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: '1' },

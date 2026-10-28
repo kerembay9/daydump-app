@@ -53,12 +53,11 @@ export function PaywallModal({
     setPurchasing(true);
     try {
       const targetPkg = selected === 'yearly' ? (annualPkg ?? packages[0]) : (weeklyPkg ?? packages[0]);
-      let res;
-      if (targetPkg) {
-        res = await RevenueCatService.purchasePackage(targetPkg);
-      } else {
-        res = await RevenueCatService.purchasePlan(selected);
+      if (!targetPkg) {
+        toast('Plans couldn’t load. Check your connection and try again.');
+        return;
       }
+      const res = await RevenueCatService.purchasePackage(targetPkg);
 
       if (res.success) {
         toast('Welcome to PicDump Pro!');
