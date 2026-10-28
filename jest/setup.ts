@@ -69,16 +69,8 @@ jest.mock('react-native-purchases', () => ({
     getOfferings: jest.fn(async () => ({
       current: {
         availablePackages: [
-          {
-            identifier: '$rc_annual',
-            packageType: 'ANNUAL',
-            product: { identifier: 'picdump_yearly', priceString: '$29.99/year' },
-          },
-          {
-            identifier: '$rc_weekly',
-            packageType: 'WEEKLY',
-            product: { identifier: 'picdump_weekly', priceString: '$2.99/week' },
-          },
+          { identifier: '$rc_weekly', packageType: 'WEEKLY', product: { identifier: 'picdump_weekly', title: 'Weekly', priceString: '$3.99', introPrice: null, defaultOption: null } },
+          { identifier: '$rc_annual', packageType: 'ANNUAL', product: { identifier: 'picdump_yearly', title: 'Annual', priceString: '$29.99', introPrice: null, defaultOption: { freePhase: { billingPeriod: { iso8601: 'P1W' } } } } },
         ],
       },
     })),

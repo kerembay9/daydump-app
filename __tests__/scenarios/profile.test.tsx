@@ -87,7 +87,11 @@ test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
   expect(screen.getByText('PicDump Pro')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'Go Pro' }));
-  expect(await screen.findByText('Curate and export without limits.')).toBeTruthy();
+  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+  // the annual plan has the trial, so it starts selected and the button says so
+  expect(await screen.findByRole('radio', { name: 'Annual, $29.99 / year, 7-day free trial', selected: true })).toBeTruthy();
+  expect(screen.getByText('Start 7-day free trial')).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Weekly, $3.99 / week' })).toBeTruthy();
   expect(screen.queryByText('Done')).toBeNull();
   expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
   await fireEvent.press(screen.getByLabelText('Close paywall'));
