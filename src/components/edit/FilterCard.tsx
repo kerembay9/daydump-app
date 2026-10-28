@@ -7,7 +7,7 @@ import { Icons } from '../ui/Icons';
 import { Pill } from '../ui/Pill';
 import { Tap } from '../ui/Tap';
 import { useRevealActive } from '../ui/useRevealActive';
-import { FilterKey, Look, PRESETS } from '../../services/filters';
+import { FilterKey, isProLook, Look, PRESETS } from '../../services/filters';
 
 /** 0-100 slider: drag or tap anywhere on the track. Accent = ink, so it follows the theme (mock bug: fixed #261F1B).
  *  Moves use pageX against the track's page origin taken at grant: locationX is relative to whatever view is under
@@ -38,10 +38,10 @@ function Slider({ value, onChange }: { value: number; onChange: (v: number) => v
   );
 }
 
-type Props = { look: Look; all: boolean; onLook: (l: Look) => void; onAll: (on: boolean) => void };
+type Props = { look: Look; all: boolean; onLook: (l: Look) => void; onAll: (on: boolean) => void; /** free user: Pro looks say so (they still preview) */ proLocked?: boolean };
 
 /** FILTER card: Apply-to-all checkbox, presets with swatches, 0-100% slider with its value on the right. */
-export function FilterCard({ look, all, onLook, onAll }: Props) {
+export function FilterCard({ look, all, onLook, onAll, proLocked }: Props) {
   const { t } = useTheme();
   const pct = look.key === 'none' ? 0 : look.pct;
   const presets = useRevealActive(look.key);
@@ -61,7 +61,7 @@ export function FilterCard({ look, all, onLook, onAll }: Props) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingBottom: 6 }} {...presets.scroll}>
         {PRESETS.map((p) => (
           <View key={p.key} onLayout={presets.item(p.key)}>
-            <Pill variant="outline" height={26} label={p.label} on={look.key === p.key} onPress={() => pick(p.key)}
+            <Pill variant="outline" height={26} label={proLocked && isProLook(p.key) ? `${p.label} (Pro)` : p.label} on={look.key === p.key} onPress={() => pick(p.key)}
               left={<View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.swatch, borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }} />} />
           </View>
         ))}

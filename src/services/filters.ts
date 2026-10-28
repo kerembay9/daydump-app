@@ -72,3 +72,17 @@ export function filterOf(raw: unknown): FilterState {
 }
 
 export const IDENTITY = I;
+
+/** Looks a free user can export (Pro previews the rest freely, docs/superpowers/specs/2026-10-28-monetization-design.md). */
+const FREE_LOOKS: FilterKey[] = ['none', 'warm35'];
+export const isProLook = (k: FilterKey) => !FREE_LOOKS.includes(k);
+
+/** Looks that actually show on some photo: apply-to-all hides the per-photo ones; 0% is untouched. */
+const shown = (f: FilterState): Look[] => (f.all ? [f] : [f, ...Object.values(f.per)]).filter((l) => l.key !== 'none' && l.pct > 0);
+export const usesProLook = (f: FilterState) => shown(f).some((l) => isProLook(l.key));
+
+/** "Export without finish": every Pro look back to Original, strengths kept. */
+export function withoutProLooks(f: FilterState): FilterState {
+  const free = (l: Look): Look => (isProLook(l.key) ? { ...l, key: 'none' } : l);
+  return { ...f, ...free(f), per: Object.fromEntries(Object.entries(f.per).map(([id, l]) => [id, free(l)])) };
+}

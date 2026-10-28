@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../state/AppState';
 import { Story, storyById } from '../../services/stories';
 import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
-import { filterOf } from '../../services/filters';
+import { filterOf, usesProLook, withoutProLooks } from '../../services/filters';
 import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
@@ -20,6 +20,7 @@ import { FrameCard } from '../../components/ui/FrameCard';
 import { IconButton } from '../../components/ui/TopHeader';
 import { Icons } from '../../components/ui/Icons';
 import { Tap } from '../../components/ui/Tap';
+import { Sheet } from '../../components/ui/Sheet';
 import { usePreviewImages } from '../../components/edit/SlidePager';
 import { IgGrid, IgPost, PostView, TikTok } from '../../components/preview/PostMocks';
 import { Done, DoneSheet } from '../../components/preview/DoneSheet';
@@ -134,6 +135,13 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   const [picking, setPicking] = useState(false);
+  const { isPro, openPaywall } = usePro();
+  /** set while the "Pro look" sheet is up: what to do once the user picks */
+  const [finishAsk, setFinishAsk] = useState<((strip: boolean) => void) | null>(null);
+  /** the PostSheet path: whether the pending post drops the Pro looks */
+  const strip = useRef(false);
+  const gated = (go: (strip: boolean) => void) => (!isPro && usesProLook(filter) ? setFinishAsk(() => go) : go(false));
+  const plain = (d: Dump) => ({ ...d, filter: withoutProLooks(filterOf(d.filter)) as unknown as Dump['filter'] });
   // installed once per Preview: back from installing an app re-opens Preview anyway
   const [targets] = useState(shareTargets);
   // The slides render in the background from the moment Preview opens (and again on a Quality change), so Post /
@@ -144,8 +152,14 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const n = slides.length;
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
   // no Instagram / TikTok on the phone: the system share sheet (target ignored)
-  const post = () => (targets.length ? setPicking(true) : run('post', platform === 'tiktok' ? 'tiktok' : 'instagram'));
+  const post = () => gated((s) => {
+    strip.current = s;
+    if (targets.length) setPicking(true);
+    else run('post', platform === 'tiktok' ? 'tiktok' : 'instagram');
+  });
   const run = async (what: 'post' | 'save', target: ShareTarget = 'instagram') => {
+    const out = strip.current ? plain(dump) : dump;
+    strip.current = false;
     setPicking(false);
     if (running.current) return;
     running.current = true;
@@ -153,7 +167,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
     try {
       if (what === 'post') {
-        const r = await postDump(deps, dump, target, hd, (await getProfile()).saveOnPost);
+        const r = await postDump(deps, out, target, hd, (await getProfile()).saveOnPost);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted' }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
@@ -162,7 +176,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           note: `${r.saved ? `${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the PicDump album.` : ''}${r.marked ? '' : " Couldn't mark it posted in your Library."}`.trim(),
         });
       } else {
-        const { slides: k, id } = await saveOnly(deps, dump, hd);
+        const { slides: k, id } = await saveOnly(deps, out, hd);
         setDump((d) => ({ ...d, id }));
         setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the PicDump album.` });
       }
@@ -222,7 +236,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
         </Tap>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 8, paddingBottom: 2 }}>
-          <Tap onPress={() => run('save')} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
+          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
             <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
           </Tap>
           <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump">
@@ -230,7 +244,17 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           </Tap>
         </View>
       </View>
-      <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => setPicking(false)} />
+      <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => { strip.current = false; setPicking(false); }} />
+      <Sheet visible={!!finishAsk} onClose={() => setFinishAsk(null)}>
+        <Text style={[display(20, 1.15), { color: t.ink }]}>This film look is Pro</Text>
+        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>Get Pro to export it, or export these slides with the free looks instead.</Text>
+        <Tap onPress={() => { setFinishAsk(null); openPaywall('finish'); }} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.bgScreen }]}>Get Pro</Text>
+        </Tap>
+        <FrameCard radius={22} onPress={() => { const go = finishAsk; setFinishAsk(null); go?.(true); }} label="Export without finish" style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.ink }]}>Export without finish</Text>
+        </FrameCard>
+      </Sheet>
       <DoneSheet done={done} onClose={() => setDone(null)} />
     </View>
   );

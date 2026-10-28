@@ -85,6 +85,7 @@ const fromAsset = (a: PhotoAsset): DumpPhoto => ({ id: a.id, uri: a.uri, created
 
 function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: Library | null }) {
   const { t } = useTheme();
+  const { isPro } = usePro();
   const bottom = useSafeAreaInsets().bottom;
   const [title, setTitle] = useState(dump.title);
   const [photos, setPhotos] = useState(dump.photos);
@@ -196,7 +197,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       <SlidePager slides={slides} ratio={ratio} fit={fit} layout={layout} filter={filter} index={cur}
         images={images} onIndex={setSlide} onLayout={(l) => { setLayout(l); setSlide(0); }}
         onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
-      <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} />
+      <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} proLocked={!isPro} />
       <Filmstrip
         photos={photos}
         active={active}
