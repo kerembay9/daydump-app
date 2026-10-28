@@ -42,3 +42,16 @@ test('Pro: nothing is locked', async () => {
   expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
   expect(screen.queryByText('Unlock')).toBeNull();
 }, 30000);
+
+test('the first time Discover is full of locked dumps, the paywall names them, once', async () => {
+  await AsyncStorage.removeItem('@picdump_first_paywall_shown');
+  await bootApp('/');
+  expect(await screen.findByText('We found 3 dumps in your roll.', {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.getByText(/^A week in Seattle, .*\. Pro opens all of them\.$/)).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Close paywall'));
+  screen.unmount();
+
+  await bootApp('/');
+  await screen.findByLabelText('Unlock A week in Seattle', {}, { timeout: 10000 });
+  expect(screen.queryByText(/We found \d+ dumps/)).toBeNull();
+}, 30000);

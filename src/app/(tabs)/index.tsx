@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlatList, Linking, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
@@ -173,6 +174,26 @@ function Hero({ s, more, locked, onOpen }: { s: Story; more: boolean; locked: bo
   );
 }
 
+const FIRST_PAYWALL = '@picdump_first_paywall_shown';
+
+/**
+ * Once ever: when indexing is done and Discover shows locked dumps, the paywall lists what it found. Most trials start
+ * on day one, and this is the first moment the user can see what Pro opens.
+ */
+function useFirstPaywall(stories: Story[], settled: boolean, isLocked: (s: Story) => boolean, openPaywall: (source: 'first-discover', found: string[]) => void) {
+  const locked = useMemo(() => stories.filter(isLocked).map((s) => s.title), [stories, isLocked]);
+  useEffect(() => {
+    if (!settled || !locked.length) return;
+    let live = true;
+    AsyncStorage.getItem(FIRST_PAYWALL).then(async (seen) => {
+      if (seen || !live) return;
+      await AsyncStorage.setItem(FIRST_PAYWALL, '1');
+      openPaywall('first-discover', locked);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [settled, locked, openPaywall]);
+}
+
 /** Discover (ph2.png, "scrapbook bento"): hero dump + every other dump in repeating bento blocks. */
 export default function Discover() {
   const { t } = useTheme();
@@ -188,6 +209,7 @@ export default function Discover() {
   const pro = usePro();
   const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
   const open = useCallback((s: Story) => (isLocked(s) ? pro.askUnlock(s) : preview(s.id)), [isLocked, pro]);
+  useFirstPaywall(stories, loaded && !progress && !paused, isLocked, pro.openPaywall);
 
 
   const hero = stories[0];
