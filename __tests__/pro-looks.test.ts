@@ -1,6 +1,8 @@
-import { DEFAULT_FILTER, developFor, FilterState, hasTexture, isProLook, usesProLook, withoutProLooks } from '../src/services/filters';
+import { DEFAULT_FILTER, developFor, FilterState, hasTexture, isProLook, keepLooksFor, usesProLook as uses, withoutProLooks } from '../src/services/filters';
 
 const f = (x: Partial<FilterState>): FilterState => ({ ...DEFAULT_FILTER, ...x });
+/** a two-photo dump, a and b */
+const usesProLook = (x: FilterState, ids = ['a', 'b']) => uses(x, ids);
 
 test('Original and Warm 35mm are free, the rest are Pro', () => {
   expect(isProLook('none')).toBe(false);
@@ -42,4 +44,23 @@ test('without Pro looks: Pro ones become Original, free ones stay, texture goes,
   expect([d.grain, d.vignette]).toEqual([0, 0]);
   expect(d.matrix).not.toBeNull();
   expect(d.sharpen).toBeCloseTo(0.2);
+});
+
+test('only the photos in the dump count, and the dump look only where a photo has none of its own', () => {
+  // a removed photo's own Pro look is left behind in per: it doesn't ask
+  expect(usesProLook(f({ key: 'warm35', per: { gone: { key: 'noir', pct: 50 } } }))).toBe(false);
+  expect(usesProLook(f({ key: 'warm35', per: { gone: { key: 'none', pct: 50, grain: 20 } } }))).toBe(false);
+  // every photo has its own free look: the dump's Pro look draws nothing
+  const own = { a: { key: 'warm35', pct: 50 }, b: { key: 'none', pct: 68 } } as const;
+  expect(usesProLook(f({ key: 'cashmere', pct: 68, grain: 20, per: own }))).toBe(false);
+  // one photo without its own look shows the dump's
+  expect(usesProLook(f({ key: 'cashmere', pct: 68, per: { a: own.a } }))).toBe(true);
+  // no photos, nothing drawn
+  expect(usesProLook(f({ key: 'cashmere', pct: 68 }), [])).toBe(false);
+});
+
+test('keepLooksFor drops removed photos\' own looks and Adjust, and is a no-op when nothing goes', () => {
+  const x = f({ key: 'noir', pct: 40, per: { a: { key: 'sunfade', pct: 50 }, b: { key: 'warm35', pct: 30 } }, adj: { a: { light: 10 }, b: { light: 20 } } });
+  expect(keepLooksFor(x, ['b', 'c'])).toEqual({ ...x, per: { b: { key: 'warm35', pct: 30 } }, adj: { b: { light: 20 } } });
+  expect(keepLooksFor(x, ['a', 'b'])).toBe(x);
 });

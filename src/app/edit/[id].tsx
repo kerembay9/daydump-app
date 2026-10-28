@@ -7,7 +7,7 @@ import { markSeen, Story, storyById } from '../../services/stories';
 import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
 import { Crop, Frame, frameOf, frameText, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
-import { Adjust, editedOwn, filterOf, FilterState, Look, lookFor, lookOf } from '../../services/filters';
+import { Adjust, editedOwn, filterOf, FilterState, keepLooksFor, Look, lookFor, lookOf } from '../../services/filters';
 import { toneOf } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import type { PhotoAsset } from '../../types';
@@ -167,11 +167,9 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       .finally(() => setTimeout(() => { opening.current = false; }, 600));
   };
 
-  // Free: swaps and "Similar photos" draw only from this dump's story; ranking the whole library is search, which is
-  // Pro. A dump with no story (Create basket, shared-in photos) has nothing to draw from, so no swap.
-  const pool = useMemo(() => (isPro ? undefined : new Set((story?.photos ?? []).map((p) => p.id))), [isPro, story]);
-  const similar = (target: DumpPhoto) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, target), 16, pool).map(fromAsset) : []);
-  const swapsFor = isPro || story ? (i: number) => similar(photos[i]) : null;
+  // swaps and "Similar photos" rank the whole library, free or Pro (as Create's Similar strip: building a dump by hand)
+  const similar = (target: DumpPhoto) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, target), 16).map(fromAsset) : []);
+  const swapsFor = (i: number) => similar(photos[i]);
   const addable = () => {
     const have = new Set(photos.map((p) => p.id));
     const fromStory = (story?.photos ?? []).filter((p) => !have.has(p.id)).slice(0, 24).map(fromAsset);
@@ -179,8 +177,12 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
     const more = photos[0] ? similar(photos[0]).filter((p) => !ids.has(p.id)) : [];
     return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: more }];
   };
-  const empty = isPro ? undefined : story ? 'No other photos from this story.' : 'Similar photos from your whole library come with Pro.';
 
+  // a removed or replaced photo's own look and Adjust go with it: a stale Pro look would still ask at export
+  const changePhotos = (next: DumpPhoto[]) => {
+    setPhotos(next);
+    setFilter((f) => keepLooksFor(f, next.map((p) => p.id)));
+  };
   const onCrop = useCallback((id: string, crop: Crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p))), []);
   // Memoised on what it shows and what its handlers read: a Frame slider step re-renders only the slides, not every
   // thumbnail (each with its own Skia canvas and gestures).
@@ -193,12 +195,11 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       filter={filter}
       onTap={tap}
       onMove={move}
-      onRemove={(i) => setPhotos(photos.filter((_, k) => k !== i))}
-      onReplace={(i, p) => setPhotos(photos.map((x, k) => (k === i ? p : x)))}
+      onRemove={(i) => changePhotos(photos.filter((_, k) => k !== i))}
+      onReplace={(i, p) => changePhotos(photos.map((x, k) => (k === i ? p : x)))}
       onAdd={(p) => setPhotos((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]))}
       swapsFor={swapsFor}
       addable={addable}
-      empty={empty}
     />
   ), [photos, active, sel, images, filter, tab, layout, library, story, isPro]); // eslint-disable-line react-hooks/exhaustive-deps
 

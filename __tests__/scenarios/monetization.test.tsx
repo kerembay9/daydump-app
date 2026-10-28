@@ -345,26 +345,16 @@ test('the first-Discover paywall waits for Discover to be on screen', async () =
   expect(await screen.findByText('We found 3 dumps in your roll.')).toBeTruthy();
 }, 30000);
 
-test('free: Edit\'s add sheet offers only the story\'s own photos; a dump with no story offers none', async () => {
-  await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByText('Use free unlock'));
-  await fireEvent.press(await screen.findByLabelText('Edit'));
-  await fireEvent.press(await screen.findByLabelText('Add photos'));
-  // the story has 8 photos and 6 are picked: those 2, nothing ranked from the rest of the library
-  expect(await screen.findByText('From this story')).toBeTruthy();
-  expect(screen.getAllByLabelText('Use this photo')).toHaveLength(2);
-  expect(screen.queryByText('Similar photos')).toBeNull();
-  screen.unmount();
-
+test('free: Edit\'s add sheet ranks the whole library, as Create\'s Similar strip does', async () => {
   const basket = await createDraft({ title: 'Mine', source: 'create', photos: world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri, created: p.created })) });
   await bootApp(`/edit/${basket.id}`);
   await fireEvent.press(await screen.findByLabelText('Add photos', {}, { timeout: 10000 }));
-  expect(await screen.findByText('Similar photos from your whole library come with Pro.')).toBeTruthy();
-  expect(screen.queryByLabelText('Use this photo')).toBeNull();
+  expect(await screen.findByText('Similar photos')).toBeTruthy();
+  expect(screen.getAllByLabelText('Use this photo').length).toBeGreaterThan(2);
+  expect(screen.queryByText(/come with Pro/)).toBeNull();
 }, 30000);
 
-test('Pro: Edit\'s add sheet also ranks the whole library', async () => {
+test('Pro: Edit\'s add sheet ranks the whole library too', async () => {
   world.pro = true;
   await bootApp('/');
   await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 }));

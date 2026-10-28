@@ -149,7 +149,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [finishAsk, setFinishAsk] = useState<((strip: boolean) => void) | null>(null);
   /** the PostSheet path: whether the pending post drops the Pro looks */
   const strip = useRef(false);
-  const gated = (go: (strip: boolean) => void) => (!isPro && usesProLook(filter) ? setFinishAsk(() => go) : go(false));
+  const gated = (go: (strip: boolean) => void) => (!isPro && usesProLook(filter, dump.photos.map((p) => p.id)) ? setFinishAsk(() => go) : go(false));
   const plain = (d: Dump) => ({ ...d, filter: withoutProLooks(filterOf(d.filter)) as unknown as Dump['filter'] });
   // installed once per Preview: back from installing an app re-opens Preview anyway
   const [targets] = useState(shareTargets);
