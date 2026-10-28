@@ -74,8 +74,12 @@ let running: Promise<number> | null = null;
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
-  return (running ??= run(onProgress).finally(() => (running = null)));
+  return (running ??= run(onProgress).finally(() => { running = null; setReading(0); }));
 }
+
+/** How many new photos the foreground index is reading right now (Today: "Checking 2 new photos…"). */
+export const reading = { n: 0, subs: new Set<() => void>() };
+const setReading = (n: number) => { reading.n = n; reading.subs.forEach((f) => f()); };
 
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
@@ -116,6 +120,7 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
   let nextInfos = infosOf(todo.slice(0, BATCH));
   let i = 0;
+  setReading(todo.length);
   for (; i < todo.length; i += BATCH) {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);

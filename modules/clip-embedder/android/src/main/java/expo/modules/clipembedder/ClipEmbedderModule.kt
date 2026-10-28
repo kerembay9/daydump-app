@@ -536,15 +536,20 @@ class ClipEngine private constructor(private val ctx: Context) {
     mapOf("ms" to (SystemClock.elapsedRealtime() - t0).toDouble(), "thumbs" to thumbs.get().toDouble(), "failed" to failed.toDouble())
   }
 
+  // A few photos (new ones on coming back to the app: Today waits on them) take ~0.1 s each: they don't wait for touches.
+  @Volatile private var quick = false
+  private fun hold() { if (!quick) waitForUser() }
+
   private suspend fun embedImagesLocked(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
     thumbs.set(0)
     val n = uris.size
+    quick = n <= 8
     val input = FloatArray(n * 3 * PLANE)
     val t0 = SystemClock.elapsedRealtime()
     // waits first: on a fresh install the GPU model build (seconds of CPU) would land on the selfie finder's first look
-    val model = withContext(liteThread) { waitForUser(); liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
-    return embedLite(model, n, input, t0) { waitForUser(); fill(uris[it], thumb, input, it) }
+    val model = withContext(liteThread) { hold(); liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
+    return embedLite(model, n, input, t0) { hold(); fill(uris[it], thumb, input, it) }
   }
 
   // The selfie finder's few photos while indexing runs: its own vision_dw8 on a normal-priority thread, so neither the
@@ -620,7 +625,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val hOut = h?.createOutputBuffers()
         try {
           while (true) {
-            waitForUser()
+            hold()
             val i = take(cpu = true).takeIf { it >= 0 } ?: break
             if (jobs[i].await() == null) continue
             runLite(h, hIn!!, hOut!!, input, i, out)
@@ -636,7 +641,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val outBuf = model.createOutputBuffers()
         try {
           while (true) {
-            waitForUser()
+            hold()
             val i = take(cpu = false).takeIf { it >= 0 } ?: break
             jobs[i].await()?.also {
               val t = SystemClock.elapsedRealtime()

@@ -19,11 +19,12 @@ test('Bands: none takes every tape off Discover', async () => {
   expect(tapes()).toEqual([]);
 }, 30000);
 
-test('Bands: default keeps the tiles bare; the one masking tape is the Today card\'s, on days with photos', async () => {
+test('Bands: default keeps the tiles bare; the one masking tape is the Today card\'s', async () => {
   await setProfile({ bands: 'default' });
   await bootApp('/');
   await screen.findByLabelText(SEATTLE, {}, { timeout: 10000 });
-  expect(tapes()).toEqual([]); // no photos today: no Today card
+  await screen.findByLabelText(/^Today: /);
+  expect(tapes()).toEqual([cashmere.tapeBg]);
 }, 30000);
 
 test('Bands: more tapes every tile with washi of several colours', async () => {

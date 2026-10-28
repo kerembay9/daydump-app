@@ -1,26 +1,70 @@
-import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 import { bootApp } from '../../jest/app';
-import { burst, defaultLibrary, photo, seedWorld } from '../../jest/world';
+import * as MediaLibrary from 'expo-media-library/legacy';
+import { burst, byId, defaultLibrary, NAMES, photo, seedWorld } from '../../jest/world';
+import { ClipEmbedder } from '../../modules/clip-embedder';
+import { questFor } from '../../src/services/today';
 
-// Today's camera roll: a burst of one brunch shot (11:00; the listing drops the take 2 s after the first, 2 stay), a street (15:00),
-// a sunset (18:00) and one late photo (23:00).
+// The last 10 days: a street and a sunset every day, so those are the two prompts this user shoots most and sit either side
+// of the free middle. Today: a burst of one brunch shot (the other takes are the same shot), a street (15:00), a sunset (18:00)
+// and, at 16:00, a photo of today's side quest (concept 12 is named after it).
 const now = new Date();
-const at = (h: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), h);
-beforeAll(() => seedWorld([...defaultLibrary(), ...burst(at(11), 3, [7]), photo(at(15), [0]), photo(at(18), [9]), photo(at(23), [])]));
+const at = (h: number, d = 0) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, h);
+const quest = questFor(Date.now());
+NAMES[12] = quest.phrase;
+const found = photo(at(16), [12]);
+const history = Array.from({ length: 10 }, (_, i) => [photo(at(12, i + 1), [0]), photo(at(19, i + 1), [9])]).flat();
+beforeAll(() => seedWorld([...defaultLibrary(), ...history, ...burst(at(11), 3, [7]), photo(at(15), [0]), found, photo(at(18), [9])]));
 
-test('Discover: the Today card replaces the hero; it shows what today covers and what is missing, and its sheet opens today’s dump', async () => {
+test('Today hub: the card is drawn from what you shoot, two everyday photos make a bingo and a print, one square swaps', async () => {
   const app = await bootApp('/');
-  // sky (sunset), wide (street) and night (23:00) of the 8 slots; the other brunch takes are the same shot
-  const card = await screen.findByLabelText('Today, 38%. Missing you, friends and 3 more', {}, { timeout: 10000 });
-  // no big hero: the top story is an ordinary tile, and today's own dump isn't one
+  const card = await screen.findByLabelText('Today: Bingo! Today’s print is in', {}, { timeout: 10000 });
   expect(screen.queryByLabelText('Preview A week in Seattle')).toBeNull();
-  expect(screen.getByLabelText('A week in Seattle, 9 photos · Aug 4–10, 2025')).toBeTruthy();
-  expect(screen.queryByLabelText(/^Today, \d+ photos/)).toBeNull();
 
   await fireEvent.press(card);
-  expect(await screen.findByText('Today · 38%')).toBeTruthy();
-  expect(screen.getByText('5 photos · 1 same shot')).toBeTruthy();
-  for (const s of ['Sky: 1', 'Wide shot: 1', 'Night: 1', 'Food: missing', 'You: missing', 'Mirror: missing']) expect(screen.getByLabelText(s)).toBeTruthy();
-  await fireEvent.press(screen.getByText('Make a dump from what I have'));
+  await waitFor(() => expect(app.getPathname()).toBe('/today'));
+  expect(await screen.findByLabelText('The sky, done')).toBeTruthy();
+  expect(screen.getByLabelText('Somewhere wide, done')).toBeTruthy();
+  expect(screen.getByText(/^Bingo! Today’s print is in/)).toBeTruthy();
+  // this week's side quest: found today, and the stamp holds that photo
+  expect(screen.getByText('Found today')).toBeTruthy();
+  expect(screen.getByText('Stuck on today’s polaroid. Next quest on Monday.')).toBeTruthy();
+  expect(JSON.stringify(screen.getByTestId('quest-photo').props.source)).toContain(byId(found.id)!.uri);
+
+  // the bingo card and the found quest save to the PicDump album and share with their hashtags
+  const share = jest.spyOn(ClipEmbedder!, 'shareImages');
+  await fireEvent.press(screen.getByLabelText('Share bingo card'));
+  await waitFor(() => expect(share).toHaveBeenLastCalledWith([expect.stringMatching(/^file:\/\/\/cache\/bingo card-.*\.png$/)], expect.stringContaining('Bingo! Today’s photo bingo #picdumpbingo'), null));
+  await fireEvent.press(screen.getByLabelText('Share side quest'));
+  const tag = quest.label.toLowerCase().replace(/[^a-z]/g, '');
+  await waitFor(() => expect(share).toHaveBeenLastCalledWith([expect.stringContaining('side quest-')], `Side quest: ${quest.label} ✓ #picdumpquest #${tag}`, null));
+  const saved = (MediaLibrary.createAlbumAsync as jest.Mock).mock.calls.length + (MediaLibrary.createAssetAsync as jest.Mock).mock.calls.length;
+  await fireEvent.press(screen.getByLabelText('Save bingo card'));
+  expect(await screen.findByText('Saved to PicDump ✓')).toBeTruthy();
+  expect((MediaLibrary.createAlbumAsync as jest.Mock).mock.calls.length + (MediaLibrary.createAssetAsync as jest.Mock).mock.calls.length).toBe(saved + 1);
+
+  // one swap a day: the empty square gets another prompt, and no square offers a swap after it
+  const empty = screen.getAllByLabelText(/, empty\. Tap to swap$/);
+  expect(empty).toHaveLength(6);
+  const before = empty[0].props.accessibilityLabel;
+  await fireEvent.press(empty[0]);
+  expect(await screen.findByText(/No swaps left/, {}, { timeout: 5000 })).toBeTruthy(); // after the 3 s "Saved" note
+  expect(screen.queryAllByLabelText(/Tap to swap$/)).toHaveLength(0);
+  expect(screen.queryByLabelText(before.replace('. Tap to swap', ''))).toBeNull();
+
+  // Album: today's print on the week's line with the quest's sticker; the days before had no card (the app wasn't open)
+  await fireEvent.press(screen.getByLabelText('Album'));
+  const today = await screen.findByLabelText(`Today: bingo, ${quest.label}`);
+  expect(JSON.stringify(within(today).getByTestId('album-sticker-photo').props.source)).toContain(byId(found.id)!.uri);
+  expect(screen.getByText(/^1 bingo · quest found$/)).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Share week'));
+  await waitFor(() => expect(share).toHaveBeenLastCalledWith([expect.stringContaining('week-')], 'My week in photo bingo #picdumpbingo', null));
+  await fireEvent.press(screen.getByLabelText('Month'));
+  const month = now.toLocaleDateString('en-US', { month: 'long' });
+  expect(await screen.findByText(`${month}: 1 bingo, 1 side quest`)).toBeTruthy();
+  expect(screen.getByLabelText(`${now.getDate()}: bingo, ${quest.label}`)).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Today'));
+
+  await fireEvent.press(await screen.findByText(/^Make a dump from today · \d+ photos$/));
   await waitFor(() => expect(app.getPathname()).toMatch(/^\/preview\//));
 }, 30000);

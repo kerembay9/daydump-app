@@ -18,7 +18,7 @@ fonts  - Inter (OFL, @expo-google-fonts) cut to Latin + punctuation/symbols -> a
          fall back per glyph to the system font; __tests__/fonts.test.ts fails if a string the app ships needs a dropped glyph
 sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (facepack; int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
-import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
+import csv, io, json, os, re, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -57,6 +57,9 @@ GOLDEN_PHRASES = ["a photo of a dog", "cinnamon bun", "wearing red", "A week in 
 GOLDEN_IMAGE = ROOT / "screenshots/screenshot_1_hook.jpg"
 # The selfie finder's queries (src/services/selfie.ts), shipped as vectors: findSelfies works without the text model.
 FIXED_PHRASES = ["a selfie of a person, close-up face", "a sharp, in-focus photo", "a blurry, out-of-focus photo"]
+# Today's bingo squares and side quests (src/services/today.ts): the game plays before the text pack lands
+_today = (ROOT / "src/services/today.ts").read_text()
+FIXED_PHRASES += re.findall(r"phrase: '([^']+)'", _today) + re.findall(r"\['\w+', '[^']+', '([^']+)'\]", _today)
 
 # Concepts Open Images lacks or names awkwardly: colors, clothing, light, moods, events, places.
 EXTRA = {

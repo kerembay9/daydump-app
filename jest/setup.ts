@@ -235,6 +235,7 @@ jest.mock('@shopify/react-native-skia', () => {
       ImageFilter: { MakeRuntimeShader: () => ({}), MakeBlur: () => ({}), MakeArithmetic: () => ({}) } },
     TileMode: { Clamp: 0 },
     drawAsImage: jest.fn(async () => img()),
+    makeImageFromView: jest.fn(async () => img()),
     ImageFormat: { JPEG: 3, PNG: 4, WEBP: 6 },
   };
 });

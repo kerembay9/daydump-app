@@ -3,6 +3,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import type { LucideIcon } from 'lucide-react-native';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import Bookmark from 'lucide-react-native/icons/bookmark';
+import Camera from 'lucide-react-native/icons/camera';
 import Check from 'lucide-react-native/icons/check';
 import CircleDashed from 'lucide-react-native/icons/circle-dashed';
 import Clapperboard from 'lucide-react-native/icons/clapperboard';
@@ -109,6 +110,7 @@ export const Icons = {
   comment: lucide(MessageCircle),
   send: lucide(Send),
   bookmark: lucide(Bookmark),
+  camera: lucide(Camera),
   music: lucide(Music),
   download: lucide(Download),
   check: lucide(Check),

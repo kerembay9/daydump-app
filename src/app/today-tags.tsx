@@ -7,7 +7,7 @@ import { IconButton } from '../components/ui/TopHeader';
 import { Icons } from '../components/ui/Icons';
 import { Tap } from '../components/ui/Tap';
 import { useApp } from '../state/AppState';
-import { checkDay, DayCheck, listSlots, SLOTS, slotLabel } from '../services/today';
+import { checkDay, DayCheck, SLOTS, slotLabel } from '../services/today';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 
@@ -42,7 +42,7 @@ export default function TodayTags() {
       {!c ? <ActivityIndicator color={t.ink} /> : (
         <View style={{ gap: 10 }}>
           <Text style={[ui(13, 500), { color: t.ink }]}>
-            {c.pct}% · {c.got} of {SLOTS.length} · {c.photos.length} photos, {c.dupes} same shot{c.missing.length ? ` · missing ${listSlots(c.missing)}` : ''}
+            {SLOTS.filter((s) => c.filled[s.key]).length} of {SLOTS.length} prompts · {c.photos.length} photos, {c.dupes} same shot · side quest {c.quest.label}: {c.questFound ? 'found' : 'not yet'}
           </Text>
           <Text style={[ui(11), { color: t.inkMuted }]}>Faces: {c.faces === 'owner' ? 'matched to your profile photo' : c.faces === 'faces' ? 'no profile photo to match, phrases decide You / Friends' : 'faces pack missing'}</Text>
           {!c.photos.length && <Text style={[ui(12), { color: t.inkMuted }]}>No camera photos indexed on this day.</Text>}
@@ -51,11 +51,11 @@ export default function TodayTags() {
               <Image source={{ uri: d.p.uri }} style={{ width: 84, height: 84, borderRadius: 6 }} contentFit="cover" recyclingKey={d.p.id} />
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={[ui(12, 600), { color: t.ink }]}>
-                  {new Date(d.p.creationTime).toTimeString().slice(0, 5)} · {d.slots.length ? d.slots.map(slotLabel).join(', ') : 'no slot'}{d.dupe ? ' · same shot' : ''}
+                  {new Date(d.p.creationTime).toTimeString().slice(0, 5)} · {d.slots.length ? d.slots.map(slotLabel).join(', ') : 'no prompt'}{d.quest ? ' · quest' : ''}{d.dupe ? ' · same shot' : ''}
                 </Text>
                 <Text style={[ui(10.5), { color: t.inkMuted }]}>{d.faces} face{d.faces === 1 ? '' : 's'}{d.me ? ', you' : ''}</Text>
                 <Text style={[ui(10.5), { color: t.inkMuted }]}>
-                  {Object.entries(d.scores).sort((a, b) => b[1] - a[1]).map(([k, s]) => `${k} ${s.toFixed(3)}`).join('  ')}
+                  {Object.entries(d.scores as Record<string, number>).sort((a, b) => b[1] - a[1]).map(([k, s]) => `${k} ${s.toFixed(3)}`).join('  ')}
                 </Text>
               </View>
             </View>

@@ -210,7 +210,7 @@ export default function Discover() {
           onAction={askPhotos}
         />
       ) : stories.length ? (
-        <TodayCard more={more} />
+        <TodayCard more={more} paper={!!sheets} />
       ) : vision && vision.state !== 'ready' ? (
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
