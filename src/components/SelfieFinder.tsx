@@ -33,14 +33,14 @@ const pickFrom = (pool: Selfie[], skipped: Set<string>, notMe: Float32Array[]) =
  * on: scan (onboarding turns it on at the photo grant). best: on screen; wait: [title, body, progress] while there's none yet.
  */
 export function useSelfiePick(on = true) {
-  const models = useModels('faces');
+  useModels('faces'); // fetched next: sharpens the pick once it's there
   /** cur: on screen (null = none right now); passed: one was passed already; scanned: photos scanned; firstBy: scanned before the first pick; done: all scanned, or ENOUGH found */
   const [st, setSt] = useState<{ pool: Selfie[]; cur: Selfie | null; passed: boolean; scanned: number; firstBy: number; done: boolean }>({ pool: [], cur: null, passed: false, scanned: 0, firstBy: FIRST_BY, done: false });
   const [verdict, setVerdict] = useState<'up' | 'down' | null>(null);
   const skipped = useRef(new Set<string>()); // photos shown and passed
   const notMe = useRef<Float32Array[]>([]); // faces turned down
 
-  const go = on && !!models;
+  const go = on; // not waiting on the models' state: if it never arrives, the scan still runs (faces read when it has)
   const best = st.cur;
 
   useEffect(() => {
@@ -138,7 +138,6 @@ export function useSelfiePick(on = true) {
 
   // what it waits for: [title, body, progress or null]
   const wait: [string, string, number | null] | null = best ? null
-    : !models ? ['Getting ready', 'One moment.', null]
     : st.done ? null
     : !st.passed ? ['Picking your best selfie', 'Looking through your recent photos. Nothing leaves your phone.', Math.min(1, st.scanned / st.firstBy)]
     : ['Looking further back', 'Checking older photos.', null];

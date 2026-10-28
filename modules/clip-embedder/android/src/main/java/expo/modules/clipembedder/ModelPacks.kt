@@ -56,7 +56,8 @@ internal object ModelPacks {
   fun next(ctx: Context) {
     val missing = Pack.entries.filterNot { ready(ctx, it) }
     if (fetching in missing) return
-    val p = missing.firstOrNull { it == Pack.FACES } ?: wanted?.takeIf { it in missing } ?: missing.firstOrNull() ?: return
+    // faces, then vision (Home's dumps and Create's grid wait on it), then a wanted pack, then Pack order
+    val p = missing.firstOrNull { it == Pack.FACES || it == Pack.VISION } ?: wanted?.takeIf { it in missing } ?: missing.firstOrNull() ?: return
     fetching = p
     manager(ctx).fetch(listOf(p.pack))
   }

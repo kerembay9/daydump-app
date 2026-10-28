@@ -50,6 +50,13 @@ export class GalleryService {
     } while (after);
   }
 
+  /** Photo access now, without asking: granted (all or selected photos), only selected ones (Android 14+), and whether Android still shows its dialog. */
+  static async checkPermissions(): Promise<{ granted: boolean; limited: boolean; canAskAgain: boolean }> {
+    const r = await MediaLibrary.getPermissionsAsync(false, ['photo']);
+    const limited = r.accessPrivileges === 'limited';
+    return { granted: r.status === 'granted' || limited, limited, canAskAgain: r.canAskAgain };
+  }
+
   /**
    * Request gallery permissions from user
    */

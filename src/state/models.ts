@@ -18,6 +18,8 @@ const shown = (m: Models): Models => Object.values(m).some((s) => s.state === 'w
 const set = (m: Models) => { raw = m; models = shown(m); subs.forEach((f) => f()); };
 // also restarts a download that failed
 const refresh = () => ClipEmbedder?.modelState().then(set, (e) => console.warn('[models] state failed:', e));
+/** The loading card's Try again (a failed pack otherwise restarts when the app comes back to the front). */
+export const retryModels = () => { refresh(); };
 
 let started = false;
 function start() {
@@ -33,7 +35,7 @@ const subscribe = (f: () => void) => { start(); subs.add(f); return () => { subs
 /** The current state outside React (null until the first arrives). */
 export const modelsNow = () => models;
 
-/** null until the first state arrives. want: the pack this screen needs, downloaded next after faces. */
+/** null until the first state arrives. want: the pack this screen needs, downloaded next after faces and vision. */
 export const useModels = (want?: ModelPack) => {
   useEffect(() => { if (want) ClipEmbedder?.wantModel?.(want); }, [want]);
   return useSyncExternalStore(subscribe, () => models);

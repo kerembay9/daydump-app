@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, Linking, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, GestureResponderEvent, Keyboard, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -262,7 +262,7 @@ export default function Create() {
   const insets = useSafeAreaInsets();
   const win = useWindowDimensions();
   // indexing rebuilds the library every 15 s; a hidden Create is frozen (freezeOnBlur), so it re-searches only once shown
-  const { library: lib, permission } = useApp();
+  const { library: lib, permission, askPhotos } = useApp();
   const { shared } = useLocalSearchParams<{ shared?: string }>();
 
   const [query, setQuery] = useState('');
@@ -501,8 +501,8 @@ export default function Create() {
     <FrameCard padding={16} style={{ gap: 8 }}>
       <Text style={[display(18), { color: t.ink }]}>PicDump needs your photos</Text>
       <Text style={[ui(12), { color: t.inkMuted }]}>Allow photo access to search and pick from your library. Nothing leaves your phone.</Text>
-      <Tap onPress={() => Linking.openSettings()} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center' }}>
-        <Text style={[ui(12, 600), { color: t.bgScreen }]}>Open settings</Text>
+      <Tap onPress={askPhotos} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center' }}>
+        <Text style={[ui(12, 600), { color: t.bgScreen }]}>Allow photos</Text>
       </Tap>
     </FrameCard>
   ) : models && models.vision.state !== 'ready' && !lib?.photos.length ? (

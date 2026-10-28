@@ -14,5 +14,5 @@ test('every pack is fast-follow', () => {
 test('the app fetches faces, then vision, then text', () => {
   const kt = fs.readFileSync(path.join(android, 'src/main/java/expo/modules/clipembedder/ModelPacks.kt'), 'utf8');
   expect([...kt.matchAll(/^\s+(\w+)\("\w+pack"/gm)].map((m) => m[1])).toEqual(['FACES', 'VISION', 'TEXT']);
-  expect(kt).toMatch(/missing\.firstOrNull \{ it == Pack\.FACES \}/);
+  expect(kt).toMatch(/missing\.firstOrNull \{ it == Pack\.FACES \|\| it == Pack\.VISION \}/); // a want can't jump vision
 });

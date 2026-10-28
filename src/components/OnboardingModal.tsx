@@ -3,7 +3,6 @@ import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LucideIcon } from 'lucide-react-native';
 import Bell from 'lucide-react-native/icons/bell';
-import Check from 'lucide-react-native/icons/check';
 import Film from 'lucide-react-native/icons/film';
 import ImageIcon from 'lucide-react-native/icons/image';
 import Layers from 'lucide-react-native/icons/layers';
@@ -13,7 +12,6 @@ import { Image } from 'expo-image';
 import Animated, { Easing, FadeInDown, interpolate, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { OnboardingService } from '../services/onboardingService';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, label, ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
@@ -22,6 +20,7 @@ import { Tap } from './ui/Tap';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
 import { ProfileStep } from './ProfileStep';
+import { useSelfiePick } from './SelfieFinder';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { useModels } from '../state/models';
 import { NotificationService } from '../services/notificationService';
@@ -34,7 +33,7 @@ const SLIDES: Slide[] = [
     id: 'hook',
     badge: 'Effortless photo dumps',
     title: 'Turn camera roll chaos into dumps',
-    description: 'Say goodbye to scrolling through 200 shots. PicDump picks the best photos of your days and trips, paced with flow and ready-made captions.',
+    description: 'Say goodbye to scrolling through thousands of shots. PicDump picks the best photos of your days and trips, paced with flow.',
     icon: Sparkles,
     points: [
       { icon: Film, text: 'Film looks, borders and IG / TikTok sizes' },
@@ -45,11 +44,9 @@ const SLIDES: Slide[] = [
     id: 'privacy',
     badge: 'On-device curation',
     title: 'Picked on your phone, not in the cloud',
-    description: 'Stories, search and photo picks run on a small vision model on your phone. PicDump does not upload your photos to curate them.',
+    description: 'Photo picks, search and dumps run on your phone. PicDump does not upload your photos to curate them.',
     icon: ShieldCheck,
     points: [
-      { icon: Check, text: 'Stories and search run on-device' },
-      { icon: Check, text: 'Your photos stay on your phone' },
       { icon: ImageIcon, text: 'Photo access lets it find your standout moments' },
     ],
   },
@@ -73,6 +70,8 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
   useEffect(() => {
     if (visible && vision) ClipEmbedder?.warmSelfie?.().catch((e) => console.warn('[onboarding] warm failed:', e));
   }, [visible, vision, faces]);
+  // the selfie scan starts at the photo grant (it reads the photos), so the pick is ready by the profile step
+  const pick = useSelfiePick(step !== 'slides');
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const p = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -87,21 +86,20 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const finish = async (ask: boolean) => {
+  const asked = useRef(false); // a double tap asks once
+  const finish = async () => {
+    if (asked.current) return;
+    asked.current = true;
     let granted = false;
     try {
       // Photo only, so Android 13+ doesn't reject the request over the undeclared audio permission.
-      if (ask) granted = (await MediaLibrary.requestPermissionsAsync(false, ['photo'])).granted;
+      granted = (await MediaLibrary.requestPermissionsAsync(false, ['photo'])).granted;
     } catch (e) {
       console.warn('[onboarding] permission request failed:', e);
-    } finally {
-      await OnboardingService.setOnboardingCompleted();
-      if (!granted) onFinish(false);
     }
-    if (granted) {
-      onStart();
-      setStep('notify');
-    }
+    if (!granted) return onFinish(false);
+    onStart();
+    setStep('notify');
   };
 
   // back does nothing while it's up
@@ -121,7 +119,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
         </View>
 
         {step === 'notify' ? <NotifyStep onDone={() => setStep('profile')} />
-          : step === 'profile' ? <ProfileStep onDone={() => onFinish(true)} /> : <>
+          : step === 'profile' ? <ProfileStep pick={pick} onDone={() => onFinish(true)} /> : <>
         <ScrollView ref={scroll} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}>
           {SLIDES.map((s, i) => (
             <SlideBody key={s.id} s={s} i={i} width={width} />
@@ -134,12 +132,12 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
               <View key={s.id} style={{ height: 6, borderRadius: 3, width: i === page ? 22 : 6, backgroundColor: i === page ? t.ink : t.borderStrong }} />
             ))}
           </View>
-          <Tap onPress={last ? () => finish(true) : next} accessibilityRole="button"
+          <Tap onPress={last ? finish : next} accessibilityRole="button"
             style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
             <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & continue' : 'Continue'}</Text>
           </Tap>
           <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>
-            You can change photo access anytime in Android settings.
+            {last ? 'Pick “Allow all” on the next screen so PicDump sees your whole camera roll.' : 'You can change photo access anytime in Android settings.'}
           </Text>
         </View>
         </>}
@@ -191,7 +189,8 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
 
   return (
     <>
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 14 }}>
+      {/* scrolls only when it doesn't fit (small phone, big font) */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 14, paddingBottom: 12 }}>
         <Animated.Text entering={FadeInDown.duration(500)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>Daily recap</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(80).duration(500)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Your day, ready at 8 PM</Animated.Text>
 
@@ -227,7 +226,7 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
         <Animated.Text entering={FadeInDown.delay(260).duration(500)} style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginTop: 22 }]}>
           {"Every evening at 8, a heads-up with today's dump and its cover. One a day, nothing else."}
         </Animated.Text>
-      </View>
+      </ScrollView>
 
       <Animated.View entering={FadeInDown.delay(340).duration(500)} style={{ paddingHorizontal: 24, alignItems: 'center' }}>
         <Tap onPress={() => choose(true)} accessibilityRole="button"
@@ -279,7 +278,8 @@ function Shot({ k, i, uri, flex }: { k: SharedValue<number>; i: number; uri: str
 function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
   const { t } = useTheme();
   return (
-    <View style={{ width, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center' }}>
+    // scrolls only when it doesn't fit (small phone, big font)
+    <ScrollView style={{ width }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 28, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ marginBottom: 26 }}>
         <FrameCard radius={22} rotate={i % 2 ? 2 : -2} style={{ width: 92, height: 92, alignItems: 'center', justifyContent: 'center' }}>
           <s.icon size={40} color={t.ink} strokeWidth={1.6} />
@@ -299,7 +299,7 @@ function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
           ))}
         </FrameCard>
       )}
-    </View>
+    </ScrollView>
   );
 }
 

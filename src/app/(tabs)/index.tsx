@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Linking, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -154,7 +154,7 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, paused, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { stories, loaded, permission, limited, askPhotos, paused, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
@@ -191,12 +191,21 @@ export default function Discover() {
           {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
         </Text>
       )}
+      {permission && limited && (
+        // Android 14 "Select photos": asking again shows Android's dialog with "Allow all" and the picker
+        <TapedNote
+          title="PicDump only sees the photos you picked"
+          body="Dumps come from your whole camera roll, so a handful of photos won’t make many."
+          action="Allow all photos"
+          onAction={askPhotos}
+        />
+      )}
       {permission === false ? (
         <TapedNote
           title="Let PicDump see your photos"
           body="Dumps are made on your phone from your camera roll. Nothing leaves your device."
-          action="Open settings"
-          onAction={() => Linking.openSettings()}
+          action="Allow photos"
+          onAction={askPhotos}
         />
       ) : stories.length ? (
         <TodayCard more={more} />

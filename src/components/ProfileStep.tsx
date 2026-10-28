@@ -30,7 +30,7 @@ const at = (r: RefObject<View | null>) => new Promise<Rect | null>((res) => (r.c
  * "That's me" flies the face into the header's avatar, and a strip of the same person's other selfies lets them swap it
  * (right person, wrong photo); "Not me" moves to the next person. Continue saves the avatar; Skip leaves the initial letter.
  */
-export function ProfileStep({ onDone }: { onDone: () => void }) {
+export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfiePick>; onDone: () => void }) {
   const { t } = useTheme();
   const [name, setName] = useState('');
   const [phase, setPhase] = useState<'name' | 'selfie' | 'picked'>('name');
@@ -39,7 +39,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
   // what the header shows (lands after the flight), drawn as it flew (same size, scaled down): that image is in memory already
   const [avatar, setAvatar] = useState<{ s: Selfie; size: number; thumb: boolean } | null>(null);
   const [fly, setFly] = useState<Fly | null>(null);
-  const { best, wait, vote, mine } = useSelfiePick();
+  const { best, wait, vote, mine } = pick; // scanning since the grant (OnboardingModal)
   const root = useRef<View>(null), input = useRef<View>(null), headName = useRef<View>(null), headFace = useRef<View>(null), big = useRef<View>(null);
   const thumbs = useRef(new Map<string, View | null>());
   const bump = useSharedValue(0);
@@ -74,9 +74,10 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
   const yes = () => { if (!best) return; vote('up'); take(best, big, BIG); setPhase('picked'); };
   const no = () => { Haptics.selectionAsync(); setPicked(null); setAvatar(null); vote('down'); setPhase('selfie'); };
   const canGo = phase === 'picked' || (phase === 'selfie' && !best && !wait);
-  const done = (use: boolean) => {
+  const done = async (use: boolean) => {
     Keyboard.dismiss();
-    if (use && picked) saveAvatar(picked).catch((e) => console.warn('[onboarding] avatar save failed:', e));
+    // saved before onboarding closes, so Home's avatar is there from the start
+    if (use && picked) await saveAvatar(picked).catch((e) => console.warn('[onboarding] avatar save failed:', e));
     onDone();
   };
   const shown = named ? name.trim() : '';
@@ -115,7 +116,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
 
         {phase === 'name' ? (
           <Animated.View key="name" entering={FadeInDown.delay(320).duration(450)} exiting={FadeOutUp.duration(200)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>What should your posts say?</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>What should we call you?</Text>
             <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4 }}>
               <View ref={input} collapsable={false}>
                 <TextInput value={name} onChangeText={setName} onSubmitEditing={submitName} placeholder="Your name" placeholderTextColor={t.inkMuted} autoFocus
@@ -151,7 +152,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
           </Animated.View>
         ) : (
           <Animated.View key="picked" entering={FadeInDown.delay(FLY_MS - 120).duration(400)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>Rather another photo of you?</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>Not this one? Pick another</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 4, paddingVertical: 4 }}>
               {strip.map((s, i) => {
                 const on = s.p.id === picked?.p.id;
@@ -175,12 +176,12 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
-        <Tap onPress={() => (phase === 'name' ? submitName() : canGo && done(true))} accessibilityRole="button" accessibilityState={{ disabled: phase !== 'name' && !canGo }}
+        <Tap onPress={() => (phase === 'name' ? submitName() : canGo && void done(true))} accessibilityRole="button" accessibilityState={{ disabled: phase !== 'name' && !canGo }}
           style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, opacity: phase === 'name' || canGo ? 1 : 0.35, alignItems: 'center', justifyContent: 'center', boxShadow: t.shadowCard }}>
           <Text style={[ui(15, 600), { color: t.bgScreen }]}>{phase === 'name' ? 'Next' : 'Continue'}</Text>
         </Tap>
         {canGo ? <View style={{ height: 42 }} /> : (
-          <Tap onPress={() => done(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
+          <Tap onPress={() => void done(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
             <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip for now</Text>
           </Tap>
         )}
