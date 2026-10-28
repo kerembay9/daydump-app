@@ -55,3 +55,12 @@ test('the first time Discover is full of locked dumps, the paywall names them, o
   await screen.findByLabelText('Unlock A week in Seattle', {}, { timeout: 10000 });
   expect(screen.queryByText(/We found \d+ dumps/)).toBeNull();
 }, 30000);
+
+test('free: tapping search opens the paywall instead of the field', async () => {
+  await bootApp('/create');
+  const field = await screen.findByPlaceholderText('Search keyword, place, date...', {}, { timeout: 10000 });
+  await fireEvent(field, 'focus');
+  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+  expect(screen.queryByText('Last searches')).toBeNull();
+  expect(screen.queryByText('Try')).toBeNull();
+}, 30000);

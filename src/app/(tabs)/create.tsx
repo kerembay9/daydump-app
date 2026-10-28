@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
 import { useApp, useProgress } from '../../state/AppState';
+import { usePro } from '../../state/Pro';
 import { embedText, IndexedPhoto } from '../../services/index/photoIndex';
 import { parseQuery, placeIndex, searchLibrary } from '../../services/stories/search';
 import { expandQuery, Expanded, langName, useLangStates } from '../../services/index/queryLang';
@@ -45,9 +46,11 @@ const vecFor = (text: string) => {
 };
 
 /** Search field with the recent-searches dropdown (only while focused). */
-function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent }: {
+function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent, locked, onLocked }: {
   query: string; searching: boolean; onQuery: (q: string) => void; onCommit: (q: string) => void;
   recents: string[]; suggestions: string[]; onRemoveRecent: (q: string) => void;
+  /** search is Pro: focusing the field opens the paywall instead */
+  locked: boolean; onLocked: () => void;
 }) {
   const { t } = useTheme();
   const [focused, setFocused] = useState(false);
@@ -71,7 +74,7 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
             ref={input}
             value={query}
             onChangeText={onQuery}
-            onFocus={() => setFocused(true)}
+            onFocus={() => { if (locked) { input.current?.blur(); onLocked(); return; } setFocused(true); }}
             onBlur={() => { setFocused(false); onCommit(last.current); }}
             onSubmitEditing={() => onCommit(query)}
             placeholder="Search keyword, place, date..."
@@ -206,6 +209,7 @@ export default function Create() {
   const insets = useSafeAreaInsets();
   const win = useWindowDimensions();
   const { library, permission } = useApp();
+  const pro = usePro();
   // the library as of the last time Create was on screen: indexing rebuilds it every 15 s, and a hidden Create
   // re-searching and re-rendering its grid each time took the JS thread from the screen in use
   const focused = useIsFocused();
@@ -478,7 +482,8 @@ export default function Create() {
         <TopHeader title="Create" right={<AvatarButton onPress={() => router.push('/profile')} />} />
       </View>
       <SearchBar query={query} searching={searching} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
-        onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))} />
+        onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))}
+        locked={!pro.isPro} onLocked={() => pro.openPaywall('search')} />
 
       <FlatList
         // new results start at the top and mount only the first screen, not the old scroll window (~750 ms)
