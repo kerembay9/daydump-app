@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen } from 'expo-router/testing-library';
+import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
 import { bootApp } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
+import { list, update } from '../../src/services/dumps';
 import { getProfile } from '../../src/services/profile';
 
 const LONG = 'An autumn of golden retriever puppy splashing through the shallow waves';
@@ -72,4 +73,31 @@ test('free: changing photos per dump opens the paywall and keeps the range', asy
   await fireEvent.press(screen.getByLabelText('Raise most photos'));
   expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
   expect((await getProfile()).slidesMax).toBe(10);
+}, 30000);
+
+test('free exports end with the PicDump slide; Pro exports do not', async () => {
+  const draw = jest.requireMock('@shopify/react-native-skia').drawAsImage as jest.Mock;
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
+  draw.mockClear();
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  // 6 photo slides + the end slide, rendered ahead in the background
+  await waitFor(() => expect(draw).toHaveBeenCalledTimes(7));
+}, 30000);
+
+test('free: saving a dump with a Pro film look asks first; "Export without finish" saves it anyway', async () => {
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  await screen.findByLabelText('Post on Instagram or TikTok');
+  await fireEvent.press(screen.getByLabelText('Back'));
+  // the unlock made its Library draft; give it a Pro look, then open it again
+  const [draft] = await list('draft');
+  await update(draft.id, { filter: { key: 'cashmere', pct: 68, all: true, per: {} } });
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`));
+
+  await fireEvent.press(await screen.findByLabelText('Save only, to the PicDump album'));
+  expect(await screen.findByText('This film look is Pro')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Export without finish'));
+  expect(await screen.findByText('Saved to your phone')).toBeTruthy();
 }, 30000);

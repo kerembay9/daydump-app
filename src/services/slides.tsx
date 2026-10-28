@@ -1,6 +1,6 @@
 // Slides drawn with Skia: the same drawing is the Edit canvas and the exported JPG, so what you see is what you post.
 import React from 'react';
-import { ColorMatrix, drawAsImage, Group, Image, ImageFormat, rect, Rect, RoundedRect, rrect, Shadow, Skia, SkImage, vec } from '@shopify/react-native-skia';
+import { ColorMatrix, drawAsImage, Group, Image, ImageFormat, matchFont, rect, Rect, RoundedRect, rrect, Shadow, Skia, SkImage, Text, vec } from '@shopify/react-native-skia';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { SharedValue, useDerivedValue } from 'react-native-reanimated';
 import { Directory, File, Paths } from 'expo-file-system';
@@ -13,6 +13,22 @@ import { Cell, chunk, Crop, exportSize, Fit, fitOf, LayoutKey, layoutOf, paintOr
 /** Cashmere matte: the border, scrapbook ground and collage gaps, in both app themes (exports never change colour). */
 export const MATTE = '#EFE6DA';
 const EMPTY = 'rgba(74,52,40,0.15)';
+const END_INK = '#3A2A20';
+
+/** Free exports' last slide: "made with" over "PicDump" on the matte. Fonts are the phone's serif / sans. */
+function EndCard({ width, height }: { width: number; height: number }) {
+  const u = width / UNIT;
+  const small = matchFont({ fontFamily: 'sans-serif', fontSize: 9 * u });
+  const big = matchFont({ fontFamily: 'serif', fontSize: 24 * u, fontWeight: '600' });
+  const line = 'made with', name = 'PicDump';
+  return (
+    <Group>
+      <Rect x={0} y={0} width={width} height={height} color={MATTE} />
+      <Text x={(width - small.getTextWidth(line)) / 2} y={height / 2 - 12 * u} text={line} font={small} color={END_INK} />
+      <Text x={(width - big.getTextWidth(name)) / 2} y={height / 2 + 16 * u} text={name} font={big} color={END_INK} />
+    </Group>
+  );
+}
 
 export type SlidePhoto = { id?: string; image: SkImage | null | undefined; matrix: number[] | null; crop?: Crop };
 /** The crop of the photo under the fingers, set on the UI thread while dragging / pinching on the Edit canvas. */
@@ -134,9 +150,10 @@ export function previewImage(uri: string, boxW: number, boxH: number) {
 
 /**
  * Renders every slide of a dump to JPGs in the cache (1080 px wide, q0.92; 2160 px at q0.95 with High-Res), with its
- * layout, Border/Bleed and filters baked in. Returns file:// uris in slide order. Each call replaces the last export.
+ * layout, Border/Bleed and filters baked in, plus the PicDump end slide when endCard (free exports). Returns file://
+ * uris in slide order. Each call replaces the last export.
  */
-export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): Promise<string[]> {
+export async function exportSlides(d: Dump, opts: { highRes?: boolean; endCard?: boolean } = {}): Promise<string[]> {
   const highRes = opts.highRes ?? (await getProfile()).exportHD;
   const { width, height } = exportSize(d.ratio, highRes);
   const fit = fitOf(d.fit);
@@ -147,6 +164,13 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): P
   const t0 = Date.now();
   const stamp = t0.toString(36);
   const out: string[] = [];
+  const write = (img: SkImage, n: number) => {
+    // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
+    const file = new File(dir, `${d.id.replace(/[^\w-]/g, '_')}-${stamp}-${n}.jpg`);
+    file.write(img.encodeToBytes(ImageFormat.JPEG, highRes ? 95 : 92));
+    out.push(file.uri);
+    img.dispose();
+  };
   const slides = chunk(d.photos, layoutOf(d.layout).key);
   // every photo queued at once, in slide order, so up to three decode while a slide draws
   const hold = () => ClipEmbedder?.holdIndexing?.(3000); // someone's waiting: the CPU to the export, not indexing
@@ -161,12 +185,13 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean } = {}): P
       const photos: SlidePhoto[] = s.photos.map((p, j) => ({ image: images[j], matrix: matrixFor(lookFor(filter, p.id)), crop: p.crop }));
       const img = await drawAsImage(<SlideDrawing layout={s.layout} fit={fit} width={width} height={height} photos={photos} />, { width, height });
       if (!img) throw new Error(`slide ${i + 1} did not render`);
-      // topic ids hold ':' (topic:2740:…), and MediaLibrary can't tell the MIME type of such a name
-      const file = new File(dir, `${d.id.replace(/[^\w-]/g, '_')}-${stamp}-${i + 1}.jpg`);
-      file.write(img.encodeToBytes(ImageFormat.JPEG, highRes ? 95 : 92));
-      out.push(file.uri);
-      img.dispose();
+      write(img, i + 1);
       hold();
+    }
+    if (opts.endCard) {
+      const img = await drawAsImage(<EndCard width={width} height={height} />, { width, height });
+      if (!img) throw new Error('end slide did not render');
+      write(img, slides.length + 1);
     }
   } finally {
     // drawn or not (a slide failed): every loaded image freed once its load lands

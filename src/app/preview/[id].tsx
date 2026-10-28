@@ -67,13 +67,13 @@ export default function Preview() {
  */
 function exporter() {
   let cur: { key: string; p: Promise<string[]> } | null = null;
-  return (d: Dump, highRes?: boolean) => {
-    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri, p.crop]), d.layout, d.ratio, d.fit, d.filter, !!highRes]);
+  return (d: Dump, highRes?: boolean, endCard?: boolean) => {
+    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri, p.crop]), d.layout, d.ratio, d.fit, d.filter, !!highRes, !!endCard]);
     if (cur?.key === key) return cur.p;
     const prev = cur?.p.catch(() => {});
     const p: Promise<string[]> = Promise.resolve(prev).then(() => {
       if (cur?.p !== p) throw new Error('superseded');
-      return exportSlides(d, { highRes });
+      return exportSlides(d, { highRes, endCard });
     });
     p.catch(() => { if (cur?.p === p) cur = null; });
     cur = { key, p };
@@ -147,8 +147,8 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   // The slides render in the background from the moment Preview opens (and again on a Quality change), so Post /
   // Save only just wait for what's left.
   const [exportFor] = useState(exporter);
-  useEffect(() => { exportFor(dump, hd).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor]);
-  const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: exportFor }), [stories, exportFor]);
+  useEffect(() => { exportFor(dump, hd, !isPro).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor, isPro]);
+  const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: (d: Dump, h?: boolean) => exportFor(d, h, !isPro) }), [stories, exportFor, isPro]);
   const n = slides.length;
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
   // no Instagram / TikTok on the phone: the system share sheet (target ignored)
