@@ -38,18 +38,20 @@ export default function Edit() {
   // A story id needs the stories built (cold deep link); a dump id doesn't. Resolve once per id.
   const story = isDumpId(id) ? undefined : storyById(stories, id);
   const ready = isDumpId(id) || loaded;
-  const { accessOf } = usePro();
+  const { accessOf, unlockedIdOf } = usePro();
   const locked = !!story && accessOf(story) === 'locked';
+  // a story re-id'd since its unlock opens the draft made then, not a second one
+  const unlockedAs = story ? unlockedIdOf(story) : null;
   useEffect(() => {
     if (!id || !ready || dump !== undefined || locked) return;
     (async () => {
-      const d = story ? await draftForStory(story) : await get(id);
+      const d = story ? await draftForStory(story, unlockedAs) : await get(id);
       if (story) markSeen([story.id]);
       // A posted dump is a record of what went out: never auto-save into it. Reuse makes the editable copy.
       if (d?.status === 'posted') return router.replace({ pathname: '/preview/[id]', params: { id: d.id } });
       setDump(d);
     })().catch((e) => { console.warn('[edit] open failed:', e); setDump(null); });
-  }, [id, ready, story, dump, locked]);
+  }, [id, ready, story, dump, locked, unlockedAs]);
 
   if (locked) return <LockedStub story={story!} />;
   if (dump === null) return <Stub back title="Edit" note="This dump is no longer available." />;

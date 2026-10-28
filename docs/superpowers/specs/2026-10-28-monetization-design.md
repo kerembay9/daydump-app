@@ -42,9 +42,10 @@ Premium film looks are every look except Original and Warm 35mm. Borders and lay
 
 ## Weekly unlock
 
-- State in AsyncStorage (`@picdump_unlocks`): `{ lastAt: number | null, ids: string[] }`.
+- State in AsyncStorage (`@picdump_unlocks`): `{ lastAt: number | null, ids: string[], spans: Record<id, [start, end]> }` (saves without `spans` load with `{}` and match by exact id only).
 - `canUnlock(now)`: `lastAt` is null or `now - lastAt >= 7 days` (rolling, not calendar). Unused unlocks do not bank.
-- `unlock(story, now)`: requires `canUnlock`; adds the story id and sets `lastAt = now`. Unlocking also makes the story's Library draft (`draftForStory`).
+- `unlock(story, now)`: requires `canUnlock`; adds the story id and its `[start, end]`, and sets `lastAt = now`. Unlocking also makes the story's Library draft (`draftForStory`). A story already unlocked costs nothing.
+- Matching (`unlockedAs`): story ids carry the earliest photo's time, so indexing, a settings change or a deleted photo can re-id the same story. A story is unlocked if its id is in `ids`, or an unlocked id has the same series (the id without its last `:segment`, e.g. `trip:Seattle`, `topic:7`) and a span that overlaps the story's; a second Seattle trip months later stays locked. Preview and Edit open the matched (older) id's draft, not a second one.
 - The snapshot is that Library draft. Preview and Edit prefer a draft over the story's current picks, so the dump keeps its picks even if a re-index changes them. No photo ids are kept in the unlock state. Swaps inside an unlocked dump draw only from that story's own photos.
 - Local only. Clearing app data resets it; accepted, since that also wipes the index. No server: "nothing leaves the phone" stays true.
 

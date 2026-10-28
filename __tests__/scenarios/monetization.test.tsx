@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
-import { bootApp } from '../../jest/app';
+import { bootApp, settle } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
-import { list, update } from '../../src/services/dumps';
+import { createDraft, list, remove, update } from '../../src/services/dumps';
 import { getProfile } from '../../src/services/profile';
 
 const LONG = 'An autumn of golden retriever puppy splashing through the shallow waves';
@@ -14,6 +14,7 @@ beforeEach(async () => {
   await AsyncStorage.removeItem('@picdump_unlocks');
   // the first-full-Discover paywall has its own test
   await AsyncStorage.setItem('@picdump_first_paywall_shown', '1');
+  for (const d of await list()) await remove(d.id);
 });
 afterAll(() => { world.pro = true; });
 
@@ -100,4 +101,44 @@ test('free: saving a dump with a Pro film look asks first; "Export without finis
   expect(await screen.findByText('This film look is Pro')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Export without finish'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
+}, 30000);
+
+/** The puppy story's id: Pro's Discover opens its Preview at /preview/<id>. Leaves nothing behind (no draft). */
+async function puppyStoryId() {
+  world.pro = true;
+  const app = await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 }));
+  await screen.findByLabelText('Post on Instagram or TikTok');
+  const id = decodeURIComponent(app.getPathname().replace('/preview/', ''));
+  screen.unmount();
+  world.pro = false;
+  return id;
+}
+
+test.each(['preview', 'edit'])('free: a deep link to a locked story\'s %s shows the lock and makes no draft', async (route) => {
+  const id = await puppyStoryId();
+  expect(id).toMatch(/^topic:/);
+  await bootApp(`/${route}/${encodeURIComponent(id)}`);
+  expect(await screen.findByText(/This dump is locked\.$/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.queryByLabelText('Post on Instagram or TikTok')).toBeNull();
+  await settle();
+  expect(await list('draft')).toHaveLength(0);
+}, 30000);
+
+test('free: the 8 PM recap route is never locked', async () => {
+  await bootApp('/preview/today');
+  expect(await screen.findByText(/Nothing taken today yet/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.queryByText(/This dump is locked/)).toBeNull();
+}, 30000);
+
+test('after Pro lapses, a Library draft still opens in Edit from its Preview', async () => {
+  // the draft a Pro user made of the (now locked) puppy story
+  const storyId = await puppyStoryId();
+  const draft = await createDraft({ title: 'Puppy', source: 'story', storyId, photos: world.photos.slice(0, 4).map((p) => ({ id: p.id, uri: p.uri, created: p.created })) });
+
+  const app = await bootApp(`/preview/${draft.id}`);
+  await fireEvent.press(await screen.findByLabelText('Edit', {}, { timeout: 10000 }));
+  await waitFor(() => expect(app.getPathname()).toBe(`/edit/${draft.id}`));
+  expect(await screen.findByLabelText('1:1 Square')).toBeTruthy();
+  expect(screen.queryByText(/This dump is locked/)).toBeNull();
 }, 30000);

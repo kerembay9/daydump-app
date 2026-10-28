@@ -1,9 +1,10 @@
 import { access } from '../src/services/access';
-import { NO_UNLOCKS } from '../src/services/unlocks';
+import { NO_UNLOCKS, unlock } from '../src/services/unlocks';
 
-const trip = { id: 'trip:Seattle:1', kind: 'trip' as const };
-const today = { id: 'today:2026-10-28', kind: 'today' as const };
-const unlocked = { lastAt: 1, ids: [trip.id] };
+const DAY = 86_400_000;
+const trip = { id: `trip:Seattle:${10 * DAY}`, kind: 'trip' as const, start: 10 * DAY, end: 16 * DAY };
+const today = { id: 'today:2026-10-28', kind: 'today' as const, start: 0, end: 0 };
+const unlocked = unlock(NO_UNLOCKS, trip, 1);
 
 test('the daily recap is always open, Pro or not', () => {
   expect(access(today, false, NO_UNLOCKS)).toBe('open');
@@ -15,6 +16,10 @@ test('Pro opens everything', () => {
 
 test('free: an unlocked story is open, any other is locked', () => {
   expect(access(trip, false, unlocked)).toBe('open');
-  expect(access({ id: 'topic:7:1', kind: 'topic' }, false, unlocked)).toBe('locked');
+  expect(access({ id: `topic:7:${10 * DAY}`, kind: 'topic', start: 10 * DAY, end: 16 * DAY }, false, unlocked)).toBe('locked');
   expect(access(trip, false, NO_UNLOCKS)).toBe('locked');
+});
+
+test('free: the unlocked story stays open when a re-index moves its start (and id)', () => {
+  expect(access({ ...trip, id: `trip:Seattle:${8 * DAY}`, start: 8 * DAY }, false, unlocked)).toBe('open');
 });

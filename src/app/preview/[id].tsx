@@ -40,19 +40,25 @@ export default function Preview() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { stories, library, loaded } = useApp();
   const story = isDumpId(id) ? undefined : storyById(stories, id);
-  const { accessOf } = usePro();
+  const { accessOf, unlockedIdOf } = usePro();
+  // booleans, not accessOf itself: that changes with every unlocks / subscription update
+  const open = !!story && accessOf(story) === 'open';
+  // a story re-id'd since its unlock: the draft made then (under the old id) is its snapshot
+  const unlockedAs = story ? unlockedIdOf(story) : null;
   // undefined = still loading; null = gone (deleted dump, unknown story id)
   const [found, setDump] = useState<Dump | null | undefined>(undefined);
   useEffect(() => {
+    // loaded once: a reload would swap a story's picks for the draft "Save only" just made, and remount PostedPreview
+    if (found !== undefined) return;
     if (isDumpId(id)) get(id).then(setDump, () => setDump(null));
     // warm the profile first: storyAsDump reads its size / frame defaults synchronously (cold start from the 8 PM recap)
-    else if (story && accessOf(story) === 'open') getProfile().then(() => storyDraft(story.id)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
-  }, [id, story, accessOf]);
+    else if (story && open) getProfile().then(() => storyDraft(story.id, unlockedAs)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
+  }, [id, story, open, unlockedAs, found]);
   // a dump already up stays: a rebuild while indexing can drop or re-id its story (topic ids carry their start date)
   const dump = found ?? (!isDumpId(id) && !story && loaded ? null : found);
 
   // a locked story's picks never load (deep link, or back here after Pro lapsed)
-  if (story && accessOf(story) === 'locked') return <LockedStub story={story} />;
+  if (story && !open) return <LockedStub story={story} />;
   if (dump === undefined) return null;
   // the 8 PM recap opens /preview/today even on a day with too few camera photos for a Today dump
   if (dump === null && id === 'today') return <Stub back title="Today" note="Nothing taken today yet. Take a few photos and your Today dump shows up here." />;
@@ -194,7 +200,8 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const toEdit = () => {
     const st = nav.getState();
     if (st && st.routes[st.index - 1]?.name === 'edit/[id]') return router.back();
-    router.replace({ pathname: '/edit/[id]', params: { id: dump.storyId ?? dump.id } });
+    // a saved dump opens itself (a Library draft stays editable after Pro lapses, old recap drafts too); a story's picks, the story
+    router.replace({ pathname: '/edit/[id]', params: { id: isDumpId(dump.id) ? dump.id : (dump.storyId ?? dump.id) } });
   };
   const cardW = win.width - 32;
   // TikTok frame: 9:16, short enough that header + frame + Post button fit on one screen
