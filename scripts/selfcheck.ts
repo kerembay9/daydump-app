@@ -91,12 +91,14 @@ assert.equal(dr([2023, 1, 1], [2025, 5, 1]), '2023–2025'); // > 12 months
 assert.equal(dr([2026, 4, 18], [2026, 4, 12]), 'May 12–18'); // order-proof
 assert.equal(dateRange(new Date(2025, 0, 1).getTime(), new Date(2025, 5, 1).getTime()), 'Jan–Jun 2025');
 
-// duplicate titles get the shortest suffix that tells them apart
+// duplicate titles get the shortest suffix that tells them apart, never this year
 const st = (title: string, a: [number, number, number], b: [number, number, number]) => ({ title, start: new Date(...a).getTime(), end: new Date(...b).getTime() });
 assert.deepEqual(disambiguate([st('Coffee', [2024, 4, 1], [2024, 4, 9]), st('Coffee', [2025, 4, 1], [2025, 4, 9]), st('Tea', [2025, 1, 1], [2025, 1, 2])], NOW).map((s) => s.title),
   ['Coffee, 2024', 'Coffee, 2025', 'Tea']);
+assert.deepEqual(disambiguate([st('Coffee', [2024, 4, 1], [2024, 4, 9]), st('Coffee', [2026, 4, 1], [2026, 4, 9])], NOW).map((s) => s.title),
+  ['Coffee, 2024', 'Coffee']);
 assert.deepEqual(disambiguate([st('Coffee', [2025, 3, 1], [2025, 3, 9]), st('Coffee', [2025, 9, 1], [2025, 9, 9])], NOW).map((s) => s.title),
-  ['Coffee, spring 2025', 'Coffee, autumn 2025']);
+  ['Coffee in spring 2025', 'Coffee in autumn 2025']);
 assert.deepEqual(disambiguate([st('Coffee', [2026, 3, 1], [2026, 3, 3]), st('Coffee', [2026, 3, 10], [2026, 3, 12])], NOW).map((s) => s.title),
   ['Coffee, Apr 1–3', 'Coffee, Apr 10–12']);
 // swaps: set = beach photos (axis 0); a near-copy of a slide is skipped, other beach photos beat dogs (axis 1)

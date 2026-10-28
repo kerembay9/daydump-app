@@ -17,6 +17,17 @@ const WORTH_WEIGHT = 0.8;
 
 export const tagWorth = (c: number) => (WORTH.w[c] ?? 50) / 100;
 export const tagGroup = (c: number) => WORTH.groups[WORTH.g[c]] ?? 'objects';
+/** Below this a tag makes no topic: dull ("a laptop at work") or obscure ("ford e-series", "body man"). */
+const MIN_TOPIC_WORTH = 0.4;
+/** Worthy tags too vague to name a dump ("Happys", "Events", "Reds") or about who's in it, not what ("Daughters", "Faces"). */
+const VAGUE = new Set(('interaction|conversation|emotion|fun|comfort|calm|curious|happy|cool|hang|sitting|taste|flavor|style|design|' +
+  'color|energy|location|scene|phenomenon|season|atmosphere|light|sound|shade|event|competition|game|play|player|match|opening|' +
+  'launch|landing|formation|arrangement|crush|top|model|present|world|spread|recreation|entertainment|tradition|sharing|close-up|' +
+  'room|crew|team|squad|social group|passenger|elder|son|daughter|mother|father|cousin|child|human face|lip|hair|long hair|muscle|' +
+  'ring finger|middle finger|black|blue|brown|green|pink|purple|red|yellow|tan|orange (color)|rose (color)|lemon (color)|' +
+  'gold (color)|bronze (color)|electric blue|marine blue|royal blue|sky blue').split('|'));
+/** Tags that never make a topic: people words ("woman", "adult", "nose") say who is in a photo, not what it's of; dull, obscure or vague ones. */
+export const noTopic = (c: number, name = '') => tagGroup(c) === 'people' || tagWorth(c) < MIN_TOPIC_WORTH || VAGUE.has(name);
 
 let warned = false;
 /** worth.json is rated per vocab id: another vocab would read the wrong tags. Logs loudly once; callers skip curation. */
@@ -30,6 +41,11 @@ export function worthFits(vocabSize: number) {
 /** IDs, bank cards, medical papers: the top tag, or a top-3 tag nearly as strong, is in the sensitive group. */
 export const isSensitive = (p: IndexedPhoto) =>
   p.concepts.slice(0, 3).some((c, r) => tagGroup(c) === 'sensitive' && p.conceptScores[r] >= p.conceptScores[0] - CLOSE);
+
+const DOC_GROUPS = new Set(['paper', 'screens']);
+/** Bank statements, worksheets, a laptop screen: a dull paper or screens tag (not a book or a ticket) on top, like isSensitive. */
+export const isDocument = (p: IndexedPhoto) =>
+  p.concepts.slice(0, 3).some((c, r) => DOC_GROUPS.has(tagGroup(c)) && tagWorth(c) < MIN_TOPIC_WORTH && p.conceptScores[r] >= p.conceptScores[0] - CLOSE);
 
 /** Score-weighted mean worth of the photo's top 5 tags, 0-1 (0.5 untagged). */
 export function photoWorth(p: IndexedPhoto) {

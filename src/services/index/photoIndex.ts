@@ -23,7 +23,12 @@ export type IndexedPhoto = PhotoAsset & {
 };
 
 /** Everything the story engine needs. vecs is row-major n*512 aligned with photos; zero row = no embedding. */
-export type Library = { photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean };
+export type Library = {
+  photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean;
+  /** Tidy's pixel checks by photo id, JSON as stored (tidy_photos; only after a Tidy scan): Discover's picks use them */
+  looks?: Map<string, Looks>;
+};
+export type Looks = { stats: string | null; faces: string | null; sharp: number | null };
 
 type Row = { id: string; uri: string; created: number; w: number; h: number; lat: number | null; lon: number | null; emb: Uint8Array | null; concepts: string | null };
 
@@ -262,7 +267,8 @@ export async function loadLibrary(): Promise<Library> {
     };
   });
   if (ClipEmbedder && !names) names = await ClipEmbedder.conceptNames();
-  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder };
+  const tidy = await d.getAllAsync<Looks & { id: string }>('SELECT id, stats, faces, sharp FROM tidy_photos WHERE stats IS NOT NULL');
+  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder, looks: new Map(tidy.map(({ id, ...l }) => [id, l])) };
 }
 
 /** One text query -> 512-d vector, 1.33 long (build_assets.py TEXT_SCALE: cosines on 45M's scale), or null without CLIP. */

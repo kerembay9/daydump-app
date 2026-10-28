@@ -49,7 +49,7 @@ const BLACK_B = 20, BLACK_SD = 12;
 /** Laplacian variance of the 256 px thumbnail under which a photo gets the 720 px blur check */
 export const SOFT_LAP = 40;
 /** ... and of the 720 px decode under which it is blurry */
-const BLUR_LAP = 15;
+export const BLUR_LAP = 15;
 
 /** Why a photo is never pre-selected, or null. keep: ids in saved dumps and drafts ('In a dump') or Discover's stories. */
 export function lockOf(p: TPhoto, keep: Map<string, string>, now = Date.now()): string | null {

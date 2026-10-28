@@ -6,6 +6,7 @@ import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
+import { list as listDumps } from '../services/dumps';
 import { addShareIntentListener, ClipEmbedder, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
 import { whenReady } from './models';
 
@@ -89,7 +90,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const cover = s.find((x) => x.kind === 'today')?.picks[0]?.uri;
     if (cover) ClipEmbedder?.setRecapCover(cover);
   };
-  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, await getProfile());
+  // dumps made from Discover stories rank their kind of story up
+  const made = async () => (await listDumps().catch(() => [])).flatMap((d) => (d.storyId ? [d.storyId] : []));
+  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, { ...await getProfile(), made: await made() });
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [paused, setPaused] = useState<{ done: number; total: number } | null>(null);
