@@ -237,3 +237,16 @@ test('slides: tapping the left third goes back, the rest forward, both wrapping'
   await tap(9999);
   expect(await screen.findByText('2/3')).toBeTruthy();
 }, 30000);
+
+test('Layout fits the first screen: ratio pills show only the ratio, Dump order sits right under the slides', async () => {
+  const photos = world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri }));
+  const d = await createDraft({ source: 'create', photos, ratio: '4:5' });
+  await bootApp(`/edit/${d.id}`);
+  await screen.findByLabelText('1:1 Square'); // a11y keeps the name
+  expect(screen.getByText('1:1')).toBeTruthy();
+  for (const name of ['IG Post', 'Square', 'TikTok', 'Film 35']) expect(screen.queryByText(name)).toBeNull();
+  // tree order: Dump order before the Frame card
+  const json = JSON.stringify(screen.toJSON());
+  expect(json.indexOf('Dump order')).toBeGreaterThan(-1);
+  expect(json.indexOf('Dump order')).toBeLessThan(json.indexOf('"Blur fill"'));
+}, 30000);

@@ -201,12 +201,9 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
           const c = on ? t.bgScreen : t.ink;
           return (
             <FrameCard key={r.key} radius={12} onPress={() => setRatio(r.key)} label={`${r.key} ${r.sub}`}
-              style={[{ flex: 1, paddingVertical: 5, alignItems: 'center', gap: 2 }, on ? { backgroundColor: t.ink } : null]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: r.glyph[0], height: r.glyph[1], borderRadius: 2, borderWidth: 1, borderColor: c, opacity: 0.8 }} />
-                <Text style={[ui(11, 700), { color: c }]}>{r.key}</Text>
-              </View>
-              <Text style={[ui(9), { color: c, opacity: 0.75 }]}>{r.sub}</Text>
+              style={[{ flex: 1, height: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }, on ? { backgroundColor: t.ink } : null]}>
+              <View style={{ width: r.glyph[0] * 0.75, height: r.glyph[1] * 0.75, borderRadius: 2, borderWidth: 1, borderColor: c, opacity: 0.8 }} />
+              <Text style={[ui(11, 700), { color: c }]}>{r.key}</Text>
             </FrameCard>
           );
         })}
@@ -215,13 +212,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       <SlidePager slides={slides} ratio={ratio} frame={frame} layout={layout} filter={filter} index={cur} mode={tab}
         images={images} onIndex={setSlide} onLayout={(l) => { setLayout(l); setSlide(0); }}
         onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
-      {tab === 'photos' ? (
-        <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
-          onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
-          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
-      ) : (
-        <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} />
-      )}
+      {/* right under the canvas, so the order is on the first screen; the tab's card goes below */}
       <Filmstrip
         photos={photos}
         active={active}
@@ -236,6 +227,13 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
         swapsFor={swapsFor}
         addable={addable}
       />
+      {tab === 'photos' ? (
+        <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
+          onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
+          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
+      ) : (
+        <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} />
+      )}
     </Screen>
   );
 }

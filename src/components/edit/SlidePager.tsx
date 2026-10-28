@@ -60,22 +60,22 @@ type Props = {
   mode: 'layout' | 'photos';
 };
 
-const TILE_W = 26, TILE_H = 32;
+const TILE_W = 18, TILE_H = 22;
 
 /** An arrangement as a tiny diagram of its cells (the real geometry, drawn small). */
 function Arrangement({ k, name, on, onPress }: { k: LayoutKey; name: string; on: boolean; onPress: () => void }) {
   const { t } = useTheme();
-  const { cells } = slideCells(k, { fit: 'bleed', gap: 26, corners: 18 }, TILE_W, TILE_H);
+  const { cells } = slideCells(k, { fit: 'bleed', gap: 36, corners: 26 }, TILE_W, TILE_H);
   const fg = on ? t.bgScreen : t.ink;
   return (
     <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={name} accessibilityState={{ selected: on }}
-      style={{ flex: 1, paddingVertical: 6, borderRadius: 12, alignItems: 'center', gap: 4, borderWidth: 1, borderColor: on ? t.ink : t.borderStrong, backgroundColor: on ? t.ink : undefined }}>
+      style={{ flex: 1, paddingVertical: 5, borderRadius: 10, alignItems: 'center', gap: 3, borderWidth: 1, borderColor: on ? t.ink : t.borderStrong, backgroundColor: on ? t.ink : undefined }}>
       <View style={{ width: TILE_W, height: TILE_H, borderRadius: 3, borderWidth: k === 'scrapbook' ? 1 : 0, borderColor: fg, opacity: 0.9 }}>
         {cells.map((c, i) => (
           <View key={i} style={{ position: 'absolute', left: c.x, top: c.y, width: c.w, height: c.h, borderRadius: Math.max(1, c.r), backgroundColor: fg, opacity: k === 'scrapbook' && i ? 0.55 : 1, transform: c.rot ? [{ rotate: `${c.rot}deg` }] : undefined }} />
         ))}
       </View>
-      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[ui(9, 600), { color: fg }]}>{name}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[ui(8.5, 600), { color: fg }]}>{name}</Text>
     </Tap>
   );
 }
@@ -204,10 +204,10 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
                     <SlideDrawing layout={item.layout} frame={frame} width={cw} height={ch} photos={item.drawn} />
                   </Canvas>
                 )}
-                {/* Grid guide: the 3:4 middle of a 4:5 cover is what the profile grid shows (Edit only, not exported) */}
+                {/* Grid guide: the profile grid shows a 4:5 cover's 3:4 middle, a little off each side (Edit only, not exported) */}
                 {guide && i === 0 ? (
-                  <View pointerEvents="none" testID="grid-guide" style={{ position: 'absolute', left: 0, right: 0, top: (ch - (cw * 4) / 3) / 2, height: (cw * 4) / 3, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.9)' }}>
-                    <Text style={[ui(8.5, 700), { color: '#fff', position: 'absolute', right: 6, top: 3, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }]}>Grid crop</Text>
+                  <View pointerEvents="none" testID="grid-guide" style={{ position: 'absolute', top: 0, bottom: 0, left: (cw - (ch * 3) / 4) / 2, width: (ch * 3) / 4, borderLeftWidth: 1.5, borderRightWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.9)' }}>
+                    <Text style={[ui(8.5, 700), { color: '#fff', position: 'absolute', right: 6, bottom: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }]}>Grid crop</Text>
                   </View>
                 ) : null}
                 {/* hairline slide edge: the cream matte otherwise melts into the light-theme card (preview only, not exported) */}
