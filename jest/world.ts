@@ -31,8 +31,9 @@ export const world = {
   shareTargets: ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'] as string[],
   /** expo-file-system copy/move are async on the phone: a file is in `written` once its promise resolves; while `held` is set, they wait there */
   files: { written: new Set<string>(), held: null as (() => void)[] | null },
-  /** search languages (QueryTranslate): the phone's language, downloaded models, and a gate translation downloads wait on */
-  lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string> },
+  /** search languages (QueryTranslate): the phone's language, downloaded models, a gate translation downloads wait on, and
+   *  whether the translate feature module (ML Kit's code, on demand from Play) is installed: download installs it */
+  lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string>, module: true },
   /**
    * Tidy (Tidy.kt): pixel checks and 64 KB hashes per id (defaults: a sharp normal photo, `h<id>`), Trash state per id,
    * whether Android's Trash/Restore dialog is allowed, and the photos in Trash (out of `photos` until restored).

@@ -15,6 +15,8 @@ android {
   }
   // Debug builds (Metro, adb installs) carry the packs' models in the APK; release downloads them (ModelPacks.kt).
   sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets']
+  // ...and the translate feature module's code (release downloads it on demand: TranslateFeature in QueryTranslateModule.kt).
+  sourceSets.debug.java.srcDirs += ['translate/src/main/java']
 }
 
 dependencies {
@@ -30,9 +32,11 @@ dependencies {
   // Background indexing while charging (BackgroundIndex.kt); both versions are already in the app via other deps.
   implementation 'androidx.work:work-runtime:2.9.1'
   implementation 'androidx.exifinterface:exifinterface:1.3.6' // GPS the same way expo-media-library reads it
-  // Search in other languages (QueryTranslateModule.kt): translation models download per language on request; language ID is bundled (~1 MB).
-  implementation 'com.google.mlkit:translate:17.0.3'
-  implementation 'com.google.mlkit:language-id:17.0.6'
+  // Search in other languages (QueryTranslateModule.kt): ML Kit is in the translate feature module (translate/build.gradle,
+  // same versions); debug builds compile it in. Translation models download per language on request.
+  debugImplementation 'com.google.mlkit:translate:17.0.3'
+  debugImplementation 'com.google.mlkit:language-id:17.0.6'
+  implementation 'com.google.android.play:feature-delivery:2.1.0'
   // Release: the big models arrive as asset packs after the install (ModelPacks.kt).
   implementation 'com.google.android.play:asset-delivery:2.3.0'
 }

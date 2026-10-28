@@ -1,0 +1,19 @@
+// ML Kit translation + language ID (QueryTranslateModule.kt): ~7.5 MB of native code that only phones searching in a language
+// besides English need, so release builds download it on demand (TranslateFeature). Debug builds compile src/ into the APK.
+plugins {
+  id 'com.android.dynamic-feature'
+  id 'kotlin-android'
+}
+
+android {
+  namespace 'expo.modules.clipembedder.translate'
+  compileSdk rootProject.ext.compileSdkVersion
+  defaultConfig { minSdkVersion rootProject.ext.minSdkVersion }
+}
+
+dependencies {
+  implementation project(':app')
+  compileOnly project(':clip-embedder') // QueryTranslator; already in the base APK
+  implementation 'com.google.mlkit:translate:17.0.3'
+  implementation 'com.google.mlkit:language-id:17.0.6'
+}

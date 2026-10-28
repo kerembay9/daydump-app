@@ -108,15 +108,19 @@ function tidySets(v: Float32Array, t: number[], strict: boolean[]): number[] {
   return out;
 }
 
-// Search in other languages (QueryTranslateModule.kt): Turkish (anything with ç ğ ı ö ş ü) and a tiny dictionary.
+// Search in other languages (QueryTranslateModule.kt): Turkish (anything with ç ğ ı ö ş ü) and a tiny dictionary. Until the
+// translate module is installed (download installs it) nothing is downloaded, identify finds nothing and toEnglish rejects.
 (globalThis as any).expo.modules.QueryTranslate = {
   deviceLanguage: () => world.lang.device,
   languages: () => [{ code: 'de', name: 'German' }, { code: 'tr', name: 'Turkish' }],
-  downloaded: async () => [...world.lang.downloaded],
-  download: (l: string) => world.lang.gate.then(() => { world.lang.downloaded.push(l); return null; }),
+  downloaded: async () => (world.lang.module ? [...world.lang.downloaded] : []),
+  download: (l: string) => world.lang.gate.then(() => { world.lang.module = true; world.lang.downloaded.push(l); return null; }),
   remove: async (l: string) => { world.lang.downloaded = world.lang.downloaded.filter((x) => x !== l); return null; },
-  identify: async (text: string) => [{ lang: /[çğıöşü]/.test(text) ? 'tr' : 'en', conf: 0.9 }],
-  toEnglish: async (text: string) => world.lang.dict[text] ?? text,
+  identify: async (text: string) => (world.lang.module ? [{ lang: /[çğıöşü]/.test(text) ? 'tr' : 'en', conf: 0.9 }] : []),
+  toEnglish: async (text: string) => {
+    if (!world.lang.module) throw new Error('translate module not installed');
+    return world.lang.dict[text] ?? text;
+  },
 };
 
 // The app only indexes in the foreground (photoIndex hands off to the background worker otherwise).
