@@ -19,8 +19,31 @@ export const LAYOUTS = [
 export type LayoutKey = (typeof LAYOUTS)[number]['key'];
 export const layoutOf = (key?: string | null) => LAYOUTS.find((l) => l.key === key) ?? LAYOUTS[0];
 
-export type Fit = 'bleed' | 'border';
-export const fitOf = (f?: string | null): Fit => (f === 'border' ? 'border' : 'bleed');
+/** bleed = Fill (to the slide edge), border = Matte (inset card), blur = Blur fill (whole photo on a blurred copy) */
+export type Fit = 'bleed' | 'border' | 'blur';
+export const MATTES = [
+  { key: 'card', label: 'Card', color: '#EFE6DA' },
+  { key: 'cream', label: 'Cream', color: '#FAF6F0' },
+  { key: 'white', label: 'White', color: '#FFFFFF' },
+  { key: 'black', label: 'Black', color: '#1A1612' },
+  { key: 'kraft', label: 'Kraft', color: '#C9A57A' },
+] as const;
+export type MatteKey = (typeof MATTES)[number]['key'];
+/** Layout tab's Frame: Fit, gap and corners in mock px (0-12, 0-16), the matte colour; guide = the profile-grid guide (Edit only). */
+export type Frame = { fit: Fit; gap: number; corners: number; matte: MatteKey; guide: boolean };
+export const DEFAULT_FRAME: Frame = { fit: 'bleed', gap: 3, corners: 0, matte: 'card', guide: true };
+export const matteColor = (f: Frame) => (MATTES.find((m) => m.key === f.matte) ?? MATTES[0]).color;
+
+/** The dump's fit column: older rows hold just 'border' / 'bleed' (or null), newer ones the whole Frame as JSON. */
+export function frameOf(raw?: string | null): Frame {
+  if (!raw || raw[0] !== '{') return { ...DEFAULT_FRAME, fit: raw === 'border' ? 'border' : 'bleed' };
+  try {
+    return { ...DEFAULT_FRAME, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_FRAME;
+  }
+}
+export const frameText = (f: Frame) => JSON.stringify(f);
 
 /** A short last chunk can't fill the layout: 1 photo -> single, 2 -> split, 3 -> bento. */
 const FALLBACK: LayoutKey[] = ['single', 'single', 'split', 'bento'];
@@ -44,18 +67,20 @@ export const UNIT = 288;
 
 export type Cell = { x: number; y: number; w: number; h: number; r: number; rot: number; border: number; borderColor: string | null; shadow: boolean };
 
-const box = (x: number, y: number, w: number, h: number, r = 0): Cell => ({ x, y, w, h, r, rot: 0, border: 0, borderColor: null, shadow: false });
+const boxAt = (x: number, y: number, w: number, h: number, r = 0): Cell => ({ x, y, w, h, r, rot: 0, border: 0, borderColor: null, shadow: false });
 
 /**
- * Where each photo of a slide goes in a W x H slide (photo i -> cells[i]), plus the matte area. Border = Cashmere
- * matte: 14 (mock px) inset, radius 14, shadow. Gaps are 3 mock px. Scrapbook = 3 tilted prints on the card colour.
+ * Where each photo of a slide goes in a W x H slide (photo i -> cells[i]), plus the matte area. Border = matte:
+ * 14 (mock px) inset, radius 14, shadow. Gap and Corners from the Frame. Scrapbook = 3 tilted prints on the matte.
  */
-export function slideCells(layout: LayoutKey, fit: Fit, W: number, H: number): { inner: Cell; cells: Cell[] } {
+export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' | 'corners'>, W: number, H: number): { inner: Cell; cells: Cell[] } {
   const u = W / UNIT;
+  const { fit } = frame;
   const pad = fit === 'border' ? 14 * u : 0;
-  const inner = { ...box(pad, pad, W - 2 * pad, H - 2 * pad, fit === 'border' ? 14 * u : 0), shadow: fit === 'border' };
+  const inner = { ...boxAt(pad, pad, W - 2 * pad, H - 2 * pad, fit === 'border' ? 14 * u : 0), shadow: fit === 'border' };
   const { x, y, w, h } = inner;
-  const g = 3 * u;
+  const g = frame.gap * u;
+  const box = (bx: number, by: number, bw: number, bh: number, r = frame.corners * u) => boxAt(bx, by, bw, bh, r);
   const hw = (w - g) / 2, hh = (h - g) / 2;
   switch (layout) {
     case 'split':

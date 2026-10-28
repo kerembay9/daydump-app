@@ -1,0 +1,505 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Studio Layout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Edit studio, Layout tab: ratio, arrangement, frame and order act on the dump; the Photos tab (edit-photo.html) acts on pixels. */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --card: #EFE6DA; --paper: #FFFCF7; --print: #FAF6F0;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --accent: #A84A2F;
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.18), 0 2px 5px rgba(74,52,40,0.05);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45);
+  --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --paper: #F3ECE3; --print: #F3ECE3;
+  --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --accent: #A84A2F;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --paper: #F3ECE3; --print: #F3ECE3;
+  --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --accent: #A84A2F;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, [contenteditable]:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body { background: var(--page); color: var(--ink); font-family: var(--sans); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 48px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+header h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 5vw, 42px); line-height: 1.05; margin: 0 0 8px; letter-spacing: -0.02em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 62ch; }
+.theme { flex: none; font: 600 13px var(--sans); border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; }
+.theme:hover { background: var(--card); }
+.stage { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+.col-phone { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(390px, 100%); }
+.caption { min-height: 20px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.45; max-width: 36ch; }
+.caption b { color: var(--ink); font-weight: 600; }
+.col-notes { flex: 1 1 300px; min-width: 0; max-width: 460px; display: flex; flex-direction: column; gap: 12px; }
+.col-notes h2 { font-family: var(--serif); font-weight: 500; font-size: 22px; letter-spacing: -0.02em; margin: 0; }
+.col-notes ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; line-height: 1.55; display: flex; flex-direction: column; gap: 6px; }
+.col-notes b { color: var(--ink); font-weight: 600; }
+.col-notes a { color: var(--ink); }
+
+/* ---------- phone ---------- */
+.phone { position: relative; width: 100%; height: 844px; border-radius: 44px; border: 10px solid var(--bezel); background: var(--screen); box-shadow: var(--phone-shadow); overflow: hidden; display: flex; flex-direction: column; }
+.status { height: 24px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-size: 11.5px; font-weight: 600; }
+.hdr { height: 44px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.back { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line2); display: grid; place-items: center; font-size: 20px; line-height: 1; padding-bottom: 2px; }
+.title { flex: 1; min-width: 0; text-align: center; font-family: var(--serif); font-weight: 500; font-size: 18.5px; line-height: 1.1; max-height: 41px; letter-spacing: -0.02em; overflow: hidden; overflow-wrap: anywhere; border-radius: 6px; outline: none; }
+.title:focus { background: var(--card); }
+.preview { height: 32px; flex: none; padding: 0 12px; border-radius: 16px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 600; }
+/* small controls keep their spec'd look but get a >=40px hit area */
+.back, .preview, .tools button { position: relative; }
+.back::before, .preview::before { content: ""; position: absolute; inset: -6px; }
+.chev::before { content: ""; position: absolute; inset: -9px; }
+.switch::before { content: ""; position: absolute; inset: -11px -5px; }
+.tools button::before { content: ""; position: absolute; inset: -6px 0; }
+.body { flex: 1; overflow-y: auto; padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; }
+.body::-webkit-scrollbar { display: none; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.label { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.lrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.hint { font-size: 10px; color: var(--muted); }
+
+/* segmented controls */
+.seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 18px; height: 36px; padding: 2px; flex: none; }
+.seg button { flex: 1; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s, color .15s; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+.seg.mini { height: 24px; border-radius: 12px; padding: 2px; }
+.seg.mini button { font-size: 10px; padding: 0 8px; border-radius: 10px; white-space: nowrap; }
+.dot { width: 6px; height: 6px; border-radius: 3px; background: var(--accent); }
+
+/* ratio chips */
+.ratios { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ratio { border-radius: 12px; padding: 7px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ratio i { border: 1.5px solid currentColor; border-radius: 2px; margin-bottom: 1px; }
+.ratio b { font-size: 11px; font-weight: 700; line-height: 1; }
+.ratio span { font-size: 9px; color: var(--muted); line-height: 1; }
+.ratio.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ratio.on span { color: var(--bg); opacity: .75; }
+
+/* canvas */
+.canvas { position: relative; border-radius: 18px; padding: 6px; display: flex; justify-content: center; }
+.slide { position: relative; border-radius: 13px; overflow: hidden; transition: width .2s ease, height .2s ease, background-color .2s; touch-action: pan-y; user-select: none; }
+.slide::after { content: ""; position: absolute; inset: 0; border-radius: 13px; box-shadow: inset 0 0 0 1px var(--line2); pointer-events: none; z-index: 4; }
+.cells { position: absolute; inset: 0; display: grid; }
+.cell { position: relative; overflow: hidden; min-width: 0; min-height: 0; background: rgba(74,52,40,.12); transition: opacity .2s, border-radius .1s; cursor: pointer; }
+.cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+.cell img.fit { object-fit: contain; }
+.cell img.haze { filter: blur(14px) brightness(.9); transform: scale(1.15); }
+.cell.empty { display: grid; place-items: center; color: rgba(128,110,96,.75); font-size: 20px; background: transparent; border: 1.5px dashed rgba(128,110,96,.55); }
+/* the slide clips, so the 2px ink ring (with a 2px paper offset) is drawn inside the cell */
+.cell.sel::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--print); pointer-events: none; }
+.cell.dim { opacity: .45; }
+.prints .cell { position: absolute; border: 2px solid var(--print); box-shadow: 0 7px 16px -4px rgba(55,38,28,.28); border-radius: 3px; }
+.chip { position: absolute; z-index: 5; height: 20px; padding: 0 8px; border-radius: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: 9.5px; font-weight: 500; display: inline-flex; align-items: center; pointer-events: none; white-space: nowrap; }
+.chip.tl { top: 8px; left: 8px; }
+.chip.tr { top: 8px; right: 8px; font-variant-numeric: tabular-nums; }
+.chev { position: absolute; z-index: 5; top: 50%; margin-top: -11px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.3); color: #fff; font-size: 15px; line-height: 1; display: grid; place-items: center; padding-bottom: 2px; }
+.chev.l { left: 6px; } .chev.r { right: 6px; }
+.chev[disabled] { opacity: .35; cursor: default; }
+.guide { position: absolute; z-index: 3; top: 0; bottom: 0; left: 3.125%; right: 3.125%; border: 1px dashed rgba(255,255,255,.7); pointer-events: none; }
+.guide span { position: absolute; top: 32px; left: 4px; font-size: 8px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.tools { position: absolute; z-index: 6; height: 28px; border-radius: 14px; background: rgba(0,0,0,.72); color: #fff; display: flex; align-items: center; font-size: 10.5px; font-weight: 500; box-shadow: 0 6px 14px -6px rgba(0,0,0,.5); transform: translateX(-50%); white-space: nowrap; }
+.tools button { padding: 0 10px; height: 100%; }
+.tools button + button { border-left: 1px solid rgba(255,255,255,.22); }
+.tools[hidden] { display: none; }
+
+/* arrangement tiles */
+.tiles { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; }
+.tiles::-webkit-scrollbar { display: none; }
+.tile { flex: none; width: 64px; height: 80px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.tile.on { border: 2px solid var(--ink); }
+.tile span { font-size: 9.5px; font-weight: 500; }
+.dia { width: 40px; height: 50px; display: grid; gap: 2px; position: relative; }
+.dia i { background: var(--line2); border-radius: 2px; }
+.tile.on .dia i { background: var(--ink); }
+.dia.print i { position: absolute; }
+.computed { margin-top: 6px; }
+
+/* frame card */
+.frame { padding: 2px 12px; }
+.frow { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 500; }
+.frow + .frow { border-top: 1px solid var(--line); }
+.frow.tall { padding: 8px 0; }
+.frow .seg.mini { flex: 0 1 auto; height: 30px; border-radius: 15px; }
+.frow .seg.mini button { border-radius: 13px; padding: 0 10px; }
+.slider { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 200px; }
+.slider output { width: 16px; text-align: right; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 28px; margin: 0; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--p, 0%), var(--line2) var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line2); }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ink); }
+/* thumbs are content-box: 14px + 2px border = 18px */
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: var(--ink); border: 2px solid var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); border: 2px solid var(--card); }
+.mattes { display: flex; gap: 0; } /* 30px-wide buttons keep the 22px circles 8px apart */
+.matte { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9px; color: var(--muted); min-width: 30px; padding-block: 2px; }
+.matte i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line2); box-shadow: 0 0 0 2px transparent; }
+.matte.on i { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+.matte.on { color: var(--ink); }
+.switch { width: 30px; height: 18px; border-radius: 9px; background: var(--line2); position: relative; transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 7px; background: var(--paper); box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.switch[aria-checked=true] { background: var(--ink); }
+.switch[aria-checked=true]::after { transform: translateX(12px); background: var(--bg); }
+.gguide { display: flex; align-items: center; gap: 8px; }
+.gguide .hint { font-weight: 400; }
+
+/* order filmstrip */
+.order { padding: 10px 12px 12px; }
+.strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px 6px; margin: 0 -4px; -webkit-touch-callout: none; user-select: none; }
+.strip::-webkit-scrollbar { display: none; }
+.th { position: relative; flex: none; width: 46px; height: 50px; border-radius: 8px; background: var(--line2) center / cover; transition: transform .15s; }
+.th.s1::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -6px; height: 2px; border-radius: 1px; background: var(--ink); }
+.th.on { transform: scale(1.12); box-shadow: 0 0 0 2px var(--ink); z-index: 1; }
+.th .cover { position: absolute; left: 3px; top: 3px; padding: 0 4px; border-radius: 4px; background: var(--print); color: #261F1B; font-size: 7.5px; font-weight: 700; line-height: 12px; }
+.th .ed { position: absolute; right: 3px; top: 3px; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 1.5px var(--print); }
+.th.add { background: transparent; border: 1.5px dashed var(--line2); display: grid; place-items: center; font-size: 18px; color: var(--muted); }
+
+/* Photos tab stand-in */
+.ponly { display: none; }
+.phone.photos .lonly { display: none; }
+.phone.photos .ponly { display: flex; }
+.stub { padding: 14px; flex-direction: column; gap: 10px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.stub b { color: var(--ink); }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid var(--line2); font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.pill.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.stub a { color: var(--ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Edit studio · Layout</h1>
+      <p>Layout acts on the dump: ratio, arrangement, frame and order. Crop stays here because a crop only means something inside a cell. Tap a cell for its toolbar; <b>Edit photo</b> moves you to the Photos tab with that photo picked.</p>
+    </div>
+    <button class="theme" id="theme" type="button">Dark</button>
+  </header>
+
+  <div class="stage">
+    <div class="col-phone">
+      <div class="phone" id="phone">
+        <div class="status"><span>9:41</span>
+          <svg width="40" height="11" viewBox="0 0 40 11" fill="currentColor" aria-hidden="true"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="9" rx="1"/><rect x="18" y="1" width="19" height="9" rx="2.5" fill="none" stroke="currentColor"/><rect x="20" y="3" width="13" height="5" rx="1"/><rect x="38" y="4" width="2" height="3" rx="1"/></svg>
+        </div>
+        <div class="hdr">
+          <button class="back" type="button" aria-label="Back">‹</button>
+          <div class="title" contenteditable="true" spellcheck="false" aria-label="Dump title">Ankara weekend</div>
+          <button class="preview" type="button">Preview →</button>
+        </div>
+
+        <div class="body" id="body">
+          <div class="seg" role="tablist" aria-label="Edit">
+            <button id="tabLayout" class="on" role="tab" aria-selected="true">Layout</button>
+            <button id="tabPhotos" role="tab" aria-selected="false">Photos<i class="dot" id="pdot" hidden></i></button>
+          </div>
+
+          <div class="ratios lonly" id="ratios"></div>
+
+          <div class="card canvas" id="canvas">
+            <div class="slide" id="slide">
+              <div class="cells" id="cells"></div>
+              <div class="guide" id="guide"><span>Grid view</span></div>
+              <span class="chip tl" id="chipTL">✥ Drag to crop · tap a photo</span>
+              <span class="chip tr" id="chipTR">1/3</span>
+              <button class="chev l" id="prev" type="button" aria-label="Previous slide">‹</button>
+              <button class="chev r" id="next" type="button" aria-label="Next slide">›</button>
+            </div>
+            <div class="tools" id="tools" hidden>
+              <button id="tEdit" type="button">Edit photo</button><button id="tReplace" type="button">Replace</button><button id="tSwap" type="button">Swap</button>
+            </div>
+          </div>
+
+          <section class="lonly" style="flex-direction:column">
+            <div class="lrow"><span class="label">Arrangement</span>
+              <div class="seg mini" id="scope"><button class="on" data-v="every">Every slide</button><button data-v="this">This slide</button></div>
+            </div>
+            <div class="tiles" id="tiles"></div>
+            <div class="hint computed" id="computed"></div>
+          </section>
+
+          <section class="lonly" style="flex-direction:column">
+            <div class="lrow"><span class="label">Frame</span></div>
+            <div class="card frame">
+              <div class="frow">Fit
+                <div class="seg mini" id="fit"><button class="on" data-v="fill">Fill</button><button data-v="matte">Matte</button><button data-v="blur">Blur fill</button></div>
+              </div>
+              <div class="frow">Gap <label class="slider"><input type="range" id="gap" min="0" max="12" value="3" aria-label="Gap"><output id="gapV">3</output></label></div>
+              <div class="frow">Corners <label class="slider"><input type="range" id="corners" min="0" max="16" value="0" aria-label="Corners"><output id="cornersV">0</output></label></div>
+              <div class="frow tall">Matte <div class="mattes" id="mattes"></div></div>
+              <div class="frow tall"><span class="gguide">Grid guide <button class="switch" id="gswitch" role="switch" aria-checked="true" aria-label="Grid guide"></button></span>
+                <span class="hint" style="text-align:right">Shows what your profile grid crops.</span></div>
+            </div>
+          </section>
+
+          <section class="card stub ponly">
+            <div class="lrow" style="margin:0"><span class="label">Look</span><span class="pill on" id="pscope">All photos</span></div>
+            <div>The full Photos tab (<b>Look</b>, <b>Adjust</b>, <b>Texture</b>) is mocked in <a href="edit-photo.html">edit-photo.html</a>. Here it only shows that the canvas, filmstrip and picked photo carry over.</div>
+            <div class="pills">
+              <button class="pill" id="auto" type="button">✦ Auto</button>
+              <button class="pill" id="clearT" type="button">Back to all photos</button>
+            </div>
+          </section>
+
+          <section class="card order">
+            <div class="lrow" style="margin-bottom:2px"><span class="label">Order</span><span class="hint">Hold to edit · tap twice for cover</span></div>
+            <div class="strip" id="strip"></div>
+          </section>
+        </div>
+      </div>
+      <div class="caption" id="caption" aria-live="polite">Pick an arrangement, then tap a photo.</div>
+    </div>
+
+    <div class="col-notes">
+      <h2>What's new on this tab</h2>
+      <ul>
+        <li><b>Layout | Photos</b> splits the studio by what a control acts on. Both tabs keep the canvas and the filmstrip, so you never lose your place.</li>
+        <li><b>Arrangement per slide.</b> Switch to <b>This slide</b> to give one slide its own layout; its counter gets a •. <b>Strip</b> (3 rows) is new.</li>
+        <li><b>Frame</b> moves into Edit: Fit (Fill / Matte / Blur fill), Gap, Corners and the matte colour. Today Fit is read-only from Profile.</li>
+        <li><b>Grid guide</b> on slide 1 at 4:5 shows the 3:4 area your profile grid keeps.</li>
+        <li><b>Cell toolbar:</b> Edit photo, Replace (a similar shot), Swap (then tap the other photo).</li>
+        <li>Swipe or tap the chevrons to change slides; a tap on the matte or a gap does too (left third back, the rest forward).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const pic = (seed, land) => `https://picsum.photos/seed/${seed}/${land ? '1000/750' : '800/1000'}`;
+  const RATIOS = [['4:5', 'IG Post', 4 / 5, 12, 15], ['1:1', 'Square', 1, 14, 14], ['9:16', 'TikTok', 9 / 16, 10, 16], ['3:4', 'Film 35', 3 / 4, 12, 16]];
+  const LAYOUTS = {
+    one:   { name: '1 Photo',  n: 1, cols: '1fr', rows: '1fr' },
+    split: { name: '2 Split',  n: 2, cols: '1fr 1fr', rows: '1fr' },
+    bento: { name: '3 Bento',  n: 3, cols: '3fr 2fr', rows: '1fr 1fr', first: '1 / 3' },
+    grid:  { name: '2×2 Grid', n: 4, cols: '1fr 1fr', rows: '1fr 1fr' },
+    print: { name: 'Print',    n: 3 },
+    strip: { name: 'Strip',    n: 3, cols: '1fr', rows: 'repeat(3, 1fr)' },
+  };
+  // cover first so it paints on top: [left, top, width, height, rotate]
+  const PRINTS = [[21, 13, 58, 74, -1.5], [4, 10, 46, 58, -6.5], [50, 30, 46, 58, 6]];
+  const MATTES = [['Cream', '#FAF6F0'], ['Card', '#EFE6DA'], ['White', '#FFFFFF'], ['Black', '#1A1612'], ['Kraft', '#C9A57A']];
+  const EDITED = 'brightness(1.08) contrast(1.06) saturate(1.1)';
+
+  const state = {
+    ratio: '4:5', layout: 'bento', fit: 'fill', gap: 3, corners: 0, matte: '#FAF6F0', slide: 0,
+    photos: Array.from({ length: 8 }, (_, i) => ({ id: 'dd' + (i + 1), src: pic('dd' + (i + 1), i === 2 || i === 5), edited: false })),
+    over: {}, scope: 'every', sel: null, guide: true, tab: 'layout', target: null, swapping: false,
+  };
+  let added = 0, replaced = 0;
+  const say = html => { $('caption').innerHTML = html; };
+
+  // Walk the photos, giving each slide its own layout (override or dump-wide) and taking n photos.
+  function slides() {
+    const out = []; let i = 0;
+    while (i < state.photos.length) {
+      const L = state.over[out.length] || state.layout, n = LAYOUTS[L].n;
+      out.push({ L, idx: Array.from({ length: n }, (_, k) => i + k) });
+      i += n;
+    }
+    return out;
+  }
+  const slideOf = p => slides().findIndex(s => s.idx.includes(p));
+
+  // ---------- static controls ----------
+  $('ratios').innerHTML = RATIOS.map(([k, sub, , w, h]) =>
+    `<button class="card ratio" data-v="${k}"><i style="width:${w}px;height:${h}px"></i><b>${k}</b><span>${sub}</span></button>`).join('');
+  const dia = k => {
+    const L = LAYOUTS[k];
+    if (k === 'print') return `<div class="dia print">${[[6, 6, 22, 28, -8], [18, 8, 22, 28, 7], [9, 16, 24, 30, -2]].map(([l, t, w, h, r]) =>
+      `<i style="left:${l}px;top:${t}px;width:${w}px;height:${h}px;transform:rotate(${r}deg);border:1.5px solid var(--print)"></i>`).join('')}</div>`;
+    return `<div class="dia" style="grid-template-columns:${L.cols};grid-template-rows:${L.rows}">${Array.from({ length: L.n }, (_, i) =>
+      `<i${i === 0 && L.first ? ` style="grid-row:${L.first}"` : ''}></i>`).join('')}</div>`;
+  };
+  $('tiles').innerHTML = Object.keys(LAYOUTS).map(k => `<button class="card tile" data-v="${k}">${dia(k)}<span>${LAYOUTS[k].name}</span></button>`).join('');
+  $('mattes').innerHTML = MATTES.map(([n, c]) => `<button class="matte" data-v="${c}" aria-label="${n}"><i style="background:${c}"></i>${n}</button>`).join('');
+
+  // ---------- render ----------
+  function sizeSlide() {
+    const r = RATIOS.find(x => x[0] === state.ratio)[2];
+    const avail = $('canvas').clientWidth - 12, maxH = 354;
+    let h = Math.min(maxH, avail / r), w = h * r;
+    Object.assign($('slide').style, { width: w + 'px', height: h + 'px' });
+  }
+
+  function render() {
+    const all = slides();
+    for (const k in state.over) if (+k >= all.length) delete state.over[k];
+    state.slide = Math.min(state.slide, all.length - 1);
+    const cur = all[state.slide], L = LAYOUTS[cur.L], isPrint = cur.L === 'print';
+    const photosTab = state.tab === 'photos';
+
+    // chrome
+    document.querySelectorAll('#ratios .ratio').forEach(b => b.classList.toggle('on', b.dataset.v === state.ratio));
+    document.querySelectorAll('#tiles .tile').forEach(b => b.classList.toggle('on', b.dataset.v === cur.L));
+    document.querySelectorAll('#scope button').forEach(b => b.classList.toggle('on', b.dataset.v === state.scope));
+    document.querySelectorAll('#fit button').forEach(b => b.classList.toggle('on', b.dataset.v === state.fit));
+    document.querySelectorAll('#mattes .matte').forEach(b => b.classList.toggle('on', b.dataset.v === state.matte));
+    $('tabLayout').classList.toggle('on', !photosTab); $('tabPhotos').classList.toggle('on', photosTab);
+    $('tabLayout').setAttribute('aria-selected', !photosTab); $('tabPhotos').setAttribute('aria-selected', photosTab);
+    $('phone').classList.toggle('photos', photosTab);
+    $('pdot').hidden = !state.photos.some(p => p.edited);
+    $('pscope').textContent = state.target != null ? 'This photo' : 'All photos';
+    $('gswitch').setAttribute('aria-checked', state.guide);
+    for (const id of ['gap', 'corners']) {
+      const el = $(id); el.value = state[id]; $(id + 'V').textContent = state[id];
+      el.style.setProperty('--p', (state[id] / el.max * 100) + '%');
+    }
+
+    // canvas
+    sizeSlide();
+    const slide = $('slide'), cells = $('cells');
+    slide.style.backgroundColor = state.matte;
+    $('chipTR').textContent = `${state.slide + 1}/${all.length}${state.over[state.slide] ? ' •' : ''}`;
+    $('chipTL').textContent = state.swapping ? '⇄ Tap the photo to swap with' : photosTab ? 'Tap a photo to edit it alone' : '✥ Drag to crop · tap a photo';
+    $('prev').disabled = state.slide === 0; $('next').disabled = state.slide === all.length - 1;
+    $('guide').style.display = state.guide && state.slide === 0 && state.ratio === '4:5' ? '' : 'none';
+
+    cells.className = 'cells' + (isPrint ? ' prints' : '');
+    const pad = isPrint ? 0 : state.fit === 'matte' ? 14 : 0;
+    Object.assign(cells.style, isPrint ? { gridTemplateColumns: '', gridTemplateRows: '', gap: '', inset: '0' }
+      : { gridTemplateColumns: L.cols, gridTemplateRows: L.rows, gap: state.gap + 'px', inset: pad + 'px' });
+
+    const order = isPrint ? [...cur.idx].reverse() : cur.idx; // prints: back ones first in the DOM
+    cells.innerHTML = order.map(p => {
+      const k = cur.idx.indexOf(p), ph = state.photos[p];
+      let style = '';
+      if (isPrint) { const [l, t, w, h, r] = PRINTS[k]; style = `left:${l}%;top:${t}%;width:${w}%;height:${h}%;transform:rotate(${r}deg)`; }
+      else { style = `border-radius:${state.corners}px` + (k === 0 && L.first ? `;grid-row:${L.first}` : ''); }
+      if (!ph) return `<div class="cell empty" style="${style}">+</div>`;
+      const f = ph.edited ? `filter:${EDITED}` : '';
+      const imgs = state.fit === 'blur' && !isPrint
+        ? `<img class="haze" src="${ph.src}" alt=""><img class="fit" src="${ph.src}" alt="" style="${f}">`
+        : `<img src="${ph.src}" alt="" style="${f}">`;
+      const cls = ['cell', !photosTab && state.sel === p ? 'sel' : '', photosTab && state.target != null && state.target !== p ? 'dim' : ''].join(' ');
+      return `<div class="${cls}" data-p="${p}" style="${style}"><div class="clip" style="position:absolute;inset:0;overflow:hidden;border-radius:inherit">${imgs}</div></div>`;
+    }).join('');
+
+    // toolbar under the selected cell, kept inside the canvas card
+    const tools = $('tools'), selEl = cells.querySelector('.cell.sel');
+    tools.hidden = !selEl || state.swapping;
+    if (selEl && !state.swapping) {
+      const c = $('canvas').getBoundingClientRect(), r = selEl.getBoundingClientRect();
+      tools.style.left = Math.min(Math.max(r.left + r.width / 2 - c.left, 100), c.width - 100) + 'px';
+      tools.style.top = Math.min(r.bottom - c.top + 8, c.height - 36) + 'px';
+    }
+
+    // computed caption
+    const mixed = Object.keys(state.over).length > 0;
+    $('computed').textContent = `${mixed ? 'Mixed layouts' : `${LAYOUTS[state.layout].n} photo${LAYOUTS[state.layout].n > 1 ? 's' : ''} a slide`} · ${state.photos.length} photos → ${all.length} slides`;
+
+    // filmstrip
+    const s1 = all[0].idx;
+    $('strip').innerHTML = state.photos.map((ph, i) => {
+      const on = photosTab ? state.target === i : state.sel === i;
+      return `<button class="th${s1.includes(i) ? ' s1' : ''}${on ? ' on' : ''}" data-p="${i}" style="background-image:url('${ph.src}')" aria-label="Photo ${i + 1}${i === 0 ? ', cover' : ''}">${i === 0 ? '<span class="cover">Cover</span>' : ''}${ph.edited ? '<span class="ed"></span>' : ''}</button>`;
+    }).join('') + '<button class="th add" id="add" aria-label="Add photos">+</button>';
+  }
+
+  // ---------- slide taps and swipes ----------
+  const go = d => { const n = slides().length; const s = Math.max(0, Math.min(n - 1, state.slide + d)); if (s !== state.slide) { state.slide = s; if (!state.swapping) state.sel = null; render(); } };
+  const swapWith = p => {
+    if (state.sel != null && p !== state.sel) { const ph = state.photos; [ph[p], ph[state.sel]] = [ph[state.sel], ph[p]]; state.sel = p; say('Swapped.'); }
+    state.swapping = false; render();
+  };
+  $('prev').addEventListener('click', e => { e.stopPropagation(); go(-1); });
+  $('next').addEventListener('click', e => { e.stopPropagation(); go(1); });
+  let downX = null, swiped = false;
+  $('slide').addEventListener('pointerdown', e => { downX = e.clientX; swiped = false; });
+  $('slide').addEventListener('pointerup', e => { if (downX != null && Math.abs(e.clientX - downX) > 40) { swiped = true; go(e.clientX < downX ? 1 : -1); } downX = null; });
+  $('slide').addEventListener('click', e => {
+    if (swiped || e.target.closest('.chev')) return;
+    const cell = e.target.closest('.cell[data-p]'), p = cell ? +cell.dataset.p : null;
+    if (state.tab === 'photos') {
+      if (p == null) return;
+      state.target = state.target === p ? null : p; render(); say(state.target == null ? 'Changes go to <b>all photos</b>.' : 'Changes go to <b>this photo</b> only.'); return;
+    }
+    if (state.swapping) { if (p != null) swapWith(p); else { state.swapping = false; render(); } return; }
+    if (p != null) { state.sel = state.sel === p ? null : p; render(); return; }
+    if (state.sel != null) { state.sel = null; render(); return; }
+    const r = $('slide').getBoundingClientRect();
+    go(e.clientX - r.left < r.width / 3 ? -1 : 1);
+  });
+
+  // ---------- toolbar ----------
+  $('tEdit').addEventListener('click', () => { state.tab = 'photos'; state.target = state.sel; state.sel = null; render(); say('<b>Photos</b> tab, this photo picked. Others are dimmed.'); });
+  $('tReplace').addEventListener('click', () => { const ph = state.photos[state.sel]; ph.src = pic(`${ph.id}r${++replaced}`, false); render(); say('Replaced with a similar shot.'); });
+  $('tSwap').addEventListener('click', () => { state.swapping = true; render(); say('Tap the photo to swap with.'); });
+
+  // ---------- controls ----------
+  $('ratios').addEventListener('click', e => { const b = e.target.closest('.ratio'); if (!b) return; state.ratio = b.dataset.v; state.sel = null; state.swapping = false; render(); say(`<b>${b.dataset.v}</b> for every slide. IG uses slide 1's ratio for all of them.`); });
+  $('tiles').addEventListener('click', e => {
+    const b = e.target.closest('.tile'); if (!b) return; const k = b.dataset.v;
+    if (state.scope === 'this') { if (k === state.layout) delete state.over[state.slide]; else state.over[state.slide] = k; }
+    else { state.layout = k; state.over = {}; state.slide = 0; }
+    state.sel = null; state.swapping = false; render(); say(`<b>${LAYOUTS[k].name}</b> on ${state.scope === 'this' ? 'this slide' : 'every slide'}.`);
+  });
+  $('scope').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.scope = b.dataset.v; render(); });
+  $('fit').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.fit = b.dataset.v; render(); });
+  for (const id of ['gap', 'corners']) $(id).addEventListener('input', e => { state[id] = +e.target.value; render(); });
+  $('mattes').addEventListener('click', e => { const b = e.target.closest('.matte'); if (!b) return; state.matte = b.dataset.v; render(); });
+  $('gswitch').addEventListener('click', () => { state.guide = !state.guide; render(); });
+
+  // ---------- tabs ----------
+  $('tabLayout').addEventListener('click', () => { state.tab = 'layout'; state.target = null; render(); });
+  $('tabPhotos').addEventListener('click', () => { state.tab = 'photos'; state.sel = null; state.swapping = false; render(); });
+  $('auto').addEventListener('click', () => {
+    const list = state.target != null ? [state.photos[state.target]] : state.photos;
+    const on = !list.every(p => p.edited); list.forEach(p => { p.edited = on; });
+    render(); say(on ? 'Auto applied. A rust dot marks edited photos.' : 'Auto removed.');
+  });
+  $('clearT').addEventListener('click', () => { state.target = null; render(); });
+
+  // ---------- filmstrip ----------
+  let holdT = null, held = false;
+  $('strip').addEventListener('pointerdown', e => {
+    const b = e.target.closest('.th[data-p]'); held = false; clearTimeout(holdT); if (!b) return;
+    holdT = setTimeout(() => { held = true; say(`Photo ${+b.dataset.p + 1}: <b>Remove</b> · <b>Replace with similar</b> · <b>Add after</b>. Drag to move.`); }, 500);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('strip').addEventListener(ev, () => clearTimeout(holdT));
+  $('strip').addEventListener('contextmenu', e => e.preventDefault());
+  $('strip').addEventListener('click', e => {
+    if (held) { held = false; return; }
+    if (e.target.closest('#add')) { state.photos.push({ id: 'dda' + (++added), src: pic('dda' + added, added % 2 === 0), edited: false }); render(); say('Added a photo at the end.'); return; }
+    const b = e.target.closest('.th[data-p]'); if (!b) return; const p = +b.dataset.p;
+    if (state.tab === 'photos') { state.target = state.target === p ? null : p; state.slide = Math.max(0, slideOf(p)); render(); return; }
+    if (state.swapping) { swapWith(p); state.slide = Math.max(0, slideOf(p)); render(); return; }
+    if (state.sel === p && p !== 0) { state.photos.unshift(state.photos.splice(p, 1)[0]); state.sel = 0; state.slide = 0; render(); say('<b>Cover</b> changed.'); return; }
+    state.sel = p; state.slide = Math.max(0, slideOf(p)); render();
+  });
+
+  document.querySelector('.title').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+
+  // ---------- theme ----------
+  const root = document.documentElement;
+  const dark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const syncTheme = () => { $('theme').textContent = dark() ? 'Light' : 'Dark'; };
+  $('theme').addEventListener('click', () => { root.dataset.theme = dark() ? 'light' : 'dark'; syncTheme(); });
+  syncTheme();
+
+  addEventListener('resize', render);
+  render();
+})();
+</script>

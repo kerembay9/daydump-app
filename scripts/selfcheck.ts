@@ -11,8 +11,8 @@ import { findTrips, tripTitle } from '../src/services/stories/trips';
 import { dateRange, disambiguate, topicTitle } from '../src/services/stories/titles';
 import { copyTitle, kindLabel, matches, photoRange, rowLine, statusLine } from '../src/services/dumpLabels';
 import type { Dump } from '../src/services/dumps';
-import { cellAt, chunk, exportSize, LAYOUTS, placePhoto, slideCells } from '../src/services/layouts';
-import { IDENTITY, lookFor, matrixFor, PRESETS } from '../src/services/filters';
+import { cellAt, chunk, DEFAULT_FRAME, exportSize, frameOf, frameText, LAYOUTS, placePhoto, slideCells } from '../src/services/layouts';
+import { autoAdjust, brighten, developFor, DEFAULT_FILTER, filterOf, IDENTITY, isDark, lookFor, matrixFor, PRESETS } from '../src/services/filters';
 import { postDump, PostDeps, saveOnly } from '../src/services/post';
 
 const H = 3_600_000, D = 24 * H;
@@ -197,7 +197,7 @@ const six = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 for (const l of LAYOUTS) {
   const slides = chunk(six, l.key);
   assert.deepEqual(slides.flatMap((s) => s.photos), six, l.key);
-  for (const s of slides) assert.equal(slideCells(s.layout, 'bleed', 1080, 1350).cells.length, s.photos.length, `${l.key} cells`);
+  for (const s of slides) assert.equal(slideCells(s.layout, DEFAULT_FRAME, 1080, 1350).cells.length, s.photos.length, `${l.key} cells`);
 }
 assert.deepEqual(chunk(six, 'grid').map((s) => [s.layout, s.photos.length]), [['grid', 4], ['bento', 3]]);
 assert.deepEqual(chunk(six, 'split').map((s) => s.layout), ['split', 'split', 'split', 'single']);
@@ -213,20 +213,24 @@ assert.deepEqual(exportSize('nope'), { width: 1080, height: 1350 });
   assert.ok(Math.abs(placePhoto(900, 1600, 4000, 3000, { x: 9, y: 0.5, z: 1 }).dx - (900 - c.dw)) < 1e-6);
   assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 0.2 }).crop.z, 1);
   assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 9 }).crop.z, 4);
-  const { cells } = slideCells('split', 'bleed', 1080, 1350);
+  const { cells } = slideCells('split', DEFAULT_FRAME, 1080, 1350);
   assert.deepEqual([cellAt(cells, 'split', 10, 10), cellAt(cells, 'split', 1070, 10)], [0, 1]);
-  assert.equal(cellAt(slideCells('scrapbook', 'bleed', 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
+  assert.equal(cellAt(slideCells('scrapbook', DEFAULT_FRAME, 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
 }
 { // cells stay inside the slide; border insets them
   const W = 1080, H = 1350;
-  for (const l of LAYOUTS) for (const fit of ['bleed', 'border'] as const) for (const c of slideCells(l.key, fit, W, H).cells) {
+  for (const l of LAYOUTS) for (const fit of ['bleed', 'border', 'blur'] as const) for (const c of slideCells(l.key, { ...DEFAULT_FRAME, fit, gap: 12, corners: 16 }, W, H).cells) {
     assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= W + 1e-6 && c.y + c.h <= H + 1e-6, `${l.key} ${fit} in bounds`);
   }
-  assert.ok(slideCells('single', 'border', W, H).cells[0].x > 40);
-  assert.equal(slideCells('single', 'bleed', W, H).cells[0].w, W);
+  assert.ok(slideCells('single', frameOf('border'), W, H).cells[0].x > 40);
+  // gap and corners in mock px: 0 gap = touching halves, corners round every cell
+  const tight = slideCells('split', { ...DEFAULT_FRAME, gap: 0, corners: 8 }, W, H).cells;
+  assert.equal(tight[1].x, tight[0].w);
+  assert.equal(tight[0].r, (8 * W) / 288);
+  assert.equal(slideCells('single', DEFAULT_FRAME, W, H).cells[0].w, W);
   // scrapbook: tilted prints (rotated corners included) keep >= 12 mock px of matte on every ratio
   for (const [w, h] of [[1080, 1350], [1080, 1080], [1080, 1920], [1080, 1440]]) for (const fit of ['bleed', 'border'] as const) {
-    const { inner, cells } = slideCells('scrapbook', fit, w, h);
+    const { inner, cells } = slideCells('scrapbook', { ...DEFAULT_FRAME, fit }, w, h);
     const m = (12 * w) / 288 - 1e-6;
     for (const c of cells) {
       const r = (Math.abs(c.rot) * Math.PI) / 180, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
@@ -249,11 +253,32 @@ assert.ok(close(bw.slice(0, 5), bw.slice(5, 10)) && close(bw.slice(5, 10), bw.sl
 assert.ok(close(bw.slice(15), [0, 0, 0, 1, 0])); // alpha untouched
 const w68 = matrixFor({ key: 'warm35', pct: 68 })!;
 assert.ok(w68[0] > w68[10] && w68.length === 20); // warm: red gains more than blue
-// per-photo looks only when Apply to all is off
-const fs = { key: 'warm35' as const, pct: 68, all: true, per: { p1: { key: 'noir' as const, pct: 50 } } };
-assert.equal(lookFor(fs, 'p1').key, 'warm35');
-assert.equal(lookFor({ ...fs, all: false }, 'p1').key, 'noir');
-assert.equal(lookFor({ ...fs, all: false }, 'p2').key, 'warm35');
+// a photo's own look wins, the rest follow the dump's; rows from before per-photo looks read the same
+const fs = { key: 'warm35' as const, pct: 68, per: { p1: { key: 'noir' as const, pct: 50 } }, adj: {} };
+assert.equal(lookFor(fs, 'p1').key, 'noir');
+assert.equal(lookFor(fs, 'p2').key, 'warm35');
+assert.deepEqual(filterOf({ key: 'noir', pct: 40, all: true, per: {} }), { key: 'noir', pct: 40, per: {}, adj: {} });
+assert.deepEqual(filterOf(null), DEFAULT_FILTER);
+assert.deepEqual(filterOf({ key: 'noir', pct: 40, grain: 30, fade: 0, per: {}, adj: { p1: { light: 20 } } }), { key: 'noir', pct: 40, grain: 30, per: {}, adj: { p1: { light: 20 } } });
+// develop: nothing set = untouched; Adjust is per photo; Light raises the diagonal; Fade lifts black; texture rides the look
+assert.deepEqual(developFor(DEFAULT_FILTER, 'p1'), { matrix: null, shadows: 0, sharpen: 0, grain: 0, vignette: 0 });
+const dev = developFor({ ...DEFAULT_FILTER, fade: 50, grain: 40, adj: { p1: { light: 50, shadows: -20, sharpen: 30 } } }, 'p1');
+assert.ok(dev.matrix && dev.matrix[0] > 1 - 0.1 && dev.matrix[4] > 0, 'light + fade');
+assert.deepEqual([dev.shadows, dev.sharpen, dev.grain], [-0.2, 0.3, 0.4]);
+assert.equal(developFor({ ...DEFAULT_FILTER, adj: { p1: { light: 50 } } }, 'p2').matrix, null);
+// Auto / Brighten: a dark photo brightens, a bright one darkens, a blue cast warms up
+const dark = { mean: 0.18, sd: 0.1, lo: 0.3, hi: 0, cast: 0.1 };
+assert.ok(isDark(dark) && !isDark({ ...dark, mean: 0.5 }));
+const a = autoAdjust(dark);
+assert.ok(a.light! > 30 && a.shadows! > 30 && a.warmth! > 0 && a.contrast! > 0);
+assert.ok(autoAdjust({ ...dark, mean: 0.8, lo: 0 }).light! < 0);
+assert.ok(brighten({ ...dark, mean: 0.33, lo: 0 }, { warmth: 5 }).light! >= 25 && brighten(dark, { warmth: 5 }).warmth === 5);
+// frame: old 'border' / 'bleed' rows read as Matte / Fill; the JSON round-trips; junk falls back
+assert.deepEqual(frameOf('border'), { ...DEFAULT_FRAME, fit: 'border' });
+assert.deepEqual(frameOf(null), DEFAULT_FRAME);
+const fr = { fit: 'blur' as const, gap: 6, corners: 4, matte: 'kraft' as const, guide: false };
+assert.deepEqual(frameOf(frameText(fr)), fr);
+assert.deepEqual(frameOf('{nope'), DEFAULT_FRAME);
 
 // an undated photo (created 0) must not stretch the range back to 1970
 const jun = new Date(2026, 5, 13).getTime();

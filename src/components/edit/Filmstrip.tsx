@@ -14,7 +14,7 @@ import { Tap } from '../ui/Tap';
 import { Icons } from '../ui/Icons';
 import { Sheet } from '../ui/Sheet';
 import type { DumpPhoto } from '../../services/dumps';
-import { FilterState, lookFor, matrixFor } from '../../services/filters';
+import { developFor, editedOwn, FilterState } from '../../services/filters';
 
 const W = 46, H = 50, GAP = 6, SLOT = W + GAP;
 /** The tapped photo's size, and the held one's while it's dragged (it also rises by RISE). */
@@ -27,7 +27,7 @@ const buzz = () => { Haptics.selectionAsync().catch(() => {}); };
 
 /** The drag in progress, shared by every thumb: the held photo's index and the slot it would land in. */
 type Drag = { on: boolean; from: number; to: number };
-type ThumbProps = { p: DumpPhoto; i: number; n: number; drag: SharedValue<Drag>; active: boolean; selected: boolean; image?: SkImage | null; matrix: number[] | null; onTap: (i: number) => void; onHold: (i: number) => void; onMove: (from: number, to: number) => void };
+type ThumbProps = { p: DumpPhoto; i: number; n: number; drag: SharedValue<Drag>; active: boolean; selected: boolean; image?: SkImage | null; matrix: number[] | null; own: boolean; onTap: (i: number) => void; onHold: (i: number) => void; onMove: (from: number, to: number) => void };
 
 /** Where photo k sits while `from` is held over slot `to`: the ones in between step aside into the freed slot. */
 export const slotOf = (k: number, { from, to }: Drag) => {
@@ -42,7 +42,7 @@ export const slotOf = (k: number, { from, to }: Drag) => {
  * Tap = select; hold = photo menu; hold and drag = move it. Thumbs sit at absolute x = slot · SLOT, so while one is
  * dragged the others glide to where they'll end up, and after the drop the reorder lands on what's already drawn.
  */
-function Thumb({ p, i, n, drag, active, selected, image, matrix, onTap, onHold, onMove }: ThumbProps) {
+function Thumb({ p, i, n, drag, active, selected, image, matrix, own, onTap, onHold, onMove }: ThumbProps) {
   const x = useSharedValue(i * SLOT), tx = useSharedValue(0);
   const lifted = useSharedValue(0), picked = useSharedValue(selected ? 1 : 0);
   useEffect(() => { picked.set(withSpring(selected ? 1 : 0, pop)); }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,7 +80,7 @@ function Thumb({ p, i, n, drag, active, selected, image, matrix, onTap, onHold, 
   const cover = i === 0;
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
-      <Animated.View accessible accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}${cover ? ', cover' : ''}. Hold for options or to move.`}
+      <Animated.View accessible accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}${cover ? ', cover' : ''}${own ? ', edited' : ''}. Hold for options or to move.`}
         style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H, borderRadius: 10, marginTop: 3 },
           selected ? { boxShadow: `0 0 0 2.5px ${t.ink}`, marginTop: 1 } : active ? { boxShadow: `0 0 0 1.5px ${t.inkMuted}`, marginTop: 2 } : { opacity: 0.82 }, style]}>
         <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
@@ -93,6 +93,8 @@ function Thumb({ p, i, n, drag, active, selected, image, matrix, onTap, onHold, 
             <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.uri} />
           )}
         </View>
+        {/* has edits of its own (Photos tab: a look of its own, or Adjust) */}
+        {own ? <View style={{ position: 'absolute', right: 3, top: 3, width: 7, height: 7, borderRadius: 4, backgroundColor: fixed.printBorder, borderWidth: 1, borderColor: 'rgba(0,0,0,0.35)' }} /> : null}
         <View style={{ position: 'absolute', left: 2, bottom: 2, paddingHorizontal: 4, borderRadius: 7, backgroundColor: cover ? fixed.printBorder : 'rgba(0,0,0,0.65)', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
           <Text style={[ui(8.5, 700), { color: cover ? '#261F1B' : '#fff' }]}>{cover ? '★ 1' : `#${i + 1}`}</Text>
           {/* ✧ icon, not the ✨ emoji (decision #10), as in Create */}
@@ -176,7 +178,7 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
         <View style={{ width: n * SLOT - GAP, height: H + 3 }}>
           {photos.map((p, k) => (
             <Thumb key={p.id} p={p} i={k} n={n} drag={drag} active={active.has(p.id)} selected={selected === p.id && active.has(p.id)}
-              image={images[p.uri]} matrix={matrixFor(lookFor(filter, p.id))} onTap={onTap} onMove={onMove} onHold={(j) => setOpen({ kind: 'menu', i: j })} />
+              image={images[p.uri]} matrix={developFor(filter, p.id).matrix} own={editedOwn(filter, p.id)} onTap={onTap} onMove={onMove} onHold={(j) => setOpen({ kind: 'menu', i: j })} />
           ))}
         </View>
         <Tap onPress={() => setOpen({ kind: 'add' })} accessibilityRole="button" accessibilityLabel="Add photos"

@@ -6,7 +6,7 @@ import { useApp } from '../../state/AppState';
 import { Story, storyById } from '../../services/stories';
 import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
 import { filterOf } from '../../services/filters';
-import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
+import { chunk, frameOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
@@ -119,7 +119,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   };
 
   const v: PostView = {
-    slides, ratio: ratio.key, fit: fitOf(dump.fit), filter, images, index: Math.min(index, slides.length - 1), onIndex: setIndex,
+    slides, ratio: ratio.key, frame: frameOf(dump.fit), filter, images, index: Math.min(index, slides.length - 1), onIndex: setIndex,
     handle: profile.handle, name: profile.name, bio: profile.bio, avatar: profile.avatar, place: story?.place,
     liked, onLike: () => setLiked((x) => !x), saved, onSave: () => setSaved((x) => !x), onAvatar: () => router.push('/profile'),
   };

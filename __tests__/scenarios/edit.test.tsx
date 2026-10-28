@@ -5,10 +5,11 @@ import { State } from 'react-native-gesture-handler';
 import { seedWorld, world } from '../../jest/world';
 import { createDraft, get, list } from '../../src/services/dumps';
 import { filterOf } from '../../src/services/filters';
+import { frameOf } from '../../src/services/layouts';
 
 beforeAll(() => seedWorld());
 
-test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all auto-save', async () => {
+test('Continue makes a draft; Edit changes to ratio, fit, looks (all photos / this photo) auto-save', async () => {
   const app = await bootApp('/create');
   await screen.findByText('Your gallery (77)', {}, { timeout: 10000 });
   await fireEvent.changeText(screen.getByPlaceholderText('Search keyword, place, date...'), 'seattle');
@@ -30,22 +31,61 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   await settle();
   expect((await get(id))!.ratio).toBe('1:1');
 
-  // filter: per slide, then for everyone
-  expect(screen.getByRole('checkbox', { name: 'Apply to all photos' }).props.accessibilityState).toEqual({ checked: true });
-  await fireEvent.press(screen.getByRole('checkbox', { name: 'Apply to all photos' }));
-  expect(await screen.findByText('Changes apply to this slide only.')).toBeTruthy();
+  // fit: Layout tab, Fill -> Matte
+  expect(screen.getByRole('button', { name: 'Fill', selected: true })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Matte' }));
+  await settle();
+  expect(frameOf((await get(id))!.fit).fit).toBe('border');
+
+  // looks live on the Photos tab; the Layout controls don't
+  expect(screen.queryByRole('button', { name: 'B&W Roll' })).toBeNull();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Photos' }));
+  expect(screen.queryByLabelText('1:1 Square')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Matte' })).toBeNull();
+
+  // nothing picked = All photos: the dump's look
+  expect(screen.getByText('All photos')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'B&W Roll' }));
   await settle();
   let f = filterOf((await get(id))!.filter);
-  expect(f.all).toBe(false);
-  expect(Object.values(f.per).map((l) => l.key)).toContain('noir');
-  expect(f.key).toBe('none'); // the other slides keep the dump's look
+  expect(f).toEqual({ key: 'noir', pct: 68, per: {}, adj: {} });
 
-  await fireEvent.press(screen.getByRole('checkbox', { name: 'Apply to all photos' }));
+  // a photo picked in the strip gets its own look; the others keep the dump's
+  const [p1, p2] = draft!.photos.map((p) => p.id);
+  const tapStrip = (pid: string) => act(async () => { fireGestureHandler(getByGestureTestId(`strip-tap-${pid}`), [{ state: State.BEGAN }, { state: State.ACTIVE }, { state: State.END }]); });
+  await tapStrip(p2);
+  await screen.findByLabelText('This photo. Tap for all photos');
+  await fireEvent.press(screen.getByRole('button', { name: 'Sunfade' }));
   await settle();
   f = filterOf((await get(id))!.filter);
-  expect(f).toMatchObject({ all: true, key: 'noir', per: {} });
-  expect(screen.queryByText('Changes apply to this slide only.')).toBeNull();
+  expect(f.key).toBe('noir');
+  expect(f.per).toEqual({ [p2]: { key: 'sunfade', pct: 68 } });
+  expect(screen.getByLabelText(/^Photo 2, edited\./)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Reset photo' })).toBeTruthy();
+
+  // hold the slide: the originals, until let go
+  const slide = screen.getAllByLabelText(/^Slide 1 of/)[0];
+  await fireEvent(slide, 'longPress');
+  expect(screen.getByText('Showing original')).toBeTruthy();
+  await fireEvent(slide, 'pressOut');
+  expect(screen.getByText('Hold to compare')).toBeTruthy();
+
+  // Reset photo drops its own look; tapping it again lets it go (no cover change on this tab)
+  await fireEvent.press(screen.getByRole('button', { name: 'Reset photo' }));
+  await settle();
+  expect(filterOf((await get(id))!.filter).per).toEqual({});
+  await tapStrip(p2);
+  expect(await screen.findByText('All photos')).toBeTruthy();
+  expect((await get(id))!.photos.map((p) => p.id).slice(0, 2)).toEqual([p1, p2]);
+
+  // Use on every photo: the picked photo's look becomes the dump's
+  await tapStrip(p1);
+  await fireEvent.press(await screen.findByRole('button', { name: 'Cashmere' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Use on every photo' }));
+  await settle();
+  expect(filterOf((await get(id))!.filter)).toEqual({ key: 'cashmere', pct: 68, per: {}, adj: {} });
+  await tapStrip(p1);
+  await fireEvent.press(screen.getByRole('button', { name: 'B&W Roll' }));
 
   // strength: one value label; drag follows the finger's page x even when locationX jumps to a child's frame
   expect(screen.getAllByText('68%')).toHaveLength(1);
@@ -60,8 +100,76 @@ test('Continue makes a draft; Edit changes to ratio, filter and Apply-to-all aut
   // reopened later: the saved state comes back
   screen.unmount();
   await bootApp(`/edit/${id}`);
+  expect(await screen.findByRole('button', { name: 'Matte', selected: true })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Photos' }));
   expect(await screen.findByRole('button', { name: 'B&W Roll', selected: true })).toBeTruthy();
-  expect(screen.getByRole('checkbox', { name: 'Apply to all photos' }).props.accessibilityState).toEqual({ checked: true });
+}, 30000);
+
+test('Photos: Adjust (Brighten, Auto, ruler with a 0 detent) is per photo, Texture rides the look; Layout: Frame and arrangement tiles', async () => {
+  const photos = world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri }));
+  const d = await createDraft({ source: 'create', photos, ratio: '4:5' });
+  await bootApp(`/edit/${d.id}`);
+  const saved = async () => { await settle(); return (await get(d.id))!; };
+  const drag = async (name: string, grant: number, to?: number) => {
+    const s = screen.getByLabelText(name);
+    await fireEvent(s, 'layout', { nativeEvent: { layout: { width: 200 } } });
+    await fireEvent(s, 'responderGrant', { nativeEvent: { pageX: 20 + grant, locationX: grant } }); // track starts at page x 20
+    if (to != null) await fireEvent(s, 'responderMove', { nativeEvent: { pageX: 20 + to, locationX: 3 } });
+  };
+
+  // Layout: grid guide on slide 1 at 4:5; arrangement tiles; Frame card
+  expect(await screen.findByTestId('grid-guide')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Scrapbook' }));
+  expect((await saved()).layout).toBe('scrapbook');
+  await fireEvent.press(screen.getByRole('button', { name: '3 Bento' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Blur fill' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Kraft matte' }));
+  await drag('Gap', 100); // 0-12: half way = 6
+  await drag('Corners', 50); // 0-16: a quarter = 4
+  await fireEvent(screen.getByLabelText('Grid guide'), 'valueChange', false);
+  expect(frameOf((await saved()).fit)).toEqual({ fit: 'blur', gap: 6, corners: 4, matte: 'kraft', guide: false });
+  expect(screen.queryByTestId('grid-guide')).toBeNull();
+  expect(screen.getByText('Whole photos on blur')).toBeTruthy(); // blur fill: nothing to crop
+
+  // Photos → Adjust: with nothing picked it changes the slide's first photo; the dark photo offers Brighten
+  await fireEvent.press(screen.getByRole('tab', { name: 'Photos' }));
+  await fireEvent.press(screen.getByRole('tab', { name: 'Adjust' }));
+  expect(screen.getByText('Photo 1')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Brighten, this photo looks dark'));
+  let adj = filterOf((await saved()).filter).adj;
+  expect(Object.keys(adj)).toEqual([photos[0].id]);
+  expect(adj[photos[0].id].light).toBeGreaterThanOrEqual(25);
+  expect(screen.queryByLabelText('Brighten, this photo looks dark')).toBeNull();
+  expect(screen.getByLabelText(/^Photo 1, cover, edited\./)).toBeTruthy();
+
+  // the ruler: 50 on Contrast, then back near 0 clicks to 0
+  await fireEvent.press(screen.getByLabelText('Contrast 0'));
+  await drag('Contrast', 150);
+  expect(filterOf((await saved()).filter).adj[photos[0].id].contrast).toBe(50);
+  await drag('Contrast', 100, 103);
+  expect(filterOf((await saved()).filter).adj[photos[0].id].contrast).toBe(0);
+
+  // Auto sets every slider; tapping Auto ✓ undoes it
+  await fireEvent.press(screen.getByLabelText('Auto'));
+  adj = filterOf((await saved()).filter).adj;
+  expect(adj[photos[0].id]).toMatchObject({ saturation: 8, sharpen: 20 });
+  expect(adj[photos[0].id].shadows).toBeGreaterThan(0);
+  await fireEvent.press(screen.getByLabelText('Auto on. Tap to undo'));
+  expect(filterOf((await saved()).filter).adj[photos[0].id]).toEqual({});
+
+  // Texture: part of the look (All photos here), kept when the preset changes
+  await fireEvent.press(screen.getByRole('tab', { name: 'Texture' }));
+  await drag('Grain', 80); // 40
+  await fireEvent.press(screen.getByRole('tab', { name: 'Look' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Sunfade' }));
+  const f = filterOf((await saved()).filter);
+  expect([f.key, f.grain]).toEqual(['sunfade', 40]);
+
+  // reopened: the frame comes back
+  screen.unmount();
+  await bootApp(`/edit/${d.id}`);
+  expect(await screen.findByRole('button', { name: 'Blur fill', selected: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Kraft matte', selected: true })).toBeTruthy();
 }, 30000);
 
 test('Crop: dragging / pinching a photo picks the part shown, saved with the dump', async () => {

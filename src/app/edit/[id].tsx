@@ -6,8 +6,9 @@ import { useApp } from '../../state/AppState';
 import { markSeen, Story, storyById } from '../../services/stories';
 import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
-import { fitOf, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
-import { filterOf, FilterState, Look, lookFor } from '../../services/filters';
+import { Frame, frameOf, frameText, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
+import { Adjust, editedOwn, filterOf, FilterState, Look, lookFor, lookOf } from '../../services/filters';
+import { toneOf } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import type { PhotoAsset } from '../../types';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -21,11 +22,14 @@ import { Tap } from '../../components/ui/Tap';
 import { SlidePager, usePreviewImages } from '../../components/edit/SlidePager';
 import { FilterCard } from '../../components/edit/FilterCard';
 import { Filmstrip } from '../../components/edit/Filmstrip';
+import { FramePanel } from '../../components/edit/FramePanel';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
+const TABS = [['layout', 'Layout'], ['photos', 'Photos']] as const;
+
 /**
- * Size & Edit studio (ph5.png). The id is a dump (Library draft, Reuse copy, share-in draft) or a Discover story,
+ * Size & Edit studio (ph5.png): Layout (ratio, arrangement, frame, crop) and Photos (look, adjust, texture; hold to compare). The id is a dump (Library draft, Reuse copy, share-in draft) or a Discover story,
  * which opens that story's draft (made on first open). Every change auto-saves to the dump.
  */
 export default function Edit() {
@@ -84,7 +88,8 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   const [title, setTitle] = useState(dump.title);
   const [photos, setPhotos] = useState(dump.photos);
   const [ratio, setRatio] = useState<string>(ratioOf(dump.ratio).key);
-  const fit = fitOf(dump.fit);
+  const [frame, setFrame] = useState<Frame>(frameOf(dump.fit));
+  const [tab, setTab] = useState<'layout' | 'photos'>('layout');
   const [layout, setLayout] = useState<LayoutKey>(layoutOf(dump.layout).key);
   const [filter, setFilter] = useState<FilterState>(filterOf(dump.filter));
   const [slide, setSlide] = useState(0);
@@ -92,8 +97,8 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   const [sel, setSel] = useState<string | null>(null);
 
   // a cleared title keeps the last saved one
-  const saved = useMemo(() => ({ title: title.trim() || dump.title, photos, ratio, fit, layout, filter: filter as Record<string, unknown> }),
-    [title, dump.title, photos, ratio, fit, layout, filter]);
+  const saved = useMemo(() => ({ title: title.trim() || dump.title, photos, ratio, fit: frameText(frame), layout, filter: filter as Record<string, unknown> }),
+    [title, dump.title, photos, ratio, frame, layout, filter]);
   const flush = useAutosave(dump.id, saved);
   // Posted from the Preview pushed on top of this Edit: back here would edit the posted record (update() drops it
   // anyway), so leave instead. Reuse makes the editable copy.
@@ -110,16 +115,21 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   const onSlide = useMemo(() => slides[cur]?.photos ?? [], [slides, cur]);
   const active = useMemo(() => new Set(onSlide.map((p) => p.id)), [onSlide]);
   const images = usePreviewImages(photos.map((p) => p.uri));
-  const look = onSlide[0] ? lookFor(filter, onSlide[0].id) : filter;
-
-  const setLook = (l: Look) => {
-    if (filter.all) return setFilter({ ...filter, ...l });
-    const per = { ...filter.per };
-    for (const p of onSlide) per[p.id] = l;
-    setFilter({ ...filter, per });
+  // Photos tab scope: the photo picked in the filmstrip (on this slide) gets its own look; none = the dump's look.
+  const target = sel && active.has(sel) ? sel : null;
+  const look = target ? lookFor(filter, target) : lookOf(filter);
+  const setLook = (l: Look) => setFilter(target ? { ...filter, per: { ...filter.per, [target]: l } } : { ...filter, ...l });
+  const unset = (id: string) => {
+    const { [id]: _, ...per } = filter.per;
+    const { [id]: __, ...adj } = filter.adj;
+    setFilter({ ...filter, per, adj });
   };
-  // Ticking Apply-to-all makes the shown look everyone's; unticking starts per-slide looks from it.
-  const setAll = (all: boolean) => setFilter(all ? { ...look, all, per: {} } : { ...filter, all });
+  // Adjust is always one photo's: the targeted one, else the slide's first
+  const focusAt = target ? photos.findIndex((p) => p.id === target) : photos.findIndex((p) => p.id === onSlide[0]?.id);
+  const focus = photos[focusAt];
+  const focusImage = focus ? images[focus.uri] : null;
+  const tone = useMemo(() => (focusImage ? toneOf(focusImage) : null), [focusImage]);
+  const setAdj = (a: Adjust) => focus && setFilter({ ...filter, adj: { ...filter.adj, [focus.id]: a } });
 
   const slideOf = (i: number) => Math.floor(i / layoutOf(layout).n);
   const move = (from: number, to: number) => {
@@ -128,9 +138,11 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
     setPhotos(next);
     setSlide(slideOf(to));
   };
-  // First tap selects the photo and shows its slide; only a second tap on that same photo promotes it to cover.
+  // First tap selects the photo and shows its slide; only a second tap on that same photo promotes it to cover
+  // (Photos tab: lets it go, back to All photos).
   const tap = (i: number) => {
     const id = photos[i].id;
+    if (sel === id && active.has(id) && tab === 'photos') return setSel(null);
     if (sel === id && active.has(id) && i > 0) return move(i, 0);
     setSel(id);
     setSlide(slideOf(i));
@@ -171,7 +183,19 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
         </Tap>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+      <FrameCard radius={20} padding={4} style={{ flexDirection: 'row', marginBottom: 8 }}>
+        {TABS.map(([k, name]) => {
+          const on = tab === k;
+          return (
+            <Tap key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+              style={{ flex: 1, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.ink : undefined }}>
+              <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]}>{name}</Text>
+            </Tap>
+          );
+        })}
+      </FrameCard>
+
+      {tab === 'layout' ? <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
         {RATIOS.map((r) => {
           const on = ratio === r.key;
           const c = on ? t.bgScreen : t.ink;
@@ -186,12 +210,18 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
             </FrameCard>
           );
         })}
-      </View>
+      </View> : null}
 
-      <SlidePager slides={slides} ratio={ratio} fit={fit} layout={layout} filter={filter} index={cur}
+      <SlidePager slides={slides} ratio={ratio} frame={frame} layout={layout} filter={filter} index={cur} mode={tab}
         images={images} onIndex={setSlide} onLayout={(l) => { setLayout(l); setSlide(0); }}
         onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
-      <FilterCard look={look} all={filter.all} onLook={setLook} onAll={setAll} />
+      {tab === 'photos' ? (
+        <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
+          onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
+          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
+      ) : (
+        <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} />
+      )}
       <Filmstrip
         photos={photos}
         active={active}

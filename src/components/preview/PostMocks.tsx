@@ -10,15 +10,15 @@ import { FrameCard } from '../ui/FrameCard';
 import { Icons } from '../ui/Icons';
 import { Tap } from '../ui/Tap';
 import type { Images, Slide } from '../edit/SlidePager';
-import { FilterState, lookFor, matrixFor } from '../../services/filters';
-import { Fit, ratioOf } from '../../services/layouts';
+import { developFor, FilterState } from '../../services/filters';
+import { Frame, ratioOf } from '../../services/layouts';
 import { SlideDrawing } from '../../services/slides';
 
 /** What every mock-up draws from. */
 export type PostView = {
   slides: Slide[];
   ratio: string;
-  fit: Fit;
+  frame: Frame;
   filter: FilterState;
   images: Images;
   index: number;
@@ -49,11 +49,11 @@ function SlideCanvas({ v, i, w, h }: { v: PostView; i: number; w: number; h: num
   const sw = Math.min(w, h / k);
   const sh = sw * k;
   const s = v.slides[i];
-  const photos = useMemo(() => s.photos.map((p) => ({ image: v.images[p.uri], matrix: matrixFor(lookFor(v.filter, p.id)), crop: p.crop })), [s, v.images, v.filter]);
+  const photos = useMemo(() => s.photos.map((p) => ({ image: v.images[p.uri], dev: developFor(v.filter, p.id), crop: p.crop })), [s, v.images, v.filter]);
   return (
     <Canvas style={{ width: w, height: h }}>
       <Group transform={[{ translateX: (w - sw) / 2 }, { translateY: (h - sh) / 2 }]}>
-        <SlideDrawing layout={s.layout} fit={v.fit} width={sw} height={sh} photos={photos} />
+        <SlideDrawing layout={s.layout} frame={v.frame} width={sw} height={sh} photos={photos} />
       </Group>
     </Canvas>
   );
