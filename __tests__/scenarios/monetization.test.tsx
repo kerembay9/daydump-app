@@ -1,0 +1,44 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fireEvent, screen } from 'expo-router/testing-library';
+import { bootApp } from '../../jest/app';
+import { seedWorld, world } from '../../jest/world';
+
+const LONG = 'An autumn of golden retriever puppy splashing through the shallow waves';
+const META = '6 photos · Sep 22–Oct 22, 2025';
+
+beforeEach(async () => {
+  seedWorld();
+  world.pro = false;
+  await AsyncStorage.removeItem('@picdump_unlocks');
+  // the first-full-Discover paywall has its own test
+  await AsyncStorage.setItem('@picdump_first_paywall_shown', '1');
+});
+afterAll(() => { world.pro = true; });
+
+test('free: dumps are locked; the free unlock opens one, the next asks for Pro', async () => {
+  await bootApp('/');
+  const tile = await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 });
+  expect(screen.getByLabelText('Unlock A week in Seattle')).toBeTruthy();
+
+  await fireEvent.press(tile);
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  // the unlocked dump opens in Preview
+  expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Back'));
+
+  // it stays open; the next locked one says when the next free unlock is, and offers Pro
+  expect(await screen.findByLabelText(`${LONG}, ${META}`)).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Unlock A week in Seattle'));
+  expect(await screen.findByText(/Your next free dump is in 7 days\.$/)).toBeTruthy();
+  expect(screen.queryByText('Use free unlock')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('Unlock all with Pro'));
+  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+}, 30000);
+
+test('Pro: nothing is locked', async () => {
+  world.pro = true;
+  await bootApp('/');
+  expect(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
+  expect(screen.queryByText('Unlock')).toBeNull();
+}, 30000);

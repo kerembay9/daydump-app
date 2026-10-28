@@ -25,6 +25,8 @@ import { IgGrid, IgPost, PostView, TikTok } from '../../components/preview/PostM
 import { Done, DoneSheet } from '../../components/preview/DoneSheet';
 import { APPS, PostSheet } from '../../components/preview/PostSheet';
 import { shareTargets, ShareTarget } from '../../../modules/clip-embedder';
+import { usePro } from '../../state/Pro';
+import { LockedStub } from '../../components/LockedDump';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.LONG) : console.log('[preview]', m));
@@ -37,16 +39,19 @@ export default function Preview() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { stories, library, loaded } = useApp();
   const story = isDumpId(id) ? undefined : storyById(stories, id);
+  const { accessOf } = usePro();
   // undefined = still loading; null = gone (deleted dump, unknown story id)
   const [found, setDump] = useState<Dump | null | undefined>(undefined);
   useEffect(() => {
     if (isDumpId(id)) get(id).then(setDump, () => setDump(null));
     // warm the profile first: storyAsDump reads its size / frame defaults synchronously (cold start from the 8 PM recap)
-    else if (story) getProfile().then(() => storyDraft(story.id)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
-  }, [id, story]);
+    else if (story && accessOf(story) === 'open') getProfile().then(() => storyDraft(story.id)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
+  }, [id, story, accessOf]);
   // a dump already up stays: a rebuild while indexing can drop or re-id its story (topic ids carry their start date)
   const dump = found ?? (!isDumpId(id) && !story && loaded ? null : found);
 
+  // a locked story's picks never load (deep link, or back here after Pro lapsed)
+  if (story && accessOf(story) === 'locked') return <LockedStub story={story} />;
   if (dump === undefined) return null;
   // the 8 PM recap opens /preview/today even on a day with too few camera photos for a Today dump
   if (dump === null && id === 'today') return <Stub back title="Today" note="Nothing taken today yet. Take a few photos and your Today dump shows up here." />;

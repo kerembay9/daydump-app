@@ -78,9 +78,9 @@ export const STACKS = {
 
 export type StackKind = keyof typeof STACKS;
 
-type Props = { kind: StackKind; uris: string[]; /** px width; default = the width the parent gives */ width?: number; style?: StyleProp<ViewStyle> };
+type Props = { kind: StackKind; uris: string[]; /** px width; default = the width the parent gives */ width?: number; style?: StyleProp<ViewStyle>; /** locked dump: photos blurred past recognising */ blur?: number };
 
-export function PhotoStack({ kind, uris, width, style }: Props) {
+export function PhotoStack({ kind, uris, width, style, blur }: Props) {
   const g: Geometry = STACKS[kind];
   const [measured, setMeasured] = useState(0);
   const W = g.fixed ? g.w : width ?? measured;
@@ -103,6 +103,7 @@ export function PhotoStack({ kind, uris, width, style }: Props) {
             r={it.r * s}
             border={it.border}
             borderColor={it.borderColor}
+            blur={blur}
             style={[
               { transform: [{ rotate: `${it.rot}deg` }, { scale: it.scale ?? 1 }], opacity: it.opacity },
               it.shadow ? { boxShadow: it.shadow } : null,

@@ -21,6 +21,8 @@ import { Tap } from '../../components/ui/Tap';
 import { SlidePager, usePreviewImages } from '../../components/edit/SlidePager';
 import { FilterCard } from '../../components/edit/FilterCard';
 import { Filmstrip } from '../../components/edit/Filmstrip';
+import { usePro } from '../../state/Pro';
+import { LockedStub } from '../../components/LockedDump';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -36,8 +38,10 @@ export default function Edit() {
   // A story id needs the stories built (cold deep link); a dump id doesn't. Resolve once per id.
   const story = isDumpId(id) ? undefined : storyById(stories, id);
   const ready = isDumpId(id) || loaded;
+  const { accessOf } = usePro();
+  const locked = !!story && accessOf(story) === 'locked';
   useEffect(() => {
-    if (!id || !ready || dump !== undefined) return;
+    if (!id || !ready || dump !== undefined || locked) return;
     (async () => {
       const d = story ? await draftForStory(story) : await get(id);
       if (story) markSeen([story.id]);
@@ -45,8 +49,9 @@ export default function Edit() {
       if (d?.status === 'posted') return router.replace({ pathname: '/preview/[id]', params: { id: d.id } });
       setDump(d);
     })().catch((e) => { console.warn('[edit] open failed:', e); setDump(null); });
-  }, [id, ready, story, dump]);
+  }, [id, ready, story, dump, locked]);
 
+  if (locked) return <LockedStub story={story!} />;
   if (dump === null) return <Stub back title="Edit" note="This dump is no longer available." />;
   if (dump && !dump.photos.length) return <Stub back title="Edit" note="The photos in this dump are no longer on your phone." />;
   if (!dump) return null;

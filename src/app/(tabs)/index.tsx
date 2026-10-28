@@ -18,6 +18,9 @@ import { StatusScrim } from '../../components/ui/Screen';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
+import { usePro } from '../../state/Pro';
+import { LockBadge, LOCKED_BLUR } from '../../components/LockedDump';
+import { Icons } from '../../components/ui/Icons';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const uris = (s: Story) => s.picks.map((p) => p.uri);
@@ -84,12 +87,12 @@ function TileTape({ id }: { id: string }) {
   </>;
 }
 
-/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). */
-function Tile({ s, kind, rotate, onPress, style, more }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean }) {
+/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). locked: blurred, with a lock. */
+function Tile({ s, kind, rotate, onPress, style, more, locked }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; locked: boolean }) {
   const wide = kind === 'wide';
   return (
-    <FrameCard radius={14} padding={8} rotate={more ? rotate * 2.6 : rotate} onPress={onPress} label={`${s.title}, ${s.subtitle}`} style={style}>
-      <PhotoStack kind={kind} uris={uris(s)} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
+    <FrameCard radius={14} padding={8} rotate={more ? rotate * 2.6 : rotate} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? ', locked' : ''}`} style={style}>
+      <PhotoStack kind={kind} uris={uris(s)} blur={locked ? LOCKED_BLUR : undefined} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
           <View style={{ flex: 1 }}><Title text={s.title} style={display(16)} /></View>
@@ -101,15 +104,16 @@ function Tile({ s, kind, rotate, onPress, style, more }: { s: Story; kind: Stack
           <Meta s={s} />
         </View>
       )}
+      {locked && <LockBadge />}
       {more && <TileTape id={s.id} />}
     </FrameCard>
   );
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-const Bento = React.memo(function Bento({ block, more }: { block: Story[]; more: boolean }) {
+const Bento = React.memo(function Bento({ block, more, isLocked, open }: { block: Story[]; more: boolean; isLocked: (s: Story) => boolean; open: (s: Story) => void }) {
   const [a, b, c, d] = block;
-  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => preview(s.id)} style={style} more={more} />;
+  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => open(s)} style={style} more={more} locked={isLocked(s)} />;
   const gap = more ? 14 : 8; // more: room for the tape between tiles
   return (
     <View style={{ gap, marginBottom: gap }}>
@@ -143,21 +147,23 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
   );
 }
 
-function Hero({ s, more }: { s: Story; more: boolean }) {
+function Hero({ s, more, locked, onOpen }: { s: Story; more: boolean; locked: boolean; onOpen: () => void }) {
   const { t } = useTheme();
+  const verb = locked ? 'Unlock' : 'Preview';
   return (
     <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
       <FrameCard radius={16} padding={10} rotate={more ? -1.8 : -1}>
-        <Tap onPress={() => preview(s.id)} accessibilityRole="button" accessibilityLabel={`Preview ${s.title}`}>
-          <PhotoStack kind="hero" uris={uris(s)} />
+        <Tap onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${verb} ${s.title}`}>
+          <PhotoStack kind="hero" uris={uris(s)} blur={locked ? LOCKED_BLUR : undefined} />
         </Tap>
         <View style={{ paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Title text={s.title} style={display(19.5)} />
             <Meta s={s} size={10.5} />
           </View>
-          <Tap onPress={() => preview(s.id)} accessibilityRole="button" style={{ height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: t.ink, justifyContent: 'center' }}>
-            <Text style={[ui(11, 600), { color: t.bgScreen }]}>Preview</Text>
+          <Tap onPress={onOpen} accessibilityRole="button" style={{ height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {locked && <Icons.lock size={12} color={t.bgScreen} />}
+            <Text style={[ui(11, 600), { color: t.bgScreen }]}>{verb}</Text>
           </Tap>
         </View>
         {more && <><CornerTape seed={`${s.id}:l`} side="left" /><CornerTape seed={`${s.id}:r`} side="right" /></>}
@@ -179,13 +185,16 @@ export default function Discover() {
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
   const more = useBands() === 'more';
   const paper = useProfile().paper;
+  const pro = usePro();
+  const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
+  const open = useCallback((s: Story) => (isLocked(s) ? pro.askUnlock(s) : preview(s.id)), [isLocked, pro]);
 
 
   const hero = stories[0];
   const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
-  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} />, [more]);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} isLocked={isLocked} open={open} />, [more, isLocked, open]);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
@@ -215,7 +224,7 @@ export default function Discover() {
           onAction={() => Linking.openSettings()}
         />
       ) : hero ? (
-        <Hero s={hero} more={more} />
+        <Hero s={hero} more={more} locked={isLocked(hero)} onOpen={() => open(hero)} />
       ) : vision && vision.state !== 'ready' ? (
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
@@ -238,7 +247,7 @@ export default function Discover() {
         data={blocks}
         keyExtractor={(b) => b[0].id}
         renderItem={renderBento}
-        extraData={more}
+        extraData={[more, isLocked]}
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}
