@@ -259,6 +259,8 @@ function ProfileBody() {
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
+          <Row label="Cards" sub="Discover's cards: rounded, or paper sheets with tape (light mode). Tap to switch" onPress={() => save({ cards: CARDS[(CARDS.indexOf(p.cards) + 1) % CARDS.length] })}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{CARD_NAMES[p.cards]}</Text>} />
           <Row label="Hide developer tools" onPress={() => save({ dev: false })} last />
         </Section>
       )}
@@ -283,6 +285,9 @@ function dropAvatarFile(uri: string) {
 /** Developer tools' Bands switch, in tap order. */
 const BANDS: ProfileT['bands'][] = ['default', 'more', 'none'];
 const BAND_NAMES: Record<ProfileT['bands'], string> = { none: 'No bands', default: 'Default', more: 'Scrapbook' };
+/** Developer tools' Cards switch, in tap order. */
+const CARDS: ProfileT['cards'][] = ['classic', 'paper', 'kraft', 'tinted'];
+const CARD_NAMES: Record<ProfileT['cards'], string> = { classic: 'Classic', paper: 'Paper, tone tape', kraft: 'Paper, kraft tape', tinted: 'Paper, colour tape' };
 
 /** Developer tools' CLIP switch: null = the shipped model. */
 const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);

@@ -11,11 +11,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * slidesMin / slidesMax: photos per Discover dump (4-20, default 4-10; stories/index.ts slideCount).
  * bands: masking tape on cards (developer tools): none, default, or more (scrapbook washi tape on Discover and onboarding).
  * paper: grainy paper texture behind Discover (developer tools).
+ * cards: Discover's cards (developer tools): classic rounded cards, or paper sheets with tone masking tape (paper), torn kraft tape (kraft) or matte colour tape (tinted).
  */
-export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean; bands: 'none' | 'default' | 'more'; slidesMin: number; slidesMax: number; paper: boolean };
+export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean; bands: 'none' | 'default' | 'more'; slidesMin: number; slidesMax: number; paper: boolean; cards: 'classic' | 'paper' | 'kraft' | 'tinted' };
 
 const KEY = '@daydump_profile';
-const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true, bands: 'default', slidesMin: 4, slidesMax: 10, paper: true };
+const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true, bands: 'default', slidesMin: 4, slidesMax: 10, paper: true, cards: 'classic' };
 
 let last = EMPTY;
 /** The profile as last read or written (sync, for code that can't wait; EMPTY before the first read). */
