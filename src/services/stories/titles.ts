@@ -17,8 +17,20 @@ export function topicTitle(t: Pick<Topic, 'name' | 'start' | 'end'>): string {
   return capitalize(plural(name));
 }
 
+// irregular plurals and mass nouns among the vocab's last words: "woman" -> "women", "street food" stays
+const IRREGULAR: Record<string, string> = {
+  man: 'men', woman: 'women', gentleman: 'gentlemen', child: 'children', person: 'people', foot: 'feet', tooth: 'teeth',
+  mouse: 'mice', knife: 'knives', leaf: 'leaves', wolf: 'wolves', shelf: 'shelves', life: 'lives', potato: 'potatoes', hero: 'heroes',
+};
+const UNCOUNTABLE = new Set(
+  ('fish sheep deer salmon cattle aircraft sushi food art music coffee tea rice milk water juice bread wine beer candy grain ' +
+    'equipment furniture clothing jewelry hair grass sand ice snow rain fog money traffic wildlife police').split(' '),
+);
+
 export function plural(w: string): string {
-  if (/^wearing |colors$|s$/.test(w)) return w;
+  const last = w.match(/[^\s-]+$/)?.[0] ?? '';
+  if (IRREGULAR[last]) return w.slice(0, -last.length) + IRREGULAR[last];
+  if (UNCOUNTABLE.has(last) || /^wearing |colors$|s$/.test(w)) return w;
   if (/(sh|ch|x)$/.test(w)) return w + 'es';
   if (/[^aeiou]y$/.test(w)) return w.slice(0, -1) + 'ies';
   return w + 's';
