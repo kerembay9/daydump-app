@@ -64,9 +64,10 @@ Titles must fit: up to 2 lines with auto-shrink, never "…". Do not set `lineHe
 ## 5. Dumps: ratios, frames, layouts, filters
 
 - **Ratios:** 4:5 (IG Post, default), 9:16, 1:1, 3:4. Default ratio and frame come from Profile.
-- **Frames:** *Full Bleed* (photo to the edge) or *Cashmere Border* (cream matte).
+- **Edit studio:** two tabs. *Layout* = ratio, arrangement tiles, the Frame card and crop (drag / pinch); a dashed *Grid crop* guide on slide 1 at 4:5 shows the 3:4 the profile grid keeps (Edit only). *Photos* = Look | Adjust | Texture; hold the slide to see the originals.
+- **Frame (per dump, Layout):** Fit *Fill* (to the edge), *Matte* (inset border) or *Blur fill* (whole photo on a blurred copy, no crop); Gap 0–12 (default 3); Corners 0–16; matte colour Card (default #EFE6DA), Cream, White, Black, Kraft.
 - **Layouts:** 1 Photo, 2 Split, 3 Bento, 2×2 Grid, Scrapbook. Photos are chunked across slides with no repeats.
-- **Filters (Skia colour matrices, 0–100%):** Warm 35mm (default, 68%), Cashmere, Soft Film, Sunfade, B&W Roll, Original. Apply to all, or per photo.
+- **Filters (Skia colour matrices, 0–100%):** Warm 35mm (default, 68%), Cashmere, Soft Film, Sunfade, B&W Roll, Original. Called *Look* in the studio: the dump's look by default ("All photos"); a photo tapped in the strip gets its own ("This photo", dot in the strip) until "Use on every photo" or "Reset photo". Look tiles show the photo itself. *Texture* (Grain, Fade, Vignette, 0–100) is part of the look. *Adjust* (Light, Contrast, Shadows, Warmth, Saturation on a ruler that clicks at 0; Sharpen 0–100) is always one photo's: the picked one, else the slide's first. *Auto* sets them from the photo's tone (tap again to undo); a dark photo offers *Brighten*.
 - **Captions:** on-device templates, about 6 per dump.
 - **Export:** 1080 px wide JPGs, saved to the "DayDump" album, then shared to Instagram or TikTok.
 

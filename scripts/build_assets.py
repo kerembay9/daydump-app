@@ -18,7 +18,7 @@ fonts  - Inter (OFL, @expo-google-fonts) cut to Latin + punctuation/symbols -> a
          fall back per glyph to the system font; __tests__/fonts.test.ts fails if a string the app ships needs a dropped glyph
 sface  - SFace face recognition (OpenCV Zoo, Apache 2.0) -> LiteRT sface.tflite (facepack; int8 weights, high-res per-channel): 112x112 aligned face -> L2-normalized 128-d
 """
-import csv, io, json, os, struct, subprocess, sys, urllib.request, zipfile
+import csv, io, json, os, re, struct, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,6 +27,8 @@ NATIVE = ROOT / "modules/clip-embedder/android/src/main/assets/clip"
 VPACK = ROOT / "modules/clip-embedder/android/visionpack/src/main/assets/clip"
 FPACK = ROOT / "modules/clip-embedder/android/facepack/src/main/assets/clip"
 PACK = ROOT / "modules/clip-embedder/android/textpack/src/main/assets/clip"
+# the selfie gate, only needed while visionpack is missing: release builds ship it only when vision isn't in the install
+GATE = ROOT / "modules/clip-embedder/android/src/gate/assets/clip"
 JS = ROOT / "src/services/index"
 CACHE = ROOT / "scripts/.cache"  # downloads; gitignored
 VOCAB = CACHE / "vocab.bin"  # concept text embeddings, rows of [float32 scale][512 x int8]; baked into concepts.tflite
@@ -55,6 +57,9 @@ GOLDEN_PHRASES = ["a photo of a dog", "cinnamon bun", "wearing red", "A week in 
 GOLDEN_IMAGE = ROOT / "screenshots/screenshot_1_hook.jpg"
 # The selfie finder's queries (src/services/selfie.ts), shipped as vectors: findSelfies works without the text model.
 FIXED_PHRASES = ["a selfie of a person, close-up face", "a sharp, in-focus photo", "a blurry, out-of-focus photo"]
+# Today's bingo squares and side quests (src/services/today.ts): the game plays before the text pack lands
+_today = (ROOT / "src/services/today.ts").read_text()
+FIXED_PHRASES += re.findall(r"phrase: '([^']+)'", _today) + re.findall(r"\['\w+', '[^']+', '([^']+)'\]", _today)
 
 # Concepts Open Images lacks or names awkwardly: colors, clothing, light, moods, events, places.
 EXTRA = {
@@ -503,7 +508,7 @@ def build_gate():
     from ai_edge_quantizer.qtyping import TFLOperationName
     rm = recipe_manager.RecipeManager()
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16, algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
-    got = export_tflite(m, x, NATIVE / "gate.tflite", rm.get_quantization_recipe(), floor=-1)  # P checked by its value below
+    got = export_tflite(m, x, GATE / "gate.tflite", rm.get_quantization_recipe(), floor=-1)  # P checked by its value below
     cos = (ref[:, 1:] * got[:, 1:]).sum(-1)
     print(f"  reject P vs torch: max diff {np.abs(ref[:, 0] - got[:, 0]).max():.4f} (torch {ref[:, 0].round(3)}), feature cosine min {cos.min():.5f}")
     assert np.abs(ref[:, 0] - got[:, 0]).max() < 0.02 and cos.min() > 0.999, "gate.tflite drifted"

@@ -22,4 +22,4 @@ name: 20 profile name + defaults
       N: 1
 - tapOn: "Preview"
 - assertVisible: "9:16 · .*"
-- assertVisible: "Quality: Standard"
+- assertVisible: "Standard"

@@ -31,10 +31,13 @@ test('onboarding: the other-selfies strip draws small face crops, not the whole 
   await fireEvent.press(screen.getByText('Next'));
 
   expect(await screen.findByText('Is this you?', {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.getByLabelText('Your photo 6')).toBeTruthy(); // asked over the photos, all six still there
+  expect(screen.getByText('Only on your previews. Stays on your phone.')).toBeTruthy();
   await fireEvent.press(screen.getByText("That's me"));
   await settle();
   const thumb = await screen.findByLabelText('Photo 2');
   expect(screen.getByLabelText('Photo 8')).toBeTruthy();
+  expect(screen.queryByText('Is this you?')).toBeNull(); // the photos light back up
   for (let i = 1; i <= 8; i++) {
     const src = sources(screen.getByLabelText(`Photo ${i}`));
     expect(src).toHaveLength(1);

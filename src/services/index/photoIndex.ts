@@ -23,7 +23,12 @@ export type IndexedPhoto = PhotoAsset & {
 };
 
 /** Everything the story engine needs. vecs is row-major n*512 aligned with photos; zero row = no embedding. */
-export type Library = { photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean };
+export type Library = {
+  photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean;
+  /** Tidy's pixel checks by photo id, JSON as stored (tidy_photos; only after a Tidy scan): Discover's picks use them */
+  looks?: Map<string, Looks>;
+};
+export type Looks = { stats: string | null; faces: string | null; sharp: number | null };
 
 type Row = { id: string; uri: string; created: number; w: number; h: number; lat: number | null; lon: number | null; emb: Uint8Array | null; concepts: string | null };
 
@@ -35,10 +40,12 @@ export function db() {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY, uri TEXT NOT NULL, created INTEGER NOT NULL, w INTEGER, h INTEGER,
       lat REAL, lon REAL, emb BLOB, concepts TEXT);
-      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`);
+      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+      -- Tidy (services/tidy): pixel checks of every photo, and vectors of the ones the index skips (bursts, panoramas)
+      CREATE TABLE IF NOT EXISTS tidy_photos (id TEXT PRIMARY KEY, stats TEXT, faces TEXT, sharp REAL, emb BLOB, concepts TEXT)`);
     // Another model's vectors live in a different space: drop them so run() re-embeds every photo.
     if ((await d.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'model'"))?.v !== MODEL) {
-      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
+      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; UPDATE tidy_photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
       await d.runAsync("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)", [MODEL]);
     }
     return d;
@@ -67,8 +74,12 @@ let running: Promise<number> | null = null;
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
-  return (running ??= run(onProgress).finally(() => (running = null)));
+  return (running ??= run(onProgress).finally(() => { running = null; setReading(0); }));
 }
+
+/** How many new photos the foreground index is reading right now (Today: "Checking 2 new photos…"). */
+export const reading = { n: 0, subs: new Set<() => void>() };
+const setReading = (n: number) => { reading.n = n; reading.subs.forEach((f) => f()); };
 
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
@@ -109,6 +120,7 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
   let nextInfos = infosOf(todo.slice(0, BATCH));
   let i = 0;
+  setReading(todo.length);
   for (; i < todo.length; i += BATCH) {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);
@@ -260,7 +272,8 @@ export async function loadLibrary(): Promise<Library> {
     };
   });
   if (ClipEmbedder && !names) names = await ClipEmbedder.conceptNames();
-  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder };
+  const tidy = await d.getAllAsync<Looks & { id: string }>('SELECT id, stats, faces, sharp FROM tidy_photos WHERE stats IS NOT NULL');
+  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder, looks: new Map(tidy.map(({ id, ...l }) => [id, l])) };
 }
 
 /** One text query -> 512-d vector, 1.33 long (build_assets.py TEXT_SCALE: cosines on 45M's scale), or null without CLIP. */

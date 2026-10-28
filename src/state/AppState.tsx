@@ -1,11 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState as RNAppState } from 'react-native';
+import { Linking, AppState as RNAppState } from 'react-native';
 import { indexLibrary, Library, loadLibrary, pausedIndex, pauseIndexing, resumeIndexing } from '../services/index/photoIndex';
 import { buildStories, markSeen, Story } from '../services/stories';
 import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
+import { list as listDumps } from '../services/dumps';
 import { addShareIntentListener, ClipEmbedder, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
 import { whenReady } from './models';
 
@@ -32,6 +33,8 @@ type AppStateValue = {
   paused: { done: number; total: number } | null;
   /** photo permission; null = not asked yet */
   permission: boolean | null;
+  /** only the photos picked in Android 14's dialog */
+  limited: boolean;
   onboarding: boolean;
   /** photos shared / "opened with" PicDump, until the Create flow takes them */
   incoming: ShareIntent | null;
@@ -45,7 +48,9 @@ type AppStateValue = {
   resume: () => Promise<void>;
   /** Starts indexing (asks for photo access first). Onboarding calls it once access is granted. */
   start: () => Promise<void>;
-  /** started: onboarding already called start(). */
+  /** Photo access after a "no": Android's dialog while it still shows it, else Settings (coming back picks a grant up). */
+  askPhotos: () => Promise<void>;
+  /** started: onboarding already called start() (false: photos denied, nothing asked again). */
   finishOnboarding: (started?: boolean) => Promise<void>;
   showOnboarding: () => void;
 };
@@ -84,12 +89,18 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     // tonight's 8 PM recap shows this cover (DailyRecap.kt)
     const cover = s.find((x) => x.kind === 'today')?.picks[0]?.uri;
     if (cover) ClipEmbedder?.setRecapCover(cover);
+    // and Sunday noon's shows the week's dump
+    const week = s.find((x) => x.kind === 'recap' && x.id.startsWith('recap:week:'));
+    if (week?.picks[0]) ClipEmbedder?.setWeekRecap?.(week.picks[0].uri, week.id);
   };
-  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, await getProfile());
+  // dumps made from Discover stories rank their kind of story up
+  const made = async () => (await listDumps().catch(() => [])).flatMap((d) => (d.storyId ? [d.storyId] : []));
+  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, { ...await getProfile(), made: await made() });
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [paused, setPaused] = useState<{ done: number; total: number } | null>(null);
   const [permission, setPermission] = useState<boolean | null>(null);
+  const [limited, setLimited] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [incoming, setIncoming] = useState<ShareIntent | null>(getInitialShareIntent);
   /** photos in the last loaded index: the expected total right after a Reindex empties it */
@@ -121,11 +132,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       };
       if (!sync) await show();
       await whenReady('vision'); // release builds download it after the install; Discover shows the download meanwhile
-      // Empty index (first run, Reindex): show the strip now, not after the photo listing and the first batch.
-      if (empty) setProgress((p) => p ?? { done: 0, total: known.current, etaSec: null, since: 0 });
-      // Newest photos index first, so rebuilding every 15 s surfaces today's stories long before a big first index ends.
-      // A rebuild takes ~2 s at 4k photos on an A54 and grows with the library, so back off to keep the JS thread mostly free,
-      // and wait while the user scrolls or taps: a 2 s stall mid-scroll is the jank people notice.
+      // No dumps up (first run, Reindex, back after leaving mid-index, relaunch after a kill): show the strip now, not
+      // after the photo listing and the first batch, or Discover says "No dumps yet" in between.
+      if (empty || !shown.current.length) setProgress((p) => p ?? { done: 0, total: empty ? known.current : 0, etaSec: null, since: 0 });
+      // Newest photos index first, so rebuilding as each batch lands surfaces today's stories long before a big first index
+      // ends: every 2 s until there's a dump up (nothing on screen to jank), then every 30 s. A rebuild takes ~2 s at 4k
+      // photos on an A54 and grows with the library, so back off to keep the JS thread mostly free, and wait while the user
+      // scrolls or taps: a 2 s stall mid-scroll is the jank people notice.
       const t0 = Date.now();
       let lastShow = t0;
       let showing = false;
@@ -133,7 +146,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         const elapsed = Date.now() - t0;
         const etaSec = bg ? bg.etaSec : done >= 32 ? ((total - done) * elapsed) / done / 1000 : null;
         setProgress({ done, total, etaSec, since: last.creationTime, batteryPct: bg ? bg.batteryPct : undefined });
-        if (!showing && !touching() && Date.now() - lastShow > Math.max(15000, 5 * showCost)) {
+        if (!showing && !touching() && Date.now() - lastShow > Math.max(shown.current.length ? 30000 : 2000, 5 * showCost)) {
           showing = true;
           show().catch((e) => console.warn('[stories] rebuild failed:', e)).finally(() => { showing = false; lastShow = Date.now(); });
         }
@@ -148,11 +161,17 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const start = useCallback(async () => {
+  /** granted, as of the last ask (the foreground check reads it before a re-render) */
+  const granted = useRef(false);
+  const asking = useRef<Promise<void> | null>(null);
+  // one at a time: Home's ask and the foreground check can both land as the dialog closes
+  const start = useCallback(() => asking.current ??= (async () => {
     const perm = await GalleryService.requestPermissions();
+    granted.current = perm;
     setPermission(perm);
+    GalleryService.checkPermissions().then((p) => setLimited(p.limited), () => {});
     if (perm) refreshStories();
-  }, [refreshStories]);
+  })().finally(() => { asking.current = null; }), [refreshStories]);
 
   useEffect(() => {
     (async () => {
@@ -169,18 +188,27 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   // Back in front: pick up photos taken / deleted meanwhile (a quick diff when nothing changed), and merge what the
   // background worker indexed. Always a sync: Discover keeps its order (a reshuffle remounts every tile, reloading
   // every photo) and the JS thread skips a rebuild from the index it already shows.
+  // Denied: allowed in Settings meanwhile? Then start (a check, never a dialog).
   useEffect(() => {
-    if (!permission) return; // onboarding / no access yet: nothing to read
-    const sub = RNAppState.addEventListener('change', (s) => { if (s === 'active') refreshStories(true); });
+    if (permission == null) return; // onboarding: nothing to read yet
+    const sub = RNAppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      // also picks up "Allow all" (or more picked photos) chosen in Settings
+      GalleryService.checkPermissions().then((p) => {
+        setLimited(p.limited);
+        if (!permission && p.granted && !granted.current) start();
+      }, () => {});
+      if (permission) refreshStories(true);
+    });
     return () => sub.remove();
-  }, [refreshStories, permission]);
+  }, [refreshStories, permission, start]);
 
   useEffect(() => {
     const sub = addShareIntentListener((e) => { console.log(`[share] received ${e.uris.length} (${e.action})`); setIncoming(e); });
     return () => sub.remove();
   }, []);
 
-  // photos sort by created, so the first dated one is the oldest; progress.since is fresher than the 15 s rebuilds
+  // photos sort by created, so the first dated one is the oldest; progress.since is fresher than the 30 s rebuilds
   const oldest = useMemo(() => library?.photos.find((p) => p.creationTime >= DATED)?.creationTime ?? Infinity, [library]);
   const edge = Math.min(oldest, progress && progress.since >= DATED ? progress.since : Infinity);
 
@@ -190,7 +218,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       if (!library?.photos.length) return; // mid-Reindex: keep the old dumps
       limit.current += STORY_PAGE;
       setStories(await build(library));
-    }, paused, permission, onboarding, incoming, refreshStories,
+    }, paused, permission, limited, onboarding, incoming, refreshStories,
     clearIncoming: () => setIncoming(null),
     rebuildStories: async () => { if (library) setStories(await build(library)); },
     shuffleStories: async (seenIds) => {
@@ -205,13 +233,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       refreshStories();
     },
     start,
+    askPhotos: async () => { if ((await GalleryService.checkPermissions()).canAskAgain) await start(); else Linking.openSettings(); },
+    // done only here, at the real end: killed mid-way (recap ask, profile), onboarding shows again
     finishOnboarding: async (started) => {
+      await OnboardingService.setOnboardingCompleted();
       setOnboarding(false);
-      if (!started) await start();
+      if (!started) setPermission(false); // Android just said no: Home offers it again (askPhotos), not a second dialog now
       await NotificationService.init();
     },
     showOnboarding: () => setOnboarding(true),
-  }), [library, stories, available, loaded, paused, permission, onboarding, incoming, refreshStories, start]);
+  }), [library, stories, available, loaded, paused, permission, limited, onboarding, incoming, refreshStories, start]);
   const progressValue = useMemo(() => ({ progress, coverageSince: edge === Infinity ? null : edge }), [progress, edge]);
 
   return <Ctx.Provider value={value}><ProgressCtx.Provider value={progressValue}>{children}</ProgressCtx.Provider></Ctx.Provider>;

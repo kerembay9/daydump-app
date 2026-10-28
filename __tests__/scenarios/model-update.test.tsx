@@ -28,7 +28,7 @@ test('an update that ships a new CLIP model re-reads every photo, and the dumps 
   const embed = jest.spyOn(clip, 'embedImages');
 
   await bootApp('/');
-  expect(await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 })).toBeTruthy();
+  expect(await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 })).toBeTruthy();
 
   expect(MODEL).not.toBe(OLD);
   expect((await d!.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'model'"))?.v).toBe(MODEL);

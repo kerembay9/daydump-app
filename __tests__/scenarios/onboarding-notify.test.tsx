@@ -37,8 +37,10 @@ async function toNotifyStep() {
   while (!pager.props.onScroll) pager = pager.parent!;
   await fireEvent.scroll(pager, { nativeEvent: { contentOffset: { x: Dimensions.get('window').width } } });
   await fireEvent.press(await screen.findByText('Allow photos & continue'));
-  expect(await screen.findByText('Your day, ready at 8 PM')).toBeTruthy();
+  expect(await screen.findByText('Your day at 8 PM, your week on Sunday')).toBeTruthy();
   expect(screen.getByLabelText('Notification preview')).toBeTruthy();
+  expect(screen.getByText('Recap')).toBeTruthy();
+  expect(screen.getByLabelText('Page 3 of 4')).toBeTruthy(); // the slides' dots, carried on
   expect(screen.queryByText('Put yourself in your posts')).toBeNull();
   expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled(); // nothing asked before the step
 }
@@ -50,7 +52,9 @@ test('onboarding: Turn on asks for notifications and schedules the recap', async
   expect(await AsyncStorage.getItem(KEY)).toBe('true');
   expect((globalThis as any).expo.modules.ClipEmbedder.scheduleDailyRecap).toHaveBeenCalled();
   expect(await screen.findByText('Put yourself in your posts')).toBeTruthy(); // then the profile step
-  expect(screen.queryByText('Your day, ready at 8 PM')).toBeNull();
+  expect(await screen.findByLabelText('Your photo 6')).toBeTruthy(); // the preview card shows the newest six photos
+  expect(screen.getByLabelText('Page 4 of 4')).toBeTruthy();
+  expect(screen.queryByText('Your day at 8 PM, your week on Sunday')).toBeNull();
 }, 30000);
 
 test('onboarding: Not now skips the ask, and init() never prompts', async () => {
@@ -58,7 +62,7 @@ test('onboarding: Not now skips the ask, and init() never prompts', async () => 
   await fireEvent.press(screen.getByText('Not now'));
   expect(await AsyncStorage.getItem(KEY)).toBe('false');
   expect(await screen.findByText('Put yourself in your posts')).toBeTruthy();
-  expect(screen.queryByText('Your day, ready at 8 PM')).toBeNull();
+  expect(screen.queryByText('Your day at 8 PM, your week on Sunday')).toBeNull();
 
   // nothing stored and not allowed (e.g. onboarding done on an older build): init still doesn't ask
   await AsyncStorage.removeItem(KEY);

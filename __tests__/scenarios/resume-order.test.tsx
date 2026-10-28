@@ -24,9 +24,9 @@ const order = () => dump().filter((l) => /^\[(Preview .*|.*, \d+ photos · .*)\]
 
 test('back in front after a background index: Discover keeps its order, and prints come from the memory cache', async () => {
   await bootApp('/');
-  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
   const before = order();
-  expect(before).toEqual(['[Preview A week in Seattle]', '[An autumn of golden retriever puppy splashing through the shallow waves', '[Cinnamon rolls']);
+  expect(before).toEqual(['[A week in Seattle', '[An autumn of golden retriever puppy splashing through the shallow waves', '[Cinnamon rolls']);
 
   // Leave with indexing handed to the background worker (paused there), come back.
   world.bg.state = 'paused';

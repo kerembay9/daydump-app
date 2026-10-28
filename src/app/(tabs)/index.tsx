@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlatList, Linking, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
 import { router, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,12 +16,14 @@ import { CornerTape, hash, Tape, TAPE_H, useBands } from '../../components/ui/Ta
 import { PhotoStack, StackKind } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
 import { StatusScrim } from '../../components/ui/Screen';
+import { type PaperStyle, ScrapTapes } from '../../components/ui/ScrapPaper';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
+import { TodayCard } from '../../components/TodayCard';
+import { FirstDumpStrip, useFirstDump } from '../../components/FirstDumpStrip';
 import { useModels } from '../../state/models';
 import { usePro } from '../../state/Pro';
 import { LockBadge, LOCKED_BLUR } from '../../components/LockedDump';
-import { Icons } from '../../components/ui/Icons';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const uris = (s: Story) => s.picks.map((p) => p.uri);
@@ -41,6 +43,10 @@ function Meta({ s, size = 10 }: { s: Story; size?: number }) {
 const PARCHMENT = 'rgba(214,168,92,0.22)';
 const PARCHMENT_EDGE = 'rgba(150,98,36,0.18)';
 const SEPIA = '#5A3A18';
+/** Paper cards: sepia ink, so text sits on the sheets like the grain does */
+const SEPIA_PARCHMENT = { ...parchment, ink: '#3B2A1C', inkMuted: '#86704F' };
+/** Paper cards lean more than the rounded ones, their prints less */
+const PAPER_TILT = 1.6, PAPER_PRINT_TILT = 0.6;
 
 /** Noise to the ink colour, its alpha = k * noise + o (clamped): a positive o with small k tints evenly, a negative o shows only the peaks. */
 const tint = ([r, g, b]: Float32Array | number[], k: number, o: number) => [0, 0, 0, 0, r, 0, 0, 0, 0, g, 0, 0, 0, 0, b, k, 0, 0, 0, o];
@@ -88,12 +94,12 @@ function TileTape({ id }: { id: string }) {
   </>;
 }
 
-/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). locked: blurred, with a lock. */
-function Tile({ s, kind, rotate, onPress, style, more, locked }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; locked: boolean }) {
+/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). paper: a paper sheet with its own tape. locked: blurred, with a lock. */
+function Tile({ s, kind, rotate, onPress, style, more, paper, locked }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; paper?: PaperStyle; locked: boolean }) {
   const wide = kind === 'wide';
   return (
-    <FrameCard radius={14} padding={8} rotate={more ? rotate * 2.6 : rotate} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? ', locked' : ''}`} style={style}>
-      <PhotoStack kind={kind} uris={uris(s)} blur={locked ? LOCKED_BLUR : undefined} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
+    <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? ', locked' : ''}`} style={style}>
+      <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} blur={locked ? LOCKED_BLUR : undefined} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
           <View style={{ flex: 1 }}><Title text={s.title} style={display(16)} /></View>
@@ -107,15 +113,16 @@ function Tile({ s, kind, rotate, onPress, style, more, locked }: { s: Story; kin
       )}
       {locked && <LockBadge />}
       {more && <TileTape id={s.id} />}
+      {paper && <ScrapTapes id={s.id} style={paper} />}
     </FrameCard>
   );
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-const Bento = React.memo(function Bento({ block, more, isLocked, open }: { block: Story[]; more: boolean; isLocked: (s: Story) => boolean; open: (s: Story) => void }) {
+const Bento = React.memo(function Bento({ block, more, paper, isLocked, open }: { block: Story[]; more: boolean; paper?: PaperStyle; isLocked: (s: Story) => boolean; open: (s: Story) => void }) {
   const [a, b, c, d] = block;
-  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => open(s)} style={style} more={more} locked={isLocked(s)} />;
-  const gap = more ? 14 : 8; // more: room for the tape between tiles
+  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => open(s)} style={style} more={more} paper={paper} locked={isLocked(s)} />;
+  const gap = more || paper ? 14 : 8; // room for the tape between tiles
   return (
     <View style={{ gap, marginBottom: gap }}>
       {block.length === 2 ? (
@@ -148,32 +155,6 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
   );
 }
 
-function Hero({ s, more, locked, onOpen }: { s: Story; more: boolean; locked: boolean; onOpen: () => void }) {
-  const { t } = useTheme();
-  const verb = locked ? 'Unlock' : 'Preview';
-  return (
-    <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
-      <FrameCard radius={16} padding={10} rotate={more ? -1.8 : -1}>
-        <Tap onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${verb} ${s.title}`}>
-          <PhotoStack kind="hero" uris={uris(s)} blur={locked ? LOCKED_BLUR : undefined} />
-        </Tap>
-        <View style={{ paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <Title text={s.title} style={display(19.5)} />
-            <Meta s={s} size={10.5} />
-          </View>
-          <Tap onPress={onOpen} accessibilityRole="button" style={{ height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {locked && <Icons.lock size={12} color={t.bgScreen} />}
-            <Text style={[ui(11, 600), { color: t.bgScreen }]}>{verb}</Text>
-          </Tap>
-        </View>
-        {more && <><CornerTape seed={`${s.id}:l`} side="left" /><CornerTape seed={`${s.id}:r`} side="right" /></>}
-      </FrameCard>
-      {!more && <Tape />}
-    </View>
-  );
-}
-
 const FIRST_PAYWALL = '@picdump_first_paywall_shown';
 
 /**
@@ -195,35 +176,39 @@ function useFirstPaywall(stories: Story[], settled: boolean, isLocked: (s: Story
   }, [settled, locked, openPaywall]);
 }
 
-/** Discover (ph2.png, "scrapbook bento"): hero dump + every other dump in repeating bento blocks. */
+/** Discover (ph2.png, "scrapbook bento"): the Today card (Dump Meter), then every dump in repeating bento blocks; today's own dump is the card's. */
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, paused, onboarding, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { stories, loaded, permission, limited, askPhotos, paused, pause, resume, shuffleStories, moreStories, showMoreStories, onboarding } = useApp();
+  const pro = usePro();
+  const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
+  // the first dump's print shows its picks: a free user's comes from the dumps they can open (today, recaps, unlocks)
+  const openStories = useMemo(() => stories.filter((s) => !isLocked(s)), [stories, isLocked]);
+  const first = useFirstDump(openStories, loaded, onboarding);
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
   const [refreshing, setRefreshing] = useState(false);
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
-  const more = useBands() === 'more';
-  const paper = useProfile().paper;
-  const pro = usePro();
-  const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
+  const { paper, cards } = useProfile();
+  // paper cards bring their own tape, so Bands only dresses the classic ones; dark mode keeps classic cards
+  const sheets = cards !== 'classic' && !t.dark ? cards : undefined;
+  const more = useBands() === 'more' && !sheets;
   const open = useCallback((s: Story) => (isLocked(s) ? pro.askUnlock(s) : preview(s.id)), [isLocked, pro]);
   const focused = useIsFocused();
   useFirstPaywall(stories, loaded && !progress && !paused && !onboarding && focused && pro.checked, isLocked, pro.openPaywall);
 
-  const hero = stories[0];
-  const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
+  const others = useMemo(() => stories.filter((s) => s.kind !== 'today'), [stories]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
-  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} isLocked={isLocked} open={open} />, [more, isLocked, open]);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} paper={sheets} isLocked={isLocked} open={open} />, [more, sheets, isLocked, open]);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
     setRefreshing(true);
     try {
-      await shuffleStories([hero, ...others.slice(0, 4)].filter(Boolean).map((s) => s.id));
+      await shuffleStories(others.slice(0, 8).map((s) => s.id));
     } finally {
       setRefreshing(false);
     }
@@ -233,21 +218,30 @@ export default function Discover() {
     <>
       <TopHeader title={name ? `Hi, ${name}` : 'Hi there'} right={<AvatarButton onPress={() => router.push('/profile')} />} />
       <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} coverageSince={coverageSince} onPause={pause} onResume={resume} />
-      {(progress || paused) && hero && permission !== false && (
+      {(progress || paused) && stories.length > 0 && permission !== false && (
         <Text style={[ui(11, 400), { color: t.inkMuted, marginTop: 2, paddingHorizontal: 2 }]}>
           {/* the strip shows the reach unless it's busy with the battery line or paused */}
           {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
         </Text>
       )}
+      {permission && limited && (
+        // Android 14 "Select photos": asking again shows Android's dialog with "Allow all" and the picker
+        <TapedNote
+          title="PicDump only sees the photos you picked"
+          body="Dumps come from your whole camera roll, so a handful of photos won’t make many."
+          action="Allow all photos"
+          onAction={askPhotos}
+        />
+      )}
       {permission === false ? (
         <TapedNote
           title="Let PicDump see your photos"
           body="Dumps are made on your phone from your camera roll. Nothing leaves your device."
-          action="Open settings"
-          onAction={() => Linking.openSettings()}
+          action="Allow photos"
+          onAction={askPhotos}
         />
-      ) : hero ? (
-        <Hero s={hero} more={more} locked={isLocked(hero)} onOpen={() => open(hero)} />
+      ) : stories.length ? (
+        <TodayCard more={more} paper={!!sheets} />
       ) : vision && vision.state !== 'ready' ? (
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
@@ -263,7 +257,7 @@ export default function Discover() {
   );
 
   return (
-    <ThemePatch patch={paper && !t.dark ? parchment : undefined}>
+    <ThemePatch patch={paper && !t.dark ? (sheets ? SEPIA_PARCHMENT : parchment) : undefined}>
     <View style={{ flex: 1 }}>
       {paper && <Paper />}
       <FlatList
@@ -286,6 +280,7 @@ export default function Discover() {
           <RefreshControl refreshing={refreshing} onRefresh={shuffle} enabled={stories.length > 1} colors={[t.ink]} progressBackgroundColor={t.bgCard} progressViewOffset={insets.top} />
         }
       />
+      {first.story && <FirstDumpStrip story={first.story} onDone={first.done} />}
       <StatusScrim />
       {paper && <Paper height={insets.top} />}
     </View>

@@ -6,7 +6,7 @@ import { useApp } from '../../state/AppState';
 import { Story, storyById } from '../../services/stories';
 import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
 import { filterOf, usesProLook, withoutProLooks } from '../../services/filters';
-import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
+import { chunk, frameOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
@@ -135,7 +135,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   };
 
   const v: PostView = {
-    slides, ratio: ratio.key, fit: fitOf(dump.fit), filter, images, index: Math.min(index, slides.length - 1), onIndex: setIndex,
+    slides, ratio: ratio.key, frame: frameOf(dump.fit), filter, images, index: Math.min(index, slides.length - 1), onIndex: setIndex,
     handle: profile.handle, name: profile.name, bio: profile.bio, avatar: profile.avatar, place: story?.place,
     liked, onLike: () => setLiked((x) => !x), saved, onSave: () => setSaved((x) => !x), onAvatar: () => router.push('/profile'),
   };
@@ -218,7 +218,13 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
           <View style={{ alignItems: 'center' }}>
             <Text style={[display(19, 1.15), { color: t.ink }]}>{dump.status === 'posted' ? 'Posted Preview' : 'Preview'}</Text>
-            <Text style={[ui(10), { color: t.inkMuted }]}>{ratio.key} · {layout.label} layout</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={[ui(10), { color: t.inkMuted }]}>{ratio.key} · {layout.label} layout</Text>
+              <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump"
+                style={{ paddingHorizontal: 6, height: 16, borderRadius: 8, borderWidth: 1, borderColor: t.borderStrong, backgroundColor: t.bgCard, justifyContent: 'center' }}>
+                <Text style={[ui(9.5, 600), { color: t.ink }]}>{hd ? 'HD' : 'Standard'}</Text>
+              </Tap>
+            </View>
           </View>
           {dump.status === 'posted' ? <View style={{ width: 36 }} /> : <IconButton label="Edit" onPress={toEdit}><Icons.edit size={16} /></IconButton>}
         </View>
@@ -241,17 +247,15 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
       </Screen>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: insets.bottom + 6, alignItems: 'center' }}>
-        <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post on Instagram or TikTok"
-          style={{ alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', opacity: busy ? 0.85 : 1 }}>
-          {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
-          <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post on IG / TikTok'}</Text>
-        </Tap>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 8, paddingBottom: 2 }}>
-          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save only, to the PicDump album">
-            <Text style={[ui(11.5, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Save only</Text>
+        <View style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 8 }}>
+          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Save to phone"
+            style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: t.ink, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
+            <Icons.download size={16} />
           </Tap>
-          <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump">
-            <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>Quality: <Text style={{ color: t.ink, fontWeight: '600' }}>{hd ? 'HD' : 'Standard'}</Text></Text>
+          <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post"
+            style={{ flex: 1, height: 40, borderRadius: 20, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', opacity: busy ? 0.85 : 1 }}>
+            {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
+            <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post'}</Text>
           </Tap>
         </View>
       </View>

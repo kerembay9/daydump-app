@@ -21,7 +21,7 @@ test('Profile: "Photos per dump" range saves and Discover follows it', async () 
   expect(await getProfile()).toMatchObject({ slidesMin: 5, slidesMax: 5 });
 
   await bootApp('/');
-  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
   const metas = screen.getAllByLabelText(/, \d+ photos · /).map((x) => Number(/, (\d+) photos/.exec(x.props.accessibilityLabel)![1]));
   expect(metas.length).toBeGreaterThan(0);
   expect(metas.every((m) => m <= 5)).toBe(true);

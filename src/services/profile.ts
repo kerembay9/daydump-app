@@ -11,12 +11,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * slidesMin / slidesMax: photos per Discover dump (4-20, default 4-10; stories/index.ts slideCount).
  * bands: masking tape on cards (developer tools): none, default, or more (scrapbook washi tape on Discover and onboarding).
  * paper: grainy paper texture behind Discover (developer tools).
+ * cards: Discover's cards (developer tools): paper sheets with tone masking tape (paper, default), matte colour tape (tinted), or classic rounded cards.
  * onboardingEveryLaunch: onboarding opens on every launch, as on a first run (developer tools, debug builds only).
  */
-export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean; bands: 'none' | 'default' | 'more'; slidesMin: number; slidesMax: number; paper: boolean; onboardingEveryLaunch: boolean };
+export type Profile = { name: string; handle: string; bio: string; avatar: string; ratio: string; exportHD: boolean; dev: boolean; hideSensitive: boolean; screenshots: boolean; searchLangs: string[] | null; saveOnPost: boolean; bands: 'none' | 'default' | 'more'; slidesMin: number; slidesMax: number; paper: boolean; cards: 'classic' | 'paper' | 'tinted'; onboardingEveryLaunch: boolean };
 
 const KEY = '@daydump_profile';
-const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true, bands: 'default', slidesMin: 4, slidesMax: 10, paper: true, onboardingEveryLaunch: false };
+const EMPTY: Profile = { name: '', handle: '', bio: '', avatar: '', ratio: '4:5', exportHD: true, dev: false, hideSensitive: true, screenshots: false, searchLangs: null, saveOnPost: true, bands: 'default', slidesMin: 4, slidesMax: 10, paper: true, cards: 'paper', onboardingEveryLaunch: false };
 
 let last = EMPTY;
 /** The profile as last read or written (sync, for code that can't wait; EMPTY before the first read). */
@@ -24,7 +25,9 @@ export const profileNow = () => last;
 
 export async function getProfile(): Promise<Profile> {
   try {
-    return (last = { ...EMPTY, ...JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}') });
+    const p: Profile = { ...EMPTY, ...JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}') };
+    if ((p.cards as string) === 'kraft') p.cards = 'paper'; // kraft tape was dropped
+    return (last = p);
   } catch {
     return EMPTY;
   }

@@ -74,11 +74,24 @@ test('Profile: no Connected accounts section', async () => {
   expect(screen.queryByText('Connect Instagram')).toBeNull();
 }, 30000);
 
-test('Profile: stats show Total Photos and Library, no Discover count', async () => {
+test('Profile: no stats row (Total Photos, Library, Discover)', async () => {
   await bootApp('/profile');
-  await screen.findByText('Total Photos', {}, { timeout: 10000 });
-  expect(screen.getByText('Library')).toBeTruthy();
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  expect(screen.queryByText('Total Photos')).toBeNull();
+  expect(screen.queryByText('Library')).toBeNull();
   expect(screen.queryByText('Discover')).toBeNull();
+}, 30000);
+
+test('Profile: sections grouped by what they change, no one-row sections', async () => {
+  await bootApp('/profile');
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  const json = JSON.stringify(screen.toJSON());
+  const at = (s: string) => json.indexOf(`"${s}"`);
+  const order = ['Dump picks', 'Photos per dump', 'Recap', 'Export & posting', 'Default Post Size', 'Appearance & theme',
+    'Photo library & search', 'Access', 'Index', 'Privacy & about', 'Everything happens on your phone', 'Privacy Policy', 'Version'];
+  order.forEach((s) => expect([s, at(s)]).not.toEqual([s, -1]));
+  expect(order.map(at)).toEqual(order.map(at).sort((a, b) => a - b));
+  for (const gone of ['Social post & size defaults', 'Data privacy', 'Daily recap', 'Photo library', 'About']) expect(screen.queryByText(gone)).toBeNull();
 }, 30000);
 
 test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
@@ -132,7 +145,7 @@ test('a new avatar shows only once its file is written, and Discover\'s header p
     : [...[n.props?.source].flat().map((x) => (x as { uri?: string } | undefined)?.uri ?? ''), ...uris(n.children ?? null)];
   const avatars = () => [...new Set(uris(screen.toJSON() as Node).filter((u) => u.includes('/doc/avatar-')))];
   await bootApp('/');
-  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
   await fireEvent.press(screen.getByLabelText('Profile and settings'));
   await fireEvent.press(await screen.findByLabelText('Change profile photo'));
   world.files.held = [];
@@ -149,7 +162,7 @@ test('a new avatar shows only once its file is written, and Discover\'s header p
 
   // back on Discover, the header shows it
   await fireEvent.press(screen.getByLabelText('Back'));
-  await screen.findByLabelText('Preview A week in Seattle');
+  await screen.findByLabelText(/^A week in Seattle, /);
   expect(avatars()).toEqual([uri]);
 }, 30000);
 

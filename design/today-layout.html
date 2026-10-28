@@ -1,0 +1,238 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today Layout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* /today: the play (bingo, side quest) apart from the keeping (this week, sticker book, past bingos). A: one page, B: two tabs. A54 at 0.75x. Photos are painted stand-ins. */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --paper: #FFFCF7; --card: #EFE6DA;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --accent: #A84A2F; --tint: #EBD3C6; --cream: #FAF6F0; --tape: rgba(212,196,182,0.75);
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.22), 0 2px 5px rgba(74,52,40,0.06);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45); --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, serif; --sans: Inter, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --card: #2A2117; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080; --tint: #4A2C20; --tape: rgba(212,169,106,0.4);
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --card: #2A2117; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080; --tint: #4A2C20; --tape: rgba(212,169,106,0.4);
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--sans); padding: 28px 16px 60px; }
+h1 { font: 600 26px/1.1 var(--serif); margin: 0 auto 4px; max-width: 1000px; }
+.lede { color: var(--muted); font-size: 14px; margin: 0 auto 28px; max-width: 1000px; line-height: 1.45; }
+.lede b { color: var(--ink); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 18px; max-width: 1000px; margin: 0 auto; }
+.cell { display: flex; flex-direction: column; align-items: center; }
+.cap { max-width: 300px; margin-top: 14px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cap b { color: var(--ink); display: block; font-size: 14px; margin-bottom: 2px; }
+.phone { width: 304px; padding: 8px; border-radius: 40px; background: var(--bezel); box-shadow: var(--phone-shadow); }
+.screen { width: 288px; height: 600px; border-radius: 32px; background: var(--bg); background-image: var(--screen); overflow: hidden; display: flex; flex-direction: column; padding: 20px 14px 12px; position: relative; }
+
+/* header */
+.top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.back { width: 28px; height: 28px; border-radius: 14px; background: var(--card); display: grid; place-items: center; font-size: 13px; color: var(--ink); }
+.ttl { font: 500 17px var(--serif); flex: 1; }
+.date { font-size: 9px; color: var(--muted); font-weight: 500; }
+.tabs { display: flex; background: var(--card); border-radius: 12px; padding: 2px; gap: 2px; }
+.tabs span { font: 600 9px var(--sans); padding: 5px 10px; border-radius: 10px; color: var(--muted); }
+.tabs span.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(74,52,40,0.15); }
+
+/* painted photos */
+.p { background-size: cover; }
+.sky { background: linear-gradient(170deg, #F3B37A 0%, #E9876B 45%, #6C5A8C 100%); }
+.hands { background: radial-gradient(circle at 55% 60%, #E3B596 0 22%, transparent 23%), repeating-linear-gradient(45deg, #3C5A9A 0 5px, #E8EEF8 5px 10px); }
+.blue { background: repeating-linear-gradient(0deg, #4D6FB8 0 4px, #DCE6F6 4px 8px), #4D6FB8; }
+.you { background: radial-gradient(circle at 50% 42%, #C99779 0 26%, #2B2420 27% 34%, transparent 35%), linear-gradient(#6E5E52, #3D3129); }
+.cup { background: radial-gradient(circle at 50% 50%, #F7F2EA 0 30%, #E3803A 31% 34%, #F7F2EA 35% 40%, transparent 41%), linear-gradient(#5A3E2C, #3B2A1E); }
+.cat { background: radial-gradient(ellipse at 50% 62%, #E8C49A 0 30%, #F4ECE0 31% 38%, transparent 39%), linear-gradient(#8E8C86, #4C4640); }
+.read { background: radial-gradient(ellipse at 40% 60%, #E6B49A 0 25%, transparent 26%), linear-gradient(135deg, #C7DDF2, #F0B8C8); }
+.street { background: linear-gradient(180deg, #A7B8C6 0 40%, #6C7178 40% 70%, #3E4248 70%); }
+.leaf { background: radial-gradient(circle at 40% 50%, #7FA35B 0 30%, transparent 31%), linear-gradient(#DCE5C9, #A8BD85); }
+.food { background: radial-gradient(circle, #F2D58A 0 25%, #C3643C 26% 36%, #F6EFE4 37% 52%, transparent 53%), #5B4636; }
+
+/* the card */
+.board { background: var(--paper); border-radius: 16px; padding: 10px; box-shadow: var(--shadow); border: 1px solid var(--line); position: relative; }
+.board.tilt { transform: rotate(-1.2deg); }
+.bh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; padding-right: 2px; }
+.bh h3 { margin: 0; font: 500 15px var(--serif); }
+.hint { font-size: 7.6px; color: var(--muted); text-align: right; line-height: 1.3; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.sq { aspect-ratio: 1; border-radius: 8px; position: relative; display: grid; place-items: center; overflow: hidden; font: 600 8px var(--sans); text-align: center; padding: 4px; }
+.sq.on { color: var(--cream); text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.sq.on::after { content: "✓"; position: absolute; top: 3px; right: 5px; font-size: 8px; }
+.sq.win { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.sq.empty { border: 1.2px dashed var(--line2); color: var(--muted); }
+.sq.free { background: var(--tint); color: var(--accent); font: 500 12px var(--serif); }
+.tape { position: absolute; width: 46px; height: 13px; background: var(--tape); top: -7px; left: 22px; transform: rotate(-6deg); }
+.cam { position: absolute; top: -15px; left: 50%; margin-left: -17px; width: 34px; height: 34px; border-radius: 17px; background: var(--ink); display: grid; place-items: center; box-shadow: 0 4px 10px -3px rgba(0,0,0,0.4); border: 3px solid var(--bg); }
+.cam svg { width: 15px; height: 15px; stroke: var(--bg); fill: none; stroke-width: 2; }
+.banner { margin-top: 8px; background: var(--accent); color: var(--cream); font: 600 9px/1.35 var(--sans); padding: 7px 9px; border-radius: 9px; }
+.icons { display: flex; gap: 5px; }
+.ic { height: 20px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line2); font: 600 7.5px/18px var(--sans); color: var(--ink); }
+
+/* side quest as a sticker on the card's corner */
+.questdot { position: absolute; right: -10px; top: -14px; width: 56px; height: 56px; border-radius: 50%; border: 1.5px dashed var(--accent); background: var(--tint); transform: rotate(9deg);
+  display: grid; place-items: center; text-align: center; font: 700 6px/1.25 var(--sans); color: var(--accent); letter-spacing: 0.04em; box-shadow: var(--shadow); }
+.questdot b { display: block; font: 600 8px/1.1 var(--serif); letter-spacing: 0; margin-top: 2px; color: var(--ink); }
+/* side quest as a ticket stub */
+.ticket { margin-top: 12px; display: flex; background: var(--paper); border-radius: 12px; box-shadow: var(--shadow); border: 1px solid var(--line); overflow: hidden; }
+.ticket .l { width: 62px; background: var(--tint); display: grid; place-items: center; color: var(--accent); font: 700 7px/1.3 var(--sans); text-align: center; letter-spacing: 0.08em; border-right: 1.5px dashed var(--line2); }
+.ticket .r { padding: 9px 10px; flex: 1; }
+.ticket .r b { font: 700 11px var(--sans); display: block; }
+.ticket .r span { font-size: 8.5px; color: var(--muted); }
+
+/* history */
+.shelf { margin-top: 18px; }
+.lbl { font: 600 7.5px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 6px; }
+.lbl a { color: var(--ink); text-decoration: none; letter-spacing: 0.04em; }
+.line { position: relative; height: 62px; }
+.line svg { position: absolute; left: 0; top: 0; width: 100%; height: 20px; }
+.pegs { position: absolute; left: 4px; right: 4px; top: 8px; display: flex; justify-content: space-between; }
+.mini { width: 30px; text-align: center; font: 600 7px var(--sans); color: var(--muted); }
+.mini i { display: block; width: 28px; height: 32px; margin: 0 auto 4px; border: 2.5px solid var(--cream); box-shadow: 0 2px 4px rgba(0,0,0,0.18); border-radius: 2px; }
+.mini i.no { border: 1.2px dashed var(--line2); box-shadow: none; background: transparent; }
+.mini.today { color: var(--ink); }
+.stk { display: flex; align-items: center; gap: 0; }
+.st { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--cream); box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-right: -8px; }
+.st.empty { border: 1.2px dashed var(--line2); box-shadow: none; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+.more { margin-left: 16px; font-size: 9px; color: var(--muted); line-height: 1.3; }
+.more b { color: var(--ink); font-size: 10px; }
+.cta { margin-top: auto; height: 34px; border-radius: 17px; background: var(--ink); color: var(--bg); font: 600 9.5px/34px var(--sans); text-align: center; }
+
+/* album */
+.streak { display: flex; gap: 8px; margin-bottom: 12px; }
+.stat { flex: 1; background: var(--paper); border-radius: 12px; padding: 8px 9px; border: 1px solid var(--line); }
+.stat b { font: 500 20px/1 var(--serif); display: block; }
+.stat span { font-size: 7.5px; color: var(--muted); }
+.month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px 3px; margin-bottom: 14px; }
+.month .dw { font: 600 6.5px var(--sans); color: var(--muted); text-align: center; }
+.month .d { aspect-ratio: 0.88; border-radius: 3px; font: 600 6.5px var(--sans); color: var(--muted); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+.month .d:not(.got) { background: var(--card); }
+.month .d.got { border: 2px solid var(--cream); box-shadow: 0 1px 3px rgba(0,0,0,0.2); color: var(--cream); text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.month .d.now { outline: 1.5px solid var(--ink); background: transparent; color: var(--ink); }
+.month .d.fut { background: transparent; }
+.sheet { background: var(--paper); border-radius: 14px; padding: 10px; border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.sheet .s { aspect-ratio: 1; border-radius: 50%; border: 1px dashed var(--line2); display: grid; place-items: center; font: 600 5px/1.1 var(--sans); color: var(--muted); text-align: center; text-transform: uppercase; padding: 2px; opacity: 0.8; }
+.sheet .s.got { border: 2px solid var(--cream); box-shadow: 0 1px 3px rgba(0,0,0,0.25); opacity: 1; }
+</style>
+
+<h1>Today, play apart from keeping</h1>
+<p class="lede">
+  Two directions. In both, the bingo card becomes a taped paper card with the camera notched into its top edge.
+  <b>A</b> keeps one page: the side quest becomes a sticker stuck on the card's corner, and the history shrinks to a clothesline of the week's prints and a strip of stickers.
+  <b>B</b> splits it into two tabs: <i>Play</i> fits on one screen without scrolling, and <i>Album</i> has room to grow, with a month of bingo prints, a streak, and the full sticker sheet.
+  <b>I'd go with B</b>: past bingos need their own space, and Play stops being a long scroll.
+</p>
+
+<div class="row">
+  <!-- A: one page -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="top"><div class="back">‹</div><div class="ttl">Today</div><div class="date">Wed, Oct 28</div></div>
+      <div style="height:10px"></div>
+      <div class="board tilt">
+        <div class="tape"></div>
+        <div class="cam"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <div class="questdot">SIDE QUEST<b>Street<br>art</b></div>
+        <div class="bh"><h3>Bingo</h3><span class="hint" style="margin-right:44px">No swaps left</span></div>
+        <div class="grid">
+          <div class="sq empty">A plant</div><div class="sq on win hands">Your hands</div><div class="sq on blue">Something blue</div>
+          <div class="sq on win you">You</div><div class="sq free">Free</div><div class="sq on cup">Coffee or tea</div>
+          <div class="sq on win cat">An animal</div><div class="sq on read">Something to read</div><div class="sq empty">A close-up</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="icons"><span class="ic">Save</span><span class="ic">Share</span></div>
+          <span style="font:600 8.5px var(--sans);color:var(--accent)">Bingo! Print is in ✓</span>
+        </div>
+      </div>
+
+      <div class="shelf">
+        <div class="lbl"><span>This week · 1 bingo</span><a>Past bingos ›</a></div>
+        <div class="line">
+          <svg viewBox="0 0 260 20" preserveAspectRatio="none"><path d="M0 4 Q130 18 260 4" stroke="currentColor" stroke-opacity=".3" fill="none"/></svg>
+          <div class="pegs">
+            <div class="mini"><i class="no"></i>Th</div><div class="mini"><i class="no" style="margin-top:3px"></i>Fr</div><div class="mini"><i class="leaf" style="margin-top:5px;transform:rotate(4deg)"></i>Sa</div>
+            <div class="mini"><i class="no" style="margin-top:6px"></i>Su</div><div class="mini"><i class="no" style="margin-top:5px"></i>Mo</div><div class="mini"><i class="no" style="margin-top:3px"></i>Tu</div>
+            <div class="mini today"><i class="read" style="transform:rotate(-5deg)"></i>Today</div>
+          </div>
+        </div>
+      </div>
+      <div class="shelf" style="margin-top:8px">
+        <div class="lbl"><span>Sticker book · 3 of 30</span><a>Open ›</a></div>
+        <div class="stk">
+          <div class="st sky"></div><div class="st cat"></div><div class="st food"></div><div class="st empty">+</div>
+          <div class="more"><b>Street art</b> is next<br>27 to go this season</div>
+        </div>
+      </div>
+      <div class="cta">Make a dump from today · 9 photos</div>
+    </div></div>
+    <div class="cap"><b>A · One page, tighter</b>The quest sticks to the card instead of taking a row of its own, and the week becomes a clothesline. Everything fits on one screen with no scrolling. Past bingos and the full sticker book open as sheets.</div>
+  </div>
+
+  <!-- B1: Play tab -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="top"><div class="back">‹</div><div class="tabs"><span class="on">Play</span><span>Album</span></div><div style="flex:1"></div><div class="date">Wed, Oct 28</div></div>
+      <div style="height:12px"></div>
+      <div class="board">
+        <div class="tape"></div>
+        <div class="cam"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <div class="bh"><h3>Today’s bingo</h3><div class="icons"><span class="ic">Save</span><span class="ic">Share</span></div></div>
+        <div class="grid">
+          <div class="sq empty">A plant</div><div class="sq on win hands">Your hands</div><div class="sq on blue">Something blue</div>
+          <div class="sq on win you">You</div><div class="sq free">Free</div><div class="sq on cup">Coffee or tea</div>
+          <div class="sq on win cat">An animal</div><div class="sq on read">Something to read</div><div class="sq empty">A close-up</div>
+        </div>
+        <div class="banner">Bingo! Today’s print is in. Every square you fill now makes the dump better.</div>
+      </div>
+      <div class="ticket">
+        <div class="l">SIDE<br>QUEST</div>
+        <div class="r"><b>Street art</b><span>Find it today for a sticker!</span></div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:8.5px;color:var(--muted)">
+        <div class="stk"><div class="st sky" style="width:22px;height:22px"></div><div class="st cat" style="width:22px;height:22px"></div><div class="st food" style="width:22px;height:22px"></div></div>
+        <span style="margin-left:8px">1 bingo this week · 3 stickers</span><span style="margin-left:auto;color:var(--ink);font-weight:600">Album ›</span>
+      </div>
+      <div class="cta">Make a dump from today · 9 photos</div>
+    </div></div>
+    <div class="cap"><b>B · Play</b>Only today is on this tab: the card, Save and Share in its header, and the quest as a ticket stub. One line at the bottom shows what you've kept and leads to Album. Swipe or tap the tabs to switch.</div>
+  </div>
+
+  <!-- B2: Album tab -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="top"><div class="back">‹</div><div class="tabs"><span>Play</span><span class="on">Album</span></div><div style="flex:1"></div></div>
+      <div class="streak">
+        <div class="stat"><b>6</b><span>bingo days in October</span></div>
+        <div class="stat"><b>2</b><span>days in a row, best 4</span></div>
+      </div>
+      <div class="lbl"><span>October</span><span>‹ ›</span></div>
+      <div class="month">
+        <div class="dw">M</div><div class="dw">T</div><div class="dw">W</div><div class="dw">T</div><div class="dw">F</div><div class="dw">S</div><div class="dw">S</div>
+        <div class="d fut"></div><div class="d fut"></div><div class="d">1</div><div class="d got sky">2</div><div class="d">3</div><div class="d got leaf">4</div><div class="d">5</div>
+        <div class="d">6</div><div class="d">7</div><div class="d got food">8</div><div class="d">9</div><div class="d">10</div><div class="d">11</div><div class="d got street">12</div>
+        <div class="d">13</div><div class="d">14</div><div class="d">15</div><div class="d">16</div><div class="d">17</div><div class="d">18</div><div class="d">19</div>
+        <div class="d">20</div><div class="d">21</div><div class="d">22</div><div class="d">23</div><div class="d">24</div><div class="d got leaf">25</div><div class="d">26</div>
+        <div class="d">27</div><div class="d got read now">28</div><div class="d fut">29</div><div class="d fut">30</div><div class="d fut">31</div><div class="d fut"></div><div class="d fut"></div>
+      </div>
+      <div class="lbl"><span>Sticker book · 3 of 30 this autumn</span></div>
+      <div class="sheet">
+        <div class="s got sky"></div><div class="s got cat"></div><div class="s got food"></div><div class="s">Street art</div><div class="s">A clock</div><div class="s">Stairs</div>
+        <div class="s">A bird</div><div class="s">Water</div><div class="s">Keys</div><div class="s">A bridge</div><div class="s">Bread</div><div class="s">A tree</div>
+        <div class="s">Lights</div><div class="s">Fruit</div><div class="s">A chair</div><div class="s">Music</div><div class="s">A sign</div><div class="s">A car</div>
+      </div>
+      <div style="font-size:8px;color:var(--muted);margin-top:6px;text-align:center">Tap a print for that day’s card, or a sticker for its photo</div>
+    </div></div>
+    <div class="cap"><b>B · Album</b>The record. A month of bingo prints on a calendar (tap one to see that day's full card), the streak, and the season's sticker sheet with each empty spot named so you know what's out there.</div>
+  </div>
+</div>

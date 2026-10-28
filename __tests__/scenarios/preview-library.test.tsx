@@ -14,10 +14,10 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await screen.findByLabelText('Post on Instagram or TikTok');
+  await screen.findByLabelText('Post');
   expect(screen.getByRole('tab', { name: 'IG Post', selected: true })).toBeTruthy();
 
-  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(screen.getByLabelText('Post'));
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   // done sheet (board 10)
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
@@ -38,9 +38,9 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   // TikTok from the app picker
   // back on Discover the Seattle trip is the hero again
   world.shareResult = 'com.zhiliaoapp.musically';
-  await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle'));
+  await fireEvent.press(await screen.findByLabelText(/^A week in Seattle, /));
   await fireEvent.press(await screen.findByRole('tab', { name: 'TikTok 9:16' }));
-  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(screen.getByLabelText('Post'));
   await fireEvent.press(await screen.findByLabelText('TikTok'));
   await waitFor(() => expect(share()).toHaveBeenCalledTimes(2));
   expect(share().mock.calls[1][2]).toBe('tiktok');
@@ -67,11 +67,11 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   expect(app.getPathname()).toBe(`/edit/${copy.id}`);
 }, 30000);
 
-test('Save only shows the done sheet; Start a new dump opens Create', async () => {
+test('Save to phone shows the done sheet; Start a new dump opens Create', async () => {
   const app = await bootApp('/');
   // the Seattle trip is the hero; the long topic's tile opens its preview
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText('Save only, to the PicDump album'));
+  await fireEvent.press(await screen.findByLabelText('Save to phone'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
   expect(screen.getByText('6 slides saved to the PicDump album.')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
@@ -88,12 +88,15 @@ test('Preview renders the slides in the background; Post reuses them, a Quality 
   // nothing tapped: the 6 slides render anyway, and indexing is held while they do
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(6));
   expect(ClipEmbedder!.holdIndexing).toHaveBeenCalled();
-  // Quality → the other setting: a fresh export
-  await fireEvent.press(screen.getByLabelText('HD export for this dump'));
+  // Quality → the other setting (the header chip): a fresh export
+  const chip = screen.getByLabelText('HD export for this dump');
+  const was = chip.props.accessibilityState.checked;
+  await fireEvent.press(chip);
+  expect(screen.getByLabelText('HD export for this dump')).toHaveTextContent(was ? 'Standard' : 'HD');
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(12));
   await settle();
   share().mockClear();
-  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(screen.getByLabelText('Post'));
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
   expect(draw).toHaveBeenCalledTimes(12); // Post drew nothing new
@@ -105,7 +108,7 @@ test('Post lists only the installed apps; Story opens Instagram Stories', async 
   await bootApp('/');
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
   share().mockClear();
-  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('Post'));
   expect(await screen.findByText('A carousel of 6 slides')).toBeTruthy();
   expect(screen.getByText('6 stories, one per slide')).toBeTruthy();
   expect(screen.getByLabelText('Instagram reel')).toBeTruthy();
@@ -122,7 +125,7 @@ test('Post to WhatsApp: sends the slides, marks it posted as whatsapp', async ()
   await bootApp('/');
   await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
   share().mockClear();
-  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('Post'));
   expect(await screen.findByText('Send 6 slides to a chat')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('WhatsApp'));
   expect(await screen.findByText('Sent to WhatsApp')).toBeTruthy();
@@ -135,10 +138,10 @@ test('no Instagram or TikTok installed: Post skips the picker, straight to the s
   world.shareTargets = [];
   world.shareResult = 'chooser';
   await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 }));
   share().mockClear();
-  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText('Post'));
   expect(await screen.findByText('Shared')).toBeTruthy();
   expect(share()).toHaveBeenCalledTimes(1);
-  expect(screen.queryByText('Post to')).toBeNull();
+  expect(screen.queryByText('Share to')).toBeNull();
 }, 30000);

@@ -4,9 +4,9 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Dump, DumpStatus, duplicate, list, remove } from '../../services/dumps';
 import { kindLabel, matches, metaLines } from '../../services/dumpLabels';
 import { useTheme } from '../../theme/ThemeProvider';
-import { display, em, sans, ui } from '../../theme/type';
+import { caps, display, em, sans, ui } from '../../theme/type';
 import { Screen } from '../../components/ui/Screen';
-import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
+import { AvatarButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
@@ -25,7 +25,7 @@ function Tabs({ tab, counts, onTab }: { tab: DumpStatus; counts: Record<DumpStat
       {(['posted', 'draft'] as const).map((s) => {
         const on = s === tab;
         return (
-          <Tap key={s} onPress={() => onTab(s)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', paddingTop: 4, paddingBottom: 10 }}>
+          <Tap key={s} onPress={() => onTab(s)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingBottom: 6 }}>
             <Text style={{ fontFamily: sans[on ? 700 : 500], fontSize: 13.5, letterSpacing: em(13.5, -0.025), color: on ? t.ink : t.inkMuted }}>
               {s === 'posted' ? 'Posted' : 'Drafts'} <Text style={{ fontSize: 11, opacity: 0.75 }}>({counts[s]})</Text>
             </Text>
@@ -33,6 +33,10 @@ function Tabs({ tab, counts, onTab }: { tab: DumpStatus; counts: Record<DumpStat
           </Tap>
         );
       })}
+      {/* 4px down, like Discover's header, so the avatar doesn't move between tabs; the labels centre on it */}
+      <View style={{ paddingTop: 4, paddingBottom: 6, paddingRight: 8 }}>
+        <AvatarButton onPress={() => router.push('/profile')} />
+      </View>
     </View>
   );
 }
@@ -65,7 +69,7 @@ const Row = React.memo(function Row({ d, onReuse, onDelete }: { d: Dump; onReuse
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={{ fontFamily: sans[700], fontSize: 9, letterSpacing: em(9, 0.05), textTransform: 'uppercase', paddingHorizontal: 6, borderRadius: 8, overflow: 'hidden', backgroundColor: draft ? t.accentFab : t.dark ? t.borderStrong : 'rgba(0,0,0,0.09)', color: draft ? t.accentFabText : t.inkMuted }}>
-            {draft ? 'Draft' : 'Posted'}
+            {caps(draft ? 'Draft' : 'Posted')}
           </Text>
           <Text style={[ui(10, 500), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{kindLabel(d)}</Text>
         </View>
@@ -133,7 +137,6 @@ export default function Library() {
 
   return (
     <Screen keyboardShouldPersistTaps="handled">
-      <TopHeader title="Library" right={<AvatarButton onPress={() => router.push('/profile')} />} />
       <Tabs tab={tab} counts={counts} onTab={setTab} />
       <View style={{ paddingHorizontal: 4, marginBottom: 12 }}>
         <FrameCard radius={16} style={{ height: 38, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8 }}>

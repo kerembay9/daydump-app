@@ -51,9 +51,9 @@ Every `NN_*.yaml` is independent, so any subset runs in any order on any emulato
 | First run | `01` onboarding + photo permission, `02` indexing, `24` access denied |
 | Discover | `04` open a dump, `07` tiles, pull-to-refresh shuffle |
 | Create search | `03` text search, `08` clear search (the suggestions dropdown is unreachable, see the flow), `09` month / place / no match |
-| Create basket | `05` create → edit → share step, `10` Total stepper + review sheet, `11` Suggest fills (2 ways, Use this, take out, Save as draft, Add N picked) |
+| Create basket | `05` create → edit → share step, `10` review sheet, `11` fill sets (sets tile, tick, Add N) |
 | Edit | `12` sizes, layouts, paging; `13` filter, strength, apply to all; `14` filmstrip cover, remove, swap, add |
-| Preview + share | `15` IG / grid / TikTok mocks, like, save, HD, handle; `16` Save only → Drafts; `17` Post → Posted → Reuse |
+| Preview + share | `15` IG / grid / TikTok mocks, like, save, HD, handle; `16` Save to phone → Drafts; `17` Post → Posted → Reuse |
 | Library | `18` drafts: search, delete with confirm, empty state |
 | Navigation | `19` tab bar + Android Back, `25` deep links (`daydump://preview/today` and unknown ids) |
 | Profile | `06` overview, `20` name, handle and defaults reach a new dump, `21` dark theme, `26` avatar selfie finder, `22` Terms/Privacy + developer tools, `23` recap/sensitive switches + Reindex |

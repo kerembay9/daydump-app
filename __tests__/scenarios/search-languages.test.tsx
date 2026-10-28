@@ -31,15 +31,15 @@ test('a Turkish search waits for its download, then also searches the English tr
   expect(await screen.findByText(`Matches for "🌇" (${sunsets})`)).toBeTruthy();
 }, 30000);
 
-test('Settings lists search languages with their download state; turning one off deletes it', async () => {
+test('Settings shows search languages in one row; its picker lists download states, and turning one off deletes it', async () => {
   world.lang.gate = Promise.resolve();
   await bootApp('/profile');
   await screen.findByText('Search languages', {}, { timeout: 10000 });
-  expect(screen.getByText('English')).toBeTruthy();
-  expect(screen.getByText('Built in')).toBeTruthy();
-  expect(await screen.findByText('Ready')).toBeTruthy(); // Turkish, the phone's language
+  expect(await screen.findByText('English, Turkish')).toBeTruthy(); // Turkish, the phone's language, downloaded
 
-  await fireEvent.press(screen.getByText('Choose languages'));
+  await fireEvent.press(screen.getByText('Search languages'));
+  expect(await screen.findByText('Built in')).toBeTruthy();
+  expect(screen.getByText('Ready')).toBeTruthy();
   await fireEvent.press(await screen.findByRole('switch', { name: /German/ }));
   expect(await screen.findAllByText('Ready')).toHaveLength(2);
   expect(world.lang.downloaded).toContain('de');

@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:dist="http://schemas.android.com/apk/distribution"
+  xmlns:tools="http://schemas.android.com/tools">
+  <dist:module dist:title="@string/translate_module_title">
+    <dist:delivery><dist:on-demand /></dist:delivery>
+    <dist:fusing dist:include="true" /><!-- a universal APK carries it -->
+  </dist:module>
+  <application>
+    <!-- Merged into the base manifest, whose APK lacks this class until the module is installed; MlKitTranslator inits ML Kit instead -->
+    <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider" android:authorities="${applicationId}.mlkitinitprovider" tools:node="remove" />
+  </application>
+</manifest>

@@ -5,6 +5,8 @@ import { ClipEmbedder } from '../../modules/clip-embedder';
 
 const NOTIF_STORAGE_KEY = '@daydump_daily_notification_enabled';
 const DAILY_NOTIF_ID = 'daydump_daily_recap_8pm';
+const WEEKLY_NOTIF_ID = 'daydump_weekly_recap_sunday';
+const WEEK = { title: 'Your week in one dump 🎞️', body: 'Your photos from this week, ready to look through.', sound: 'default' };
 
 type NotificationsType = typeof import('expo-notifications');
 
@@ -126,7 +128,7 @@ export class NotificationService {
   }
 
   /**
-   * Schedule recurring daily notification at 8:00 PM (hour: 20, minute: 0)
+   * Schedule recurring daily notification at 8:00 PM (hour: 20, minute: 0), and the week's on Sundays at noon
    */
   static async scheduleDailyRecap(hour: number = 20, minute: number = 0): Promise<void> {
     try {
@@ -135,8 +137,9 @@ export class NotificationService {
 
       // Cancel previous schedule to prevent duplicates
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID).catch(() => {});
+      await Notifications.cancelScheduledNotificationAsync(WEEKLY_NOTIF_ID).catch(() => {});
 
-      // Android: native job, so the recap can show today's cover photo (expo-notifications has no local images there)
+      // Android: native jobs (daily + Sunday), so the recap can show the dump's cover photo (expo-notifications has no local images there)
       if (ClipEmbedder) {
         await ClipEmbedder.scheduleDailyRecap();
         return;
@@ -156,6 +159,12 @@ export class NotificationService {
           minute,
           channelId: 'daily_dump_channel',
         },
+      });
+      // ponytail: generic text and no link, the week's story id isn't known ahead; Android's native job has both
+      await Notifications.scheduleNotificationAsync({
+        identifier: WEEKLY_NOTIF_ID,
+        content: WEEK,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour: 12, minute: 0, channelId: 'daily_dump_channel' }, // 1 = Sunday
       });
       console.log(`[NotificationService] Daily recap scheduled for ${hour}:${minute < 10 ? '0' : ''}${minute}`);
     } catch (e) {
@@ -189,6 +198,7 @@ export class NotificationService {
       if (!Notifications) return;
 
       await Notifications.cancelScheduledNotificationAsync(DAILY_NOTIF_ID);
+      await Notifications.cancelScheduledNotificationAsync(WEEKLY_NOTIF_ID);
       await ClipEmbedder?.cancelDailyRecap();
     } catch (e) {
       console.warn('[NotificationService] cancel error:', e);
@@ -198,7 +208,7 @@ export class NotificationService {
   /**
    * Trigger an instant test notification for testing & demonstration
    */
-  static async sendTestNotification(): Promise<void> {
+  static async sendTestNotification(week = false): Promise<void> {
     const Notifications = getNotifications();
     if (!Notifications) {
       throw new Error('Notifications require a native build and are not supported in Expo Go.');
@@ -208,10 +218,10 @@ export class NotificationService {
     if (!granted) {
       throw new Error('Notification permission was not granted.');
     }
-    if (ClipEmbedder) return ClipEmbedder.postDailyRecap();
+    if (ClipEmbedder) return week ? ClipEmbedder.postWeekRecap() : ClipEmbedder.postDailyRecap();
 
     await Notifications.scheduleNotificationAsync({
-      content: {
+      content: week ? WEEK : {
         title: 'Your PicDump is ready 🎞️',
         body: 'Review 6 curated shots from today before heading to bed.',
         sound: 'default',

@@ -6,35 +6,34 @@ import { cashmere, espresso } from '../../src/theme/tokens';
 import { getProfile, setProfile } from '../../src/services/profile';
 import { CORNER_W, TAPE_H } from '../../src/components/ui/Tape';
 
-const HERO = 'Preview A week in Seattle';
+const SEATTLE = /^A week in Seattle, /;
 const TAPE = [cashmere.tapeBg, espresso.tapeBg];
 const tapes = () => screen.queryAllByTestId('tape').map((n) => StyleSheet.flatten(n.props.style).backgroundColor as string);
 
-beforeAll(() => seedWorld());
+beforeAll(async () => { await seedWorld(); await setProfile({ cards: 'classic' }); }); // paper cards bring their own tape and stock
 
 test('Bands: none takes every tape off Discover', async () => {
   await setProfile({ bands: 'none' });
   await bootApp('/');
-  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  await screen.findByLabelText(SEATTLE, {}, { timeout: 10000 });
   expect(tapes()).toEqual([]);
 }, 30000);
 
-test('Bands: default keeps the one masking tape on the hero', async () => {
+test('Bands: default keeps the tiles bare; the one masking tape is the Today card\'s', async () => {
   await setProfile({ bands: 'default' });
   await bootApp('/');
-  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
-  const t = tapes();
-  expect(t).toHaveLength(1);
-  expect(TAPE).toContain(t[0]);
+  await screen.findByLabelText(SEATTLE, {}, { timeout: 10000 });
+  await screen.findByLabelText(/^Bingo: /);
+  expect(tapes()).toEqual([cashmere.tapeBg]);
 }, 30000);
 
-test('Bands: more tapes the hero\'s corners and every tile with washi of several colours', async () => {
+test('Bands: more tapes every tile with washi of several colours', async () => {
   await setProfile({ bands: 'more' });
   await bootApp('/');
-  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  await screen.findByLabelText(SEATTLE, {}, { timeout: 10000 });
   const tiles = screen.getAllByLabelText(/, \d+ photos · /).length;
   const t = tapes();
-  expect(t.length).toBeGreaterThanOrEqual(2 + tiles);
+  expect(t.length).toBeGreaterThanOrEqual(tiles);
   expect(t.some((c) => TAPE.includes(c))).toBe(false);
   expect(new Set(t).size).toBeGreaterThan(1);
   // one plain strip: same height everywhere, never a stub, no stripes or dots inside

@@ -11,13 +11,12 @@ test('Original and Warm 35mm are free, the rest are Pro', () => {
 test('a dump uses a Pro look only when one actually shows', () => {
   expect(usesProLook(f({ key: 'cashmere', pct: 68 }))).toBe(true);
   expect(usesProLook(f({ key: 'cashmere', pct: 0 }))).toBe(false);
-  // apply-to-all: per-photo looks don't show
-  expect(usesProLook(f({ key: 'warm35', all: true, per: { a: { key: 'noir', pct: 50 } } }))).toBe(false);
-  expect(usesProLook(f({ key: 'warm35', all: false, per: { a: { key: 'noir', pct: 50 } } }))).toBe(true);
+  // a photo's own look counts
+  expect(usesProLook(f({ key: 'warm35', per: { a: { key: 'noir', pct: 50 } } }))).toBe(true);
 });
 
 test('without Pro looks: Pro ones become Original, free ones stay', () => {
-  const out = withoutProLooks(f({ key: 'noir', pct: 40, all: false, per: { a: { key: 'sunfade', pct: 50 }, b: { key: 'warm35', pct: 30 } } }));
-  expect(out).toEqual(f({ key: 'none', pct: 40, all: false, per: { a: { key: 'none', pct: 50 }, b: { key: 'warm35', pct: 30 } } }));
+  const out = withoutProLooks(f({ key: 'noir', pct: 40, per: { a: { key: 'sunfade', pct: 50 }, b: { key: 'warm35', pct: 30 } } }));
+  expect(out).toEqual(f({ key: 'none', pct: 40, per: { a: { key: 'none', pct: 50 }, b: { key: 'warm35', pct: 30 } } }));
   expect(usesProLook(out)).toBe(false);
 });

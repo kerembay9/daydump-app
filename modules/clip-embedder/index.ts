@@ -34,6 +34,8 @@ type ClipEmbedderModule = {
    * Calls needing a missing one reject (and want it). Updates come as onModels events. Also restarts a download that failed.
    */
   modelState(): Promise<Record<ModelPack, PackState>>;
+  /** Play's dialog for a pack it holds ('waiting'): download now on mobile data, or its confirmation. True if the user said yes. */
+  askToDownload?(): Promise<boolean>;
   /** A screen needs this pack: it downloads right after faces, ahead of the other (not ahead of one already downloading). */
   wantModel?(pack: ModelPack): void;
   tokenize(text: string): Promise<number[]>;
@@ -73,13 +75,20 @@ type ClipEmbedderModule = {
   }>;
   /** Removes and returns up to limit photos the worker finished; concepts is the JSON photoIndex.ts stores. */
   takeBackgroundResults(limit: number): Promise<{ model: string | null; rows: { id: string; emb: string; concepts: string; lat: number | null; lon: number | null }[] }>;
-  /** The 8 PM recap (DailyRecap.kt): a job re-enqueued daily, posting today's cover photo once 3+ camera photos exist. */
+  /**
+   * The recaps (DailyRecap.kt): 8 PM daily, posting today's cover photo once 3+ camera photos exist, and Sunday noon,
+   * posting the week's dump (setWeekRecap) when it is this week's. Schedules / cancels both.
+   */
   scheduleDailyRecap(): Promise<void>;
   cancelDailyRecap(): Promise<void>;
   /** Posts the recap now, even with under 3 photos today (test button). */
   postDailyRecap(): Promise<void>;
   /** Today's dump cover, shown in tonight's recap; kept only for the day it was set. */
   setRecapCover(uri: string): void;
+  /** The week's recap story (recap:week:...) and its cover, for Sunday's recap. */
+  setWeekRecap(uri: string, id: string): void;
+  /** Posts the last set week's recap now, this week's or not (test button). */
+  postWeekRecap(): Promise<void>;
   /** Multi-image share (ACTION_SEND_MULTIPLE); file:// uris go through a FileProvider. Resolves with the package that got it, or 'chooser'. */
   shareImages(uris: string[], caption: string, target: ShareTarget | null): Promise<string>;
   /** The targets whose app is installed. */
@@ -90,7 +99,28 @@ type ClipEmbedderModule = {
   addListener(event: 'onModels', cb: (e: PackState & { pack: ModelPack }) => void): { remove(): void };
   /** No nav-bar scrim; light = dark nav buttons. */
   setNavigationBarStyle(light: boolean): void;
+  /** Tidy (Tidy.kt, Android 11+): every photo, unpruned, as parallel lists; taken in ms, size in bytes, fav = IS_FAVORITE. */
+  tidyList?(): Promise<{ ids: string[]; paths: string[]; taken: number[]; w: number[]; h: number[]; size: number[]; bucket: string[]; fav: boolean[] }>;
+  /** Pixel checks per MediaStore id, decoded at shortest side `side` (<= 512: the cached thumbnail); null = undecodable. */
+  tidyStats?(ids: string[], side: number, faces: boolean): Promise<(TidyStats | null)[]>;
+  /** SHA-1 of each file's first 64 KB; null = unreadable. */
+  tidyHash?(ids: string[]): Promise<(string | null)[]>;
+  /** Same-shot sets over photos in time order (vecs n x 512, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
+  tidySets?(vecs: Float32Array, times: number[], strict: boolean[]): Promise<number[]>;
+  /** Ids still in MediaStore, Trash included; expires = when Trash empties it (ms, 0 = not trashed). A missing id is gone for good. */
+  trashState?(ids: string[]): Promise<Record<string, { trashed: boolean; expires: number }>>;
+  /** Android's own Move to Trash (trashed) or Restore dialog for MediaStore ids; true = the user allowed it. Never deletes. */
+  trash?(ids: string[], trashed: boolean): Promise<boolean>;
 };
+
+/** b: mean brightness 0-255, sd: its spread, lap: Laplacian variance (fine detail; compare at one side only), hi / lo: share of blown-out / crushed pixels. */
+export type TidyStats = { b: number; sd: number; lap: number; hi: number; lo: number; finger: boolean; faces?: TidyFace[];
+  /** horizon angle in degrees, null = no long level-ish line to judge by (missing in checks saved before it existed) */
+  tilt?: number | null };
+/** A face (fractions of the photo): l = its brightness, sharp = its Laplacian, cut = touches the edge, yaw = nose off the eyes' midpoint in eye widths (0 = facing). */
+export type TidyFace = { score: number; x: number; y: number; w: number; h: number; l: number; sharp: number; cut: boolean; yaw: number;
+  /** SFace feature (base64 Float32 x 128); '' = the faces pack wasn't there */
+  vec?: string };
 
 export type ShareTarget = 'instagram' | 'instagram-story' | 'instagram-reel' | 'tiktok' | 'whatsapp';
 export type ModelPack = 'vision' | 'faces' | 'text';
@@ -156,3 +186,12 @@ type EdgeBenchModule = {
 
 /** Gemma 4 E2B (LiteRT-LM), ML Kit labeling and YuNet faces, for the benchmark screen only. Null on iOS / Expo Go. */
 export const EdgeBench = requireOptionalNativeModule<EdgeBenchModule>('EdgeBench');
+
+type AppIconModule = {
+  /** icons in the manifest's order (plugins/withAppIcons.js); current = the enabled launcher alias. */
+  get(): { icons: string[]; current: string };
+  /** Switches the launcher icon; the home screen can take a few seconds to show it. */
+  set(name: string): void;
+};
+/** Developer tools' App icon switch (AppIconModule.kt). Null on iOS / Expo Go. */
+export const AppIcon = requireOptionalNativeModule<AppIconModule>('AppIcon');

@@ -1,0 +1,129 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selfie Step Layout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Onboarding page 4, selfie step: the 3 x 2 grid pushes "Is this you?" off screen. Four ways to fit grid, face and question on one screen. A54 at 0.75x; photos painted. */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --paper: #FFFCF7;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --accent: #A84A2F; --fab: #A84A2F; --fabtxt: #FFFCF7;
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.18), 0 2px 5px rgba(74,52,40,0.05);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45); --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, serif; --sans: Inter, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--sans); padding: 28px 16px 60px; }
+h1 { font: 600 26px/1.1 var(--serif); margin: 0 auto 4px; max-width: 1000px; }
+.lede { color: var(--muted); font-size: 14px; margin: 0 auto 28px; max-width: 1000px; line-height: 1.45; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 18px; max-width: 1000px; margin: 0 auto; }
+.cell { display: flex; flex-direction: column; align-items: center; }
+.cap { max-width: 300px; margin-top: 14px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cap b { color: var(--ink); display: block; font-size: 14px; margin-bottom: 2px; }
+.phone { width: 304px; padding: 8px; border-radius: 40px; background: var(--bezel); box-shadow: var(--phone-shadow); }
+.screen { width: 288px; height: 600px; border-radius: 32px; background: var(--bg); background-image: var(--screen); overflow: hidden; display: flex; flex-direction: column; padding: 22px 18px 14px; position: relative; }
+.badge { font: 600 7.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-align: center; margin-bottom: 7px; }
+.ttl { font: 500 19.5px/1.12 var(--serif); letter-spacing: -0.02em; text-align: center; margin-bottom: 7px; }
+.lock { font-size: 9.4px; color: var(--muted); text-align: center; line-height: 1.35; margin: 0 6px 13px; }
+.card { background: var(--paper); border-radius: 14px; padding: 9px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.av { width: 30px; height: 30px; border-radius: 50%; flex: none; background: var(--fab); color: var(--fabtxt); font: 600 12px var(--sans); display: flex; align-items: center; justify-content: center; }
+.av.face { background: radial-gradient(circle at 50% 40%, #E3B08F 0 30%, transparent 31%), radial-gradient(ellipse at 50% 108%, #3D405B 0 46%, transparent 47%), radial-gradient(circle at 50% 30%, #4A3426 0 38%, transparent 39%), #F2CC8F; }
+.av.ring { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--accent); }
+.nm { font: 600 10.5px var(--sans); }
+.sub { font-size: 8.3px; color: var(--muted); }
+.tiles { display: flex; gap: 4.5px; }
+.tiles i { flex: 1; height: 42px; border-radius: 6px; background: var(--line2); opacity: .6; }
+.ph { border-radius: 6px; background-size: cover; position: relative; overflow: hidden; }
+/* painted stand-ins: sea, coffee, street at dusk, park, dinner, mountains */
+.p1 { background: linear-gradient(180deg, #9CC3D9 0 48%, #E7D3B0 48% 52%, #5C8FA8 52%); }
+.p2 { background: radial-gradient(circle at 50% 55%, #6B4127 0 22%, #F1E5D2 23% 30%, transparent 31%), linear-gradient(160deg, #C9A27C, #8E6446); }
+.p3 { background: radial-gradient(circle at 70% 30%, #FFD38A 0 6%, transparent 7%), linear-gradient(180deg, #3B3A5C 0 55%, #22202E 55%); }
+.p4 { background: radial-gradient(ellipse at 30% 70%, #4F7A3D 0 30%, transparent 31%), linear-gradient(180deg, #CFE3EA 0 50%, #7DA35E 50%); }
+.p5 { background: radial-gradient(circle at 40% 55%, #D9603B 0 14%, transparent 15%), radial-gradient(circle at 62% 50%, #EFE2C2 0 20%, transparent 21%), linear-gradient(135deg, #5A3B2E, #2F201A); }
+.p6 { background: linear-gradient(160deg, transparent 0 40%, #8796A8 40% 60%, transparent 60%), linear-gradient(20deg, transparent 0 45%, #6B7A8D 45% 70%, transparent 70%), linear-gradient(180deg, #E8C7A4, #D79E78); }
+.below { margin-top: 12px; }
+.lbl { font: 600 7.5px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0 3px 5px; }
+.input { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 9px 11px; font: 500 14px var(--serif); box-shadow: var(--shadow); }
+.input::after { content: ''; display: inline-block; width: 1px; height: 14px; background: var(--accent); vertical-align: -2px; margin-left: 1px; }
+.foot { margin-top: auto; }
+.dots { display: flex; gap: 5px; justify-content: center; margin: 0 0 10px; }
+.dots i { width: 5px; height: 5px; border-radius: 3px; background: var(--line2); }
+.dots i.on { width: 17px; background: var(--ink); }
+.btn { height: 39px; border-radius: 12px; background: var(--ink); color: var(--bg); font: 600 11.5px var(--sans); display: flex; align-items: center; justify-content: center; }
+.skip { text-align: center; font: 600 10px var(--sans); color: var(--muted); padding-top: 9px; height: 27px; }
+.n { position: absolute; right: 6px; top: 6px; font: 600 7.5px var(--sans); color: #fff; background: rgba(0,0,0,.4); padding: 2px 5px; border-radius: 6px; }
+.film { display: flex; gap: 4px; margin-top: 5px; }
+.film .ph { width: 26px; height: 26px; border-radius: 5px; opacity: .55; }
+.film .ph.on { opacity: 1; box-shadow: 0 0 0 1.5px var(--ink); }
+.cap2 { font-size: 8.8px; margin-top: 6px; color: var(--ink); }
+.cap2 span { color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-radius: 8px; overflow: hidden; }
+.grid .ph { border-radius: 0; aspect-ratio: 1; }
+.story { position: relative; height: 252px; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+.story .ph { position: absolute; inset: 0; border-radius: 0; }
+.bars { position: absolute; left: 8px; right: 8px; top: 7px; display: flex; gap: 3px; }
+.bars i { flex: 1; height: 2px; border-radius: 1px; background: rgba(255,255,255,.4); }
+.bars i.on { background: #fff; }
+.bars i.half { background: linear-gradient(90deg, #fff 55%, rgba(255,255,255,.4) 55%); }
+.story .head { position: absolute; left: 8px; top: 15px; margin: 0; color: #fff; }
+.story .sub { color: rgba(255,255,255,.8); }
+.story .shade { position: absolute; inset: 0 0 auto; height: 70px; background: linear-gradient(180deg, rgba(0,0,0,.45), transparent); }
+.where { position: absolute; left: 10px; bottom: 9px; color: #fff; font: 500 15px/1.1 var(--serif); text-shadow: 0 1px 6px rgba(0,0,0,.4); }
+.where small { display: block; font: 500 8px var(--sans); opacity: .85; margin-top: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 8px; color: var(--muted); margin-top: 6px; }
+.chip::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #5B9A5B; }
+.ask { display: flex; align-items: center; gap: 9px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); }
+.ask .av { width: 40px; height: 40px; }
+.ask b { font: 500 13px var(--serif); display: block; }
+.ask span { font-size: 8.5px; color: var(--muted); }
+.mini { display: flex; gap: 5px; margin-left: auto; }
+.mini i { font: 600 8.5px var(--sans); font-style: normal; padding: 6px 8px; border-radius: 9px; border: 1px solid var(--line2); }
+.mini i.y { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tag { display: inline-block; font: 700 9px var(--sans); letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: var(--line2); color: var(--muted); margin-bottom: 8px; }
+.tag.rec { background: var(--accent); color: #fff; }
+
+.lock1 { font-size: 8.4px; color: var(--muted); text-align: center; margin: -2px 0 10px; }
+.big { width: 96px; height: 96px; border-radius: 50%; margin: 0 auto; }
+.selfie { text-align: center; padding: 10px; }
+.selfie b { font: 500 14px var(--serif); display: block; margin-top: 7px; }
+.selfie span { font-size: 8.5px; color: var(--muted); }
+.two { display: flex; gap: 6px; margin-top: 8px; }
+.two i { flex: 1; font: 600 9.5px var(--sans); font-style: normal; text-align: center; padding: 8px 0; border-radius: 10px; border: 1px solid var(--line2); }
+.two i.y { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cut { position: absolute; left: 0; right: 0; bottom: 92px; height: 1px; border-top: 1.5px dashed var(--accent); }
+.cut::after { content: 'screen ends'; position: absolute; right: 6px; top: -12px; font: 600 7px var(--sans); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+.row6 { display: flex; gap: 3px; border-radius: 8px; overflow: hidden; }
+.row6 .ph { flex: 1; aspect-ratio: 1; border-radius: 0; }
+.qhead { display: flex; align-items: center; gap: 8px; }
+.qhead .av { width: 46px; height: 46px; position: relative; }
+.qhead .av::after { content: '?'; position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 9px/15px var(--sans); text-align: center; border: 1.5px solid var(--paper); }
+.qbtn { display: flex; gap: 5px; margin: 6px 0 8px; }
+.qbtn i { flex: 1; font: 600 9px var(--sans); font-style: normal; text-align: center; padding: 7px 0; border-radius: 9px; border: 1px solid var(--line2); }
+.qbtn i.y { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.over { position: relative; }
+.over .grid { filter: brightness(.55) saturate(.8); }
+.over .pop { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; }
+.over .pop .big { width: 62px; height: 62px; box-shadow: 0 0 0 3px #fff, 0 8px 20px rgba(0,0,0,.4); }
+.over .pop b { font: 500 12.5px var(--serif); margin-top: 5px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.over .two { width: 78%; margin-top: 5px; } .over .two i { padding: 6px 0; }
+.over .two i { border-color: rgba(255,255,255,.6); color: #fff; }
+.over .two i.y { background: #fff; color: #261F1B; border-color: #fff; }
+</style>
+<h1>Is this you? on one screen</h1>
+<p class="lede">With your photos in the post, the selfie question no longer fits: it is under the dots. Each option keeps the photos, the face and the buttons on one screen. All of them shrink the privacy note to one line: "Only on your previews. Stays on your phone."</p>
+<div class="row"><div class="cell"><span class="tag">Now</span><div class="phone"><div class="screen"><div class="badge">Your dump previews</div><div class="ttl">Put yourself in your posts</div><div class="lock">🔒 Your name and photo only show on your dump previews. They stay on your phone.</div><div class="card"><div class="head"><div class="av">S</div><div><div class="nm">Sam</div><div class="sub">Today · photo dump</div></div></div><div class="grid"><div class="ph p1"></div><div class="ph p2"></div><div class="ph p3"></div><div class="ph p4"></div><div class="ph p5"></div><div class="ph p6"></div></div></div><div class="below card selfie" style="height:150px;overflow:hidden"><div class="av face big"></div><b>Is this you?</b></div><div class="cut"></div><div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i></div><div class="btn" style="opacity:.35">Continue</div><div class="skip">Skip for now</div></div></div></div><p class="cap"><b>Now: the question is off screen</b>The grid plus the big face is taller than the screen. "Is this you?" and its buttons sit under the dots; you have to scroll to find them.</p></div><div class="cell"><span class="tag rec">A · pick this</span><div class="phone"><div class="screen"><div class="badge">Your dump previews</div><div class="ttl">Put yourself in your posts</div><div class="lock1">🔒 Only on your previews. Stays on your phone.</div><div class="card"><div class="head"><div class="av">S</div><div><div class="nm">Sam</div><div class="sub">Today · photo dump</div></div></div><div class="row6"><div class="ph p1"></div><div class="ph p2"></div><div class="ph p3"></div><div class="ph p4"></div><div class="ph p5"></div><div class="ph p6"></div></div></div><div class="below card selfie"><div class="av face big"></div><b>Is this you?</b><span>Found on your phone.</span><div class="two"><i>Not me</i><i class="y">That's me</i></div></div><div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i></div><div class="btn" style="opacity:.35">Continue</div><div class="skip">Skip for now</div></div></div></div><p class="cap"><b>A · Grid folds while you choose</b>During the selfie question the photos fold into one row, so the big face and both buttons fit. After "That's me" the face flies into the header and the grid opens back to 3 × 2: the post is done.</p></div><div class="cell"><span class="tag">B</span><div class="phone"><div class="screen"><div class="badge">Your dump previews</div><div class="ttl">Put yourself in your posts</div><div class="lock1">🔒 Only on your previews. Stays on your phone.</div><div class="card"><div class="qhead"><div class="av face"></div><div style="flex:1"><div class="nm">Sam</div><div class="sub">Is this you? Found on your phone.</div></div></div><div class="qbtn"><i>Not me</i><i class="y">That's me</i></div><div class="grid"><div class="ph p1"></div><div class="ph p2"></div><div class="ph p3"></div><div class="ph p4"></div><div class="ph p5"></div><div class="ph p6"></div></div></div><div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i></div><div class="btn" style="opacity:.35">Continue</div><div class="skip">Skip for now</div></div></div></div><p class="cap"><b>B · Ask inside the post</b>The found face sits in the avatar spot with a "?" and the question and buttons go in the header. No second card, the grid stays 3 × 2. The face is small (46 dp), so it is harder to check.</p></div><div class="cell"><span class="tag">C</span><div class="phone"><div class="screen"><div class="badge">Your dump previews</div><div class="ttl">Put yourself in your posts</div><div class="lock1">🔒 Only on your previews. Stays on your phone.</div><div class="card"><div class="head"><div class="av">S</div><div><div class="nm">Sam</div><div class="sub">Today · photo dump</div></div></div><div class="over"><div class="grid"><div class="ph p1"></div><div class="ph p2"></div><div class="ph p3"></div><div class="ph p4"></div><div class="ph p5"></div><div class="ph p6"></div></div><div class="pop"><div class="av face big"></div><b>Is this you?</b><div class="two"><i>Not me</i><i class="y">That's me</i></div></div></div></div><div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i></div><div class="btn" style="opacity:.35">Continue</div><div class="skip">Skip for now</div></div></div></div><p class="cap"><b>C · Face over the photos</b>The question sits on top of your darkened photos. "That's me" flies the face into the header and the photos light up. One card, big face, but the grid is hidden until you answer.</p></div><div class="cell"><span class="tag">D</span><div class="phone"><div class="screen"><div class="badge">Your dump previews</div><div class="ttl">Put yourself in your posts</div><div class="lock1">🔒 Only on your previews. Stays on your phone.</div><div class="card"><div class="head"><div class="av">S</div><div><div class="nm">Sam</div><div class="sub">Today · photo dump</div></div></div><div class="grid"><div class="ph p1"></div><div class="ph p2"></div><div class="ph p3"></div><div class="ph p4"></div><div class="ph p5"></div><div class="ph p6"></div></div></div><div class="below ask"><div class="av face" style="width:52px;height:52px"></div><div><b>Is this you?</b><span>Found on your phone.</span></div><div class="mini"><i>No</i><i class="y">Yes</i></div></div><div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i></div><div class="btn" style="opacity:.35">Continue</div><div class="skip">Skip for now</div></div></div></div><p class="cap"><b>D · One-row question</b>The grid stays 3 × 2 and the question shrinks to one row under it: a 52 dp face, No and Yes. Fits, but the face is small and the buttons are tight.</p></div></div>

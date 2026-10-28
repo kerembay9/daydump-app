@@ -11,6 +11,6 @@ test('on mobile data, Home says the dumps wait for Wi-Fi, not "next in line", wh
   });
   await bootApp('/');
   expect(await screen.findByText('Getting your dumps ready', {}, { timeout: 10000 })).toBeTruthy();
-  expect(screen.getByText(/^Waiting for Wi-Fi\./)).toBeTruthy();
+  expect(screen.getByText(/^Waiting for Wi-Fi to download 11 MB, once\./)).toBeTruthy();
   expect(screen.queryByText(/Next in line/)).toBeNull();
 }, 30000);

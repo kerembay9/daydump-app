@@ -1,77 +1,166 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { Canvas, ColorMatrix, Image as SkiaImage, SkImage } from '@shopify/react-native-skia';
 import { useTheme } from '../../theme/ThemeProvider';
-import { label, ui } from '../../theme/type';
+import { caps, label, ui } from '../../theme/type';
 import { FrameCard } from '../ui/FrameCard';
 import { Icons } from '../ui/Icons';
-import { Pill } from '../ui/Pill';
 import { Tap } from '../ui/Tap';
 import { useRevealActive } from '../ui/useRevealActive';
-import { FilterKey, isProLook, Look, PRESETS } from '../../services/filters';
+import { Slider } from './Slider';
+import { Adjust, ADJUSTS, AdjKey, autoAdjust, brighten, FilterKey, isDark, Look, matrixFor, PRESETS, Tex, Tone } from '../../services/filters';
 
-/** 0-100 slider: drag or tap anywhere on the track. Accent = ink, so it follows the theme (mock bug: fixed #261F1B).
- *  Moves use pageX against the track's page origin taken at grant: locationX is relative to whatever view is under
- *  the finger, so it jumps back and forth mid-drag. */
-function Slider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+type Props = {
+  look: Look;
+  /** "This photo": the targeted photo's look is shown and changed; else the dump's */
+  photo: boolean;
+  /** the targeted photo has edits of its own */
+  own: boolean;
+  onLook: (l: Look) => void;
+  /** back to the dump's look: targeted → "All photos" */
+  onAllPhotos: () => void;
+  /** targeted photo's look becomes the dump's, every override goes */
+  onEvery: () => void;
+  /** targeted photo drops its own look and adjustments */
+  onReset: () => void;
+  /** the photo Look tiles show and Adjust changes: the targeted one, else the slide's first */
+  image: SkImage | null | undefined;
+  /** "Photo 2": which photo Adjust changes when none is targeted */
+  focus: string;
+  adj: Adjust;
+  onAdj: (a: Adjust) => void;
+  tone: Tone | null;
+};
+
+const SUBS = [['look', 'Look'], ['adjust', 'Adjust'], ['texture', 'Texture']] as const;
+const TEXTURES: { key: keyof Tex; label: string }[] = [{ key: 'grain', label: 'Grain' }, { key: 'fade', label: 'Fade' }, { key: 'vignette', label: 'Vignette' }];
+const TILE = 54;
+const same = (a: Adjust, b: Adjust) => ADJUSTS.every(({ key }) => (a[key] ?? 0) === (b[key] ?? 0));
+const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`);
+
+/** A look tile: the photo itself with that preset at the current strength. */
+function LookTile({ k, name, swatch, on, image, pct, onPress }: { k: FilterKey; name: string; swatch: string; on: boolean; image: SkImage | null | undefined; pct: number; onPress: () => void }) {
   const { t } = useTheme();
-  const [w, setW] = useState(1);
-  const origin = useRef(0);
-  const set = (pageX: number) => onChange(Math.round(Math.max(0, Math.min(1, (pageX - origin.current) / w)) * 100));
+  const m = matrixFor({ key: k, pct: pct || 68 });
   return (
-    <View
-      onLayout={(e) => setW(e.nativeEvent.layout.width)}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}
-      onResponderTerminationRequest={() => false}
-      onResponderGrant={(e) => { origin.current = e.nativeEvent.pageX - e.nativeEvent.locationX; set(e.nativeEvent.pageX); }}
-      onResponderMove={(e) => set(e.nativeEvent.pageX)}
-      accessibilityRole="adjustable"
-      accessibilityLabel="Filter strength"
-      accessibilityValue={{ min: 0, max: 100, now: value }}
-      style={{ flex: 1, height: 28, justifyContent: 'center' }}
-    >
-      <View pointerEvents="none" style={{ height: 6, borderRadius: 3, backgroundColor: t.borderStrong }}>
-        <View style={{ width: `${value}%`, height: 6, borderRadius: 3, backgroundColor: t.ink }} />
+    <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={name} accessibilityState={{ selected: on }} style={{ width: TILE + 4, alignItems: 'center', gap: 3 }}>
+      <View style={{ width: TILE, height: TILE, borderRadius: 10, overflow: 'hidden', backgroundColor: swatch, boxShadow: on ? `0 0 0 2px ${t.ink}` : undefined }}>
+        {image ? (
+          <Canvas style={{ flex: 1 }}>
+            <SkiaImage image={image} x={0} y={0} width={TILE} height={TILE} fit="cover">{m ? <ColorMatrix matrix={m} /> : null}</SkiaImage>
+          </Canvas>
+        ) : null}
       </View>
-      <View pointerEvents="none" style={{ position: 'absolute', left: (value / 100) * w - 9, width: 18, height: 18, borderRadius: 9, backgroundColor: t.ink, borderWidth: 2, borderColor: t.bgCard, boxShadow: t.shadowCard }} />
-    </View>
+      <Text numberOfLines={1} style={[ui(9, on ? 700 : 500), { color: t.ink }]}>{name}</Text>
+    </Tap>
   );
 }
 
-type Props = { look: Look; all: boolean; onLook: (l: Look) => void; onAll: (on: boolean) => void; /** free user: Pro looks say so (they still preview) */ proLocked?: boolean };
-
-/** FILTER card: Apply-to-all checkbox, presets with swatches, 0-100% slider with its value on the right. */
-export function FilterCard({ look, all, onLook, onAll, proLocked }: Props) {
+/** PHOTOS card: scope (All photos / This photo), then Look (tiles + strength), Adjust (per photo, Auto) or Texture. */
+export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onReset, image, focus, adj, onAdj, tone }: Props) {
   const { t } = useTheme();
+  const [sub, setSub] = useState<(typeof SUBS)[number][0]>('look');
+  const [tool, setTool] = useState<AdjKey>('light');
   const pct = look.key === 'none' ? 0 : look.pct;
   const presets = useRevealActive(look.key);
-  const pick = (key: FilterKey) => onLook({ key, pct: key === 'none' ? look.pct : look.pct || 68 });
+  const pick = (key: FilterKey) => onLook({ ...look, key, pct: key === 'none' ? look.pct : look.pct || 68 });
+  const auto = tone ? autoAdjust(tone) : null;
+  const autoOn = !!auto && same(adj, auto);
+  const cur = ADJUSTS.find((a) => a.key === tool)!;
+  const link = (text: string, onPress: () => void) => (
+    <Tap onPress={onPress} accessibilityRole="button" hitSlop={8}><Text style={[ui(10.5, 600), { color: t.ink, textDecorationLine: 'underline' }]}>{text}</Text></Tap>
+  );
+  const toolBtn = (key: string, name: string, value: string, on: boolean, onPress: () => void, a11y: string) => (
+    <Tap key={key} onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} accessibilityState={{ selected: on }} style={{ width: 50, alignItems: 'center', gap: 3 }}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: on ? t.ink : t.borderStrong, backgroundColor: on ? t.ink : undefined }}>
+        <Text style={[ui(10, 700), { color: on ? t.bgScreen : t.ink }]}>{value}</Text>
+      </View>
+      <Text numberOfLines={1} style={[ui(9, on ? 700 : 500), { color: t.ink }]}>{name}</Text>
+    </Tap>
+  );
+
   return (
     <FrameCard radius={16} padding={10} style={{ marginBottom: 8 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={[label(10, 0.1), { color: t.inkMuted }]}>Filter</Text>
-        <Tap onPress={() => onAll(!all)} accessibilityRole="checkbox" accessibilityState={{ checked: all }} hitSlop={8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: t.ink, backgroundColor: all ? t.ink : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-            {all ? <Icons.check size={12} color={t.bgScreen} /> : null}
-          </View>
-          <Text style={[ui(10.5, 600), { color: t.ink }]}>Apply to all photos</Text>
-        </Tap>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 2, padding: 2, borderRadius: 14, borderWidth: 1, borderColor: t.borderStrong }}>
+          {SUBS.map(([k, name]) => (
+            <Tap key={k} onPress={() => setSub(k)} accessibilityRole="tab" accessibilityState={{ selected: sub === k }}
+              style={{ height: 24, paddingHorizontal: 10, borderRadius: 12, justifyContent: 'center', backgroundColor: sub === k ? t.ink : undefined }}>
+              <Text style={[ui(10.5, 600), { color: sub === k ? t.bgScreen : t.ink }]}>{name}</Text>
+            </Tap>
+          ))}
+        </View>
+        {photo ? (
+          <Tap onPress={onAllPhotos} accessibilityRole="button" accessibilityLabel="This photo. Tap for all photos" hitSlop={8}
+            style={{ height: 24, paddingHorizontal: 9, borderRadius: 12, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>This photo</Text>
+            <Icons.close size={10} color={t.bgScreen} />
+          </Tap>
+        ) : (
+          <Text style={[ui(10.5, 600), { color: t.ink }]}>{sub === 'adjust' ? focus : 'All photos'}</Text>
+        )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingBottom: 6 }} {...presets.scroll}>
-        {PRESETS.map((p) => (
-          <View key={p.key} onLayout={presets.item(p.key)}>
-            <Pill variant="outline" height={26} label={proLocked && isProLook(p.key) ? `${p.label} (Pro)` : p.label} on={look.key === p.key} onPress={() => pick(p.key)}
-              left={<View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.swatch, borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }} />} />
+
+      {sub === 'look' ? (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingBottom: 6, paddingTop: 2 }} {...presets.scroll}>
+            {PRESETS.map((p) => (
+              <View key={p.key} onLayout={presets.item(p.key)}>
+                <LookTile k={p.key} name={p.label} swatch={p.swatch} on={look.key === p.key} image={image} pct={look.pct} onPress={() => pick(p.key)} />
+              </View>
+            ))}
+          </ScrollView>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps('Strength')}</Text>
+            {/* dragging while on Original picks Warm 35mm (mock) */}
+            <Slider label="Filter strength" value={pct} onChange={(v) => onLook({ ...look, key: look.key === 'none' ? 'warm35' : look.key, pct: v })} />
+            <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{pct}%</Text>
           </View>
-        ))}
-      </ScrollView>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {/* dragging while on Original picks Warm 35mm (mock) */}
-        <Slider value={pct} onChange={(v) => onLook({ key: look.key === 'none' ? 'warm35' : look.key, pct: v })} />
-        <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{pct}%</Text>
+        </>
+      ) : sub === 'adjust' ? (
+        <>
+          {isDark(tone) && !(adj.light && adj.light > 0) ? (
+            <Tap onPress={() => tone && onAdj(brighten(tone, adj))} accessibilityRole="button" accessibilityLabel="Brighten, this photo looks dark"
+              style={{ alignSelf: 'flex-start', height: 26, paddingHorizontal: 10, borderRadius: 13, marginBottom: 6, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Icons.sparkle size={11} color={t.bgScreen} />
+              <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>Brighten · looks dark</Text>
+            </Tap>
+          ) : null}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 2, paddingBottom: 4 }}>
+            {toolBtn('auto', autoOn ? 'Auto ✓' : 'Auto', 'A', autoOn, () => auto && onAdj(autoOn ? {} : auto), autoOn ? 'Auto on. Tap to undo' : 'Auto')}
+            {ADJUSTS.map((a) => {
+              const v = adj[a.key] ?? 0;
+              return toolBtn(a.key, a.label, v ? signed(v) : '0', tool === a.key, () => setTool(a.key), `${a.label} ${signed(v)}`);
+            })}
+          </ScrollView>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps(cur.label)}</Text>
+            <Slider label={cur.label} min={cur.min} value={adj[tool] ?? 0} onChange={(v) => onAdj({ ...adj, [tool]: v })} />
+            <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{signed(adj[tool] ?? 0)}</Text>
+          </View>
+        </>
+      ) : (
+        TEXTURES.map((x) => (
+          <View key={x.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps(x.label)}</Text>
+            <Slider label={x.label} value={look[x.key] ?? 0} onChange={(v) => onLook({ ...look, [x.key]: v })} />
+            <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{look[x.key] ?? 0}</Text>
+          </View>
+        ))
+      )}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 4, flexWrap: 'wrap' }}>
+        {photo ? (
+          <>
+            {sub === 'adjust' ? null : link('Use on every photo', onEvery)}
+            {own ? link('Reset photo', onReset) : null}
+          </>
+        ) : (
+          <Text style={[ui(9.5, 500), { color: t.inkMuted }]}>
+            {sub === 'adjust' ? 'Adjust changes one photo. Tap another above.' : 'Tap a photo above to give it its own look.'}
+          </Text>
+        )}
       </View>
-      {!all ? <Text style={[ui(9.5, 500), { color: t.inkMuted, marginTop: 2 }]}>Changes apply to this slide only.</Text> : null}
     </FrameCard>
   );
 }
