@@ -10,7 +10,7 @@ import { chunk, fitOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
-import { exportSlides } from '../../services/slides';
+import { endSlideFits, exportSlides } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -158,7 +158,8 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [exportFor] = useState(exporter);
   useEffect(() => { exportFor(dump, hd, !isPro).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor, isPro]);
   const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: (d: Dump, h?: boolean) => exportFor(d, h, !isPro) }), [stories, exportFor, isPro]);
-  const n = slides.length;
+  // what gets saved: the end slide counts too (free exports, when it fits)
+  const n = slides.length + (!isPro && endSlideFits(slides.length) ? 1 : 0);
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
   // no Instagram / TikTok on the phone: the system share sheet (target ignored)
   const post = () => gated((s) => {

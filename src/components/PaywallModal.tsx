@@ -53,7 +53,11 @@ export function PaywallModal({ visible, onClose, onPurchased, found }: {
         toast('Welcome to PicDump Pro!');
         onPurchased?.();
         onClose();
-      } else if (res.error && res.error !== 'User cancelled') toast(res.error);
+      } else if (!res.error) {
+        // paid, but the entitlement isn't on the customer info yet (store delay, a product not mapped in RevenueCat)
+        toast('Purchase went through but Pro didn’t switch on yet. Tap Restore purchases.');
+        onPurchased?.();
+      } else if (res.error !== 'User cancelled') toast(res.error);
     } finally {
       setPurchasing(false);
     }

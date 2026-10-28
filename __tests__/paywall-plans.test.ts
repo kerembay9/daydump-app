@@ -22,3 +22,12 @@ test('rows keep the offering order and say the period', () => {
     ['Lifetime', '$49.99 once', null],
   ]);
 });
+
+test('multi-month plans say their period', () => {
+  const rows = paywallPlans([pkg('TWO_MONTH', '$6.99'), pkg('THREE_MONTH', '$9.99'), pkg('SIX_MONTH', '$17.99')]);
+  expect(rows.map((r) => [r.title, r.price])).toEqual([
+    ['2 months', '$6.99 / 2 months'],
+    ['3 months', '$9.99 / 3 months'],
+    ['6 months', '$17.99 / 6 months'],
+  ]);
+});

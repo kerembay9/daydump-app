@@ -8,8 +8,11 @@ import { Icons } from './ui/Icons';
 import { Stub } from './ui/Stub';
 import { Tap } from './ui/Tap';
 
-/** How hard a locked dump's photos blur: the scene's colours show, which photos were picked doesn't. */
-export const LOCKED_BLUR = 40;
+/**
+ * How hard a locked dump's photos blur: the scene's colours show, which photos were picked doesn't. 25 is expo-image's
+ * cap on Android (it clamps anything higher, after a 4x downsample), the platform this ships on.
+ */
+export const LOCKED_BLUR = 25;
 
 /** Lock in a locked dump's top-right corner. Place inside a positioned card. */
 export function LockBadge() {

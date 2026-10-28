@@ -4,7 +4,7 @@ import type { PurchasesPackage } from './revenuecat';
 export type PlanRow = { pkg: PurchasesPackage; id: string; title: string; price: string; trial: string | null };
 
 const TITLE: Record<string, string> = { WEEKLY: 'Weekly', MONTHLY: 'Monthly', TWO_MONTH: '2 months', THREE_MONTH: '3 months', SIX_MONTH: '6 months', ANNUAL: 'Annual', LIFETIME: 'Lifetime' };
-const PER: Record<string, string> = { WEEKLY: '/ week', MONTHLY: '/ month', ANNUAL: '/ year', LIFETIME: 'once' };
+const PER: Record<string, string> = { WEEKLY: '/ week', MONTHLY: '/ month', TWO_MONTH: '/ 2 months', THREE_MONTH: '/ 3 months', SIX_MONTH: '/ 6 months', ANNUAL: '/ year', LIFETIME: 'once' };
 const UNIT: Record<string, string> = { D: 'day', W: 'week', M: 'month', Y: 'year', DAY: 'day', WEEK: 'week', MONTH: 'month', YEAR: 'year' };
 
 const trial = (n: number, unit: string | undefined) => (!unit ? null : unit === 'week' ? `${n * 7}-day free trial` : `${n}-${unit} free trial`);

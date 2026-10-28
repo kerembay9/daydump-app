@@ -15,6 +15,15 @@ export const MATTE = '#EFE6DA';
 const EMPTY = 'rgba(74,52,40,0.15)';
 const END_INK = '#3A2A20';
 
+/** Instagram's carousel limit. */
+export const MAX_SLIDES = 20;
+
+/**
+ * Whether a free export gets the end slide: not on a dump that already fills a carousel, or Instagram would drop a
+ * photo slide (or refuse the post) to make room for it.
+ */
+export const endSlideFits = (slides: number) => slides < MAX_SLIDES;
+
 /** Free exports' last slide: "made with" over "PicDump" on the matte. Fonts are the phone's serif / sans. */
 function EndCard({ width, height }: { width: number; height: number }) {
   const u = width / UNIT;
@@ -150,7 +159,7 @@ export function previewImage(uri: string, boxW: number, boxH: number) {
 
 /**
  * Renders every slide of a dump to JPGs in the cache (1080 px wide, q0.92; 2160 px at q0.95 with High-Res), with its
- * layout, Border/Bleed and filters baked in, plus the PicDump end slide when endCard (free exports). Returns file://
+ * layout, Border/Bleed and filters baked in, plus the PicDump end slide when endCard (free exports) and it fits. Returns file://
  * uris in slide order. Each call replaces the last export.
  */
 export async function exportSlides(d: Dump, opts: { highRes?: boolean; endCard?: boolean } = {}): Promise<string[]> {
@@ -188,7 +197,7 @@ export async function exportSlides(d: Dump, opts: { highRes?: boolean; endCard?:
       write(img, i + 1);
       hold();
     }
-    if (opts.endCard) {
+    if (opts.endCard && endSlideFits(slides.length)) {
       const img = await drawAsImage(<EndCard width={width} height={height} />, { width, height });
       if (!img) throw new Error('end slide did not render');
       write(img, slides.length + 1);

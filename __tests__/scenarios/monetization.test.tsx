@@ -99,6 +99,9 @@ test('free exports end with the PicDump slide; Pro exports do not', async () => 
   await fireEvent.press(await screen.findByText('Use free unlock'));
   // 6 photo slides + the end slide, rendered ahead in the background
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(7));
+  // the counts say 7 too: no "6 slides" then "7 slides saved"
+  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('A carousel of 7 slides')).toBeTruthy();
   screen.unmount();
 
   // the same dump for a Pro user: the 6 photo slides only
@@ -109,6 +112,8 @@ test('free exports end with the PicDump slide; Pro exports do not', async () => 
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(6));
   await settle(3000);
   expect(draw).toHaveBeenCalledTimes(6);
+  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  expect(await screen.findByText('A carousel of 6 slides')).toBeTruthy();
 }, 30000);
 
 test('free: saving a dump with a Pro film look asks first; "Export without finish" saves it anyway', async () => {

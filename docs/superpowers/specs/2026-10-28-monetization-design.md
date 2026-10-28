@@ -46,12 +46,12 @@ Premium film looks are every look except Original and Warm 35mm. Borders and lay
 - `canUnlock(now)`: `lastAt` is null or `now - lastAt >= 7 days` (rolling, not calendar). Unused unlocks do not bank.
 - `unlock(story, now)`: requires `canUnlock`; adds the story id and its `[start, end]`, and sets `lastAt = now`. Unlocking also makes the story's Library draft (`draftForStory`). A story already unlocked costs nothing.
 - Matching (`unlockedAs`): story ids carry the earliest photo's time, so indexing, a settings change or a deleted photo can re-id the same story. A story is unlocked if its id is in `ids`, or an unlocked id has the same series (the id without its last `:segment`, e.g. `trip:Seattle`, `topic:7`) and a span that overlaps the story's; a second Seattle trip months later stays locked. Preview and Edit open the matched (older) id's draft, not a second one.
-- The snapshot is that Library draft. Preview and Edit prefer a draft over the story's current picks, so the dump keeps its picks even if a re-index changes them. No photo ids are kept in the unlock state. Swaps inside an unlocked dump draw only from that story's own photos.
+- The snapshot is that Library draft. Preview and Edit prefer a draft over the story's current picks, so the dump keeps its picks even if a re-index changes them. No photo ids are kept in the unlock state. Swaps inside an unlocked dump draw only from that story's own photos: for free users Edit passes the story's photo ids as the pool to `suggestSwaps`, so "Swap for a similar photo" and the add sheet's "Similar photos" never rank the rest of the library. A free dump with no story (Create basket, shared-in photos) has no swap action and the add sheet says similar photos are Pro. A draft made under an older unlocked id finds its story through `unlockedIdOf`.
 - Local only. Clearing app data resets it; accepted, since that also wipes the index. No server: "nothing leaves the phone" stays true.
 
 ## Paywall moments
 
-1. **First full Discover**: the first time the index has finished and Discover shows at least one locked dump, one dismissible paywall: "We found N dumps in your roll" with their titles. Remembered with `@picdump_first_paywall_shown`; never shown again automatically.
+1. **First full Discover**: the first time the index has finished and Discover shows at least one locked dump, one dismissible paywall: "We found N dumps in your roll" with their titles. Remembered with `@picdump_first_paywall_shown`; never shown again automatically. It waits until Discover is the focused screen (not under onboarding, Edit, Create or a Post) and RevenueCat has answered this session, so a subscriber on a slow cold start never sees it.
 2. **Tap a locked dump**: `UnlockSheet`. With an unlock available: "Use free unlock" (primary) and "Unlock all with Pro". Without one: "Next free unlock in N days" and "Unlock all with Pro".
 3. **Search in Create** when not Pro: tapping the field opens the paywall.
 4. **Export with a premium film look** when not Pro: a sheet with "Get Pro" or "Export without finish". Pro looks preview freely in Edit.
@@ -76,18 +76,19 @@ New:
 
 - `src/services/unlocks.ts`: weekly unlock state and rules above. Pure functions over a state object plus a thin AsyncStorage load/save.
 - `src/services/access.ts`: the `access()` rule. No dependencies.
-- `src/state/Pro.tsx`: `ProProvider` and `usePro()` give `isPro`, the unlocks, `accessOf(story)`, `askUnlock(story)` and `openPaywall(source)`. It is fed by `RevenueCatService`'s customer-info listener and the dev fake subscription. It is a separate provider, not part of `AppState`, which re-renders on every indexing batch. One `PaywallModal` is mounted there at the root; screens call `openPaywall` instead of mounting their own.
+- `src/state/Pro.tsx`: `ProProvider` and `usePro()` give `isPro`, `known` / `checked` (see Errors), the unlocks, `accessOf(story)`, `unlockedIdOf(story)`, `askUnlock(story)` and `openPaywall(source)`. It is fed by `RevenueCatService`'s customer-info listener and the dev fake subscription. It is a separate provider, not part of `AppState`, which re-renders on every indexing batch. One `PaywallModal` is mounted there at the root; screens call `openPaywall` instead of mounting their own.
 - `UnlockSheet`, also in `Pro.tsx`.
 - `src/services/paywallPlans.ts`: turns the current offering into the paywall's plans.
-- Locked dumps are the existing Discover `Tile` / `Hero` with a `locked` prop: expo-image `blurRadius` (strong enough that picks cannot be identified) and a lock badge. There is no separate `LockedDumpCard`. `LockedStub` guards Preview and Edit for locked story ids.
+- Locked dumps are the existing Discover `Tile` / `Hero` with a `locked` prop: expo-image `blurRadius` 25 (its Android cap; strong enough that picks cannot be identified) and a lock badge. There is no separate `LockedDumpCard`. `LockedStub` guards Preview and Edit for locked story ids.
 
 Changed:
 
-- Discover (`src/app/(tabs)/index.tsx`): renders `LockedDumpCard` for locked stories, opens unlocked ones with snapshot picks, triggers the first-full-Discover paywall.
+- Discover (`src/app/(tabs)/index.tsx`): blurs and badges locked stories (`Tile` / `Hero` `locked`), opens unlocked ones with snapshot picks, triggers the first-full-Discover paywall.
+- Preview's "IG Profile Grid" mock: covers come only from open stories (a locked story's cover is one of its picks).
 - Search (Create): gated, opens the paywall for free users.
 - Profile photos per dump: Pro only.
 - Film looks / export: premium look check; free export with a premium look asks first.
-- `src/services/slides.tsx`: appends a "made with PicDump" end slide (Skia `matchFont` + `Text`) to exports when not Pro. Free users cannot remove it.
+- `src/services/slides.tsx`: appends a "made with PicDump" end slide (Skia `matchFont` + `Text`) to exports when not Pro. Free users cannot remove it. Not added when the dump already has 20 slides (Instagram's carousel limit). Preview's "Saving N slides" and the Post sheet count it.
 - `PaywallModal`: offering-driven prices and trial text (no hardcoded fallbacks); feature list rewritten to the Pro column above; `source` prop, also set as a RevenueCat subscriber attribute `paywall_source` (no photo data).
 - Profile: uses `isPro` from `usePro()`; Pro card copy matches the Pro column.
 
@@ -98,7 +99,10 @@ Removed:
 
 ## Errors and edge cases
 
-- **Offline / RevenueCat unreachable**: the SDK's cached customer info decides. Never known → free. Recap and unlocked dumps keep working.
+- **Pro is three-state**: unknown, free or Pro. `getSubscription()` returns a `Sub` (Pro), `null` (no entitlement) or `undefined` (RevenueCat couldn't tell: an SDK error with no cached customer info, and no dev fake sub).
+- **Cache**: every definite answer is saved to `@picdump_pro_known` as `{ sub: Sub | null }`, and `ProProvider` starts from it: the app renders nothing until that read is done, so a subscriber's first frame is Pro (no locked tiles, paywalls on Search or the steppers, finish sheet or end slide while RevenueCat answers). A cancelled cached sub past its `until` loads as free. A new install has no cache and starts free, so a free user's picks never flash.
+- **Offline / RevenueCat unreachable**: the SDK's cached customer info decides; when it can't (`undefined`), the last known state stays. Never known → free. Recap and unlocked dumps keep working. `usePro().known` is true once RevenueCat answered this session or the cache had an answer; `checked` only once RevenueCat answered this session (the first-Discover paywall waits for it).
+- **Purchase without entitlement** (paid, but the customer info has no Pro yet): the paywall says so and points at Restore purchases.
 - **Pending purchase or grace period**: entitlement stays active during Play grace period. Turn on grace period and account hold in Play Console.
 - **Pro lapses**: Library drafts stay viewable and exportable (with the end slide); dumps that were never unlocked lock again. The photos-per-dump range they last set stays.
 - **Re-index**: unlocked snapshots are unaffected; a story whose id disappears simply no longer shows in Discover, its Library draft (if any) remains.
@@ -112,6 +116,6 @@ Removed:
 
 ## Testing
 
-- Jest: `unlocks.ts` (rolling window boundary, no banking, refuses second unlock), `access.ts` (rule order, `today` always open, kill switch), and app scenarios for the locked Discover, unlock sheet, first paywall, search, photos per dump and export.
+- Jest: `unlocks.ts` (rolling window boundary, no banking, refuses second unlock), `access.ts` (rule order, `today` always open; `PAYWALLS_ENABLED` is applied in `Pro.tsx`, not covered there), `paywallPlans.ts` (periods, trials), and app scenarios for the locked Discover, unlock sheet, first paywall (once, not before RevenueCat answers, not while Discover is off screen), search, photos per dump, export (end slide for free only, the stripped look on "Export without finish"), a slow or failing RevenueCat with a cached Pro answer, and Edit's swap pool.
 - Developer tools (debug only): existing Fake Pro switch, plus "Free unlock (reset)", "Pretend 7 days passed" and "Onboarding every launch".
 - Manual: Play internal track with license testers: buy weekly, start annual trial, cancel, restore, lapse.
