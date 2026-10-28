@@ -1,6 +1,7 @@
 import type { TidyFace, TidyStats } from '../../../modules/clip-embedder';
 import { isCameraPhoto, isScreenshot } from '../galleryService';
 import { isSensitive, photoWorth, tagGroup } from '../stories/curate';
+import { DIM } from '../index/vectors';
 
 /** One photo as Tidy sees it: the unpruned listing, plus its CLIP tags and pixel checks. */
 export type TPhoto = {
@@ -16,6 +17,12 @@ export type TPhoto = {
   sharp?: number;
   /** same-shot set number (-1 none) and exact-copy group key ('' none) */
   set: number; copy: string;
+  /** its row in TidyResult.vecs (zero row = no vector) */
+  vi: number;
+  /** the owner's face is in it (SFace match against the profile photo); undefined = not checked */
+  me?: boolean;
+  /** CLIP leans "a whiteboard" / "a printed page" over "a photo"; "a meme" over "a photo" (needs the text pack) */
+  doc?: boolean; meme?: boolean;
 };
 
 export type Pile = 'same' | 'copies' | 'screens' | 'blurry' | 'paper' | 'chats' | 'private';
@@ -34,7 +41,7 @@ export const PILES: Record<Pile, { title: string; blurb: string }> = {
 /** A photo in a pile: pre = picked for Trash; lock = why it never is (it still can be, after a "Trash anyway?"). */
 export type Item = { p: TPhoto; pre: boolean; lock: string | null; note?: string };
 export type ShotSet = { photos: TPhoto[]; keeper: number; reason: string };
-export type TidyResult = { photos: TPhoto[]; piles: Record<Pile, Item[]>; sets: ShotSet[] };
+export type TidyResult = { photos: TPhoto[]; piles: Record<Pile, Item[]>; sets: ShotSet[]; vecs: Float32Array };
 
 const DAY = 86400000;
 // ponytail: cutoffs picked by eye, not calibrated; Blurry is review-only until ~50 labelled photos tune them
@@ -44,10 +51,11 @@ export const SOFT_LAP = 40;
 /** ... and of the 720 px decode under which it is blurry */
 const BLUR_LAP = 15;
 
-/** Why a photo is never pre-selected, or null. inDump: photo ids in saved dumps and drafts. */
-export function lockOf(p: TPhoto, inDump: Set<string>, now = Date.now()): string | null {
+/** Why a photo is never pre-selected, or null. keep: ids in saved dumps and drafts ('In a dump') or Discover's stories. */
+export function lockOf(p: TPhoto, keep: Map<string, string>, now = Date.now()): string | null {
   if (p.fav) return 'Favorite';
-  if (inDump.has(p.id)) return 'In a dump';
+  if (keep.has(p.id)) return keep.get(p.id)!;
+  if (p.me) return 'You’re in it';
   if (now - p.created < 2 * DAY) return 'Taken in the last 2 days';
   if (p.concepts.length && photoWorth(asIndexed(p)) >= 0.7) return 'Looks like a moment';
   return null;
@@ -71,13 +79,16 @@ function claim(p: TPhoto, shotTag: number, copyKeeper: Set<string>, setKeeper: S
   if (isBlack(p.stats)) return { pile: 'blurry', pre: true, note: 'Black frame' };
   if (p.sharp != null && p.sharp < BLUR_LAP) return { pile: 'blurry', pre: false };
   const g = top3(p);
-  if (g.includes('paper')) return { pile: 'paper', pre: false };
-  if (!isCameraPhoto(p.uri) && g.includes('screens')) return { pile: 'chats', pre: false };
+  // the top tag, or a top-3 one CLIP's document phrases back up: "paper" or "screens" as a lower tag alone caught signs, menus and sent photos.
+  // Paper is what you photographed; text images you were sent or saved (tweets, articles, scans) and memes are Saved from chats, never a photo you're in
+  const textish = (k: string) => g[0] === k || (!!p.doc && g.includes(k));
+  if (isCameraPhoto(p.uri)) return textish('paper') ? { pile: 'paper', pre: false } : null;
+  if (!p.me && (textish('screens') || textish('paper') || p.meme)) return { pile: 'chats', pre: false };
   return null;
 }
 
-/** Piles and sets from scanned photos (time order). shotTag: the "a screenshot" vocab id (-1 none). */
-export function buildResult(photos: TPhoto[], inDump: Set<string>, shotTag: number): TidyResult {
+/** Piles and sets from scanned photos (time order). keep: lockOf's; shotTag: the "a screenshot" vocab id (-1 none). */
+export function buildResult(photos: TPhoto[], vecs: Float32Array, keep: Map<string, string>, shotTag: number): TidyResult {
   const groups = (key: (p: TPhoto) => number | string, none: number | string) => {
     const m = new Map<number | string, TPhoto[]>();
     for (const p of photos) if (key(p) !== none) m.set(key(p), [...(m.get(key(p)) ?? []), p]);
@@ -92,15 +103,18 @@ export function buildResult(photos: TPhoto[], inDump: Set<string>, shotTag: numb
     if (p.set >= 0 && !sets.some((s) => s.photos.includes(p))) p.set = -1; // its set lost the others
     const c = claim(p, shotTag, copyKeeper, setKeeper);
     if (!c) continue;
-    const lock = c.pile === 'private' ? null : lockOf(p, inDump);
+    const lock = c.pile === 'private' ? null : lockOf(p, keep);
     piles[c.pile].push({ p, pre: c.pre && !lock, lock, note: c.note });
   }
-  return { photos, piles, sets };
+  return { photos, piles, sets, vecs };
 }
 
 export type Check = { ok: boolean; text: string };
 /** What Shot check can't see: there's no face-expression model on the phone. */
 export const NOT_CHECKED = 'Not checked: eyes, smile (needs a face-expression model)';
+
+/** Degrees off level that read as a tilted horizon. ponytail: by eye */
+const TILT = 1.5;
 
 const mainFace = (f?: TidyFace[]) => f?.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0];
 
@@ -117,6 +131,10 @@ export function shotCheck(p: TPhoto, peers?: TPhoto[]): Check[] {
     out.push(sharpOf(p) >= 0.7 * best ? { ok: true, text: 'Sharp' } : { ok: false, text: 'Less sharp' });
     out.push(p.w * p.h >= 0.8 * Math.max(...peers.map((q) => q.w * q.h)) ? { ok: true, text: 'Full resolution' } : { ok: false, text: 'Lower resolution' });
   } else if (p.sharp != null) out.push(p.sharp >= BLUR_LAP ? { ok: true, text: 'Sharp' } : { ok: false, text: 'Blurry' });
+  // within a set you're in every take or in none, so this only shows when some take has you and this one doesn't
+  if (p.me) out.push({ ok: true, text: 'You’re in it' });
+  else if (peers?.some((q) => q.me)) out.push({ ok: false, text: 'You’re not in it' });
+  if (s.tilt != null) out.push(Math.abs(s.tilt) >= TILT ? { ok: false, text: 'Tilted' } : { ok: true, text: 'Level' });
   out.push(s.hi > 0.25 ? { ok: false, text: 'Too bright' } : s.lo > 0.4 || s.b < 30 ? { ok: false, text: 'Too dark' } : { ok: true, text: 'Well lit' });
   out.push(s.finger ? { ok: false, text: 'Finger in the corner' } : { ok: true, text: 'Nothing in the way' });
   const f = s.faces;
@@ -134,7 +152,7 @@ const sharpOf = (p: TPhoto) => { const s = p.fs ?? p.stats; return mainFace(s?.f
 
 /**
  * The keeper: the best moment, measured: sharpness and resolution within the set, CLIP's in-focus score, how big and clear
- * the faces are, photo-worth, minus every failed Shot check. Never how good anyone looks.
+ * the faces are, photo-worth, whether you're in it, minus every failed Shot check. Never how good anyone looks.
  * ponytail: weights by eye; tune on labelled sets.
  */
 export function rankSet(photos: TPhoto[]): ShotSet {
@@ -148,11 +166,27 @@ export function rankSet(photos: TPhoto[]): ShotSet {
   }));
   const score = photos.map((p, i) => {
     const t = terms[i];
-    return 0.35 * t.sharp + 0.15 * t.q + 0.15 * t.face + 0.1 * t.res + 0.1 * t.worth - 0.12 * shotCheck(p, photos).filter((c) => !c.ok).length;
+    return 0.35 * t.sharp + 0.15 * t.q + 0.15 * t.face + 0.1 * t.res + 0.1 * t.worth + (p.me ? 0.15 : 0) - 0.12 * shotCheck(p, photos).filter((c) => !c.ok).length;
   });
   const keeper = score.indexOf(Math.max(...score));
   const k = terms[keeper];
-  const reason = k.sharp === 1 ? 'the sharpest one' : k.face === 1 && face(photos[keeper]) > 0 ? 'the one with the clearest faces'
+  const reason = photos[keeper].me && !photos.every((p) => p.me) ? 'the one you’re in' : k.sharp === 1 ? 'the sharpest one' : k.face === 1 && face(photos[keeper]) > 0 ? 'the one with the clearest faces'
     : k.res === 1 ? 'the full-resolution one' : 'the one with the fewest misses';
   return { photos, keeper, reason };
 }
+
+/** The take least like the keeper (lowest CLIP cosine): "Keep the outtake too" spares it. */
+export function outtake(set: ShotSet, keep: number, vecs: Float32Array): TPhoto | null {
+  const k = set.photos[keep];
+  let best: TPhoto | null = null, lo = Infinity;
+  for (const p of set.photos) {
+    if (p === k) continue;
+    let d = 0;
+    for (let i = 0; i < DIM; i++) d += vecs[k.vi * DIM + i] * vecs[p.vi * DIM + i];
+    if (d < lo) { lo = d; best = p; }
+  }
+  return best;
+}
+
+/** "2025-03": the month strip's key. */
+export const monthOf = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };

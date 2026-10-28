@@ -9,7 +9,7 @@ import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Tap } from '../../components/ui/Tap';
 import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
-import { Pile, PILES, shotCheck } from '../../services/tidy/rules';
+import { monthOf, Pile, PILES, shotCheck } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -20,17 +20,17 @@ const REVIEW: Pile[] = ['copies', 'screens', 'blurry', 'paper', 'chats', 'privat
 export default function PileScreen() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const param = useLocalSearchParams<{ pile: string }>().pile;
+  const { pile: param, month } = useLocalSearchParams<{ pile: string; month?: string }>();
   const pile = REVIEW.includes(param as Pile) ? (param as Pile) : null;
   const { result } = useTidy();
-  const items = useMemo(() => (pile && result?.piles[pile]) || [], [pile, result]);
+  const items = useMemo(() => ((pile && result?.piles[pile]) || []).filter((x) => !month || monthOf(x.p.created) === month), [pile, result, month]);
   const [sel, setSel] = useState(() => new Set(items.filter((x) => x.pre).map((x) => x.p.id)));
   const [ask, setAsk] = useState<ConfirmSpec | null>(null);
   const [view, setView] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const grid = useMemo(() => items.map((x) => ({ p: x.p, badge: x.lock ?? x.note, chip: missChip(shotCheck(x.p)) })), [items]);
+  const grid = useMemo(() => items.map((x) => ({ p: x.p, badge: x.lock ?? x.note, chip: pile === 'blurry' ? missChip(shotCheck(x.p)) : undefined })), [items, pile]);
   const photos = useMemo(() => items.map((x) => x.p), [items]);
   const lockOf = useMemo(() => new Map(items.map((x) => [x.p.id, x.lock])), [items]);
   const picked = items.filter((x) => sel.has(x.p.id));

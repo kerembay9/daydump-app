@@ -1,6 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusScrim } from '../../components/ui/Screen';
 import { IconButton } from '../../components/ui/TopHeader';
@@ -12,7 +15,7 @@ import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Tap } from '../../components/ui/Tap';
 import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
-import { shotCheck, ShotSet, TPhoto } from '../../services/tidy/rules';
+import { monthOf, outtake, shotCheck, ShotSet, TPhoto } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -28,8 +31,10 @@ export default function SetsScreen() {
   const insets = useSafeAreaInsets();
   const W = useWindowDimensions().width - 32;
   const { result } = useTidy();
+  const month = useLocalSearchParams<{ month?: string }>().month;
   // a snapshot: decisions are by set index, so a rescan mid-review mustn't reshuffle them
-  const [sets] = useState<ShotSet[]>(() => result?.sets ?? []);
+  const [sets] = useState<ShotSet[]>(() => (result?.sets ?? []).filter((st) => !month || monthOf(st.photos[st.keeper].created) === month));
+  const [vecs] = useState(() => result?.vecs ?? new Float32Array(0));
   const [lockOf] = useState(() => new Map((result?.piles.same ?? []).map((x) => [x.p.id, x.lock])));
   const fresh = (i: number) => {
     const s = sets[i];
@@ -54,7 +59,12 @@ export default function SetsScreen() {
   const advance = (m?: Marked) => {
     if (m?.remove.length) setMarked((x) => [...x, m]);
     setAt(at + 1); setCur(fresh(at + 1)); setMsg(null);
+    dx.value = 0;
   };
+  function swiped(left: boolean) {
+    if (left && set && keeper) advance({ keeper, remove: set.photos.filter((p, j) => j !== cur.keep && cur.sel.has(p.id)) });
+    else advance();
+  }
   // tap a take: it's the keeper now; the old keeper goes to Trash with the rest (unless it's locked)
   const makeKeeper = useCallback((id: string) => {
     if (!set) return;
@@ -71,6 +81,19 @@ export default function SetsScreen() {
     const lock = lockOf.get(id);
     if (remove && lock) setAsk(lockConfirm(lock, apply)); else apply();
   };
+  // swipe the keeper: left = done with this set (the marked takes go), right = skip it; Reduce Motion keeps the buttons only
+  const still = useReducedMotion();
+  const dx = useSharedValue(0);
+  const W2 = W + 32;
+  const swipe = Gesture.Pan().withTestId('keeper-swipe').enabled(!still && !busy).activeOffsetX([-18, 18]).failOffsetY([-14, 14])
+    .onUpdate((e) => { dx.value = e.translationX; })
+    .onEnd((e) => {
+      const go = Math.abs(e.translationX) > W2 * 0.3 || Math.abs(e.velocityX) > 900;
+      if (!go) { dx.value = withTiming(0, { duration: 160 }); return; }
+      const left = e.translationX < 0;
+      dx.value = withTiming(left ? -W2 : W2, { duration: 160 }, () => { scheduleOnRN(swiped, left); });
+    });
+  const lift = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }, { rotate: `${dx.value / 40}deg` }], opacity: 1 - Math.min(0.5, Math.abs(dx.value) / W2) }));
   const openTake = useCallback((i: number) => set && setView(set.photos.findIndex((p) => p.id === others[i].id)), [set, others]);
 
   const move = () => setAsk(moveConfirm(total, totalBytes, async () => {
@@ -119,6 +142,7 @@ export default function SetsScreen() {
   }
 
   const picked = cur.keep !== set.keeper;
+  const out = set.photos.length > 2 ? outtake(set, cur.keep, vecs) : null;
   const h = Math.round(W * Math.min(1.25, Math.max(0.6, keeper.h / Math.max(1, keeper.w))));
   const bytes = removing.reduce((a, p) => a + p.size, 0);
   const header = (
@@ -127,12 +151,16 @@ export default function SetsScreen() {
       <Text style={[ui(12.5), { color: t.inkMuted, lineHeight: 18 }]}>
         {set.photos.length} takes of the same shot. Kept {picked ? 'your pick' : set.reason}.
       </Text>
-      <Tap onLongPress={() => setView(cur.keep)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={picked ? 'Your pick' : 'Keeper'} accessibilityHint="Hold to enlarge">
-        <Print uri={keeper.uri} w={W} h={h} r={14} date={keeper.created} />
-        <View style={{ position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: t.ink }}>
-          <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{picked ? 'Your pick' : 'Keeper'}</Text>
-        </View>
-      </Tap>
+      <GestureDetector gesture={swipe}>
+        <Animated.View style={lift}>
+          <Tap onLongPress={() => setView(cur.keep)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={picked ? 'Your pick' : 'Keeper'} accessibilityHint="Hold to enlarge">
+            <Print uri={keeper.uri} w={W} h={h} r={14} date={keeper.created} />
+            <View style={{ position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: t.ink }}>
+              <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{picked ? 'Your pick' : 'Keeper'}</Text>
+            </View>
+          </Tap>
+        </Animated.View>
+      </GestureDetector>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         {shotCheck(keeper, set.photos).map((c) => (
           <View key={c.text} style={{ paddingHorizontal: 8, height: 22, borderRadius: 11, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: c.ok ? t.borderSubtle : t.borderStrong, backgroundColor: c.ok ? t.bgCard : 'transparent' }}>
@@ -141,7 +169,14 @@ export default function SetsScreen() {
           </View>
         ))}
       </View>
-      <Text style={[ui(11), { color: t.inkMuted }]}>Tap a take to keep it instead. Hold to look closer.</Text>
+      <Text style={[ui(11), { color: t.inkMuted, lineHeight: 16 }]}>
+        Tap a take to keep it instead. Hold to look closer.{still ? '' : ' Swipe the keeper left when you’re done, right to skip.'}
+      </Text>
+      {out && cur.sel.has(out.id) ? (
+        <Tap onPress={() => mark(out.id, false)} accessibilityRole="button" accessibilityLabel="Keep the outtake too" hitSlop={6} style={{ alignSelf: 'flex-start' }}>
+          <Text style={[ui(12, 600), { color: t.ink, textDecorationLine: 'underline' }]}>Keep the outtake too</Text>
+        </Tap>
+      ) : null}
     </View>
   );
   const footer = (

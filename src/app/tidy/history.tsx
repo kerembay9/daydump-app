@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { FrameCard } from '../../components/ui/FrameCard';
@@ -14,6 +15,8 @@ import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 const when = (ms: number) => (new Date(ms).toDateString() === new Date().toDateString() ? 'Today' : day(ms));
+/** A trashed photo by MediaStore id (its file:// path changes while it's in Trash). */
+const thumb = (id: string) => `content://media/external/images/media/${id}`;
 const photos = (n: number) => `${n} photo${n === 1 ? '' : 's'}`;
 
 /** Every move to Trash, newest first, each restorable (Android's Restore dialog) until it leaves Trash. */
@@ -25,11 +28,11 @@ export default function TrashHistory() {
   const load = useCallback(() => history().then(setList).catch((e) => { console.warn('[tidy] history failed:', e); setList([]); }), []);
   useEffect(() => { load(); }, [load]);
 
-  const onRestore = async (s: Session) => {
+  const onRestore = async (s: Session, only?: string[]) => {
     if (busy != null) return;
     setBusy(s.session); setFailed(null);
     try {
-      if (!(await restore(s.session))) setFailed(s.session);
+      if (!(await restore(s.session, only))) setFailed(s.session);
     } catch (e) { console.warn('[tidy] restore failed:', e); setFailed(s.session); }
     setBusy(null);
     await load();
@@ -60,6 +63,19 @@ export default function TrashHistory() {
             )}
           </View>
           <Text style={[ui(11.5, 500), { color: t.inkMuted, marginTop: 8 }]}>{s.inTrash > 0 && s.until ? `In Trash until ${day(s.until)}` : 'Gone from Trash'}</Text>
+          {s.trashed.length > 1 ? (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginHorizontal: -14 }} contentContainerStyle={{ paddingHorizontal: 14, gap: 6 }}>
+                {s.trashed.map((id, i) => (
+                  <Tap key={id} onPress={() => onRestore(s, [id])} disabled={busy != null} accessibilityRole="button" accessibilityLabel={`Restore photo ${i + 1}`}
+                    style={{ width: 56, height: 56, borderRadius: 8, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+                    <Image source={{ uri: thumb(id) }} style={{ flex: 1 }} contentFit="cover" recyclingKey={id} />
+                  </Tap>
+                ))}
+              </ScrollView>
+              <Text style={[ui(11), { color: t.inkMuted, marginTop: 6 }]}>Tap a photo to restore just that one.</Text>
+            </>
+          ) : null}
           {failed === s.session && <Text style={[ui(11.5, 600), { color: t.ink, marginTop: 4 }]}>Nothing was restored.</Text>}
         </FrameCard>
       ))}

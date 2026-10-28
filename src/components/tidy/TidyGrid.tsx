@@ -26,6 +26,8 @@ const LOCK_ASK: Record<string, string> = {
   'In a dump': 'This one’s in a dump.',
   'Taken in the last 2 days': 'This one’s from the last 2 days.',
   'Looks like a moment': 'This one looks like a moment.',
+  'In a Discover story': 'This one’s in a Discover story.',
+  'You’re in it': 'You’re in this one.',
 };
 /** "Trash anyway?" for a locked photo (lockOf's reasons). */
 export const lockConfirm = (lock: string, onConfirm: () => void): ConfirmSpec => ({

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Linking, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -10,15 +10,21 @@ import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Tape } from '../../components/ui/Tape';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
-import { useProgress } from '../../state/AppState';
+import { useApp, useProgress } from '../../state/AppState';
+import { Pill } from '../../components/ui/Pill';
 import { GalleryService } from '../../services/galleryService';
 import { currentCreateDraft, receiveShared } from '../../services/dumps';
-import { Pile, PILES } from '../../services/tidy/rules';
+import { monthOf, Pile, PILES } from '../../services/tidy/rules';
 import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
-import { clearMoved, hasFullAccess, history, restore, scannedBefore, Session, startScan, tidySupported, useTidy } from '../../services/tidy/scan';
+import { clearMoved, hasFullAccess, history, restore, scannedBefore, Session, setStoryPhotos, startScan, tidySupported, useTidy } from '../../services/tidy/scan';
 
 const SHOWN: Pile[] = ['same', 'copies', 'screens', 'blurry', 'paper', 'chats', 'private'];
 const REVIEW_ONLY = new Set<Pile>(['paper', 'chats']);
+
+const monthLabel = (k: string) => {
+  const [y, m] = k.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', y === new Date().getFullYear() ? { month: 'short' } : { month: 'short', year: 'numeric' });
+};
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 const n = (x: number) => x.toLocaleString('en-US');
@@ -58,6 +64,9 @@ export default function Tidy() {
   const [access, setAccess] = useState<boolean | null>(null);
   const [last, setLast] = useState<Session | null>(null);
   const supported = tidySupported();
+  const { stories } = useApp();
+  useEffect(() => setStoryPhotos(stories.flatMap((st) => st.picks.map((p) => p.id))), [stories]);
+  const [pickedMonth, setMonth] = useState<string | null>(null);
 
   const loadLast = useCallback(() => {
     if (supported) history().then((h) => setLast(h[0] ?? null), (e) => console.warn('[tidy] history failed:', e));
@@ -88,7 +97,16 @@ export default function Tidy() {
   useEffect(() => { if (s.moved?.keepers.length) currentCreateDraft().then((d) => setDraft(!!d?.photos.length)); }, [s.moved]);
 
   const r = s.result;
-  const picked = r ? SHOWN.flatMap((k) => r.piles[k].filter((x) => x.pre)) : [];
+  // months with something in a pile, newest first; done = nothing left picked in it
+  const months = useMemo(() => {
+    const m = new Map<string, number>();
+    if (r) for (const k of SHOWN) for (const x of r.piles[k]) m.set(monthOf(x.p.created), (m.get(monthOf(x.p.created)) ?? 0) + (x.pre ? 1 : 0));
+    return [...m.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  }, [r]);
+  // a month a rescan emptied reads as All months
+  const month = pickedMonth && months.some(([k]) => k === pickedMonth) ? pickedMonth : null;
+  const inMonth = useCallback((ms: number) => !month || monthOf(ms) === month, [month]);
+  const picked = r ? SHOWN.flatMap((k) => r.piles[k].filter((x) => x.pre && inMonth(x.p.created))) : [];
   const header = <TopHeader title="Tidy" right={supported && access ? <IconButton label="Trash history" onPress={() => router.push('/tidy/history')}><Icons.clock size={17} /></IconButton> : null} />;
 
   if (!supported) return (
@@ -160,17 +178,27 @@ export default function Tidy() {
               </Text>
             ) : null}
           </FrameCard>
+          {months.length > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}>
+              <Pill label="All months" on={!month} onPress={() => setMonth(null)} height={30} size={11.5} />
+              {months.map(([k, left]) => (
+                <Pill key={k} label={left ? `${monthLabel(k)} · ${n(left)}` : monthLabel(k)} on={month === k} onPress={() => setMonth(month === k ? null : k)} height={30} size={11.5}
+                  left={left ? undefined : <Icons.check size={12} color={month === k ? t.bgScreen : t.ink} />} />
+              ))}
+            </ScrollView>
+          ) : null}
           <View style={{ gap: 8, marginTop: 12 }}>
             {SHOWN.map((k) => {
-              const items = r.piles[k];
+              const items = r.piles[k].filter((x) => inMonth(x.p.created));
               if (!items.length) return null;
+              const sets = r.sets.filter((st) => inMonth(st.photos[st.keeper].created)).length;
               const mb = bytes(items.filter((x) => k === 'same' ? x.pre : true).reduce((a, x) => a + x.p.size, 0));
-              const line = k === 'same' ? `${n(r.sets.length)} set${r.sets.length === 1 ? '' : 's'} · ${n(items.length)} photos · ${mb}`
+              const line = k === 'same' ? `${n(sets)} set${sets === 1 ? '' : 's'} · ${n(items.length)} photos · ${mb}`
                 : k === 'private' ? `${n(items.length)} · Check these yourself.`
                 : `${n(items.length)} · ${mb}${REVIEW_ONLY.has(k) ? ' · review only' : ''}`;
               return (
                 <Tap key={k} accessibilityRole="button" accessibilityLabel={`${PILES[k].title}, ${line}`}
-                  onPress={() => (k === 'same' ? router.push('/tidy/sets') : router.push({ pathname: '/tidy/[pile]', params: { pile: k } }))}
+                  onPress={() => (k === 'same' ? router.push({ pathname: '/tidy/sets', params: month ? { month } : {} }) : router.push({ pathname: '/tidy/[pile]', params: { pile: k, ...(month ? { month } : {}) } }))}
                   style={{ backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, borderRadius: 16, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <PhotoStack kind="row" uris={items.slice(0, 3).map((x) => x.p.uri)} />
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -182,6 +210,7 @@ export default function Tidy() {
               );
             })}
           </View>
+          <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: 10 }]}>Videos: coming later</Text>
           <Tap onPress={startScan} accessibilityRole="button" style={{ alignSelf: 'center', padding: 10 }}>
             <Text style={[ui(11, 600), { color: t.inkMuted }]}>Scan again</Text>
           </Tap>

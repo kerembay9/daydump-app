@@ -69,7 +69,35 @@ test('Tidy: Trash history restores a move', async () => {
   await fireEvent.press(screen.getByRole('button', { name: 'Trash history' }));
   expect(await screen.findByText(/^Today · 2 photos/)).toBeTruthy();
   expect(screen.getByText(/In Trash until/)).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: /Restore/ }));
+  // one photo first, then the rest of the move
+  await fireEvent.press(screen.getByRole('button', { name: 'Restore photo 1' }));
+  await settle();
+  expect(takes.filter((p) => byId(p.id))).toHaveLength(2);
+  await fireEvent.press(await screen.findByRole('button', { name: 'Restore 1 photo' }));
   await settle();
   expect(takes.every((p) => byId(p.id))).toBe(true);
+}, 60000);
+
+test('Tidy: the month strip narrows the piles; a tilted take says so; Keep the outtake too keeps the most different take', async () => {
+  const june = burst(new Date(2025, 5, 1, 12), 3, [22]);
+  const aug = burst(new Date(2025, 7, 1, 12), 3, [22]);
+  seedWorld([...defaultLibrary(), ...june, ...aug]);
+  // in August take 1 is the sharpest, take 2 is 5° off level
+  aug.forEach((p, i) => (world.tidy.stats[p.id] = { b: 120, sd: 50, lap: i === 0 ? 400 : 300, hi: 0.01, lo: 0.01, finger: false, faces: [], tilt: i === 1 ? 5 : 0 }));
+  await bootApp('/tidy');
+  const start = await screen.findByRole('button', { name: /Start Tidy|Scan again/ }, { timeout: 10000 }).catch(() => null);
+  if (start) await fireEvent.press(start);
+  await screen.findByText('Same shot', {}, { timeout: 20000 });
+  expect(screen.getByRole('button', { name: /^Same shot, 2 sets · 6 photos/ })).toBeTruthy();
+
+  await fireEvent.press(screen.getByRole('button', { name: 'Aug 2025 · 2' }));
+  expect(await screen.findByRole('button', { name: /^Same shot, 1 set · 3 photos/ })).toBeTruthy();
+  expect(screen.getByText('Videos: coming later')).toBeTruthy();
+
+  await fireEvent.press(screen.getByRole('button', { name: /^Same shot/ }));
+  expect(await screen.findByText('Tilted')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: /, Trash$/ })).toHaveLength(2);
+  await fireEvent.press(screen.getByRole('button', { name: 'Keep the outtake too' }));
+  expect(screen.getAllByRole('button', { name: /, Trash$/ })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: /^Keep 2 · Remove 1/ })).toBeTruthy();
 }, 60000);

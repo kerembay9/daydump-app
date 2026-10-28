@@ -235,7 +235,8 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("tidyList") Coroutine { -> withContext(Dispatchers.IO) { tidyList(ctx) } }
     AsyncFunction("tidyStats") Coroutine { ids: List<String>, side: Int, faces: Boolean ->
       withContext(Dispatchers.Default) {
-        ids.chunked(4).flatMap { c -> c.map { id -> async(Dispatchers.IO) { runCatching { tidyStats(ctx, id, side, if (faces) yunetTidy else null) }.getOrNull() } }.awaitAll() }
+        val sf = if (faces) runCatching { sface }.getOrNull() else null // null while the faces pack hasn't landed
+        ids.chunked(4).flatMap { c -> c.map { id -> async(Dispatchers.IO) { runCatching { tidyStats(ctx, id, side, if (faces) yunetTidy else null, sf) }.getOrNull() } }.awaitAll() }
       }
     }
     AsyncFunction("tidyHash") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { ids.map { headHash(ctx, it) } } }

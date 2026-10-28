@@ -161,6 +161,8 @@ jest.mock('react-native-purchases', () => ({
 
 // Reanimated's jest mock (installed by expo-router/testing-library) needs the worklets one.
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
+// ...and leaves out useReducedMotion ("ADD ME IF NEEDED")
+require('react-native-reanimated/mock').useReducedMotion = () => false;
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 

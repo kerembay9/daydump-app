@@ -3,9 +3,11 @@ import { Platform } from 'react-native';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { ClipEmbedder, TidyStats } from '../../../modules/clip-embedder';
 import { list } from '../dumps';
+import { getProfile } from '../profile';
 import { db, embedText, mainDb } from '../index/photoIndex';
-import { b64ToFloats, dot, DIM } from '../index/vectors';
+import { b64ToFloats, dot, DIM, isZero } from '../index/vectors';
 import { buildResult, isStrict, Pile, softCandidate, TidyResult, TPhoto } from './rules';
+import type { TidyFace } from '../../../modules/clip-embedder';
 
 /**
  * Tidy's scan, outside any screen (hidden tabs are frozen): the whole library (Tidy.kt's cursor, unpruned), CLIP vectors
@@ -44,6 +46,41 @@ let running: Promise<void> | null = null;
 export const startScan = () => (running ??= scan().catch((e) => { console.warn('[tidy] scan failed:', e); set({ phase: 'error', error: String(e) }); }).finally(() => { running = null; }));
 
 const RENDERS = /\/Pictures\/(PicDump|DayDump)\//i;
+
+let storyIds = new Set<string>();
+/** Discover's current stories' slides: locked like dump photos (Discover sets them; Tidy reads them on its next build). */
+export const setStoryPhotos = (ids: string[]) => { storyIds = new Set(ids); };
+/** lockOf's map: photos in saved dumps and drafts, then Discover's stories. */
+async function keepMap() {
+  const m = new Map<string, string>([...storyIds].map((id) => [id, 'In a Discover story']));
+  for (const dm of await list()) for (const p of dm.photos) m.set(p.id, 'In a dump');
+  return m;
+}
+
+/**
+ * The owner's SFace feature, from the profile photo (once per photo; meta table). Null without a profile photo with one
+ * face, or while the faces pack hasn't landed (faces() rejects).
+ */
+async function ownerFace(): Promise<Float32Array | null> {
+  const avatar = (await getProfile()).avatar;
+  if (!avatar) return null;
+  const d = await db();
+  const saved = await d.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'tidy_owner'");
+  const was = saved ? JSON.parse(saved.v) as { avatar: string; vec: string } : null;
+  let vec = was?.avatar === avatar ? was.vec : null;
+  if (!vec) {
+    const scan = await ClipEmbedder!.faces([avatar], 0.6, true).catch(() => null);
+    vec = scan?.[0]?.faces[0]?.vec ?? null;
+    if (!vec) return null;
+    await d.runAsync("INSERT OR REPLACE INTO meta (k, v) VALUES ('tidy_owner', ?)", [JSON.stringify({ avatar, vec })]);
+  }
+  return b64ToFloats(vec);
+}
+/** SFace: same person when the dot is over 0.363 (OpenCV's cosine threshold). */
+const isOwner = (owner: Float32Array | null, faces?: TidyFace[]) =>
+  owner && faces?.length ? faces.some((f) => f.vec && b64ToFloats(f.vec).reduce((a, x, k) => a + x * owner[k], 0) > 0.363) : undefined;
+/** Saved checks that predate the horizon check, or the face match (when there is a face to match against). */
+const stale = (s: TPhoto['fs'], owner: Float32Array | null) => s === undefined || (!!s && (s.tilt === undefined || (!!owner && !!s.faces?.some((f) => f.vec === undefined))));
 const SOFT_TAGS = ['sky', 'fog', 'night', 'darkness', 'a concert'];
 type TRow = { id: string; stats: string | null; faces: string | null; sharp: number | null; emb: Uint8Array | null; concepts: string | null };
 const vecOf = (emb: Uint8Array) => new Float32Array(emb.buffer.slice(emb.byteOffset, emb.byteOffset + DIM * 4));
@@ -100,23 +137,32 @@ async function scan() {
   const names = await N.conceptNames();
   const soft = new Set(SOFT_TAGS.map((s) => names.indexOf(s)).filter((i) => i >= 0));
   const [sharpT, blurT] = await Promise.all([embedText('a sharp, in-focus photo'), embedText('a blurry, out-of-focus photo')]);
+  // Paper's and Chats' extra phrases need the text model (not fixed phrases yet): without it, the tags alone decide
+  const phrase = (t: string) => embedText(t).catch(() => null);
+  const [photoT, boardT, pageT, memeT] = await Promise.all(['a photo', 'a whiteboard', 'a printed page', 'a meme'].map(phrase));
+  const owner = await ownerFace().catch((e) => { console.warn('[tidy] owner face failed:', e); return null; });
   const vecs = new Float32Array(all.length * DIM);
   const photos: TPhoto[] = all.map((a, i) => {
     const r = own.get(a.id);
     const emb = idx.get(a.id)?.emb ?? r?.emb;
     if (emb) vecs.set(vecOf(emb), i * DIM);
     const [concepts, conceptScores] = parse<[number[], number[]]>(idx.get(a.id)?.concepts ?? r?.concepts) ?? [[], []];
-    const q = emb && sharpT && blurT ? dot(vecs, i, sharpT, 0) - dot(vecs, i, blurT, 0) : 0;
+    const at = (t: Float32Array | null) => (emb && t ? dot(vecs, i, t, 0) : 0);
+    const q = sharpT && blurT ? at(sharpT) - at(blurT) : 0;
+    // ponytail: margins over "a photo" by eye; calibrate on ~50 labelled documents and memes
+    const doc = !!emb && !!photoT && Math.max(at(boardT), at(pageT)) > at(photoT) + 0.01;
+    const meme = !!emb && !!photoT && !!memeT && at(memeT) > at(photoT) + 0.02;
+    const fs = r?.faces == null ? undefined : parse<TidyStats>(r.faces);
     return { id: a.id, uri: `file://${a.path}`, created: a.created, w: a.w, h: a.h, size: a.size, fav: a.fav, concepts, conceptScores, q,
-      stats: parse<TidyStats>(r?.stats), fs: r?.faces == null ? undefined : parse<TidyStats>(r.faces), sharp: r?.sharp ?? undefined, set: -1, copy: '' };
+      stats: parse<TidyStats>(r?.stats), fs, sharp: r?.sharp ?? undefined, set: -1, copy: '', vi: i, doc, meme, me: isOwner(owner, fs?.faces) };
   });
 
   // 3. same-shot sets (Tidy.kt), then faces + 512 px checks of their members, to pick each keeper
   const labels = await N.tidySets!(vecs, photos.map((p) => p.created), photos.map(isStrict));
   photos.forEach((p, i) => { p.set = labels[i]; });
-  await batched(photos.filter((p) => p.set >= 0 && p.fs === undefined), 32, 'check', async (b) => {
+  await batched(photos.filter((p) => p.set >= 0 && stale(p.fs, owner)), 32, 'check', async (b) => {
     const r = await N.tidyStats!(b.map((p) => p.id), 512, true);
-    b.forEach((p, j) => { p.fs = r[j]; });
+    b.forEach((p, j) => { p.fs = r[j]; p.me = isOwner(owner, r[j]?.faces); });
     await save('faces', b.map((p) => p.id), r);
   }, (p) => p.created);
 
@@ -136,9 +182,24 @@ async function scan() {
   hashes.forEach((h) => { if (h) byHash.set(h, (byHash.get(h) ?? 0) + 1); });
   dupes.forEach((p, i) => { const h = hashes[i]; if (h && byHash.get(h)! > 1) p.copy = `${p.size}:${h}`; });
 
-  const inDump = new Set((await list()).flatMap((dm) => dm.photos.map((p) => p.id)));
-  set({ phase: 'done', result: buildResult(photos, inDump, names.indexOf('a screenshot')) });
-  console.log(`[tidy] ${photos.length} photos, ${state.result!.sets.length} same-shot sets`);
+  const keep = await keepMap();
+  const shotTag = names.indexOf('a screenshot');
+  let res = buildResult(photos, vecs, keep, shotTag);
+
+  // 6. you in a junk pile: faces (thumbnail) on Blurry and Chats photos, so a blurry selfie or a sent photo of you is locked
+  if (owner) {
+    const junk = [...res.piles.blurry, ...res.piles.chats].map((x) => x.p).filter((p) => stale(p.fs, owner));
+    if (junk.length) {
+      await batched(junk, 32, 'check', async (b) => {
+        const r = await N.tidyStats!(b.map((p) => p.id), 256, true);
+        b.forEach((p, j) => { p.fs = r[j]; p.me = isOwner(owner, r[j]?.faces); });
+        await save('faces', b.map((p) => p.id), r);
+      }, (p) => p.created);
+      res = buildResult(photos, vecs, keep, shotTag);
+    }
+  }
+  set({ phase: 'done', result: res });
+  console.log(`[tidy] ${photos.length} photos (${photos.filter((p) => isZero(vecs, p.vi)).length} without a vector), ${res.sets.length} same-shot sets, owner ${owner ? 'known' : 'unknown'}, piles ${Object.entries(res.piles).map(([k, v]) => `${k} ${v.length}`).join(', ')}`);
 }
 
 async function log() {
@@ -169,15 +230,16 @@ export async function moveToTrash(items: { p: TPhoto; pile: Pile }[], keepers: T
   });
   const gone = new Set(moved.map((x) => x.p.id));
   const r = state.result!;
-  const inDump = new Set((await list()).flatMap((dm) => dm.photos.map((p) => p.id)));
   const names = await N.conceptNames();
-  const res = buildResult(r.photos.filter((p) => !gone.has(p.id)), inDump, names.indexOf('a screenshot'));
+  const res = buildResult(r.photos.filter((p) => !gone.has(p.id)), r.vecs, await keepMap(), names.indexOf('a screenshot'));
   const done: Moved = { session, n: moved.length, bytes: moved.reduce((a, x) => a + x.p.size, 0), keepers, from: keepers.length + moved.filter((x) => x.pile === 'same').length };
   set({ result: res, moved: done });
   return done;
 }
 
-export type Session = { session: number; n: number; bytes: number; piles: string[]; inTrash: number; until: number | null };
+export type Session = { session: number; n: number; bytes: number; piles: string[]; inTrash: number; until: number | null;
+  /** the session's photos still in Trash (MediaStore ids), for restoring one at a time */
+  trashed: string[] };
 
 /** Every move to Trash, newest first; inTrash = photos still restorable, until = when the first of them leaves Trash. */
 export async function history(): Promise<Session[]> {
@@ -186,25 +248,27 @@ export async function history(): Promise<Session[]> {
   const st = rows.length ? await ClipEmbedder!.trashState!(rows.map((r) => r.id)) : {};
   const out = new Map<number, Session>();
   for (const r of rows) {
-    const s = out.get(r.session) ?? { session: r.session, n: 0, bytes: 0, piles: [], inTrash: 0, until: null };
+    const s = out.get(r.session) ?? { session: r.session, n: 0, bytes: 0, piles: [], inTrash: 0, until: null, trashed: [] };
     s.n++; s.bytes += r.size;
     if (!s.piles.includes(r.pile)) s.piles.push(r.pile);
     const t = st[r.id];
-    if (t?.trashed) { s.inTrash++; s.until = Math.min(s.until ?? Infinity, t.expires); }
+    if (t?.trashed) { s.inTrash++; s.trashed.push(r.id); s.until = Math.min(s.until ?? Infinity, t.expires); }
     out.set(r.session, s);
   }
   return [...out.values()];
 }
 
-/** Android's Restore dialog for a session's photos still in Trash; they come back into Tidy with a rescan. */
-export async function restore(session: number): Promise<boolean> {
+/** Android's Restore dialog for a session's photos still in Trash (only = just these); they come back into Tidy with a rescan. */
+export async function restore(session: number, only?: string[]): Promise<boolean> {
   const m = await log();
-  const ids = (await m.getAllAsync<{ id: string }>('SELECT id FROM trash_log WHERE session = ? AND restored = 0', [session])).map((r) => r.id);
+  const ids = only ?? (await m.getAllAsync<{ id: string }>('SELECT id FROM trash_log WHERE session = ? AND restored = 0', [session])).map((r) => r.id);
   const st = await ClipEmbedder!.trashState!(ids);
   const back = ids.filter((id) => st[id]?.trashed);
   if (!back.length || !(await ClipEmbedder!.trash!(back, false))) return false;
-  await m.runAsync('UPDATE trash_log SET restored = 1 WHERE session = ?', [session]);
-  if (state.moved?.session === session) set({ moved: null });
+  await m.withTransactionAsync(async () => {
+    for (const id of back) await m.runAsync('UPDATE trash_log SET restored = 1 WHERE session = ? AND id = ?', [session, id]);
+  });
+  if (state.moved?.session === session && !only) set({ moved: null });
   startScan();
   return true;
 }
