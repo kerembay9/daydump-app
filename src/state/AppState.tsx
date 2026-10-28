@@ -89,6 +89,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     // tonight's 8 PM recap shows this cover (DailyRecap.kt)
     const cover = s.find((x) => x.kind === 'today')?.picks[0]?.uri;
     if (cover) ClipEmbedder?.setRecapCover(cover);
+    // and Sunday noon's shows the week's dump
+    const week = s.find((x) => x.kind === 'recap' && x.id.startsWith('recap:week:'));
+    if (week?.picks[0]) ClipEmbedder?.setWeekRecap?.(week.picks[0].uri, week.id);
   };
   // dumps made from Discover stories rank their kind of story up
   const made = async () => (await listDumps().catch(() => [])).flatMap((d) => (d.storyId ? [d.storyId] : []));

@@ -192,7 +192,7 @@ function ProfileBody() {
           </View>} />
         <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
         <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
-        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} toggle={recap} last />
+        <Row label="Recap" sub="Today’s dump at 8 PM, your week on Sunday at noon" onPress={toggleRecap} toggle={recap} last />
       </Section>
 
       <Section title="Export & posting" note="New dumps start with the size and quality set here.">
@@ -255,6 +255,11 @@ function ProfileBody() {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
             NotificationService.sendTestNotification().catch((e) => toast(e.message));
+          }} />
+          <Row label="Send Sunday recap now" sub="Uses this week's dump, or the top story" onPress={() => {
+            const s = app.stories.find((x) => x.id.startsWith('recap:week:')) ?? app.stories[0];
+            if (s?.picks[0]) ClipEmbedder?.setWeekRecap(s.picks[0].uri, s.id);
+            NotificationService.sendTestNotification(true).catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}

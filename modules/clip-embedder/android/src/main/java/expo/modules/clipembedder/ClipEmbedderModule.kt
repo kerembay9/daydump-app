@@ -286,6 +286,8 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("cancelDailyRecap") { DailyRecap.cancel(ctx) }
     AsyncFunction("postDailyRecap") Coroutine { -> withContext(Dispatchers.IO) { DailyRecap.post(ctx, test = true) } }
     Function("setRecapCover") { uri: String -> DailyRecap.setCover(ctx, uri) }
+    Function("setWeekRecap") { uri: String, id: String -> DailyRecap.setWeek(ctx, uri, id) }
+    AsyncFunction("postWeekRecap") Coroutine { -> withContext(Dispatchers.IO) { DailyRecap.postWeek(ctx, test = true) } }
   }
 }
 

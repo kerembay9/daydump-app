@@ -87,7 +87,7 @@ test('Profile: sections grouped by what they change, no one-row sections', async
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
   const json = JSON.stringify(screen.toJSON());
   const at = (s: string) => json.indexOf(`"${s}"`);
-  const order = ['Dump picks', 'Photos per dump', '8 PM recap', 'Export & posting', 'Default Post Size', 'Appearance & theme',
+  const order = ['Dump picks', 'Photos per dump', 'Recap', 'Export & posting', 'Default Post Size', 'Appearance & theme',
     'Photo library & search', 'Access', 'Index', 'Privacy & about', 'Everything happens on your phone', 'Privacy Policy', 'Version'];
   order.forEach((s) => expect([s, at(s)]).not.toEqual([s, -1]));
   expect(order.map(at)).toEqual(order.map(at).sort((a, b) => a - b));
