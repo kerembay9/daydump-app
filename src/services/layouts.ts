@@ -19,8 +19,8 @@ export const LAYOUTS = [
 export type LayoutKey = (typeof LAYOUTS)[number]['key'];
 export const layoutOf = (key?: string | null) => LAYOUTS.find((l) => l.key === key) ?? LAYOUTS[0];
 
-/** bleed = Fill (to the slide edge), border = Matte (inset card), blur = Blur fill (whole photo on a blurred copy) */
-export type Fit = 'bleed' | 'border' | 'blur';
+/** bleed = Fill (to the slide edge), blur = Blur fill (whole photo on a blurred copy). The old 'border' (Matte) reads as Fill. */
+export type Fit = 'bleed' | 'blur';
 export const MATTES = [
   { key: 'card', label: 'Card', color: '#EFE6DA' },
   { key: 'cream', label: 'Cream', color: '#FAF6F0' },
@@ -36,9 +36,10 @@ export const matteColor = (f: Frame) => (MATTES.find((m) => m.key === f.matte) ?
 
 /** The dump's fit column: older rows hold just 'border' / 'bleed' (or null), newer ones the whole Frame as JSON. */
 export function frameOf(raw?: string | null): Frame {
-  if (!raw || raw[0] !== '{') return { ...DEFAULT_FRAME, fit: raw === 'border' ? 'border' : 'bleed' };
+  if (!raw || raw[0] !== '{') return DEFAULT_FRAME;
   try {
-    return { ...DEFAULT_FRAME, ...JSON.parse(raw) };
+    const f = { ...DEFAULT_FRAME, ...JSON.parse(raw) };
+    return f.fit === 'blur' ? f : { ...f, fit: 'bleed' };
   } catch {
     return DEFAULT_FRAME;
   }
@@ -73,18 +74,15 @@ const boxAt = (x: number, y: number, w: number, h: number, r = 0): Cell => ({ x,
  * Where each photo of a slide goes in a W x H slide (photo i -> cells[i]), plus the matte area. Border = matte:
  * 14 (mock px) inset, radius 14, shadow. Gap and Corners from the Frame. Scrapbook = 3 tilted prints on the matte.
  */
-/** Which Frame controls change this layout: Gap and Corners only between cells (single: Corners inside a Matte; scrapbook's prints are fixed), the matte colour only where it shows. */
+/** Which Frame controls change this layout: Gap and Corners only between cells (scrapbook's prints are fixed), the colour behind only where it shows. */
 export function frameControls(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' | 'corners'>) {
   const multi = layout === 'split' || layout === 'bento' || layout === 'grid';
-  const corners = multi || (layout === 'single' && frame.fit === 'border');
-  return { gap: multi, corners, matte: frame.fit === 'border' || layout === 'scrapbook' || (multi && frame.gap > 0) || (corners && frame.corners > 0) };
+  return { gap: multi, corners: multi, matte: layout === 'scrapbook' || (multi && (frame.gap > 0 || frame.corners > 0)) };
 }
 
-export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' | 'corners'>, W: number, H: number): { inner: Cell; cells: Cell[] } {
+export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'gap' | 'corners'>, W: number, H: number): { inner: Cell; cells: Cell[] } {
   const u = W / UNIT;
-  const { fit } = frame;
-  const pad = fit === 'border' ? 14 * u : 0;
-  const inner = { ...boxAt(pad, pad, W - 2 * pad, H - 2 * pad, fit === 'border' ? 14 * u : 0), shadow: fit === 'border' };
+  const inner = boxAt(0, 0, W, H);
   const { x, y, w, h } = inner;
   const g = frame.gap * u;
   const box = (bx: number, by: number, bw: number, bh: number, r = frame.corners * u) => boxAt(bx, by, bw, bh, r);
@@ -121,8 +119,7 @@ export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' |
       };
     }
     default:
-      // single: Corners only inside a Matte (frameControls hides it otherwise)
-      return { inner, cells: [box(x, y, w, h, fit === 'border' ? frame.corners * u : 0)] };
+      return { inner, cells: [box(x, y, w, h, 0)] };
   }
 }
 

@@ -65,7 +65,7 @@ const TILE_W = 18, TILE_H = 22;
 /** An arrangement as a tiny diagram of its cells (the real geometry, drawn small). */
 function Arrangement({ k, name, on, onPress }: { k: LayoutKey; name: string; on: boolean; onPress: () => void }) {
   const { t } = useTheme();
-  const { cells } = slideCells(k, { fit: 'bleed', gap: 36, corners: 26 }, TILE_W, TILE_H);
+  const { cells } = slideCells(k, { gap: 36, corners: 26 }, TILE_W, TILE_H);
   const fg = on ? t.bgScreen : t.ink;
   return (
     <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={name} accessibilityState={{ selected: on }}

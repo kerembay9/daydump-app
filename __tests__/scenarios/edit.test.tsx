@@ -31,17 +31,19 @@ test('Continue makes a draft; Edit changes to ratio, fit, looks (all photos / th
   await settle();
   expect((await get(id))!.ratio).toBe('1:1');
 
-  // fit: Layout tab, Fill -> Matte
+  // fit: Layout tab, Fill -> Blur fill (no Matte any more)
   expect(screen.getByRole('button', { name: 'Fill', selected: true })).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: 'Matte' }));
+  expect(screen.queryByRole('button', { name: 'Matte' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Blur fill' }));
   await settle();
-  expect(frameOf((await get(id))!.fit).fit).toBe('border');
+  expect(frameOf((await get(id))!.fit).fit).toBe('blur');
 
   // looks live on the Photos tab; the Layout controls don't
   expect(screen.queryByRole('button', { name: 'B&W Roll' })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: 'Photos' }));
   expect(screen.queryByLabelText('1:1 Square')).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Matte' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Blur fill' })).toBeNull();
+  expect(screen.getByText('Tap a photo above to give it its own look.')).toBeTruthy(); // the filmstrip sits above the card
 
   // nothing picked = All photos: the dump's look
   expect(screen.getByText('All photos')).toBeTruthy();
@@ -100,7 +102,7 @@ test('Continue makes a draft; Edit changes to ratio, fit, looks (all photos / th
   // reopened later: the saved state comes back
   screen.unmount();
   await bootApp(`/edit/${id}`);
-  expect(await screen.findByRole('button', { name: 'Matte', selected: true })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'Blur fill', selected: true })).toBeTruthy();
   await fireEvent.press(screen.getByRole('tab', { name: 'Photos' }));
   expect(await screen.findByRole('button', { name: 'B&W Roll', selected: true })).toBeTruthy();
 }, 30000);
@@ -123,11 +125,14 @@ test('Photos: Adjust (Brighten, Auto, ruler with a 0 detent) is per photo, Textu
   expect((await saved()).layout).toBe('scrapbook');
   await fireEvent.press(screen.getByRole('button', { name: '3 Bento' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Blur fill' }));
-  await fireEvent.press(screen.getByRole('button', { name: 'Kraft matte' }));
-  await drag('Gap', 100); // 0-12: half way = 6
-  await drag('Corners', 50); // 0-16: a quarter = 4
+  await fireEvent.press(screen.getByRole('button', { name: 'Kraft behind' }));
+  // steppers: Gap 3 -> 5 -> 7 -> 5 (steps of 2), Corners 0 -> 4
+  await fireEvent.press(screen.getByRole('button', { name: 'More gap' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'More gap' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Less gap' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'More corners' }));
   await fireEvent(screen.getByLabelText('Grid guide'), 'valueChange', false);
-  expect(frameOf((await saved()).fit)).toEqual({ fit: 'blur', gap: 6, corners: 4, matte: 'kraft', guide: false });
+  expect(frameOf((await saved()).fit)).toEqual({ fit: 'blur', gap: 5, corners: 4, matte: 'kraft', guide: false });
   expect(screen.queryByTestId('grid-guide')).toBeNull();
   expect(screen.getByText('Whole photos on blur')).toBeTruthy(); // blur fill: nothing to crop
 
@@ -169,7 +174,7 @@ test('Photos: Adjust (Brighten, Auto, ruler with a 0 detent) is per photo, Textu
   screen.unmount();
   await bootApp(`/edit/${d.id}`);
   expect(await screen.findByRole('button', { name: 'Blur fill', selected: true })).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Kraft matte', selected: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Kraft behind', selected: true })).toBeTruthy();
 }, 30000);
 
 test('Crop: dragging / pinching a photo picks the part shown, saved with the dump', async () => {
@@ -251,21 +256,27 @@ test('Layout fits the first screen: ratio pills show only the ratio, Dump order 
   expect(json.indexOf('Dump order')).toBeLessThan(json.indexOf('"Blur fill"'));
 }, 30000);
 
-test('Frame shows only what the layout uses: no Gap on 1 Photo or Scrapbook, Corners on 1 Photo only inside a Matte', async () => {
+test('Frame shows only what the layout uses: Gap and Corners steppers only between cells, the colour behind only where it shows', async () => {
   const photos = world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri }));
   const d = await createDraft({ source: 'create', photos, ratio: '4:5' });
   await bootApp(`/edit/${d.id}`);
   await screen.findByRole('button', { name: '1 Photo', selected: true });
   const shown = () => ['Gap', 'Corners'].filter((n) => screen.queryByLabelText(n));
   expect(shown()).toEqual([]);
-  expect(screen.queryByRole('button', { name: 'Card matte' })).toBeNull(); // a full-bleed photo hides the matte
-  await fireEvent.press(screen.getByRole('button', { name: 'Matte' }));
-  expect(shown()).toEqual(['Corners']);
-  expect(screen.getByRole('button', { name: 'Card matte' })).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: 'Fill' }));
+  expect(screen.queryByRole('button', { name: 'Matte' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Card behind' })).toBeNull(); // a full-bleed photo hides it
   await fireEvent.press(screen.getByRole('button', { name: '2 Split' }));
   expect(shown()).toEqual(['Gap', 'Corners']);
+  expect(screen.getByRole('button', { name: 'Card behind' })).toBeTruthy(); // the default gap shows it
+  expect(screen.getByRole('button', { name: 'Less corners' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Less gap' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Less gap' }));
+  expect(screen.getByText('None')).toBeTruthy(); // 3 -> 1 -> 0, no gap
+  expect(screen.getByRole('button', { name: 'Less gap' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Card behind' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'More corners' }));
+  expect(screen.getByRole('button', { name: 'Card behind' })).toBeTruthy(); // rounded corners show it too
   await fireEvent.press(screen.getByRole('button', { name: 'Scrapbook' }));
   expect(shown()).toEqual([]);
-  expect(screen.getByRole('button', { name: 'Card matte' })).toBeTruthy(); // the scrapbook ground
+  expect(screen.getByRole('button', { name: 'Card behind' })).toBeTruthy(); // the scrapbook ground
 }, 30000);

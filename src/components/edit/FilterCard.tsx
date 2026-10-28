@@ -111,7 +111,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
             ))}
           </ScrollView>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[label(9, 0.08), { color: t.inkMuted, width: 56 }]}>{caps('Strength')}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps('Strength')}</Text>
             {/* dragging while on Original picks Warm 35mm (mock) */}
             <Slider label="Filter strength" value={pct} onChange={(v) => onLook({ ...look, key: look.key === 'none' ? 'warm35' : look.key, pct: v })} />
             <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{pct}%</Text>
@@ -134,7 +134,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
             })}
           </ScrollView>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[label(9, 0.08), { color: t.inkMuted, width: 56 }]}>{caps(cur.label)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps(cur.label)}</Text>
             <Slider label={cur.label} min={cur.min} value={adj[tool] ?? 0} onChange={(v) => onAdj({ ...adj, [tool]: v })} />
             <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{signed(adj[tool] ?? 0)}</Text>
           </View>
@@ -142,7 +142,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
       ) : (
         TEXTURES.map((x) => (
           <View key={x.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[label(9, 0.08), { color: t.inkMuted, width: 56 }]}>{caps(x.label)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[label(9, 0.08), { color: t.inkMuted, width: 64 }]}>{caps(x.label)}</Text>
             <Slider label={x.label} value={look[x.key] ?? 0} onChange={(v) => onLook({ ...look, [x.key]: v })} />
             <Text style={[ui(10, 700), { color: t.ink, width: 34, textAlign: 'right' }]}>{look[x.key] ?? 0}</Text>
           </View>
@@ -157,7 +157,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
           </>
         ) : (
           <Text style={[ui(9.5, 500), { color: t.inkMuted }]}>
-            {sub === 'adjust' ? 'Adjust changes one photo. Tap another below.' : 'Tap a photo below to give it its own look.'}
+            {sub === 'adjust' ? 'Adjust changes one photo. Tap another above.' : 'Tap a photo above to give it its own look.'}
           </Text>
         )}
       </View>

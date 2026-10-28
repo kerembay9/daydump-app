@@ -159,11 +159,6 @@ export function SlideDrawing({ layout, frame, width, height, photos, live }: { l
   return (
     <Group>
       <Rect x={0} y={0} width={width} height={height} color={matte} />
-      {frame.fit === 'border' ? (
-        <RoundedRect x={inner.x} y={inner.y} width={inner.w} height={inner.h} r={inner.r} color={matte}>
-          <Shadow dx={0} dy={3 * u} blur={5 * u} color="rgba(0,0,0,0.16)" />
-        </RoundedRect>
-      ) : null}
       <Group clip={rrect(rect(inner.x, inner.y, inner.w, inner.h), inner.r, inner.r)}>
         {paintOrder(layout, photos.length).map((i) => <PhotoCell key={i} c={cells[i]} p={photos[i]} u={u} blur={blur} live={blur ? undefined : live} />)}
       </Group>

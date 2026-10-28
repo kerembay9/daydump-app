@@ -217,25 +217,24 @@ assert.deepEqual(exportSize('nope'), { width: 1080, height: 1350 });
   assert.deepEqual([cellAt(cells, 'split', 10, 10), cellAt(cells, 'split', 1070, 10)], [0, 1]);
   assert.equal(cellAt(slideCells('scrapbook', DEFAULT_FRAME, 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
 }
-{ // cells stay inside the slide; border insets them
+{ // cells stay inside the slide
   const W = 1080, H = 1350;
-  for (const l of LAYOUTS) for (const fit of ['bleed', 'border', 'blur'] as const) for (const c of slideCells(l.key, { ...DEFAULT_FRAME, fit, gap: 12, corners: 16 }, W, H).cells) {
-    assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= W + 1e-6 && c.y + c.h <= H + 1e-6, `${l.key} ${fit} in bounds`);
+  for (const l of LAYOUTS) for (const c of slideCells(l.key, { ...DEFAULT_FRAME, gap: 12, corners: 16 }, W, H).cells) {
+    assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= W + 1e-6 && c.y + c.h <= H + 1e-6, `${l.key} in bounds`);
   }
-  assert.ok(slideCells('single', frameOf('border'), W, H).cells[0].x > 40);
   // gap and corners in mock px: 0 gap = touching halves, corners round every cell
   const tight = slideCells('split', { ...DEFAULT_FRAME, gap: 0, corners: 8 }, W, H).cells;
   assert.equal(tight[1].x, tight[0].w);
   assert.equal(tight[0].r, (8 * W) / 288);
   assert.equal(slideCells('single', DEFAULT_FRAME, W, H).cells[0].w, W);
   // scrapbook: tilted prints (rotated corners included) keep >= 12 mock px of matte on every ratio
-  for (const [w, h] of [[1080, 1350], [1080, 1080], [1080, 1920], [1080, 1440]]) for (const fit of ['bleed', 'border'] as const) {
-    const { inner, cells } = slideCells('scrapbook', { ...DEFAULT_FRAME, fit }, w, h);
+  for (const [w, h] of [[1080, 1350], [1080, 1080], [1080, 1920], [1080, 1440]]) {
+    const { inner, cells } = slideCells('scrapbook', DEFAULT_FRAME, w, h);
     const m = (12 * w) / 288 - 1e-6;
     for (const c of cells) {
       const r = (Math.abs(c.rot) * Math.PI) / 180, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
       const hx = (c.w * Math.cos(r) + c.h * Math.sin(r)) / 2, hy = (c.w * Math.sin(r) + c.h * Math.cos(r)) / 2;
-      assert.ok(cx - hx >= inner.x + m && cy - hy >= inner.y + m && cx + hx <= inner.x + inner.w - m && cy + hy <= inner.y + inner.h - m, `scrapbook ${w}x${h} ${fit} margin`);
+      assert.ok(cx - hx >= inner.x + m && cy - hy >= inner.y + m && cx + hx <= inner.x + inner.w - m && cy + hy <= inner.y + inner.h - m, `scrapbook ${w}x${h} margin`);
     }
     assert.ok(cells[0].h / cells[0].w <= 1.85, `scrapbook ${w}x${h} cover not a strip`);
   }
@@ -273,8 +272,9 @@ const a = autoAdjust(dark);
 assert.ok(a.light! > 30 && a.shadows! > 30 && a.warmth! > 0 && a.contrast! > 0);
 assert.ok(autoAdjust({ ...dark, mean: 0.8, lo: 0 }).light! < 0);
 assert.ok(brighten({ ...dark, mean: 0.33, lo: 0 }, { warmth: 5 }).light! >= 25 && brighten(dark, { warmth: 5 }).warmth === 5);
-// frame: old 'border' / 'bleed' rows read as Matte / Fill; the JSON round-trips; junk falls back
-assert.deepEqual(frameOf('border'), { ...DEFAULT_FRAME, fit: 'border' });
+// frame: old 'border' (Matte) / 'bleed' rows read as Fill, so does a saved Matte frame; the JSON round-trips; junk falls back
+assert.deepEqual(frameOf('border'), DEFAULT_FRAME);
+assert.equal(frameOf('{"fit":"border","gap":6}').fit, 'bleed');
 assert.deepEqual(frameOf(null), DEFAULT_FRAME);
 const fr = { fit: 'blur' as const, gap: 6, corners: 4, matte: 'kraft' as const, guide: false };
 assert.deepEqual(frameOf(frameText(fr)), fr);
