@@ -47,13 +47,25 @@ export const moveConfirm = (n: number, bytes: number, onConfirm: () => void): Co
 });
 
 /** Full-width ink button. */
-export function Primary({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+/** pro: a free user's tap opens the paywall (moving to Trash is Pro); the button says so with a small tag. */
+export function Primary({ label, onPress, disabled, pro }: { label: string; onPress: () => void; disabled?: boolean; pro?: boolean }) {
   const { t } = useTheme();
   return (
-    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }}
-      style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={pro ? 'PicDump Pro' : undefined} accessibilityState={{ disabled: !!disabled }}
+      style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 }}>
       <Text style={[ui(13.5, 600), { color: t.bgScreen }]} numberOfLines={1}>{label}</Text>
+      {pro ? <ProTag /> : null}
     </Tap>
+  );
+}
+
+/** "Pro" on an ink button: the action opens the paywall for a free user. */
+function ProTag() {
+  const { t } = useTheme();
+  return (
+    <View style={{ paddingHorizontal: 6, height: 16, borderRadius: 8, borderWidth: 1, borderColor: t.bgScreen, justifyContent: 'center' }}>
+      <Text style={[ui(9.5, 700), { color: t.bgScreen }]}>Pro</Text>
+    </View>
   );
 }
 

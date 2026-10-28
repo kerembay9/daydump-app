@@ -17,7 +17,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 
 /** What opened the paywall (RevenueCat attribute, and the paywall's heading for first-discover). */
-export type PaywallSource = 'first-discover' | 'locked-dump' | 'search' | 'finish' | 'slides-per-dump' | 'profile';
+export type PaywallSource = 'first-discover' | 'locked-dump' | 'search' | 'finish' | 'slides-per-dump' | 'profile' | 'tidy';
 
 type ProValue = {
   /** PicDump Pro, or paywalls off (PAYWALLS_ENABLED = false: everyone is Pro) */
