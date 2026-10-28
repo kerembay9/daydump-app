@@ -24,22 +24,17 @@ export function PaywallModal({
   const insets = useSafeAreaInsets();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<'yearly' | 'weekly'>('yearly');
-  const [, setLoading] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [legal, setLegal] = useState<LegalDocType | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     let active = true;
-    setLoading(true);
     RevenueCatService.getOfferings().then((offerings) => {
       if (!active) return;
       const pkgs = offerings?.current?.availablePackages ?? [];
       setPackages(pkgs);
-      setLoading(false);
-    }).catch(() => {
-      if (active) setLoading(false);
-    });
+    }).catch(() => {});
     return () => { active = false; };
   }, [visible]);
 

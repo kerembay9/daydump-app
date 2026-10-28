@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, NativeScrollEvent, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Modal, NativeScrollEvent, Platform, NativeSyntheticEvent, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LucideIcon } from 'lucide-react-native';
 import Bell from 'lucide-react-native/icons/bell';
@@ -139,7 +139,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
             <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & continue' : 'Continue'}</Text>
           </Tap>
           <Text style={[ui(11), { color: t.inkMuted, marginTop: 12, textAlign: 'center' }]}>
-            You can change photo access anytime in Android settings.
+            You can change photo access anytime in {Platform.OS === 'ios' ? 'Settings' : 'Android settings'}.
           </Text>
         </View>
         </>}

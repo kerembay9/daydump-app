@@ -112,7 +112,7 @@ function ProfileBody() {
     const want = !recap;
     setRecap(want);
     const ok = await NotificationService.setEnabled(want);
-    if (!ok) { setRecap(false); toast('Notifications are off for PicDump in Android settings'); }
+    if (!ok) { setRecap(false); toast(`Notifications are off for PicDump in ${Platform.OS === 'ios' ? 'Settings' : 'Android settings'}`); }
   };
 
   const toggleStories = (k: 'hideSensitive' | 'screenshots') => () => {
