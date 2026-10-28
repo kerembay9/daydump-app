@@ -2,7 +2,7 @@
   "expo": {
     "name": "PicDump",
     "slug": "picdump",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.horizonzeta.picdump",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",
