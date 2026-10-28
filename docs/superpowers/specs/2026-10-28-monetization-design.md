@@ -1,6 +1,6 @@
 # Monetization: locked picks + one free unlock a week
 
-Date: 2026-10-28 · Status: implemented on fix/polish, not yet released · Platform: Android first
+Date: 2026-10-28, updated 2026-10-29 for the 0.0.6 merge · Status: implemented on fix/polish, not yet released · Platform: Android first
 
 ## Goal
 
@@ -19,21 +19,26 @@ Revenue from the first public Play release, without asking for money before the 
 | | Free | Pro |
 |---|---|---|
 | Discover: titles, dates, photo counts of every dump | yes | yes |
-| Discover: a dump's picks | today's recap + 1 unlock per 7 days | all |
-| Create: manual basket | yes | yes |
-| Edit: crop, basic borders | yes | yes |
-| Edit: premium film looks (all but Original and Warm 35mm) | preview only | yes |
-| Export | unlocked, recap and manual dumps, with end slide; a premium look asks for Pro or exports without it | no end slide |
+| Discover: a dump's picks | recaps (8 PM today, week, month, year) + 1 unlock per 7 days | all |
+| Bingo (Today card, `/today`, "Make a dump from what I have") | yes | yes |
+| Create: manual basket, Similar strip and its sets | yes | yes |
+| Edit: Layout tab (arrangements, frame, ratio, crop) | yes | yes |
+| Edit: Adjust (Light, Contrast, Shadows, Warmth, Saturation, Sharpen, Auto, Brighten) | yes | yes |
+| Edit: premium looks (all but Original and Warm 35mm) and Texture (Grain, Fade, Vignette) | preview only, with a Pro badge | yes |
+| Export | unlocked, recap and manual dumps, with end slide; a premium look or any texture asks for Pro or exports without it | no end slide |
 | Natural-language search | no (results reveal picks) | yes |
+| Tidy: scan, piles, counts, sets, review | yes | yes |
+| Tidy: Move to Trash | no (opens the paywall) | yes |
+| Tidy: Undo, restore, Trash history, "Start a dump from these keepers" | yes | yes |
 | Photos per dump setting (4-20) | default only (a lapsed user keeps the range they last set) | yes |
 
-Premium film looks are every look except Original and Warm 35mm. Borders and layouts stay free.
+Premium looks are every look except Original and Warm 35mm, and any texture above 0, on the dump's look or a photo's own. Adjust, frames and layouts stay free.
 
 ## Access rules
 
 `access(story, isPro, unlocks) → 'open' | 'locked'`, first match wins:
 
-1. `story.kind === 'today'` (the 8 PM daily recap) → open
+1. `story.kind` is `'today'` (the 8 PM daily recap) or `'recap'` (week, month and year recaps, ids `recap:week:…`, `recap:month:…`, `recap:year:…`) → open. The Sunday noon notification opens the week recap, so it never lands on a lock.
 2. `isPro` → open
 3. the story's id is in `unlocks.ids` → open, showing the Library draft made at unlock time
 4. otherwise → locked
@@ -54,9 +59,10 @@ Premium film looks are every look except Original and Warm 35mm. Borders and lay
 1. **First full Discover**: the first time the index has finished and Discover shows at least one locked dump, one dismissible paywall: "We found N dumps in your roll" with their titles. Remembered with `@picdump_first_paywall_shown`; never shown again automatically. It waits until Discover is the focused screen (not under onboarding, Edit, Create or a Post) and RevenueCat has answered this session, so a subscriber on a slow cold start never sees it.
 2. **Tap a locked dump**: `UnlockSheet`. With an unlock available: "Use free unlock" (primary) and "Unlock all with Pro". Without one: "Next free unlock in N days" and "Unlock all with Pro".
 3. **Search in Create** when not Pro: tapping the field opens the paywall.
-4. **Export with a premium film look** when not Pro: a sheet with "Get Pro" or "Export without finish". Pro looks preview freely in Edit.
+4. **Export with a premium look or texture** when not Pro (Save to phone or Post): the sheet "This film look is Pro" with "Get Pro" or "Export without finish". Without finish, every Pro look becomes Original (strength kept) and texture goes; Adjust stays. Everything previews freely in Edit's Photos tab, where Pro look tiles and the Texture tab carry a small "Pro" badge for free users.
 5. **Photos per dump** in Profile when not Pro.
 6. **Profile Pro card** (exists).
+7. **Tidy's Move to Trash** when not Pro (a pile's "Move N to Trash", and Same shot's): opens the paywall, source `tidy`; the button carries a "Pro" tag. Undo on the Done card, Trash history and restore never ask: a user's photos are never held hostage, also after Pro lapses.
 
 No launch paywall, no timed or repeated nags. Onboarding is unchanged.
 
@@ -79,17 +85,18 @@ New:
 - `src/state/Pro.tsx`: `ProProvider` and `usePro()` give `isPro`, `known` / `checked` (see Errors), the unlocks, `accessOf(story)`, `unlockedIdOf(story)`, `askUnlock(story)` and `openPaywall(source)`. It is fed by `RevenueCatService`'s customer-info listener and the dev fake subscription. It is a separate provider, not part of `AppState`, which re-renders on every indexing batch. One `PaywallModal` is mounted there at the root; screens call `openPaywall` instead of mounting their own.
 - `UnlockSheet`, also in `Pro.tsx`.
 - `src/services/paywallPlans.ts`: turns the current offering into the paywall's plans.
-- Locked dumps are the existing Discover `Tile` / `Hero` with a `locked` prop: expo-image `blurRadius` 25 (its Android cap; strong enough that picks cannot be identified) and a lock badge. There is no separate `LockedDumpCard`. `LockedStub` guards Preview and Edit for locked story ids.
+- Locked dumps are the Discover `Tile` with a `locked` prop: expo-image `blurRadius` 25 (its Android cap; strong enough that picks cannot be identified) and a lock badge. There is no separate `LockedDumpCard`. `LockedStub` guards Preview and Edit for locked story ids.
 
 Changed:
 
-- Discover (`src/app/(tabs)/index.tsx`): blurs and badges locked stories (`Tile` / `Hero` `locked`), opens unlocked ones with snapshot picks, triggers the first-full-Discover paywall.
+- Discover (`src/app/(tabs)/index.tsx`): 0.0.6 replaced the hero with the Today card (Bingo, free) and puts every dump in the bento. Locked tiles are blurred with a lock badge and a ", locked" label and open the unlock sheet; unlocked ones open with snapshot picks; the first-full-Discover paywall keeps its conditions. The first-dump print (`FirstDumpStrip`) is drawn only from stories the user can open.
 - Preview's "IG Profile Grid" mock: covers come only from open stories (a locked story's cover is one of its picks).
 - Search (Create): gated, opens the paywall for free users.
 - Profile photos per dump: Pro only.
-- Film looks / export: premium look check; free export with a premium look asks first.
+- Film looks / export: `filters.ts` `isProLook`, `hasTexture`, `usesProLook` (the dump's look and every photo's own in `per`; a Pro key counts where it shows, texture always) and `withoutProLooks`. A free export with either asks first.
+- Tidy (`src/app/tidy/[pile].tsx`, `src/app/tidy/sets.tsx`): Move to Trash opens the paywall for free users; scanning, piles and restore are untouched.
 - `src/services/slides.tsx`: appends a "made with PicDump" end slide (Skia `matchFont` + `Text`) to exports when not Pro. Free users cannot remove it. Not added when the dump already has 20 slides (Instagram's carousel limit). Preview's "Saving N slides" and the Post sheet count it.
-- `PaywallModal`: offering-driven prices and trial text (no hardcoded fallbacks); feature list rewritten to the Pro column above; `source` prop, also set as a RevenueCat subscriber attribute `paywall_source` (no photo data).
+- `PaywallModal`: offering-driven prices and trial text (no hardcoded fallbacks); feature list rewritten to the Pro column above (every dump, search, all looks and texture, clear repeats and clutter, your dump your way); `source` prop, also set as a RevenueCat subscriber attribute `paywall_source` (no photo data).
 - Profile: uses `isPro` from `usePro()`; Pro card copy matches the Pro column.
 
 Removed:
@@ -116,6 +123,6 @@ Removed:
 
 ## Testing
 
-- Jest: `unlocks.ts` (rolling window boundary, no banking, refuses second unlock), `access.ts` (rule order, `today` always open; `PAYWALLS_ENABLED` is applied in `Pro.tsx`, not covered there), `paywallPlans.ts` (periods, trials), and app scenarios for the locked Discover, unlock sheet, first paywall (once, not before RevenueCat answers, not while Discover is off screen), search, photos per dump, export (end slide for free only, the stripped look on "Export without finish"), a slow or failing RevenueCat with a cached Pro answer, and Edit's swap pool.
+- Jest: `unlocks.ts` (rolling window boundary, no banking, refuses second unlock), `access.ts` (rule order, `today` and `recap` always open; `PAYWALLS_ENABLED` is applied in `Pro.tsx`, not covered there), `paywallPlans.ts` (periods, trials), and app scenarios for the locked Discover, unlock sheet, first paywall (once, not before RevenueCat answers, not while Discover is off screen), search, photos per dump, export (end slide for free only, the stripped look on "Export without finish"), a slow or failing RevenueCat with a cached Pro answer, Edit's swap pool, the week recap open for a free user (Discover and the notification route), Pro badges in Edit, texture on a free look asking at export, Adjust alone not asking, and Tidy (free: piles shown, Move opens the paywall, nothing trashed; after a lapse Undo and Trash history restore). `pro-looks.test.ts` covers the look model. `world.pro` defaults to true, so the other scenarios run as Pro.
 - Developer tools (debug only): existing Fake Pro switch, plus "Free unlock (reset)", "Pretend 7 days passed" and "Onboarding every launch".
 - Manual: Play internal track with license testers: buy weekly, start annual trial, cancel, restore, lapse.
