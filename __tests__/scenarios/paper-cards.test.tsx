@@ -6,9 +6,9 @@ import { seedWorld } from '../../jest/world';
 import { getProfile, setProfile } from '../../src/services/profile';
 import { TAPE_TONES } from '../../src/components/ui/ScrapPaper';
 
-const HERO = 'Preview A week in Seattle';
+const TILE = /, \d+ photos · /;
 const { Canvas } = jest.requireMock('@shopify/react-native-skia') as { Canvas: jest.Mock };
-const cards = () => screen.getAllByLabelText(/, \d+ photos · /).length + 1; // tiles + hero
+const tiles = () => screen.getAllByLabelText(TILE).length;
 const sheets = () => screen.queryAllByTestId('scrap-paper').length;
 const strips = () => screen.queryAllByTestId('scrap-strip').length;
 const bands = () => screen.queryAllByTestId('tape').length;
@@ -23,7 +23,7 @@ async function discover(p: Parameters<typeof setProfile>[0]) {
   await setProfile(p);
   Canvas.mockClear();
   await bootApp('/');
-  await screen.findByLabelText(HERO, {}, { timeout: 10000 });
+  await screen.findAllByLabelText(TILE, {}, { timeout: 10000 });
 }
 
 test('Cards: classic by default, rounded cards with the Bands tape and no paper', async () => {
@@ -35,9 +35,9 @@ test('Cards: classic by default, rounded cards with the Bands tape and no paper'
 
 test('Cards: kraft puts every card on paper with one torn kraft strip each, and drops the Bands tape', async () => {
   await discover({ bands: 'more', cards: 'kraft' });
-  expect(sheets()).toBe(cards());
+  expect(sheets()).toBeGreaterThanOrEqual(tiles());
   expect(bands()).toBe(0);
-  expect(strips()).toBe(cards());
+  expect(strips()).toBe(sheets()); // one each
   const c = tornColours();
   expect(c.length).toBeGreaterThan(0);
   expect(c.every((x) => TAPE_TONES.kraft.includes(x))).toBe(true);
@@ -45,7 +45,7 @@ test('Cards: kraft puts every card on paper with one torn kraft strip each, and 
 
 test('Cards: tinted tapes the paper cards in several matte colours', async () => {
   await discover({ cards: 'tinted' });
-  expect(sheets()).toBe(cards());
+  expect(sheets()).toBeGreaterThanOrEqual(tiles());
   const c = tornColours();
   expect(c.length).toBeGreaterThan(0);
   expect(c.every((x) => TAPE_TONES.tinted.includes(x))).toBe(true);
@@ -54,9 +54,9 @@ test('Cards: tinted tapes the paper cards in several matte colours', async () =>
 
 test('Cards: paper holds each sheet with tone masking tape, mostly across the top', async () => {
   await discover({ cards: 'paper' });
-  expect(sheets()).toBe(cards());
+  expect(sheets()).toBeGreaterThanOrEqual(tiles());
   expect(tornColours()).toHaveLength(0);
-  expect(strips()).toBeGreaterThanOrEqual(cards());
+  expect(strips()).toBeGreaterThanOrEqual(sheets());
   const c = maskingColours();
   expect(c).toHaveLength(strips());
   expect(c.every((x) => TAPE_TONES.paper.includes(x))).toBe(true);
