@@ -10,7 +10,7 @@ const { Canvas } = jest.requireMock('@shopify/react-native-skia') as { Canvas: j
 const tileBg = () => StyleSheet.flatten(screen.getAllByLabelText(/, \d+ photos · /)[0].props.style).backgroundColor;
 const paperDrawn = () => Canvas.mock.calls.some(([p]) => p.testID === 'paper');
 
-beforeAll(() => seedWorld());
+beforeAll(async () => { await seedWorld(); await setProfile({ cards: 'classic' }); }); // paper cards bring their own tape and stock
 beforeEach(() => Canvas.mockClear());
 
 test('Paper grain: on by default behind Discover with parchment cards, off takes both away', async () => {

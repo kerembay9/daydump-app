@@ -286,8 +286,8 @@ function dropAvatarFile(uri: string) {
 const BANDS: ProfileT['bands'][] = ['default', 'more', 'none'];
 const BAND_NAMES: Record<ProfileT['bands'], string> = { none: 'No bands', default: 'Default', more: 'Scrapbook' };
 /** Developer tools' Cards switch, in tap order. */
-const CARDS: ProfileT['cards'][] = ['classic', 'paper', 'kraft', 'tinted'];
-const CARD_NAMES: Record<ProfileT['cards'], string> = { classic: 'Classic', paper: 'Paper, tone tape', kraft: 'Paper, kraft tape', tinted: 'Paper, colour tape' };
+const CARDS: ProfileT['cards'][] = ['paper', 'tinted', 'classic'];
+const CARD_NAMES: Record<ProfileT['cards'], string> = { classic: 'Classic', paper: 'Paper, tone tape', tinted: 'Paper, colour tape' };
 
 /** Developer tools' CLIP switch: null = the shipped model. */
 const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);
