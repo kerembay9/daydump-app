@@ -7,8 +7,9 @@ import { FrameCard } from '../ui/FrameCard';
 import { Icons } from '../ui/Icons';
 import { Tap } from '../ui/Tap';
 import { useRevealActive } from '../ui/useRevealActive';
+import { ProBadge } from '../ui/ProBadge';
 import { Slider } from './Slider';
-import { Adjust, ADJUSTS, AdjKey, autoAdjust, brighten, FilterKey, isDark, Look, matrixFor, PRESETS, Tex, Tone } from '../../services/filters';
+import { Adjust, ADJUSTS, AdjKey, autoAdjust, brighten, FilterKey, isDark, isProLook, Look, matrixFor, PRESETS, Tex, Tone } from '../../services/filters';
 
 type Props = {
   look: Look;
@@ -30,6 +31,8 @@ type Props = {
   adj: Adjust;
   onAdj: (a: Adjust) => void;
   tone: Tone | null;
+  /** free user: Pro looks and Texture carry a Pro badge (they still preview; exporting them asks first) */
+  proLocked?: boolean;
 };
 
 const SUBS = [['look', 'Look'], ['adjust', 'Adjust'], ['texture', 'Texture']] as const;
@@ -39,17 +42,18 @@ const same = (a: Adjust, b: Adjust) => ADJUSTS.every(({ key }) => (a[key] ?? 0) 
 const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`);
 
 /** A look tile: the photo itself with that preset at the current strength. */
-function LookTile({ k, name, swatch, on, image, pct, onPress }: { k: FilterKey; name: string; swatch: string; on: boolean; image: SkImage | null | undefined; pct: number; onPress: () => void }) {
+function LookTile({ k, name, swatch, on, image, pct, onPress, pro }: { k: FilterKey; name: string; swatch: string; on: boolean; image: SkImage | null | undefined; pct: number; onPress: () => void; pro?: boolean }) {
   const { t } = useTheme();
   const m = matrixFor({ key: k, pct: pct || 68 });
   return (
-    <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={name} accessibilityState={{ selected: on }} style={{ width: TILE + 4, alignItems: 'center', gap: 3 }}>
+    <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={pro ? `${name}, Pro` : name} accessibilityState={{ selected: on }} style={{ width: TILE + 4, alignItems: 'center', gap: 3 }}>
       <View style={{ width: TILE, height: TILE, borderRadius: 10, overflow: 'hidden', backgroundColor: swatch, boxShadow: on ? `0 0 0 2px ${t.ink}` : undefined }}>
         {image ? (
           <Canvas style={{ flex: 1 }}>
             <SkiaImage image={image} x={0} y={0} width={TILE} height={TILE} fit="cover">{m ? <ColorMatrix matrix={m} /> : null}</SkiaImage>
           </Canvas>
         ) : null}
+        {pro ? <ProBadge style={{ position: 'absolute', top: 3, right: 3 }} /> : null}
       </View>
       <Text numberOfLines={1} style={[ui(9, on ? 700 : 500), { color: t.ink }]}>{name}</Text>
     </Tap>
@@ -57,7 +61,7 @@ function LookTile({ k, name, swatch, on, image, pct, onPress }: { k: FilterKey; 
 }
 
 /** PHOTOS card: scope (All photos / This photo), then Look (tiles + strength), Adjust (per photo, Auto) or Texture. */
-export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onReset, image, focus, adj, onAdj, tone }: Props) {
+export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onReset, image, focus, adj, onAdj, tone, proLocked }: Props) {
   const { t } = useTheme();
   const [sub, setSub] = useState<(typeof SUBS)[number][0]>('look');
   const [tool, setTool] = useState<AdjKey>('light');
@@ -84,9 +88,10 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
         <View style={{ flexDirection: 'row', gap: 2, padding: 2, borderRadius: 14, borderWidth: 1, borderColor: t.borderStrong }}>
           {SUBS.map(([k, name]) => (
-            <Tap key={k} onPress={() => setSub(k)} accessibilityRole="tab" accessibilityState={{ selected: sub === k }}
-              style={{ height: 24, paddingHorizontal: 10, borderRadius: 12, justifyContent: 'center', backgroundColor: sub === k ? t.ink : undefined }}>
+            <Tap key={k} onPress={() => setSub(k)} accessibilityRole="tab" accessibilityLabel={proLocked && k === 'texture' ? `${name}, Pro` : name} accessibilityState={{ selected: sub === k }}
+              style={{ height: 24, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: sub === k ? t.ink : undefined }}>
               <Text style={[ui(10.5, 600), { color: sub === k ? t.bgScreen : t.ink }]}>{name}</Text>
+              {proLocked && k === 'texture' ? <ProBadge inverse={sub === k} /> : null}
             </Tap>
           ))}
         </View>
@@ -106,7 +111,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingBottom: 6, paddingTop: 2 }} {...presets.scroll}>
             {PRESETS.map((p) => (
               <View key={p.key} onLayout={presets.item(p.key)}>
-                <LookTile k={p.key} name={p.label} swatch={p.swatch} on={look.key === p.key} image={image} pct={look.pct} onPress={() => pick(p.key)} />
+                <LookTile k={p.key} name={p.label} swatch={p.swatch} on={look.key === p.key} image={image} pct={look.pct} onPress={() => pick(p.key)} pro={proLocked && isProLook(p.key)} />
               </View>
             ))}
           </ScrollView>
@@ -158,6 +163,7 @@ export function FilterCard({ look, photo, own, onLook, onAllPhotos, onEvery, onR
         ) : (
           <Text style={[ui(9.5, 500), { color: t.inkMuted }]}>
             {sub === 'adjust' ? 'Adjust changes one photo. Tap another above.' : 'Tap a photo above to give it its own look.'}
+            {proLocked && sub !== 'adjust' && (sub === 'texture' || isProLook(look.key)) ? ' Pro looks and texture preview here; exporting them is Pro.' : ''}
           </Text>
         )}
       </View>

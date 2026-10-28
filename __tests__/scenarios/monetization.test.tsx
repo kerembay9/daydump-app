@@ -151,6 +151,74 @@ test('free: saving a dump with a Pro film look asks first; "Export without finis
   expect(saved[6][0].props.photos).toBeUndefined();
 }, 30000);
 
+/** Unlocks the puppy dump (free), backs out of its Preview and returns its Library draft. */
+async function unlockedPuppyDraft() {
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  await screen.findByLabelText('Post');
+  await fireEvent.press(screen.getByLabelText('Back'));
+  const [draft] = await list('draft');
+  return draft;
+}
+type Drawn = { dev: { matrix: number[] | null; grain: number; vignette: number } | null };
+const drawnPhotos = (calls = draw.mock.calls) => calls.map(([el]) => el.props.photos as Drawn[] | undefined).filter((ps) => ps != null).flat();
+
+test('free: Edit previews Pro looks and texture with a Pro badge; Adjust and the free looks have none', async () => {
+  const draft = await unlockedPuppyDraft();
+  screen.unmount();
+  await bootApp(`/edit/${draft.id}`);
+  await fireEvent.press(await screen.findByRole('tab', { name: 'Photos' }, { timeout: 10000 }));
+  for (const name of ['Cashmere', 'Soft Film', 'Sunfade', 'B&W Roll']) expect(screen.getByLabelText(`${name}, Pro`)).toBeTruthy();
+  expect(screen.getByLabelText('Original')).toBeTruthy();
+  expect(screen.getByLabelText('Warm 35mm')).toBeTruthy();
+  expect(screen.getByRole('tab', { name: 'Adjust' })).toBeTruthy();
+  // picking a Pro look previews it (no paywall in Edit)
+  await fireEvent.press(screen.getByLabelText('Cashmere, Pro'));
+  expect(screen.queryByText('Every dump in your roll.')).toBeNull();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Texture, Pro' }));
+  expect(screen.getByLabelText('Grain')).toBeTruthy();
+  screen.unmount();
+
+  world.pro = true;
+  await bootApp(`/edit/${draft.id}`);
+  await fireEvent.press(await screen.findByRole('tab', { name: 'Photos' }, { timeout: 10000 }));
+  expect(screen.getByLabelText('Cashmere')).toBeTruthy();
+  expect(screen.getByRole('tab', { name: 'Texture' })).toBeTruthy();
+}, 30000);
+
+test('free: texture on a free look still asks; "Export without finish" drops it and keeps Adjust', async () => {
+  const draft = await unlockedPuppyDraft();
+  const first = draft.photos[0].id;
+  await update(draft.id, { filter: { key: 'warm35', pct: 68, grain: 40, vignette: 25, per: {}, adj: { [first]: { light: 30 } } } });
+  draw.mockClear();
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`));
+  await waitFor(() => expect(drawnPhotos()).toHaveLength(6));
+  expect(drawnPhotos().every((p) => p.dev && p.dev.grain > 0)).toBe(true);
+  await settle();
+
+  draw.mockClear();
+  await fireEvent.press(screen.getByLabelText('Save to phone'));
+  expect(await screen.findByText('This film look is Pro')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Export without finish'));
+  expect(await screen.findByText('Saved to your phone')).toBeTruthy();
+  const saved = drawnPhotos(draw.mock.calls.slice(0, 7));
+  expect(saved).toHaveLength(6);
+  expect(saved.every((p) => p.dev!.grain === 0 && p.dev!.vignette === 0)).toBe(true);
+  // Warm 35mm (free) stays on every photo, so each still has a colour matrix
+  expect(saved.every((p) => p.dev!.matrix != null)).toBe(true);
+}, 30000);
+
+test('free: Adjust alone exports without asking', async () => {
+  const draft = await unlockedPuppyDraft();
+  await update(draft.id, { filter: { key: 'none', pct: 68, per: {}, adj: { [draft.photos[0].id]: { light: 30, sharpen: 20 } } } });
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`));
+  await settle();
+  await fireEvent.press(await screen.findByLabelText('Save to phone'));
+  expect(await screen.findByText('Saved to your phone')).toBeTruthy();
+  expect(screen.queryByText('This film look is Pro')).toBeNull();
+}, 30000);
+
 /** The puppy story's id: Pro's Discover opens its Preview at /preview/<id>. Leaves nothing behind (no draft). */
 async function puppyStoryId() {
   world.pro = true;

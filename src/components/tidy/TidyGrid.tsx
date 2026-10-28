@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Check, NOT_CHECKED, TPhoto } from '../../services/tidy/rules';
 import { PER_DIALOG } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
+import { ProBadge } from '../ui/ProBadge';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ui } from '../../theme/type';
 import { Icons } from '../ui/Icons';
@@ -54,18 +55,8 @@ export function Primary({ label, onPress, disabled, pro }: { label: string; onPr
     <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={pro ? 'PicDump Pro' : undefined} accessibilityState={{ disabled: !!disabled }}
       style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 }}>
       <Text style={[ui(13.5, 600), { color: t.bgScreen }]} numberOfLines={1}>{label}</Text>
-      {pro ? <ProTag /> : null}
+      {pro ? <ProBadge inverse /> : null}
     </Tap>
-  );
-}
-
-/** "Pro" on an ink button: the action opens the paywall for a free user. */
-function ProTag() {
-  const { t } = useTheme();
-  return (
-    <View style={{ paddingHorizontal: 6, height: 16, borderRadius: 8, borderWidth: 1, borderColor: t.bgScreen, justifyContent: 'center' }}>
-      <Text style={[ui(9.5, 700), { color: t.bgScreen }]}>Pro</Text>
-    </View>
   );
 }
 

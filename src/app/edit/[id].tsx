@@ -253,7 +253,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       {tab === 'photos' ? (
         <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
           onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
-          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
+          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} proLocked={!isPro} />
       ) : (
         <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} layout={layout} />
       )}

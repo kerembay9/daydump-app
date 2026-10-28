@@ -107,7 +107,7 @@ export function PaywallModal({ visible, onClose, onPurchased, found }: {
           <FrameCard radius={18} padding={14} style={{ gap: 12 }}>
             <FeatureRow icon={Icons.carousel} title="Every dump, unlocked" sub="Every trip and story Discover finds, not one a week." />
             <FeatureRow icon={Icons.search} title="Search your camera roll" sub="Find a place, a month or a thing in words." />
-            <FeatureRow icon={Icons.sparkle} title="All film looks" sub="Cashmere, Soft Film, Sunfade and B&W Roll." />
+            <FeatureRow icon={Icons.sparkle} title="All film looks" sub="Cashmere, Soft Film, Sunfade, B&W Roll, plus grain, fade and vignette." />
             <FeatureRow icon={Icons.trash} title="Clear repeats and clutter" sub="Move duplicates, blurry shots and screenshots to Trash in one go." />
             <FeatureRow icon={Icons.crop} title="Your dump, your way" sub="No PicDump end slide, and 4 to 20 photos per dump." />
           </FrameCard>

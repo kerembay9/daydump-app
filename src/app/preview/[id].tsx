@@ -262,7 +262,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
       <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => { strip.current = false; setPicking(false); }} />
       <Sheet visible={!!finishAsk} onClose={() => setFinishAsk(null)}>
         <Text style={[display(20, 1.15), { color: t.ink }]}>This film look is Pro</Text>
-        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>Get Pro to export it, or export these slides with the free looks instead.</Text>
+        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>Get Pro to export it, or export these slides with the free looks and no texture instead.</Text>
         <Tap onPress={() => { setFinishAsk(null); openPaywall('finish'); }} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={[ui(13, 600), { color: t.bgScreen }]}>Get Pro</Text>
         </Tap>

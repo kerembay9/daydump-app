@@ -138,16 +138,24 @@ export function filterOf(raw: unknown): FilterState {
 
 export const IDENTITY = I;
 
-/** Looks a free user can export (Pro previews the rest freely, docs/superpowers/specs/2026-10-28-monetization-design.md). */
+/**
+ * Pro looks (docs/superpowers/specs/2026-10-28-monetization-design.md): every look but Original and Warm 35mm, and any
+ * Texture (grain, fade, vignette). Adjust is free. Everything previews freely in Edit; a free export asks first.
+ */
 const FREE_LOOKS: FilterKey[] = ['none', 'warm35'];
 export const isProLook = (k: FilterKey) => !FREE_LOOKS.includes(k);
+const TEXTURE = ['grain', 'fade', 'vignette'] as const;
+/** The look has some texture (drawn whatever its key or strength: developFor applies it on Original too). */
+export const hasTexture = (l: Look) => TEXTURE.some((k) => (l[k] ?? 0) > 0);
 
-/** Looks that actually show on some photo: the dump's and each photo's own; 0% is untouched. */
-const shown = (f: FilterState): Look[] => [lookOf(f), ...Object.values(f.per)].filter((l) => l.key !== 'none' && l.pct > 0);
-export const usesProLook = (f: FilterState) => shown(f).some((l) => isProLook(l.key));
+/** The dump's look and every photo's own; a Pro key counts only where it shows (not Original, not 0%). */
+const looks = (f: FilterState): Look[] => [lookOf(f), ...Object.values(f.per)];
+const proKey = (l: Look) => l.key !== 'none' && l.pct > 0 && isProLook(l.key);
+export const usesProLook = (f: FilterState) => looks(f).some((l) => proKey(l) || hasTexture(l));
 
-/** "Export without finish": every Pro look back to Original, strengths kept. */
+/** "Export without finish": every Pro look back to Original (strength kept), texture off; Adjust stays. */
 export function withoutProLooks(f: FilterState): FilterState {
-  const free = (l: Look): Look => (isProLook(l.key) ? { ...l, key: 'none' } : l);
-  return { ...f, ...free(f), per: Object.fromEntries(Object.entries(f.per).map(([id, l]) => [id, free(l)])) };
+  const free = ({ grain: _g, fade: _f, vignette: _v, ...l }: Look): Look => (isProLook(l.key) ? { ...l, key: 'none' } : l);
+  const { grain: _g, fade: _f, vignette: _v, ...rest } = f;
+  return { ...rest, ...free(lookOf(f)), per: Object.fromEntries(Object.entries(f.per).map(([id, l]) => [id, free(l)])) };
 }
