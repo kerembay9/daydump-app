@@ -109,15 +109,14 @@ test('a renewing subscription shows its renewal date and Manage', async () => {
   world.pro = true;
 }, 30000);
 
-// Profile has the Pro card (above); everywhere else stays paywall-free
-test('no paywall or crown anywhere', async () => {
+// Pro sees no locks or upsells outside Profile's Pro card; no screen talks to the store SDK directly
+test('Pro: no lock or upsell anywhere', async () => {
   for (const url of ['/', '/create', '/library']) {
     await bootApp(url);
     await screen.findAllByLabelText('Profile and settings', {}, { timeout: 10000 }).catch(() => screen.findByText('Profile & Settings'));
     expect(dump().filter((s) => PAYWALL.test(s))).toEqual([]);
     screen.unmount();
   }
-  // and no route or component draws one (comments saying there is none are fine)
   const files = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
     .flatMap((e) => (e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx$/.test(e.name) ? [path.join(dir, e.name)] : []));
   for (const f of files(path.resolve(__dirname, '../../src'))) {

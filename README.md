@@ -13,7 +13,7 @@ Everything runs on the phone. The photo index, story suggestions and search neve
 - **Library:** drafts and posted dumps. A posted dump opens a read-only preview, and Reuse makes an editable copy.
 - **Share:** export slides to a "PicDump" album and open Instagram or TikTok, or the system share sheet. "Open with PicDump" also accepts shared photos.
 - **Profile:** name and handle, selfie finder (so your own face anchors the stories), photos per dump (4 to 20), the daily 8 PM recap, Hide sensitive photos.
-- **Pro:** RevenueCat subscription (`react-native-purchases`, entitlement `daydump_pro`). Prices come from the store offering.
+- **Pro:** RevenueCat subscription (`react-native-purchases`, entitlement `daydump_pro`). Free users see every Discover dump's title but only the 8 PM recap and one dump a week unlocked; Pro opens all of them, search, every film look, 4-20 photos per dump, and drops the "made with PicDump" end slide. Plans, prices and trials come from the store offering. `PAYWALLS_ENABLED` in `src/constants/flags.ts` is the kill switch. Design: `docs/superpowers/specs/2026-10-28-monetization-design.md`.
 
 ## Tech stack
 
@@ -44,7 +44,7 @@ npx expo lint          # lint
 ## Developer tools (debug builds only)
 
 In a debug build, tap the **Version** row in Profile repeatedly to unlock **Developer tools**: Model bench, Stories debug, CLIP model switch,
-Bands (No bands, Default, Scrapbook), Paper grain, and Fake Pro subscription for testing the paywall. None of this is in release builds.
+Bands (No bands, Default, Scrapbook), Paper grain, Fake Pro subscription for testing the paywall, Free unlock reset, Pretend 7 days passed, and Onboarding every launch. None of this is in release builds.
 
 ## Release
 
