@@ -164,6 +164,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   /** granted, as of the last ask (the foreground check reads it before a re-render) */
   const granted = useRef(false);
   const asking = useRef<Promise<void> | null>(null);
+  /** "Onboarding every launch" over a completed onboarding: finishing it is a normal launch, whatever the slides did */
+  const replaying = useRef(false);
   // one at a time: Home's ask and the foreground check can both land as the dialog closes
   const start = useCallback(() => asking.current ??= (async () => {
     const perm = await GalleryService.requestPermissions();
@@ -180,7 +182,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks.
       // Developer tools' "Onboarding every launch" takes the first-run path every time.
       const replay = __DEV__ && !!prof?.onboardingEveryLaunch;
-      if (!replay && await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
+      const completed = await OnboardingService.hasCompletedOnboarding();
+      replaying.current = replay && completed;
+      if (!replay && completed) { await NotificationService.init(); start(); }
       else setOnboarding(true);
     })();
   }, [start]);
@@ -238,6 +242,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     finishOnboarding: async (started) => {
       await OnboardingService.setOnboardingCompleted();
       setOnboarding(false);
+      if (replaying.current) {
+        // as the completed path at launch does: start() reads the real permission (no flip to false over granted access)
+        replaying.current = false;
+        await NotificationService.init();
+        if (!started) start();
+        return;
+      }
       if (!started) setPermission(false); // Android just said no: Home offers it again (askPhotos), not a second dialog now
       await NotificationService.init();
     },

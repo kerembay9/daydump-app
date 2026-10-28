@@ -15,9 +15,9 @@ const KEY = '@daydump_first_dump_shown';
 /**
  * The very first dump, once: after onboarding (indexing may already have made it by then), or after Home had none. Waits for
  * onboarding to close and Home to be the tab showing, however long that takes. Someone who already had dumps when this shipped
- * never sees it (marked shown at once).
+ * never sees it (marked shown at once). Locked dumps count as dumps here; the print itself only shows one the user can open.
  */
-export function useFirstDump(stories: Story[], loaded: boolean, onboarding: boolean) {
+export function useFirstDump(stories: Story[], loaded: boolean, onboarding: boolean, isOpen: (s: Story) => boolean) {
   const [shown, setShown] = useState<boolean | null>(null); // null: not read yet
   const [focused, setFocused] = useState(false);
   const [playing, setPlaying] = useState<Story | null>(null); // held: the 30 s rebuilds may reorder stories mid-print
@@ -28,10 +28,12 @@ export function useFirstDump(stories: Story[], loaded: boolean, onboarding: bool
     if (onboarding || (loaded && !stories.length)) fresh.current = true;
     if (shown !== false || !stories.length) return;
     if (fresh.current && (onboarding || !focused)) return; // wait for Home to be what's showing
-    if (fresh.current) setPlaying(stories[0]);
+    // the print shows picks: a free user's comes from the first dump they can open; with none open, no print
+    const open = stories.find(isOpen);
+    if (fresh.current && open) setPlaying(open);
     setShown(true);
     AsyncStorage.setItem(KEY, 'true');
-  }, [shown, stories, loaded, onboarding, focused]);
+  }, [shown, stories, loaded, onboarding, focused, isOpen]);
   return { story: playing, done: useCallback(() => setPlaying(null), []) };
 }
 

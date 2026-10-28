@@ -184,8 +184,8 @@ export default function Discover() {
   const pro = usePro();
   const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
   // the first dump's print shows its picks: a free user's comes from the dumps they can open (today, recaps, unlocks)
-  const openStories = useMemo(() => stories.filter((s) => !isLocked(s)), [stories, isLocked]);
-  const first = useFirstDump(openStories, loaded, onboarding);
+  const isOpen = useCallback((s: Story) => !isLocked(s), [isLocked]);
+  const first = useFirstDump(stories, loaded, onboarding, isOpen);
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';

@@ -11,6 +11,7 @@ import { Tape } from '../../components/ui/Tape';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { useApp, useProgress } from '../../state/AppState';
+import { usePro } from '../../state/Pro';
 import { Pill } from '../../components/ui/Pill';
 import { GalleryService } from '../../services/galleryService';
 import { currentCreateDraft, receiveShared } from '../../services/dumps';
@@ -65,7 +66,11 @@ export default function Tidy() {
   const [last, setLast] = useState<Session | null>(null);
   const supported = tidySupported();
   const { stories } = useApp();
-  useEffect(() => setStoryPhotos(stories.flatMap((st) => st.picks.map((p) => p.id))), [stories]);
+  const { accessOf } = usePro();
+  useEffect(() => {
+    const ids = (open: boolean) => stories.filter((st) => (accessOf(st) === 'open') === open).flatMap((st) => st.picks.map((p) => p.id));
+    setStoryPhotos(ids(true), ids(false));
+  }, [stories, accessOf]);
   const [pickedMonth, setMonth] = useState<string | null>(null);
 
   const loadLast = useCallback(() => {

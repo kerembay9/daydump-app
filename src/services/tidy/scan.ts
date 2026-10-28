@@ -47,12 +47,17 @@ export const startScan = () => (running ??= scan().catch((e) => { console.warn('
 
 const RENDERS = /\/Pictures\/(PicDump|DayDump)\//i;
 
-let storyIds = new Set<string>();
-/** Discover's current stories' slides: locked like dump photos (Discover sets them; Tidy reads them on its next build). */
-export const setStoryPhotos = (ids: string[]) => { storyIds = new Set(ids); };
+let storyIds = new Map<string, string>();
+/**
+ * Discover's current stories' slides: locked like dump photos (Discover sets them; Tidy reads them on its next build).
+ * A locked story's picks are kept too, under the moment wording: "In a Discover story" would tell a free user its picks.
+ */
+export const setStoryPhotos = (open: string[], locked: string[] = []) => {
+  storyIds = new Map([...locked.map((id) => [id, 'Looks like a moment'] as const), ...open.map((id) => [id, 'In a Discover story'] as const)]);
+};
 /** lockOf's map: photos in saved dumps and drafts, then Discover's stories. */
 async function keepMap() {
-  const m = new Map<string, string>([...storyIds].map((id) => [id, 'In a Discover story']));
+  const m = new Map(storyIds);
   for (const dm of await list()) for (const p of dm.photos) m.set(p.id, 'In a dump');
   return m;
 }

@@ -10,6 +10,7 @@ import { IconButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { Icons } from '../../components/ui/Icons';
 import { Pill } from '../../components/ui/Pill';
+import { ProBadge } from '../../components/ui/ProBadge';
 import { Print } from '../../components/ui/Print';
 import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
@@ -120,7 +121,7 @@ export default function SetsScreen() {
         <Text style={[display(20), { color: t.ink }]} numberOfLines={1}>{set ? `Same shot · set ${at + 1} of ${sets.length}` : 'Same shot'}</Text>
         {keeper ? <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>{when(keeper.created)}</Text> : null}
       </View>
-      {set && total ? <Pill label={moveLabel} onPress={move} height={30} size={11} /> : null}
+      {set && total ? <Pill label={moveLabel} onPress={move} height={30} size={11} right={!isPro ? <ProBadge /> : null} /> : null}
     </View>
   );
 
