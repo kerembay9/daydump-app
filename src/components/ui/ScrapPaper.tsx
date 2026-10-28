@@ -10,7 +10,9 @@ export type CardStyle = Profile['cards'];
 export type PaperStyle = Exclude<CardStyle, 'classic'>;
 
 /** cream, oat, pale sage, blush: one lightness, different hues */
-const STOCKS = ['#FAF2E2', '#EFE4CD', '#E9E8D6', '#F3E4DA'];
+export const STOCKS = ['#FAF2E2', '#EFE4CD', '#E9E8D6', '#F3E4DA'];
+/** dark mode: warm charcoals, a step above Espresso's screen */
+export const DARK_STOCKS = ['#34302B', '#2F2C28', '#383330', '#312E2A'];
 export const TAPE_TONES: Record<PaperStyle, string[]> = {
   paper: ['rgba(224,206,170,0.82)', 'rgba(214,194,156,0.8)', 'rgba(232,218,190,0.84)'],
   // matte pastels at one depth: light blue, sage, dusty rose, butter, lilac
@@ -50,23 +52,26 @@ function sheet(w: number, h: number, seed: string): SkPath {
 
 // fine specks: noise → sepia, alpha 1.5 * noise - 0.97 (as Discover's Paper)
 const SPECKS = [0, 0, 0, 0, 0.35, 0, 0, 0, 0, 0.23, 0, 0, 0, 0, 0.09, 1.5, 0, 0, 0, -0.97];
+const LIGHT_SPECKS = [0, 0, 0, 0, 0.95, 0, 0, 0, 0, 0.9, 0, 0, 0, 0, 0.8, 1.2, 0, 0, 0, -0.85]; // cream specks on charcoal
 
 /** A card's paper, drawn behind its content (FrameCard paper). Static: one canvas, redrawn only on a size change. */
 export function ScrapPaper({ seed }: { seed: string }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const path = useMemo(() => size && sheet(size.w, size.h, seed), [size, seed]);
-  const stock = STOCKS[hash(`${seed}:stock`) % STOCKS.length];
+  const { t } = useTheme();
+  const stocks = t.dark ? DARK_STOCKS : STOCKS;
+  const stock = stocks[hash(`${seed}:stock`) % stocks.length];
   const at = [{ translateX: OUT }, { translateY: OUT }];
   return (
     <View testID="scrap-paper" pointerEvents="none" style={{ position: 'absolute', top: -OUT, left: -OUT, right: -OUT, bottom: -OUT }}
       onLayout={(e) => { const { width, height } = e.nativeEvent.layout; setSize({ w: width - 2 * OUT, h: height - 2 * OUT }); }}>
       {path && (
         <Canvas style={{ flex: 1 }}>
-          <Path path={path} color="rgba(60,38,16,0.26)" transform={[{ translateX: OUT }, { translateY: OUT + 2.5 }]}><BlurMask blur={3.5} style="normal" /></Path>
+          <Path path={path} color={t.dark ? 'rgba(0,0,0,0.55)' : 'rgba(60,38,16,0.26)'} transform={[{ translateX: OUT }, { translateY: OUT + 2.5 }]}><BlurMask blur={3.5} style="normal" /></Path>
           <Path path={path} color={stock} transform={at} />
           <Path path={path} transform={at}>
             <FractalNoise freqX={1.1} freqY={1.1} octaves={1} seed={11} />
-            <ColorMatrix matrix={SPECKS} />
+            <ColorMatrix matrix={t.dark ? LIGHT_SPECKS : SPECKS} />
           </Path>
         </Canvas>
       )}

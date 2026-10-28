@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bootApp, settle } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 import { getProfile, setProfile } from '../../src/services/profile';
-import { TAPE_TONES } from '../../src/components/ui/ScrapPaper';
+import { DARK_STOCKS, STOCKS, TAPE_TONES } from '../../src/components/ui/ScrapPaper';
 
 const TILE = /, \d+ photos · /;
 const KEY = '@daydump_profile';
@@ -16,6 +16,9 @@ const strips = () => screen.queryAllByTestId('scrap-strip').length;
 const bands = () => screen.queryAllByTestId('tape').length;
 /** torn tape is a canvas: its colour is the last Path's; masking tape is a View */
 const tornColours = () => Canvas.mock.calls.filter(([p]) => p.testID === 'scrap-tape').map(([p]) => (React.Children.toArray(p.children).at(-1) as React.ReactElement<{ color: string }>).props.color);
+/** each sheet's fill (drawn once the sheet has a size): the Path whose colour is a paper stock */
+const layOut = async () => { for (const n of screen.queryAllByTestId('scrap-paper')) await fireEvent(n, 'layout', { nativeEvent: { layout: { width: 160, height: 180 } } }); };
+const stocks = () => Canvas.mock.calls.flatMap(([p]) => React.Children.toArray(p.children).map((c) => (c as React.ReactElement<{ color?: string }>).props.color)).filter((c) => c && [...STOCKS, ...DARK_STOCKS].includes(c));
 const maskingColours = () => screen.queryAllByTestId('scrap-tape').map((n) => StyleSheet.flatten(n.props.style)?.backgroundColor as string).filter(Boolean);
 
 beforeAll(() => seedWorld());
@@ -60,6 +63,25 @@ test('Cards: paper by default, each sheet held by tone masking tape, and no Band
   const c = maskingColours();
   expect(c).toHaveLength(strips());
   expect(c.every((x) => TAPE_TONES.paper.includes(x))).toBe(true);
+  await layOut();
+  expect(stocks().length).toBeGreaterThan(0);
+  expect(stocks().every((x) => STOCKS.includes(x as string))).toBe(true);
+}, 30000);
+
+test('Cards: dark mode puts the cards on charcoal sheets, still tone tape', async () => {
+  await AsyncStorage.setItem('daydump.themeMode', 'dark');
+  try {
+    await discover({ cards: 'paper' });
+    expect(sheets()).toBeGreaterThanOrEqual(tiles());
+    expect(strips()).toBeGreaterThanOrEqual(sheets());
+    await layOut();
+    const c = stocks();
+    expect(c.length).toBeGreaterThan(0);
+    expect(c.every((x) => DARK_STOCKS.includes(x as string))).toBe(true);
+    expect(maskingColours().every((x) => TAPE_TONES.paper.includes(x))).toBe(true);
+  } finally {
+    await AsyncStorage.removeItem('daydump.themeMode');
+  }
 }, 30000);
 
 test('Developer tools → Cards cycles tone tape, colour tape, Classic and saves it', async () => {

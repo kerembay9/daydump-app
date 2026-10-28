@@ -163,8 +163,8 @@ export default function Discover() {
   const [refreshing, setRefreshing] = useState(false);
   const vision = useModels()?.vision; // indexing waits for it (release builds download it after the install)
   const { paper, cards } = useProfile();
-  // paper cards bring their own tape, so Bands only dresses the classic ones; dark mode keeps classic cards
-  const sheets = cards !== 'classic' && !t.dark ? cards : undefined;
+  // paper cards bring their own tape, so Bands only dresses the classic ones (dark mode: charcoal sheets)
+  const sheets = cards !== 'classic' ? cards : undefined;
   const more = useBands() === 'more' && !sheets;
 
 

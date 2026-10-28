@@ -266,7 +266,7 @@ function ProfileBody() {
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
-          <Row label="Cards" sub="Discover's cards: rounded, or paper sheets with tape (light mode). Tap to switch" onPress={() => save({ cards: CARDS[(CARDS.indexOf(p.cards) + 1) % CARDS.length] })}
+          <Row label="Cards" sub="Discover's cards: rounded, or paper sheets with tape. Tap to switch" onPress={() => save({ cards: CARDS[(CARDS.indexOf(p.cards) + 1) % CARDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{CARD_NAMES[p.cards]}</Text>} />
           {icon && <Row label="App icon" sub="Launcher icon. Tap to switch; the home screen can take a few seconds"
             onPress={() => { AppIcon!.set(icon.icons[(icon.icons.indexOf(icon.current) + 1) % icon.icons.length]); setIcon(AppIcon!.get()); }}
