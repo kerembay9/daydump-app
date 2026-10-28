@@ -17,12 +17,11 @@ import { Tap } from './ui/Tap';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
 import { HookStage, PrivacyStage } from './OnboardingMotion';
-import { ProfileStep } from './ProfileStep';
+import { ProfileStep, useLatestShots } from './ProfileStep';
 import { useSelfiePick } from './SelfieFinder';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { useModels } from '../state/models';
 import { NotificationService } from '../services/notificationService';
-import { GalleryService, isCameraPhoto } from '../services/galleryService';
 
 type Slide = { id: 'hook' | 'privacy'; badge: string; title: string; description: string; points?: { icon: LucideIcon; text: string }[] };
 
@@ -248,25 +247,6 @@ function NotifyStep({ dots, onDone }: { dots: React.ReactNode; onDone: () => voi
       </View>
     </>
   );
-}
-
-/** Up to three of the newest camera shots (bursts pruned), today's when there are three; [] until listed or with none. */
-function useLatestShots() {
-  const [uris, setUris] = useState<string[]>([]);
-  useEffect(() => {
-    let live = true;
-    MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: 60 })
-      .then(({ assets }) => {
-        const all = GalleryService.pruneAndCleanAssets(assets);
-        const cam = all.filter((p) => isCameraPhoto(p.uri));
-        const pool = cam.length ? cam : all; // iOS: no DCIM paths
-        const today = pool.filter((p) => new Date(p.creationTime).toDateString() === new Date().toDateString());
-        if (live) setUris((today.length >= 3 ? today : pool).slice(0, 3).map((p) => p.uri));
-      })
-      .catch((e) => console.warn('[onboarding] recent photos failed:', e));
-    return () => { live = false; };
-  }, []);
-  return uris;
 }
 
 /** One collage photo: pops in just after the picture unfolds (staggered by i), then drifts in slowly until the lift. */

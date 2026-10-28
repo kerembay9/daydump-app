@@ -1,9 +1,12 @@
 import React, { ReactNode, RefObject, useEffect, useRef, useState } from 'react';
 import { Keyboard, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutLeft, FadeOutUp, SlideInRight, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutLeft, FadeOutUp, SlideInRight, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 import Lock from 'lucide-react-native/icons/lock';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { useTheme } from '../theme/ThemeProvider';
 import { caps, display, label, ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
@@ -15,17 +18,18 @@ import { FaceCircle, faceFile, FaceThumb } from './FaceCircle';
 import { Bar } from './ModelLoading';
 import type { Selfie } from '../services/selfie';
 import { getProfile, setProfile } from '../services/profile';
+import { GalleryService, isCameraPhoto } from '../services/galleryService';
 
 type Rect = { x: number; y: number; w: number; h: number };
 type Fly = { from: Rect; to: Rect; origin: Rect; node: ReactNode; scale: number; key: number };
 const FLY_MS = 520;
-const BIG = 148, THUMB = 54;
+const BIG = 96, THUMB = 54;
 /** a pop with one small overshoot (the default spring wobbles for ~2 s) */
 const pop = () => ZoomIn.springify().damping(20).stiffness(260); // a new one each time: .delay() changes the builder
 const at = (r: RefObject<View | null>) => new Promise<Rect | null>((res) => (r.current ? r.current.measureInWindow((x, y, w, h) => res({ x, y, w, h })) : res(null)));
 
 /**
- * After the photo grant: the post header a dump preview shows (preview/[id] → PostMocks), filled in step by step. The name
+ * After the photo grant: the post header a dump preview shows (preview/[id] → PostMocks) over the newest six photos, filled in step by step. The name
  * is asked first and flies into the header; meanwhile the selfie scan (useSelfiePick, from the grant) runs. Then the pick:
  * "That's me" flies the face into the header's avatar, and a strip of the same person's other selfies lets them swap it
  * (right person, wrong photo); "Not me" moves to the next person. Continue saves the avatar; Skip leaves the initial letter.
@@ -41,11 +45,21 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
   const [avatar, setAvatar] = useState<{ s: Selfie; size: number; thumb: boolean } | null>(null);
   const [fly, setFly] = useState<Fly | null>(null);
   const { best, wait, vote, mine } = pick; // scanning since the grant (OnboardingModal)
+  const shots = useLatestShots(6);
   const root = useRef<View>(null), input = useRef<View>(null), headName = useRef<View>(null), headFace = useRef<View>(null), big = useRef<View>(null);
   const thumbs = useRef(new Map<string, View | null>());
   const bump = useSharedValue(0);
   const card = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.04 * bump.value }, { rotate: `${-1 + 1.5 * bump.value}deg` }] }));
   useEffect(() => { getProfile().then((p) => setName(p.name)); }, []);
+  // the keyboard lifts the page (the buttons sit on it) and the scroll shows the name field; closing it puts both back
+  const kb = useAnimatedKeyboard(), insets = useSafeAreaInsets();
+  const lift = useAnimatedStyle(() => ({ paddingBottom: Math.max(0, kb.height.value - insets.bottom - 8) })); // OnboardingModal pads insets.bottom + 8
+  const scroll = useRef<ScrollView>(null);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => scroll.current?.scrollToEnd());
+    const hide = Keyboard.addListener('keyboardDidHide', () => scroll.current?.scrollTo({ y: 0 }));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   /** Draws node over `from`, flies it into `to` (scaled by `scale`, else to its height), then land() and the header card bumps. */
   const launch = async (from: RefObject<View | null>, to: RefObject<View | null>, node: (r: Rect) => ReactNode, land: () => void, scale?: number) => {
@@ -85,14 +99,14 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
   const strip = picked ? mine(picked).slice(0, 8) : [];
 
   return (
-    <View ref={root} style={{ flex: 1 }}>
+    <Animated.View ref={root} style={[{ flex: 1 }, lift]}>
       <Animated.View entering={SlideInRight.duration(320)} style={{ flex: 1 }}>
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 16 }}>
+      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 16 }}>
         <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Your dump previews')}</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(60).duration(450)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 10 }]}>Put yourself in your posts</Animated.Text>
-        <Animated.View entering={FadeInDown.delay(120).duration(450)} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 10, marginBottom: 18, paddingHorizontal: 8 }}>
-          <Lock size={14} color={t.inkMuted} strokeWidth={2} />
-          <Text style={[ui(12.5), { color: t.inkMuted, lineHeight: 18, flexShrink: 1 }]}>Your name and photo only show on your dump previews. They stay on your phone.</Text>
+        <Animated.View entering={FadeInDown.delay(120).duration(450)} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 6, marginBottom: 14 }}>
+          <Lock size={12} color={t.inkMuted} strokeWidth={2} />
+          <Text style={[ui(11.5), { color: t.inkMuted }]}>Only on your previews. Stays on your phone.</Text>
         </Animated.View>
 
         {/* a post header like the previews' (PostMocks): the name and face fly into it */}
@@ -110,8 +124,37 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
                 <Text style={[ui(11), { color: t.inkMuted }]}>Today · photo dump</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              {[0, 1, 2].map((i) => <View key={i} style={{ flex: 1, height: 56, borderRadius: 8, backgroundColor: t.borderStrong, opacity: 0.5 }} />)}
+            {/* the newest six camera photos, 3 × 2 (grey until listed); the selfie question sits over them, darkened */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, borderRadius: 10, overflow: 'hidden' }}>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <View key={i} style={{ flexBasis: '30%', flexGrow: 1, aspectRatio: 1, backgroundColor: t.borderStrong }}>
+                  {shots[i] && <Animated.View entering={FadeIn.delay(60 * i).duration(300)} style={{ flex: 1 }}><Image source={{ uri: shots[i] }} contentFit="cover" style={{ flex: 1 }} accessibilityLabel={`Your photo ${i + 1}`} /></Animated.View>}
+                </View>
+              ))}
+              {phase === 'selfie' && (
+                <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(300)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+                  {best ? (
+                    <>
+                      <Animated.View key={best.p.id} entering={pop()} exiting={FadeOutLeft.duration(180)} style={{ borderRadius: BIG / 2 + 3, borderWidth: 3, borderColor: '#fff' }}>
+                        <View ref={big} collapsable={false}><FaceCircle uri={best.p.uri} box={best.box} aspect={best.aspect} size={BIG} /></View>
+                      </Animated.View>
+                      <Text style={[display(18, 1.2), { color: '#fff', marginTop: 8 }]}>Is this you?</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, alignSelf: 'stretch', paddingHorizontal: 10 }}>
+                        <Pill label="Not me" onPress={no} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
+                        <Pill label="That's me" on onPress={yes} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
+                      </View>
+                    </>
+                  ) : (
+                    <View style={{ alignSelf: 'stretch', gap: 6 }}>
+                      <Text style={[ui(14, 600), { color: '#fff', textAlign: 'center' }]}>{wait ? wait[0] : 'No selfie found'}</Text>
+                      <Text style={[ui(12.5), { color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 18 }]}>
+                        {wait ? 'Looking through your photos for one.' : 'Your previews show your initial. Add a photo later in Profile.'}
+                      </Text>
+                      {wait && <Bar progress={wait[2]} />}
+                    </View>
+                  )}
+                </Animated.View>
+              )}
             </View>
           </FrameCard>
         </Animated.View>
@@ -126,33 +169,7 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
               </View>
             </FrameCard>
           </Animated.View>
-        ) : phase === 'selfie' ? (
-          <Animated.View key="selfie" entering={FadeInDown.duration(400)} exiting={FadeOut.duration(150)}>
-            <FrameCard radius={20} padding={16} style={{ alignItems: 'center' }}>
-              {best ? (
-                <>
-                  <Animated.View key={best.p.id} ref={big} collapsable={false} entering={pop()} exiting={FadeOutLeft.duration(180)}>
-                    <FaceCircle uri={best.p.uri} box={best.box} aspect={best.aspect} size={BIG} />
-                  </Animated.View>
-                  <Text style={[display(20, 1.2), { color: t.ink, marginTop: 14 }]}>Is this you?</Text>
-                  <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 2 }]}>Found on your phone.</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, alignSelf: 'stretch' }}>
-                    <Pill label="Not me" onPress={no} height={40} size={13.5} style={{ flex: 1, justifyContent: 'center' }} />
-                    <Pill label="That's me" on onPress={yes} height={40} size={13.5} style={{ flex: 1, justifyContent: 'center' }} />
-                  </View>
-                </>
-              ) : (
-                <View style={{ alignSelf: 'stretch', gap: 6, paddingVertical: 8 }}>
-                  <Text style={[ui(14, 600), { color: t.ink, textAlign: 'center' }]}>{wait ? wait[0] : 'No selfie found'}</Text>
-                  <Text style={[ui(12.5), { color: t.inkMuted, textAlign: 'center', lineHeight: 18 }]}>
-                    {wait ? 'Looking through your photos for one.' : 'Your previews show your initial. Add a photo later in Profile.'}
-                  </Text>
-                  {wait && <Bar progress={wait[2]} />}
-                </View>
-              )}
-            </FrameCard>
-          </Animated.View>
-        ) : (
+        ) : phase === 'selfie' ? null : (
           <Animated.View key="picked" entering={FadeInDown.delay(FLY_MS - 120).duration(400)}>
             <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>{caps('Not this one? Pick another')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 4, paddingVertical: 4 }}>
@@ -192,7 +209,7 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
       </View>
 
       {fly && <Flyer key={fly.key} f={fly} />}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -224,4 +241,23 @@ async function saveAvatar(s: Selfie) {
   await new File(src).copy(dest);
   await setProfile({ avatar: dest.uri });
   console.log('[onboarding] avatar saved', dest.uri);
+}
+
+/** Up to n of the newest camera shots (bursts pruned), today's when there are n; [] until listed or with none. */
+export function useLatestShots(n = 3) {
+  const [uris, setUris] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: 60 })
+      .then(({ assets }) => {
+        const all = GalleryService.pruneAndCleanAssets(assets);
+        const cam = all.filter((p) => isCameraPhoto(p.uri));
+        const pool = cam.length ? cam : all; // iOS: no DCIM paths
+        const today = pool.filter((p) => new Date(p.creationTime).toDateString() === new Date().toDateString());
+        if (live) setUris((today.length >= n ? today : pool).slice(0, n).map((p) => p.uri));
+      })
+      .catch((e) => console.warn('[onboarding] recent photos failed:', e));
+    return () => { live = false; };
+  }, [n]);
+  return uris;
 }
