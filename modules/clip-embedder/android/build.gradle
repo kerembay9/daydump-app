@@ -13,8 +13,12 @@ android {
     versionName '0.1.0'
     consumerProguardFiles 'proguard-rules.pro'
   }
-  // Debug builds (Metro, adb installs) carry the packs' models in the APK; release downloads them (ModelPacks.kt).
-  sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets']
+  // Debug builds (Metro, adb installs) carry the packs' models in the APK, and the selfie gate (for the no-vision dev switch).
+  // Release carries the packs the pack config puts in the install (app.json → app.plugin.js → clipEmbedder.basePacks) and
+  // downloads the rest (ModelPacks.kt); the gate only stands in for CLIP, so it ships only when visionpack doesn't.
+  def basePacks = (findProperty('clipEmbedder.basePacks') ?: '').tokenize(',')
+  sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets', 'src/gate/assets']
+  sourceSets.release.assets.srcDirs += basePacks.collect { "$it/src/main/assets" } + ('visionpack' in basePacks ? [] : ['src/gate/assets'])
   // ...and the translate feature module's code (release downloads it on demand: TranslateFeature in QueryTranslateModule.kt).
   sourceSets.debug.java.srcDirs += ['translate/src/main/java']
 }

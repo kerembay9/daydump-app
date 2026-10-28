@@ -27,6 +27,8 @@ NATIVE = ROOT / "modules/clip-embedder/android/src/main/assets/clip"
 VPACK = ROOT / "modules/clip-embedder/android/visionpack/src/main/assets/clip"
 FPACK = ROOT / "modules/clip-embedder/android/facepack/src/main/assets/clip"
 PACK = ROOT / "modules/clip-embedder/android/textpack/src/main/assets/clip"
+# the selfie gate, only needed while visionpack is missing: release builds ship it only when vision isn't in the install
+GATE = ROOT / "modules/clip-embedder/android/src/gate/assets/clip"
 JS = ROOT / "src/services/index"
 CACHE = ROOT / "scripts/.cache"  # downloads; gitignored
 VOCAB = CACHE / "vocab.bin"  # concept text embeddings, rows of [float32 scale][512 x int8]; baked into concepts.tflite
@@ -503,7 +505,7 @@ def build_gate():
     from ai_edge_quantizer.qtyping import TFLOperationName
     rm = recipe_manager.RecipeManager()
     rm.add_weight_only_config(regex=".*", operation_name=TFLOperationName.ALL_SUPPORTED, num_bits=16, algorithm_key=algorithm_manager.AlgorithmName.FLOAT_CASTING)
-    got = export_tflite(m, x, NATIVE / "gate.tflite", rm.get_quantization_recipe(), floor=-1)  # P checked by its value below
+    got = export_tflite(m, x, GATE / "gate.tflite", rm.get_quantization_recipe(), floor=-1)  # P checked by its value below
     cos = (ref[:, 1:] * got[:, 1:]).sum(-1)
     print(f"  reject P vs torch: max diff {np.abs(ref[:, 0] - got[:, 0]).max():.4f} (torch {ref[:, 0].round(3)}), feature cosine min {cos.min():.5f}")
     assert np.abs(ref[:, 0] - got[:, 0]).max() < 0.02 and cos.min() > 0.999, "gate.tflite drifted"

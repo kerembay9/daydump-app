@@ -14,7 +14,8 @@ import java.io.File
 
 /**
  * The big models ship as Play asset packs in release builds (android/<pack>/build.gradle); debug builds carry them in the APK.
- * All three are fast-follow, so Play starts them at install, app opened or not, in an order Play picks. Whatever isn't on
+ * app.json's pack config can put packs in the release APK too (app.plugin.js): those count as ready and Play is never asked.
+ * The rest are fast-follow, so Play starts them at install, app opened or not, in an order Play picks. Whatever isn't on
  * the phone yet is fetched here one at a time: faces (onboarding's selfie step, which comes first) first, then the pack a
  * screen asked for (want: Create wants text), then the rest in Pack order. A release APK installed without Play
  * (sideloaded, adb) never gets them: every pack stays "unavailable".
@@ -100,7 +101,7 @@ internal object ModelPacks {
   /** Play's dialog for a pack it's holding: use mobile data (WAITING_FOR_WIFI) or its confirmation. True if the user said yes. Main thread. */
   fun askToDownload(act: Activity): Task<Boolean> {
     val m = manager(act)
-    return m.getPackStates(Pack.entries.map { it.pack }).onSuccessTask { s ->
+    return m.getPackStates(Pack.entries.filterNot { ready(act, it) }.map { it.pack }).onSuccessTask { s ->
       val held = s!!.packStates().values.map { it.status() }
       when {
         AssetPackStatus.WAITING_FOR_WIFI in held -> m.showCellularDataConfirmation(act)

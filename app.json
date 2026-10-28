@@ -80,7 +80,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "./modules/clip-embedder/app.plugin.js",
+      ["./modules/clip-embedder/app.plugin.js", { "packs": "vis-face" }],
       "./plugins/withReleaseSigning.js",
       "expo-image",
       "expo-sharing",
