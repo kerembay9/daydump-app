@@ -156,9 +156,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      getProfile().catch(() => {}); // warm profileNow() (new-dump size / frame defaults) before anything reads it
-      // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks
-      if (await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
+      // also warms profileNow() (new-dump size / frame defaults) before anything reads it
+      const prof = await getProfile().catch(() => null);
+      // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks.
+      // Developer tools' "Onboarding every launch" takes the first-run path every time.
+      const replay = __DEV__ && !!prof?.onboardingEveryLaunch;
+      if (!replay && await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
       else setOnboarding(true);
     })();
   }, [start]);

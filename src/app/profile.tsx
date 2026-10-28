@@ -267,6 +267,7 @@ function ProfileBody() {
             NotificationService.sendTestNotification().catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Onboarding every launch" sub="Opens onboarding on every app start, as on a first run." onPress={() => save({ onboardingEveryLaunch: !p.onboardingEveryLaunch })} toggle={p.onboardingEveryLaunch} />
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
