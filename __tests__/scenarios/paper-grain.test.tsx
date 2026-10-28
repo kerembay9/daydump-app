@@ -5,7 +5,7 @@ import { seedWorld } from '../../jest/world';
 import { getProfile, setProfile } from '../../src/services/profile';
 import { cashmere, parchment } from '../../src/theme/tokens';
 
-const HERO = 'Preview A week in Seattle';
+const HERO = /^A week in Seattle, /;
 const { Canvas } = jest.requireMock('@shopify/react-native-skia') as { Canvas: jest.Mock };
 const tileBg = () => StyleSheet.flatten(screen.getAllByLabelText(/, \d+ photos · /)[0].props.style).backgroundColor;
 const paperDrawn = () => Canvas.mock.calls.some(([p]) => p.testID === 'paper');

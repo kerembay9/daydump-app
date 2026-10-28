@@ -38,7 +38,7 @@ test('Post shares to the chosen app and marks the dump Posted; Library shows it;
   // TikTok from the app picker
   // back on Discover the Seattle trip is the hero again
   world.shareResult = 'com.zhiliaoapp.musically';
-  await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle'));
+  await fireEvent.press(await screen.findByLabelText(/^A week in Seattle, /));
   await fireEvent.press(await screen.findByRole('tab', { name: 'TikTok 9:16' }));
   await fireEvent.press(screen.getByLabelText('Post'));
   await fireEvent.press(await screen.findByLabelText('TikTok'));
@@ -138,7 +138,7 @@ test('no Instagram or TikTok installed: Post skips the picker, straight to the s
   world.shareTargets = [];
   world.shareResult = 'chooser';
   await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 }));
   share().mockClear();
   await fireEvent.press(await screen.findByLabelText('Post'));
   expect(await screen.findByText('Shared')).toBeTruthy();

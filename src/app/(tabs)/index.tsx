@@ -18,6 +18,7 @@ import { StatusScrim } from '../../components/ui/Screen';
 import { type PaperStyle, ScrapTapes } from '../../components/ui/ScrapPaper';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
+import { TodayCard } from '../../components/TodayCard';
 import { useModels } from '../../state/models';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
@@ -149,32 +150,7 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
   );
 }
 
-function Hero({ s, more, paper }: { s: Story; more: boolean; paper?: PaperStyle }) {
-  const { t } = useTheme();
-  return (
-    <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
-      <FrameCard radius={16} padding={10} rotate={paper ? -0.7 * PAPER_TILT : more ? -1.8 : -1} paper={paper && s.id}>
-        <Tap onPress={() => preview(s.id)} accessibilityRole="button" accessibilityLabel={`Preview ${s.title}`}>
-          <PhotoStack kind="hero" uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} />
-        </Tap>
-        <View style={{ paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <Title text={s.title} style={display(19.5)} />
-            <Meta s={s} size={10.5} />
-          </View>
-          <Tap onPress={() => preview(s.id)} accessibilityRole="button" style={{ height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: t.ink, justifyContent: 'center' }}>
-            <Text style={[ui(11, 600), { color: t.bgScreen }]}>Preview</Text>
-          </Tap>
-        </View>
-        {more && <><CornerTape seed={`${s.id}:l`} side="left" /><CornerTape seed={`${s.id}:r`} side="right" /></>}
-        {paper && <ScrapTapes id={s.id} style={paper} />}
-      </FrameCard>
-      {!more && !paper && <Tape />}
-    </View>
-  );
-}
-
-/** Discover (ph2.png, "scrapbook bento"): hero dump + every other dump in repeating bento blocks. */
+/** Discover (ph2.png, "scrapbook bento"): the Today card (Dump Meter), then every dump in repeating bento blocks; today's own dump is the card's. */
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
@@ -190,8 +166,7 @@ export default function Discover() {
   const more = useBands() === 'more' && !sheets;
 
 
-  const hero = stories[0];
-  const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
+  const others = useMemo(() => stories.filter((s) => s.kind !== 'today'), [stories]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
   const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} paper={sheets} />, [more, sheets]);
@@ -200,7 +175,7 @@ export default function Discover() {
   const shuffle = async () => {
     setRefreshing(true);
     try {
-      await shuffleStories([hero, ...others.slice(0, 4)].filter(Boolean).map((s) => s.id));
+      await shuffleStories(others.slice(0, 8).map((s) => s.id));
     } finally {
       setRefreshing(false);
     }
@@ -210,7 +185,7 @@ export default function Discover() {
     <>
       <TopHeader title={name ? `Hi, ${name}` : 'Hi there'} right={<AvatarButton onPress={() => router.push('/profile')} />} />
       <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} coverageSince={coverageSince} onPause={pause} onResume={resume} />
-      {(progress || paused) && hero && permission !== false && (
+      {(progress || paused) && stories.length > 0 && permission !== false && (
         <Text style={[ui(11, 400), { color: t.inkMuted, marginTop: 2, paddingHorizontal: 2 }]}>
           {/* the strip shows the reach unless it's busy with the battery line or paused */}
           {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
@@ -223,8 +198,8 @@ export default function Discover() {
           action="Open settings"
           onAction={() => Linking.openSettings()}
         />
-      ) : hero ? (
-        <Hero s={hero} more={more} paper={sheets} />
+      ) : stories.length ? (
+        <TodayCard more={more} />
       ) : vision && vision.state !== 'ready' ? (
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (

@@ -10,7 +10,7 @@ beforeAll(() => seedWorld());
 
 test('stories show "{N} photos · {range}" and long titles in full; tapping a tile opens its preview', async () => {
   await bootApp('/');
-  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
   expect(screen.queryByText('Other dumps')).toBeNull();
 
   // hero + 2 tiles, every one with its meta line
@@ -20,9 +20,11 @@ test('stories show "{N} photos · {range}" and long titles in full; tapping a ti
     expect(meta).toMatch(META);
   }
   // the 7-day trip outranks the weekly topics
-  expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
+  expect(screen.getByLabelText(/^A week in Seattle, /)).toBeTruthy();
   // no Edit chip on the hero: Edit is reached from Preview
   expect(screen.queryByLabelText(/^Edit /)).toBeNull();
+  // and no Preview pill: tapping the photos is the preview
+  expect(screen.queryByText('Preview')).toBeNull();
 
   // The long title is the whole string, shrunk to fit on two lines rather than cut with an ellipsis.
   const tile = screen.getAllByText(LONG).find((x) => x.props.adjustsFontSizeToFit)!;

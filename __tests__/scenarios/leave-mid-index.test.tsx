@@ -34,7 +34,7 @@ const building = async () => {
   expect(screen.queryByText('No dumps yet')).toBeNull();
   expect(screen.getByText('Building your dumps…')).toBeTruthy();
 };
-const dumpsShow = () => screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+const dumpsShow = () => screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
 
 /**
  * 400 screenshots newer than the default library (no story: Include screenshots is off), so 3 batches of 128 make no

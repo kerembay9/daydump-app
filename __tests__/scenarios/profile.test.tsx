@@ -138,7 +138,7 @@ test('a new avatar shows only once its file is written, and Discover\'s header p
     : [...[n.props?.source].flat().map((x) => (x as { uri?: string } | undefined)?.uri ?? ''), ...uris(n.children ?? null)];
   const avatars = () => [...new Set(uris(screen.toJSON() as Node).filter((u) => u.includes('/doc/avatar-')))];
   await bootApp('/');
-  await screen.findByLabelText('Preview A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(/^A week in Seattle, /, {}, { timeout: 10000 });
   await fireEvent.press(screen.getByLabelText('Profile and settings'));
   await fireEvent.press(await screen.findByLabelText('Change profile photo'));
   world.files.held = [];
@@ -155,7 +155,7 @@ test('a new avatar shows only once its file is written, and Discover\'s header p
 
   // back on Discover, the header shows it
   await fireEvent.press(screen.getByLabelText('Back'));
-  await screen.findByLabelText('Preview A week in Seattle');
+  await screen.findByLabelText(/^A week in Seattle, /);
   expect(avatars()).toEqual([uri]);
 }, 30000);
 

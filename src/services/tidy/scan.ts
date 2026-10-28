@@ -61,7 +61,7 @@ async function keepMap() {
  * The owner's SFace feature, from the profile photo (once per photo; meta table). Null without a profile photo with one
  * face, or while the faces pack hasn't landed (faces() rejects).
  */
-async function ownerFace(): Promise<Float32Array | null> {
+export async function ownerFace(): Promise<Float32Array | null> {
   const avatar = (await getProfile()).avatar;
   if (!avatar) return null;
   const d = await db();

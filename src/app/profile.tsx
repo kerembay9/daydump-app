@@ -249,6 +249,7 @@ function ProfileBody() {
             onPress={() => ClipEmbedder?.setDevModel(DEV_MODEL ? null : 'tc45')} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Today tags" sub="The Today card's checklist on one day's photos, with every score" onPress={() => router.push('/today-tags')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
