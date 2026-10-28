@@ -31,6 +31,7 @@ import { NotificationService } from '../services/notificationService';
 import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
 import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { daysLeft, NO_UNLOCKS, UNLOCK_EVERY } from '../services/unlocks';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
@@ -54,6 +55,8 @@ function ProfileBody() {
   const app = useApp();
   const pro = usePro();
   const sub = pro.sub;
+  // when this screen opened: the dev unlock row's day count can't call Date.now() in render
+  const [openedAt] = useState(Date.now);
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
   const [dumps, setDumps] = useState(0);
@@ -261,6 +264,9 @@ function ProfileBody() {
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(pro.refresh)} />}
+          <Row label="Free unlock" sub={`${pro.unlocks.ids.length} unlocked · ${daysLeft(pro.unlocks, openedAt) ? `next in ${daysLeft(pro.unlocks, openedAt)} days` : 'one free now'}. Tap to reset`}
+            onPress={() => pro.setUnlocks(NO_UNLOCKS)} />
+          <Row label="Pretend 7 days passed" sub="Moves the last free unlock a week back." onPress={() => pro.setUnlocks({ ...pro.unlocks, lastAt: pro.unlocks.lastAt == null ? null : pro.unlocks.lastAt - UNLOCK_EVERY })} />
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
