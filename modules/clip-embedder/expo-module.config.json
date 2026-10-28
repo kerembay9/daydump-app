@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["expo.modules.clipembedder.ClipEmbedderModule", "expo.modules.clipembedder.EdgeBenchModule", "expo.modules.clipembedder.QueryTranslateModule"]
+    "modules": ["expo.modules.clipembedder.ClipEmbedderModule", "expo.modules.clipembedder.EdgeBenchModule", "expo.modules.clipembedder.QueryTranslateModule", "expo.modules.clipembedder.AppIconModule"]
   }
 }

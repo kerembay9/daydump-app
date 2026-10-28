@@ -82,6 +82,10 @@
     "plugins": [
       ["./modules/clip-embedder/app.plugin.js", { "packs": "vis-face" }],
       "./plugins/withReleaseSigning.js",
+      ["./plugins/withAppIcons.js", {
+        "dark": { "foreground": "./assets/icon-dark.png", "background": "#0A0A0C" },
+        "cards": { "foreground": "./assets/icon-cards-foreground.png", "background": "#EDE7CF", "legacy": "./assets/icon-cards.png" }
+      }],
       "expo-image",
       "expo-sharing",
       [

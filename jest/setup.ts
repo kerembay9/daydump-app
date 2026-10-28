@@ -108,6 +108,13 @@ function tidySets(v: Float32Array, t: number[], strict: boolean[]): number[] {
   return out;
 }
 
+// Developer tools' App icon switch (AppIconModule.kt): launcher aliases in memory.
+const icon = { current: 'default' };
+(globalThis as any).expo.modules.AppIcon = {
+  get: () => ({ icons: ['default', 'dark', 'cards'], current: icon.current }),
+  set: jest.fn((name: string) => { icon.current = name; }),
+};
+
 // Search in other languages (QueryTranslateModule.kt): Turkish (anything with ç ğ ı ö ş ü) and a tiny dictionary. Until the
 // translate module is installed (download installs it) nothing is downloaded, identify finds nothing and toEnglish rejects.
 (globalThis as any).expo.modules.QueryTranslate = {

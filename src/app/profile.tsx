@@ -27,7 +27,7 @@ import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../serv
 import { ratioOf } from '../services/layouts';
 import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
-import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
+import { AppIcon, ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
 import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
@@ -61,6 +61,7 @@ function ProfileBody() {
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
   const [sub, setSub] = useState<Sub | null>(null);
+  const [icon, setIcon] = useState(() => AppIcon?.get());
   const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
@@ -267,6 +268,9 @@ function ProfileBody() {
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
           <Row label="Cards" sub="Discover's cards: rounded, or paper sheets with tape (light mode). Tap to switch" onPress={() => save({ cards: CARDS[(CARDS.indexOf(p.cards) + 1) % CARDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{CARD_NAMES[p.cards]}</Text>} />
+          {icon && <Row label="App icon" sub="Launcher icon. Tap to switch; the home screen can take a few seconds"
+            onPress={() => { AppIcon!.set(icon.icons[(icon.icons.indexOf(icon.current) + 1) % icon.icons.length]); setIcon(AppIcon!.get()); }}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{ICON_NAMES[icon.current] ?? icon.current}</Text>} />}
           <Row label="Hide developer tools" onPress={() => save({ dev: false })} last />
         </Section>
       )}
@@ -294,6 +298,9 @@ const BAND_NAMES: Record<ProfileT['bands'], string> = { none: 'No bands', defaul
 /** Developer tools' Cards switch, in tap order. */
 const CARDS: ProfileT['cards'][] = ['paper', 'tinted', 'classic'];
 const CARD_NAMES: Record<ProfileT['cards'], string> = { classic: 'Classic', paper: 'Paper, tone tape', tinted: 'Paper, colour tape' };
+
+/** Developer tools' App icon switch: the launcher aliases' names (plugins/withAppIcons.js). */
+const ICON_NAMES: Record<string, string> = { default: 'Pic dump', dark: 'Dark', cards: 'Cards' };
 
 /** Developer tools' CLIP switch: null = the shipped model. */
 const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);

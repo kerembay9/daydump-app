@@ -186,3 +186,12 @@ type EdgeBenchModule = {
 
 /** Gemma 4 E2B (LiteRT-LM), ML Kit labeling and YuNet faces, for the benchmark screen only. Null on iOS / Expo Go. */
 export const EdgeBench = requireOptionalNativeModule<EdgeBenchModule>('EdgeBench');
+
+type AppIconModule = {
+  /** icons in the manifest's order (plugins/withAppIcons.js); current = the enabled launcher alias. */
+  get(): { icons: string[]; current: string };
+  /** Switches the launcher icon; the home screen can take a few seconds to show it. */
+  set(name: string): void;
+};
+/** Developer tools' App icon switch (AppIconModule.kt). Null on iOS / Expo Go. */
+export const AppIcon = requireOptionalNativeModule<AppIconModule>('AppIcon');
