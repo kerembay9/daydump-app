@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, screen } from 'expo-router/testing-library';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bootApp, settle } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 import { getProfile, setProfile } from '../../src/services/profile';
 import { TAPE_TONES } from '../../src/components/ui/ScrapPaper';
 
 const TILE = /, \d+ photos · /;
+const KEY = '@daydump_profile';
 const { Canvas } = jest.requireMock('@shopify/react-native-skia') as { Canvas: jest.Mock };
 const tiles = () => screen.getAllByLabelText(TILE).length;
 const sheets = () => screen.queryAllByTestId('scrap-paper').length;
@@ -26,21 +28,16 @@ async function discover(p: Parameters<typeof setProfile>[0]) {
   await screen.findAllByLabelText(TILE, {}, { timeout: 10000 });
 }
 
-test('Cards: classic by default, rounded cards with the Bands tape and no paper', async () => {
-  await discover({ bands: 'more' });
+test('Cards: classic gives rounded cards with the Bands tape and no paper', async () => {
+  await discover({ bands: 'more', cards: 'classic' });
   expect(sheets()).toBe(0);
   expect(strips()).toBe(0);
   expect(bands()).toBeGreaterThan(0);
 }, 30000);
 
-test('Cards: kraft puts every card on paper with one torn kraft strip each, and drops the Bands tape', async () => {
-  await discover({ bands: 'more', cards: 'kraft' });
-  expect(sheets()).toBeGreaterThanOrEqual(tiles());
-  expect(bands()).toBe(0);
-  expect(strips()).toBe(sheets()); // one each
-  const c = tornColours();
-  expect(c.length).toBeGreaterThan(0);
-  expect(c.every((x) => TAPE_TONES.kraft.includes(x))).toBe(true);
+test('Cards: a saved kraft (dropped) comes back as tone tape', async () => {
+  await AsyncStorage.mergeItem(KEY, JSON.stringify({ cards: 'kraft' }));
+  expect((await getProfile()).cards).toBe('paper');
 }, 30000);
 
 test('Cards: tinted tapes the paper cards in several matte colours', async () => {
@@ -52,8 +49,11 @@ test('Cards: tinted tapes the paper cards in several matte colours', async () =>
   expect(new Set(c).size).toBeGreaterThan(1);
 }, 30000);
 
-test('Cards: paper holds each sheet with tone masking tape, mostly across the top', async () => {
-  await discover({ cards: 'paper' });
+test('Cards: paper by default, each sheet held by tone masking tape, and no Bands tape', async () => {
+  const { cards: _, ...rest } = await getProfile();
+  await AsyncStorage.setItem(KEY, JSON.stringify(rest)); // no saved choice
+  await discover({ bands: 'more' });
+  expect(bands()).toBe(0);
   expect(sheets()).toBeGreaterThanOrEqual(tiles());
   expect(tornColours()).toHaveLength(0);
   expect(strips()).toBeGreaterThanOrEqual(sheets());
@@ -62,11 +62,11 @@ test('Cards: paper holds each sheet with tone masking tape, mostly across the to
   expect(c.every((x) => TAPE_TONES.paper.includes(x))).toBe(true);
 }, 30000);
 
-test('Developer tools → Cards cycles Classic, tone, kraft, colour tape and saves it', async () => {
-  await setProfile({ cards: 'classic', dev: true });
+test('Developer tools → Cards cycles tone tape, colour tape, Classic and saves it', async () => {
+  await setProfile({ cards: 'paper', dev: true });
   await bootApp('/profile');
   const row = await screen.findByText('Cards', {}, { timeout: 10000 });
-  for (const [name, v] of [['Paper, tone tape', 'paper'], ['Paper, kraft tape', 'kraft'], ['Paper, colour tape', 'tinted'], ['Classic', 'classic']] as const) {
+  for (const [name, v] of [['Paper, colour tape', 'tinted'], ['Classic', 'classic'], ['Paper, tone tape', 'paper']] as const) {
     await fireEvent.press(row);
     await settle();
     expect(screen.getByText(name)).toBeTruthy();

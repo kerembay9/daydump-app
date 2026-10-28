@@ -5,7 +5,7 @@ import { hash } from './Tape';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { Profile } from '../../services/profile';
 
-/** Developer tools → Cards: Discover's rounded cards (classic), or paper sheets held by tone masking tape (paper), torn kraft tape (kraft) or torn matte colour tape (tinted). */
+/** Developer tools → Cards: Discover's rounded cards (classic), or paper sheets held by tone masking tape (paper) or torn matte colour tape (tinted). */
 export type CardStyle = Profile['cards'];
 export type PaperStyle = Exclude<CardStyle, 'classic'>;
 
@@ -13,7 +13,6 @@ export type PaperStyle = Exclude<CardStyle, 'classic'>;
 const STOCKS = ['#FAF2E2', '#EFE4CD', '#E9E8D6', '#F3E4DA'];
 export const TAPE_TONES: Record<PaperStyle, string[]> = {
   paper: ['rgba(224,206,170,0.82)', 'rgba(214,194,156,0.8)', 'rgba(232,218,190,0.84)'],
-  kraft: ['rgba(201,170,124,0.86)', 'rgba(190,158,112,0.86)', 'rgba(210,182,140,0.86)'],
   // matte pastels at one depth: light blue, sage, dusty rose, butter, lilac
   tinted: ['rgba(176,198,216,0.88)', 'rgba(184,202,172,0.88)', 'rgba(222,184,172,0.88)', 'rgba(228,208,152,0.88)', 'rgba(200,190,216,0.88)'],
 };
@@ -104,10 +103,9 @@ function MaskingTape({ w, h, color }: { w: number; h: number; color: string }) {
 }
 
 type Spot = 'centre' | 'offset' | 'side' | 'left' | 'right';
-/** paper: masking strips mostly across the top (centre, off-centre), else a corner or both top corners. kraft / tinted: one torn strip in one of five spots. */
+/** paper: masking strips mostly across the top (centre, off-centre), else a corner or both top corners. tinted: one torn strip in one of five spots. */
 const SPOTS: Record<PaperStyle, (Spot | Spot[])[]> = {
   paper: ['centre', 'offset', 'left', 'right', ['left', 'right']],
-  kraft: ['centre', 'left', 'right', 'offset', 'side'],
   tinted: ['centre', 'left', 'right', 'offset', 'side'],
 };
 

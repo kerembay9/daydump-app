@@ -10,7 +10,7 @@ const SEATTLE = /^A week in Seattle, /;
 const TAPE = [cashmere.tapeBg, espresso.tapeBg];
 const tapes = () => screen.queryAllByTestId('tape').map((n) => StyleSheet.flatten(n.props.style).backgroundColor as string);
 
-beforeAll(() => seedWorld());
+beforeAll(async () => { await seedWorld(); await setProfile({ cards: 'classic' }); }); // paper cards bring their own tape and stock
 
 test('Bands: none takes every tape off Discover', async () => {
   await setProfile({ bands: 'none' });
