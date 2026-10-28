@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen } from 'expo-router/testing-library';
+import { act, fireEvent, screen } from 'expo-router/testing-library';
 import { bootApp, settle } from '../../jest/app';
 import { burst, byId, defaultLibrary, photo, seedWorld, world } from '../../jest/world';
 import { ClipEmbedder } from '../../modules/clip-embedder';
@@ -7,7 +7,8 @@ import { ClipEmbedder } from '../../modules/clip-embedder';
 // Tidy for a free user: scanning, every pile, the counts and the sets are free; moving to Trash is Pro. Undo, restore and
 // Trash history never are (a lapsed user's photos are never held hostage).
 const trash = ClipEmbedder!.trash as jest.Mock;
-const PAYWALL = 'Every dump in your roll.';
+const PAYWALL = 'Clear the clutter.';
+const rc = jest.requireMock('react-native-purchases').default as { getCustomerInfo: jest.Mock; addCustomerInfoUpdateListener: jest.Mock; setAttributes: jest.Mock };
 
 beforeEach(async () => {
   trash.mockClear();
@@ -55,6 +56,35 @@ test('free: Tidy finds and shows every pile, but moving to Trash opens the paywa
   await fireEvent.press(await screen.findByRole('button', { name: /^Exact copies/ }));
   await fireEvent.press(await screen.findByRole('button', { name: 'Move 1 to Trash' }));
   expect(await screen.findByText(PAYWALL)).toBeTruthy();
+  await settle();
+  expect(trash).not.toHaveBeenCalled();
+  expect(byId(copyB.id)).toBeTruthy();
+}, 60000);
+
+test('Pro lapsing while a pile is open: Move opens the paywall (source tidy), nothing is trashed', async () => {
+  const takes = burst(new Date(2025, 5, 1, 12), 3, [22]);
+  const copyA = photo(new Date(2025, 6, 1, 9), [7]), copyB = photo(new Date(2025, 6, 2, 9), [7]);
+  seedWorld([...defaultLibrary(), ...takes, copyA, copyB]);
+  world.tidy.hash[copyA.id] = world.tidy.hash[copyB.id] = 'same-bytes';
+  world.pro = true;
+
+  await bootApp('/tidy');
+  await scan();
+  await fireEvent.press(screen.getByRole('button', { name: /^Exact copies/ }));
+  const move = await screen.findByRole('button', { name: 'Move 1 to Trash' });
+  expect(move.props.accessibilityHint).toBeUndefined();
+
+  // RevenueCat's listener: the subscription ended
+  world.pro = false;
+  const info = await rc.getCustomerInfo();
+  await act(async () => { rc.addCustomerInfoUpdateListener.mock.lastCall![0](info); });
+  await settle();
+  rc.setAttributes.mockClear();
+  expect(screen.getByRole('button', { name: 'Move 1 to Trash' }).props.accessibilityHint).toBe('PicDump Pro');
+  await fireEvent.press(screen.getByRole('button', { name: 'Move 1 to Trash' }));
+  expect(await screen.findByText(PAYWALL)).toBeTruthy();
+  expect(rc.setAttributes).toHaveBeenCalledWith({ paywall_source: 'tidy' });
+  expect(screen.queryByText('Move 1 photo to Trash?')).toBeNull();
   await settle();
   expect(trash).not.toHaveBeenCalled();
   expect(byId(copyB.id)).toBeTruthy();

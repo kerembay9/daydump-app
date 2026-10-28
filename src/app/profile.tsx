@@ -324,7 +324,7 @@ function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[display(17), { color: t.ink }]}>PicDump Pro</Text>
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
-          {!sub ? 'Unlimited dumps, Ultra HD 2160 px exports & more.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+          {!sub ? 'Every dump, search, all looks and texture, Tidy and no end slide.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
         </Text>
       </View>
       {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />

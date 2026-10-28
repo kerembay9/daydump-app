@@ -9,18 +9,27 @@ import { Tap } from './ui/Tap';
 import { RevenueCatService } from '../services/revenuecat';
 import { paywallPlans, PlanRow } from '../services/paywallPlans';
 import { LegalModal, type LegalDocType } from './LegalModal';
+import type { PaywallSource } from '../state/Pro';
 
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[paywall]', m));
+
+/** The heading for what was tapped; everything else (a locked dump, Profile, photos per dump) gets the dumps one. */
+const DUMPS = { heading: 'Every dump in your roll.', sub: 'Free gets your recaps and one dump a week. Pro opens all of them.' };
+const COPY: Partial<Record<PaywallSource, { heading: string; sub: string }>> = {
+  tidy: { heading: 'Clear the clutter.', sub: 'Free finds every repeat and blurry shot. Pro moves them to Trash in one go.' },
+  finish: { heading: 'Keep the film look.', sub: 'Original, Warm 35mm and Adjust are free. Pro exports every look and texture.' },
+  search: { heading: 'Search your camera roll.', sub: 'Find a place, a month or a thing in words. Search comes with Pro.' },
+};
 
 /**
  * PicDump Pro. Plans, prices and trials are the current RevenueCat offering's packages, in its order; the first with a
  * trial starts selected. found: the dump titles Discover just found (the first-full-Discover paywall).
  */
-export function PaywallModal({ visible, onClose, onPurchased, found }: {
+export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
   visible: boolean;
   onClose: () => void;
   onPurchased?: () => void;
-  source?: string;
+  source?: PaywallSource;
   found?: string[];
 }) {
   const { t } = useTheme();
@@ -78,9 +87,9 @@ export function PaywallModal({ visible, onClose, onPurchased, found }: {
   };
 
   const n = found?.length ?? 0;
-  const heading = n ? `We found ${n} dump${n === 1 ? '' : 's'} in your roll.` : 'Every dump in your roll.';
-  const sub = n ? `${found!.slice(0, 3).join(', ')}${n > 3 ? ' and more' : ''}. Pro opens all of them.`
-    : 'Free gets one dump a week and your daily recap. Pro opens all of them.';
+  const copy = (source && COPY[source]) || DUMPS;
+  const heading = n ? `We found ${n} dump${n === 1 ? '' : 's'} in your roll.` : copy.heading;
+  const sub = n ? `${found!.slice(0, 3).join(', ')}${n > 3 ? ' and more' : ''}. Pro opens all of them.` : copy.sub;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>

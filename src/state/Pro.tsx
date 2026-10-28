@@ -32,8 +32,11 @@ type ProValue = {
   accessOf: (s: Pick<Story, 'id' | 'kind' | 'start' | 'end'>) => Access;
   /** The id this story was unlocked under (a re-index can re-id it since); its draft is the snapshot. Null = never unlocked. */
   unlockedIdOf: (s: StorySpan) => string | null;
-  /** The unlock sheet for a locked story: spend the free unlock, or go Pro. */
-  askUnlock: (s: Story) => void;
+  /**
+   * The unlock sheet for a locked story: spend the free unlock, or go Pro. replace: asked from that story's own locked
+   * Preview / Edit, so the unlocked Preview takes its place instead of stacking on it.
+   */
+  askUnlock: (s: Story, opts?: { replace?: boolean }) => void;
   /** found: the titles of the dumps Discover found (first-discover only) */
   openPaywall: (source: PaywallSource, found?: string[]) => void;
   /** Re-reads the subscription (after the dev Fake Pro switch). */
@@ -69,12 +72,14 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   const [unlocksLoaded, setUnlocksLoaded] = useState(false);
   const [paywall, setPaywall] = useState<{ source: PaywallSource; found?: string[] } | null>(null);
   // `at`: when the sheet opened, so its text is computed outside render
-  const [asking, setAsking] = useState<{ story: Story; at: number } | null>(null);
+  const [asking, setAsking] = useState<{ story: Story; at: number; replace?: boolean } | null>(null);
 
   // undefined: RevenueCat couldn't tell (offline with nothing cached, an SDK error): keep what we knew
   const apply = useCallback((sub: Sub | null | undefined) => {
     if (sub === undefined) return;
     setPro({ sub, known: true, checked: true });
+    // Pro arrived (a subscriber with no cache tapped a Pro feature before RevenueCat answered): nothing left to sell
+    if (sub) { setPaywall(null); setAsking(null); }
     AsyncStorage.setItem(KNOWN, JSON.stringify({ sub })).catch((e) => console.warn('[pro] cache failed:', e));
   }, []);
   const refresh = useCallback(async () => { apply(await getSubscription()); }, [apply]);
@@ -102,7 +107,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     isPro, sub, known, checked, unlocks, refresh, setUnlocks, openPaywall,
     accessOf: (s) => access(s, isPro, unlocks),
     unlockedIdOf: (s) => unlockedAs(unlocks, s),
-    askUnlock: (s) => setAsking({ story: s, at: Date.now() }),
+    askUnlock: (s, opts) => setAsking({ story: s, at: Date.now(), replace: opts?.replace }),
   }), [isPro, sub, known, checked, unlocks, refresh, setUnlocks, openPaywall]);
 
   /**
@@ -111,7 +116,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
    */
   const spending = useRef(false);
   const [spendingNow, setSpendingNow] = useState(false);
-  const spendUnlock = async (s: Story) => {
+  const spendUnlock = async (s: Story, replace?: boolean) => {
     if (!unlocksLoaded || spending.current) return;
     spending.current = true;
     setSpendingNow(true);
@@ -128,13 +133,13 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     spending.current = false;
     setSpendingNow(false);
     setAsking(null);
-    if (ok) router.push({ pathname: '/preview/[id]', params: { id: s.id } });
+    if (ok) router[replace ? 'replace' : 'push']({ pathname: '/preview/[id]', params: { id: s.id } });
   };
 
   return (
     <Ctx.Provider value={value}>
       {ready && children}
-      <UnlockSheet story={asking?.story ?? null} now={asking?.at ?? 0} unlocks={unlocks} ready={unlocksLoaded} spending={spendingNow} onUse={spendUnlock} onPro={() => { setAsking(null); openPaywall('locked-dump'); }} onClose={() => setAsking(null)} />
+      <UnlockSheet story={asking?.story ?? null} now={asking?.at ?? 0} unlocks={unlocks} ready={unlocksLoaded} spending={spendingNow} onUse={(s) => spendUnlock(s, asking?.replace)} onPro={() => { setAsking(null); openPaywall('locked-dump'); }} onClose={() => setAsking(null)} />
       <PaywallModal visible={!!paywall} source={paywall?.source ?? 'profile'} found={paywall?.found} onClose={() => setPaywall(null)} onPurchased={refresh} />
     </Ctx.Provider>
   );

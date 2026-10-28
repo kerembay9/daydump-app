@@ -24,13 +24,13 @@ export function LockBadge() {
   );
 }
 
-/** Preview / Edit of a locked story (a deep link, or Back after Pro lapsed): no picks, just the way in. */
+/** Preview / Edit of a locked story (a deep link, or Back after Pro lapsed): no picks, just the way in (which replaces this screen). */
 export function LockedStub({ story }: { story: Story }) {
   const { t } = useTheme();
   const { askUnlock } = usePro();
   return (
     <Stub back title={story.title} note={`${story.subtitle}. This dump is locked.`}>
-      <Tap onPress={() => askUnlock(story)} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
+      <Tap onPress={() => askUnlock(story, { replace: true })} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={[ui(13, 600), { color: t.bgScreen }]}>Unlock</Text>
       </Tap>
     </Stub>

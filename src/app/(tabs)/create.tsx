@@ -51,7 +51,7 @@ const vecFor = (text: string) => {
 function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, onRemoveRecent, right, locked, onLocked }: {
   query: string; searching: boolean; onQuery: (q: string) => void; onCommit: (q: string) => void;
   recents: string[]; suggestions: string[]; onRemoveRecent: (q: string) => void; right?: React.ReactNode;
-  /** search is Pro: focusing the field opens the paywall instead */
+  /** search is Pro: the field can't take focus, and a tap on it opens the paywall instead */
   locked: boolean; onLocked: () => void;
 }) {
   const { t } = useTheme();
@@ -62,6 +62,8 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
   useEffect(() => { last.current = query; }, [query]);
   // Android Back hides the keyboard without blurring: close the dropdown with it
   useEffect(() => { const k = Keyboard.addListener('keyboardDidHide', () => input.current?.blur()); return () => k.remove(); }, []);
+  // Pro lapsed while typing: let the field go
+  useEffect(() => { if (locked) input.current?.blur(); }, [locked]);
   const pick = (q: string) => { onQuery(q); last.current = q; input.current?.blur(); Keyboard.dismiss(); };
   const rows = recents.length ? recents.slice(0, 4) : suggestions;
   // the dropdown is the field's sibling, not its child: Android leaves views outside their parent's bounds out of the
@@ -76,7 +78,8 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
             ref={input}
             value={query}
             onChangeText={onQuery}
-            onFocus={() => { if (locked) { input.current?.blur(); onLocked(); return; } setFocused(true); }}
+            editable={!locked}
+            onFocus={() => setFocused(true)}
             onBlur={() => { setFocused(false); onCommit(last.current); }}
             onSubmitEditing={() => onCommit(query)}
             placeholder="Search keyword, place, date..."
@@ -86,6 +89,11 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
             autoCorrect={false}
             style={[ui(12, 500), { flex: 1, color: t.ink, padding: 0 }]}
           />
+          {/* over the field, not a focus handler: focusing first would flash the keyboard */}
+          {locked ? (
+            <Tap onPress={onLocked} accessibilityRole="button" accessibilityLabel="Search" accessibilityHint="PicDump Pro"
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+          ) : null}
           {query ? (
             <Tap onPress={() => onQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
               <Icons.close size={12} color={t.inkMuted} />
@@ -272,6 +280,13 @@ export default function Create() {
   const [query, setQuery] = useState('');
   // photos, not library rows: indexing rebuilds the library under a running search
   const [rows, setRows] = useState<IndexedPhoto[] | null>(null);
+  // search is Pro: a lapse mid-session drops the query, so its results don't stay up (set while rendering, not in an effect)
+  const locked = !pro.isPro;
+  const [wasLocked, setWasLocked] = useState(locked);
+  if (locked !== wasLocked) {
+    setWasLocked(locked);
+    if (locked) { setQuery(''); setRows(null); }
+  }
   const [qvec, setQvec] = useState<Float32Array | null>(null);
   const [wordsSkipped, setWordsSkipped] = useState(false); // the search had words but no text vector
   const [expanded, setExpanded] = useState<Expanded | null>(null); // translations searched too (index/queryLang.ts)
@@ -538,7 +553,7 @@ export default function Create() {
       <SearchBar query={query} searching={searching} onQuery={setQuery} onCommit={commit} recents={recents} suggestions={suggestions}
         right={<AvatarButton onPress={() => router.push('/profile')} />}
         onRemoveRecent={(q) => editRecents((r) => r.filter((x) => x !== q))}
-        locked={!pro.isPro} onLocked={() => pro.openPaywall('search')} />
+        locked={locked} onLocked={() => pro.openPaywall('search')} />
 
       <FlatList
         // new results start at the top and mount only the first screen, not the old scroll window (~750 ms)

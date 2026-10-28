@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor } from 'expo-router/testing-library';
+import { router } from 'expo-router';
 import { bootApp, settle } from '../../jest/app';
 import { defaultLibrary, photo, seedWorld, world } from '../../jest/world';
 import { recapPeriods } from '../../src/services/stories';
@@ -82,10 +83,49 @@ test('the first time Discover is full of locked dumps, the paywall names them, o
 test('free: tapping search opens the paywall instead of the field', async () => {
   await bootApp('/create');
   const field = await screen.findByPlaceholderText('Search keyword, place, date...', {}, { timeout: 10000 });
-  await fireEvent(field, 'focus');
-  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+  // the field can't take focus (no keyboard flash): a tap over it asks for Pro
+  expect(field.props.editable).toBe(false);
+  await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+  expect(await screen.findByText('Search your camera roll.')).toBeTruthy();
   expect(screen.queryByText('Last searches')).toBeNull();
   expect(screen.queryByText('Try')).toBeNull();
+}, 30000);
+
+/** RevenueCat's customer-info listener (renewals, lapses, purchases elsewhere), as the SDK would call it. */
+async function customerInfoChanged() {
+  const listener = (rc as unknown as { addCustomerInfoUpdateListener: jest.Mock }).addCustomerInfoUpdateListener.mock.lastCall![0];
+  await act(async () => { listener(await realCustomerInfo()); });
+  await settle();
+}
+
+test('a subscriber who taps search before RevenueCat answers sees the paywall close when it does', async () => {
+  world.pro = true;
+  const answer = slowRevenueCat();
+  await bootApp('/create');
+  const field = await screen.findByPlaceholderText('Search keyword, place, date...', {}, { timeout: 10000 });
+  // nothing cached: assumed free until RevenueCat answers
+  await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+  expect(await screen.findByText('Search your camera roll.')).toBeTruthy();
+
+  answer();
+  await waitFor(() => expect(screen.queryByText('Search your camera roll.')).toBeNull());
+  expect(field.props.editable).toBe(true);
+  expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+}, 30000);
+
+test('Pro lapsing on Create drops the search and its results', async () => {
+  world.pro = true;
+  await bootApp('/create');
+  const field = await screen.findByPlaceholderText('Search keyword, place, date...', {}, { timeout: 10000 });
+  await fireEvent.changeText(field, 'seattle');
+  expect(await screen.findByText(/^Matches for "seattle"/)).toBeTruthy();
+
+  world.pro = false;
+  await customerInfoChanged();
+  expect(screen.getByPlaceholderText('Search keyword, place, date...').props.value).toBe('');
+  expect(screen.queryByText(/^Matches for/)).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+  expect(await screen.findByText('Search your camera roll.')).toBeTruthy();
 }, 30000);
 
 test('free: changing photos per dump opens the paywall and keeps the range', async () => {
@@ -240,6 +280,53 @@ test.each(['preview', 'edit'])('free: a deep link to a locked story\'s %s shows 
   await settle();
   expect(await list('draft')).toHaveLength(0);
 }, 30000);
+
+test('free: unlocking from a locked story\'s Edit replaces it with the Preview, so Back goes to Discover', async () => {
+  const id = await puppyStoryId();
+  const app = await bootApp('/');
+  await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 });
+  // (Preview's own stub is dangerouslySingular: the unlocked Preview lands on the same screen either way)
+  await act(async () => { router.push({ pathname: '/edit/[id]', params: { id } }); });
+  await fireEvent.press(await screen.findByRole('button', { name: 'Unlock' }));
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  expect(await screen.findByLabelText('Post')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Back'));
+  await waitFor(() => expect(app.getPathname()).toBe('/'));
+  expect(await screen.findByLabelText(`${LONG}, ${META}`)).toBeTruthy();
+}, 30000);
+
+/** The IG Profile Grid's other tiles (covers of past posts and open dumps) for a manual one-photo dump. */
+async function gridCovers() {
+  const p = world.photos.at(-1)!;
+  const d = await createDraft({ source: 'create', photos: [{ id: p.id, uri: p.uri }] });
+  await bootApp(`/preview/${d.id}`);
+  await fireEvent.press(await screen.findByRole('tab', { name: 'IG Profile Grid' }, { timeout: 10000 }));
+  await settle();
+  const covers = screen.queryAllByTestId('grid-cover').map((el) => (el.props.source as { uri: string }).uri);
+  screen.unmount();
+  await remove(d.id);
+  return covers;
+}
+
+test('free: the IG Profile Grid shows only open dumps\' covers (a locked cover is one of its picks)', async () => {
+  world.pro = true;
+  const all = await gridCovers();
+  world.pro = false;
+  const free = await gridCovers();
+  expect(free.length).toBeLessThan(all.length);
+  expect(free.every((u) => all.includes(u))).toBe(true);
+
+  // unlocking a dump adds its cover
+  await bootApp('/');
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByText('Use free unlock'));
+  await screen.findByLabelText('Post');
+  screen.unmount();
+  for (const d of await list()) await remove(d.id);
+  const unlocked = await gridCovers();
+  expect(unlocked.length).toBe(free.length + 1);
+  expect(unlocked.every((u) => all.includes(u))).toBe(true);
+}, 60000);
 
 test('free: the 8 PM recap route is never locked', async () => {
   await bootApp('/preview/today');
