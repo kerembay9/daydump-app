@@ -164,7 +164,7 @@ Denied: straight to the app. The slides are two taps. The notification permissio
 | Play install, first open within a minute | packs still downloading | Discover and Create: **"Getting your dumps ready"**, "Downloading 11 MB, once (N%)…". Onboarding's selfie step doesn't wait: the gate stands in for CLIP. Dumps start as soon as it lands |
 | Play install, opened later | Play fetched the packs meanwhile | indexing starts at once; whatever is missing downloads in the background, faces first |
 | Word search before textpack | behind facepack and visionpack | Create: **"Word search is on its way"**, "Downloading 28 MB, once (N%). Places and months work now." or "Next in line after the other downloads." |
-| A pack waiting | Play holds it (Wi-Fi, needs the user's OK) | that pack's card: "Waiting for Wi-Fi to download N MB, once." |
+| A pack waiting | Play holds it (Wi-Fi only, needs the user's OK) | that pack's card: "Waiting for Wi-Fi to download N MB, once." with **Download now with mobile data**, which opens Play's own dialog (`ModelPacks.askToDownload`: showCellularDataConfirmation, or showConfirmationDialog) |
 | A pack failed | network error | "The N MB download stopped. Check your connection, then try again." with **Try again** (`retryModels`); also restarted on the next foreground |
 | No packs at all | release APK sideloaded or installed with adb | every card: "This copy of DayDump can't download it. Install it from Google Play." plus "(Play error N)" when Play gave a reason. Discover never fills |
 | Debug build | Metro / `expo run:android` | every pack is in the APK: always ready |

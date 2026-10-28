@@ -34,6 +34,8 @@ type ClipEmbedderModule = {
    * Calls needing a missing one reject (and want it). Updates come as onModels events. Also restarts a download that failed.
    */
   modelState(): Promise<Record<ModelPack, PackState>>;
+  /** Play's dialog for a pack it holds ('waiting'): download now on mobile data, or its confirmation. True if the user said yes. */
+  askToDownload?(): Promise<boolean>;
   /** A screen needs this pack: it downloads right after faces, ahead of the other (not ahead of one already downloading). */
   wantModel?(pack: ModelPack): void;
   tokenize(text: string): Promise<number[]>;

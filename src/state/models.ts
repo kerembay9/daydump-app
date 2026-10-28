@@ -20,6 +20,8 @@ const set = (m: Models) => { raw = m; models = shown(m); subs.forEach((f) => f()
 const refresh = () => ClipEmbedder?.modelState().then(set, (e) => console.warn('[models] state failed:', e));
 /** The loading card's Try again (a failed pack otherwise restarts when the app comes back to the front). */
 export const retryModels = () => { refresh(); };
+/** The waiting card's button: Play's dialog to download now on mobile data (ModelPacks.askToDownload), then the new state. */
+export const askToDownload = () => { ClipEmbedder?.askToDownload?.().then(refresh, (e) => console.warn('[models] ask failed:', e)); };
 
 let started = false;
 function start() {

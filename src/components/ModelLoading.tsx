@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import type { ModelPack, PackState } from '../../modules/clip-embedder';
-import { retryModels } from '../state/models';
+import { askToDownload, retryModels } from '../state/models';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 import { fixed } from '../theme/tokens';
@@ -87,9 +87,9 @@ export function ModelLoading({ pack, s }: { pack: ModelPack; s: PackState }) {
         <Text style={[display(19.5, 1.1), { color: t.ink }]}>{title}</Text>
         <Text style={[ui(12, 400), { color: t.inkMuted, lineHeight: 17 }]}>{body}</Text>
         <Bar progress={progress} />
-        {s.state === 'failed' && (
-          <Tap onPress={retryModels} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center', marginTop: 4 }}>
-            <Text style={[ui(12, 600), { color: t.bgScreen }]}>Try again</Text>
+        {(s.state === 'failed' || s.state === 'waiting') && (
+          <Tap onPress={s.state === 'failed' ? retryModels : askToDownload} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center', marginTop: 4 }}>
+            <Text style={[ui(12, 600), { color: t.bgScreen }]}>{s.state === 'failed' ? 'Try again' : 'Download now with mobile data'}</Text>
           </Tap>
         )}
       </FrameCard>

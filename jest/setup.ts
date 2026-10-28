@@ -34,7 +34,7 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   setNavigationBarStyle: () => {},
   // onboarding: models on the phone, a selfie scan that finds none, the 8 PM recap job
   modelState: async () => ({ vision: { state: 'ready', progress: 1 }, faces: { state: 'ready', progress: 1 }, text: { state: 'ready', progress: 1 } }),
-  wantModel: () => {}, holdIndexing: jest.fn(), warmSelfie: async () => {},
+  wantModel: () => {}, askToDownload: jest.fn(async () => true), holdIndexing: jest.fn(), warmSelfie: async () => {},
   faces: async () => [], selfieCheck: async () => ({ scans: [], vecs: '', reject: [], gateVecs: '', sharp: [] }),
   scheduleDailyRecap: jest.fn(async () => {}), cancelDailyRecap: jest.fn(async () => {}), setRecapCover: () => {},
   // Tidy (Tidy.kt) over world.photos; Trash moves photos out of world.photos into world.tidy.binned and back

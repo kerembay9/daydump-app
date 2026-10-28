@@ -1,7 +1,9 @@
 package expo.modules.clipembedder
 
+import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 import com.google.android.play.core.assetpacks.AssetPackException
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
@@ -17,7 +19,7 @@ import java.io.File
  * screen asked for (want: Create wants text), then the rest in Pack order. A release APK installed without Play
  * (sideloaded, adb) never gets them: every pack stays "unavailable".
  * ponytail: a want waits for the pack already downloading (no cancel: Play may drop its bytes); cancel it if 41 MB waits hurt.
- * ponytail: WAITING_FOR_WIFI / REQUIRES_USER_CONFIRMATION just report "waiting"; add showConfirmationDialog if it shows up in the field.
+ * A pack Play holds (WAITING_FOR_WIFI, REQUIRES_USER_CONFIRMATION) reports "waiting"; askToDownload shows Play's own dialog for it.
  */
 internal object ModelPacks {
   /** Declaration order = download order. probe: a file of the pack, to tell a debug APK that carries it. */
@@ -93,6 +95,19 @@ internal object ModelPacks {
     AssetPackStatus.NOT_INSTALLED, AssetPackStatus.CANCELED, AssetPackStatus.UNKNOWN -> mapOf("state" to "queued", "progress" to 0.0)
     AssetPackStatus.TRANSFERRING -> mapOf("state" to "downloading", "progress" to s.transferProgressPercentage() / 100.0)
     else -> mapOf("state" to "downloading", "progress" to if (s.totalBytesToDownload() > 0) s.bytesDownloaded().toDouble() / s.totalBytesToDownload() else 0.0)
+  }
+
+  /** Play's dialog for a pack it's holding: use mobile data (WAITING_FOR_WIFI) or its confirmation. True if the user said yes. Main thread. */
+  fun askToDownload(act: Activity): Task<Boolean> {
+    val m = manager(act)
+    return m.getPackStates(Pack.entries.map { it.pack }).onSuccessTask { s ->
+      val held = s!!.packStates().values.map { it.status() }
+      when {
+        AssetPackStatus.WAITING_FOR_WIFI in held -> m.showCellularDataConfirmation(act)
+        AssetPackStatus.REQUIRES_USER_CONFIRMATION in held -> m.showConfirmationDialog(act)
+        else -> Tasks.forResult(Activity.RESULT_OK) // not held any more (Wi-Fi came back)
+      }
+    }.continueWith { it.result == Activity.RESULT_OK }
   }
 
   /** cb gets {pack, state, progress} per update; a pack that lands starts the next one. */

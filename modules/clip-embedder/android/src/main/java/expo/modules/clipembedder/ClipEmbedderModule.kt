@@ -22,7 +22,9 @@ import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
 import android.util.Size
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.Exceptions
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -135,6 +137,10 @@ class ClipEmbedderModule : Module() {
 
     // The model downloads (ModelPacks), per pack: ready | downloading (progress 0..1) | queued | waiting | failed | unavailable (no Play).
     AsyncFunction("modelState") Coroutine { -> withContext(Dispatchers.IO) { ModelPacks.state(ctx) } }
+    AsyncFunction("askToDownload") { promise: Promise ->
+      val act = appContext.currentActivity ?: return@AsyncFunction promise.resolve(false)
+      ModelPacks.askToDownload(act).addOnSuccessListener { promise.resolve(it) }.addOnFailureListener { promise.reject("ERR_MODELS", it.message, it) }
+    }.runOnQueue(Queues.MAIN)
     Function("wantModel") { pack: String -> ModelPacks.Pack.entries.firstOrNull { it.key == pack }?.let { ModelPacks.want(ctx, it) } }
     OnCreate {
       packListener = ModelPacks.listen(ctx) { sendEvent("onModels", it) }
