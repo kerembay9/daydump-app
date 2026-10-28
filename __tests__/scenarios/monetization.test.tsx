@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
 import { bootApp, settle } from '../../jest/app';
-import { seedWorld, world } from '../../jest/world';
+import { defaultLibrary, photo, seedWorld, world } from '../../jest/world';
+import { recapPeriods } from '../../src/services/stories';
 import { createDraft, list, remove, update } from '../../src/services/dumps';
 import { getProfile } from '../../src/services/profile';
 
@@ -20,7 +21,10 @@ function slowRevenueCat() {
   return () => answer();
 }
 const cachePro = () => AsyncStorage.setItem(KNOWN, JSON.stringify({ sub: { plan: 'Yearly', until: Date.now() + 365 * 86400000, renews: true } }));
-const lockedOnScreen = () => screen.queryByLabelText(/, locked$/) ?? screen.queryByLabelText(/^Unlock /);
+const lockedOnScreen = () => screen.queryByLabelText(/, locked$/);
+/** Discover's Seattle tile (the hero is gone in 0.0.6: every dump is a bento tile) */
+const SEATTLE_LOCKED = /^A week in Seattle, .*, locked$/;
+const SEATTLE_OPEN = /^A week in Seattle, .*\d{4}$/;
 
 beforeEach(async () => {
   seedWorld();
@@ -37,17 +41,17 @@ afterAll(() => { world.pro = true; });
 test('free: dumps are locked; the free unlock opens one, the next asks for Pro', async () => {
   await bootApp('/');
   const tile = await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 });
-  expect(screen.getByLabelText('Unlock A week in Seattle')).toBeTruthy();
+  expect(screen.getByLabelText(SEATTLE_LOCKED)).toBeTruthy();
 
   await fireEvent.press(tile);
   await fireEvent.press(await screen.findByText('Use free unlock'));
   // the unlocked dump opens in Preview
-  expect(await screen.findByLabelText('Post on Instagram or TikTok')).toBeTruthy();
+  expect(await screen.findByLabelText('Post')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Back'));
 
   // it stays open; the next locked one says when the next free unlock is, and offers Pro
   expect(await screen.findByLabelText(`${LONG}, ${META}`)).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText('Unlock A week in Seattle'));
+  await fireEvent.press(screen.getByLabelText(SEATTLE_LOCKED));
   expect(await screen.findByText(/Your next free dump is in 7 days\.$/)).toBeTruthy();
   expect(screen.queryByText('Use free unlock')).toBeNull();
   await fireEvent.press(screen.getByLabelText('Unlock all with Pro'));
@@ -58,8 +62,8 @@ test('Pro: nothing is locked', async () => {
   world.pro = true;
   await bootApp('/');
   expect(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 })).toBeTruthy();
-  expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
-  expect(screen.queryByText('Unlock')).toBeNull();
+  expect(screen.getByLabelText(SEATTLE_OPEN)).toBeTruthy();
+  expect(lockedOnScreen()).toBeNull();
 }, 30000);
 
 test('the first time Discover is full of locked dumps, the paywall names them, once', async () => {
@@ -71,7 +75,7 @@ test('the first time Discover is full of locked dumps, the paywall names them, o
   screen.unmount();
 
   await bootApp('/');
-  await screen.findByLabelText('Unlock A week in Seattle', {}, { timeout: 10000 });
+  await screen.findByLabelText(SEATTLE_LOCKED, {}, { timeout: 10000 });
   expect(screen.queryByText(/We found \d+ dumps/)).toBeNull();
 }, 30000);
 
@@ -100,7 +104,7 @@ test('free exports end with the PicDump slide; Pro exports do not', async () => 
   // 6 photo slides + the end slide, rendered ahead in the background
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(7));
   // the counts say 7 too: no "6 slides" then "7 slides saved"
-  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(screen.getByLabelText('Post'));
   expect(await screen.findByText('A carousel of 7 slides')).toBeTruthy();
   screen.unmount();
 
@@ -112,7 +116,7 @@ test('free exports end with the PicDump slide; Pro exports do not', async () => 
   await waitFor(() => expect(draw).toHaveBeenCalledTimes(6));
   await settle(3000);
   expect(draw).toHaveBeenCalledTimes(6);
-  await fireEvent.press(screen.getByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(screen.getByLabelText('Post'));
   expect(await screen.findByText('A carousel of 6 slides')).toBeTruthy();
 }, 30000);
 
@@ -120,22 +124,22 @@ test('free: saving a dump with a Pro film look asks first; "Export without finis
   await bootApp('/');
   await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}, locked`, {}, { timeout: 10000 }));
   await fireEvent.press(await screen.findByText('Use free unlock'));
-  await screen.findByLabelText('Post on Instagram or TikTok');
+  await screen.findByLabelText('Post');
   await fireEvent.press(screen.getByLabelText('Back'));
   // the unlock made its Library draft; give it a Pro look, then open it again
   const [draft] = await list('draft');
-  await update(draft.id, { filter: { key: 'cashmere', pct: 68, all: true, per: {} } });
-  const photoSlides = (calls = draw.mock.calls) => calls.map(([el]) => el.props.photos as { matrix: number[] | null }[] | undefined).filter((ps) => ps != null);
+  await update(draft.id, { filter: { key: 'cashmere', pct: 68, per: {}, adj: {} } });
+  const photoSlides = (calls = draw.mock.calls) => calls.map(([el]) => el.props.photos as { dev: { matrix: number[] | null } | null }[] | undefined).filter((ps) => ps != null);
   draw.mockClear();
   await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`));
 
   // the background export draws the Pro look (it is what Preview shows)
   await waitFor(() => expect(photoSlides()).toHaveLength(6));
-  expect(photoSlides().flat().every((p) => p.matrix != null)).toBe(true);
+  expect(photoSlides().flat().every((p) => p.dev?.matrix != null)).toBe(true);
   await settle();
 
   draw.mockClear();
-  await fireEvent.press(await screen.findByLabelText('Save only, to the PicDump album'));
+  await fireEvent.press(await screen.findByLabelText('Save to phone'));
   expect(await screen.findByText('This film look is Pro')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Export without finish'));
   expect(await screen.findByText('Saved to your phone')).toBeTruthy();
@@ -143,7 +147,7 @@ test('free: saving a dump with a Pro film look asks first; "Export without finis
   // Preview then renders its own look again in the background, for the next Post.
   const saved = draw.mock.calls.slice(0, 7);
   expect(photoSlides(saved)).toHaveLength(6);
-  expect(photoSlides(saved).flat().every((p) => p.matrix == null)).toBe(true);
+  expect(photoSlides(saved).flat().every((p) => p.dev?.matrix == null)).toBe(true);
   expect(saved[6][0].props.photos).toBeUndefined();
 }, 30000);
 
@@ -152,7 +156,7 @@ async function puppyStoryId() {
   world.pro = true;
   const app = await bootApp('/');
   await fireEvent.press(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 }));
-  await screen.findByLabelText('Post on Instagram or TikTok');
+  await screen.findByLabelText('Post');
   const id = decodeURIComponent(app.getPathname().replace('/preview/', ''));
   screen.unmount();
   world.pro = false;
@@ -164,7 +168,7 @@ test.each(['preview', 'edit'])('free: a deep link to a locked story\'s %s shows 
   expect(id).toMatch(/^topic:/);
   await bootApp(`/${route}/${encodeURIComponent(id)}`);
   expect(await screen.findByText(/This dump is locked\.$/, {}, { timeout: 10000 })).toBeTruthy();
-  expect(screen.queryByLabelText('Post on Instagram or TikTok')).toBeNull();
+  expect(screen.queryByLabelText('Post')).toBeNull();
   await settle();
   expect(await list('draft')).toHaveLength(0);
 }, 30000);
@@ -172,6 +176,31 @@ test.each(['preview', 'edit'])('free: a deep link to a locked story\'s %s shows 
 test('free: the 8 PM recap route is never locked', async () => {
   await bootApp('/preview/today');
   expect(await screen.findByText(/Nothing taken today yet/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(screen.queryByText(/This dump is locked/)).toBeNull();
+}, 30000);
+
+test('free: the week recap is open, on Discover and from the Sunday notification', async () => {
+  // 9 camera photos over the recap week's first 3 days (all before today, whichever weekday this runs on)
+  const week = recapPeriods(Date.now())[0];
+  const day0 = new Date(week.start);
+  const at = (d: number, h: number) => new Date(day0.getFullYear(), day0.getMonth(), day0.getDate() + d, h);
+  seedWorld([...defaultLibrary(), ...[0, 1, 2].flatMap((d) => [9, 13, 18].map((h) => photo(at(d, h), [3])))]);
+  world.pro = false;
+  // the weekly unlock is already spent: a recap doesn't need it
+  await AsyncStorage.setItem('@picdump_unlocks', JSON.stringify({ lastAt: Date.now(), ids: [], spans: {} }));
+
+  await bootApp('/');
+  const tile = await screen.findByLabelText(new RegExp(`^${week.title}, `), {}, { timeout: 10000 });
+  expect(tile.props.accessibilityLabel).not.toMatch(/, locked$/);
+  expect(screen.getByLabelText(`${LONG}, ${META}, locked`)).toBeTruthy();
+  await fireEvent.press(tile);
+  expect(await screen.findByLabelText('Post')).toBeTruthy();
+  expect(screen.queryByText(/This dump is locked/)).toBeNull();
+  screen.unmount();
+
+  // the Sunday noon notification opens /preview/recap:week:…
+  await bootApp(`/preview/${encodeURIComponent(week.id)}`);
+  expect(await screen.findByLabelText('Post', {}, { timeout: 10000 })).toBeTruthy();
   expect(screen.queryByText(/This dump is locked/)).toBeNull();
 }, 30000);
 
@@ -194,7 +223,7 @@ test('a subscriber with a cached Pro answer never sees a lock while RevenueCat i
   await bootApp('/');
   expect(lockedOnScreen()).toBeNull();
   expect(await screen.findByLabelText(`${LONG}, ${META}`, {}, { timeout: 10000 })).toBeTruthy();
-  expect(screen.getByLabelText('Preview A week in Seattle')).toBeTruthy();
+  expect(screen.getByLabelText(SEATTLE_OPEN)).toBeTruthy();
   await settle(3000);
   expect(lockedOnScreen()).toBeNull();
 

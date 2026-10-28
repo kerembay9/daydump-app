@@ -10,6 +10,14 @@ test('the daily recap is always open, Pro or not', () => {
   expect(access(today, false, NO_UNLOCKS)).toBe('open');
 });
 
+test('week, month and year recaps are always open, Pro or not', () => {
+  for (const id of ['recap:week:Mon Oct 26 2026', 'recap:month:2026-10', 'recap:year:2026']) {
+    expect(access({ id, kind: 'recap', start: 10 * DAY, end: 16 * DAY }, false, NO_UNLOCKS)).toBe('open');
+  }
+  // a used weekly unlock doesn't matter either
+  expect(access({ id: 'recap:week:Mon Oct 26 2026', kind: 'recap', start: 10 * DAY, end: 16 * DAY }, false, unlocked)).toBe('open');
+});
+
 test('Pro opens everything', () => {
   expect(access(trip, true, NO_UNLOCKS)).toBe('open');
 });
