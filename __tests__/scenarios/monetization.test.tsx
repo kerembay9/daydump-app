@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen } from 'expo-router/testing-library';
 import { bootApp } from '../../jest/app';
 import { seedWorld, world } from '../../jest/world';
+import { getProfile } from '../../src/services/profile';
 
 const LONG = 'An autumn of golden retriever puppy splashing through the shallow waves';
 const META = '6 photos · Sep 22–Oct 22, 2025';
@@ -63,4 +64,12 @@ test('free: tapping search opens the paywall instead of the field', async () => 
   expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
   expect(screen.queryByText('Last searches')).toBeNull();
   expect(screen.queryByText('Try')).toBeNull();
+}, 30000);
+
+test('free: changing photos per dump opens the paywall and keeps the range', async () => {
+  await bootApp('/profile');
+  await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
+  await fireEvent.press(screen.getByLabelText('Raise most photos'));
+  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+  expect((await getProfile()).slidesMax).toBe(10);
 }, 30000);

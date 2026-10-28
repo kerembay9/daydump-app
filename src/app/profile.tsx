@@ -119,8 +119,9 @@ function ProfileBody() {
     setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
-  // Discover's photos per dump: min 4..max, max min..20
+  // Discover's photos per dump: min 4..max, max min..20. Pro; a lapsed user keeps the range they set.
   const setSlides = (k: 'slidesMin' | 'slidesMax', v: number) => {
+    if (!pro.isPro) return pro.openPaywall('slides-per-dump');
     setP((x) => ({ ...x, [k]: v }));
     setProfile({ [k]: v }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
