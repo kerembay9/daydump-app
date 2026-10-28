@@ -250,3 +250,22 @@ test('Layout fits the first screen: ratio pills show only the ratio, Dump order 
   expect(json.indexOf('Dump order')).toBeGreaterThan(-1);
   expect(json.indexOf('Dump order')).toBeLessThan(json.indexOf('"Blur fill"'));
 }, 30000);
+
+test('Frame shows only what the layout uses: no Gap on 1 Photo or Scrapbook, Corners on 1 Photo only inside a Matte', async () => {
+  const photos = world.photos.slice(0, 3).map((p) => ({ id: p.id, uri: p.uri }));
+  const d = await createDraft({ source: 'create', photos, ratio: '4:5' });
+  await bootApp(`/edit/${d.id}`);
+  await screen.findByRole('button', { name: '1 Photo', selected: true });
+  const shown = () => ['Gap', 'Corners'].filter((n) => screen.queryByLabelText(n));
+  expect(shown()).toEqual([]);
+  expect(screen.queryByRole('button', { name: 'Card matte' })).toBeNull(); // a full-bleed photo hides the matte
+  await fireEvent.press(screen.getByRole('button', { name: 'Matte' }));
+  expect(shown()).toEqual(['Corners']);
+  expect(screen.getByRole('button', { name: 'Card matte' })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Fill' }));
+  await fireEvent.press(screen.getByRole('button', { name: '2 Split' }));
+  expect(shown()).toEqual(['Gap', 'Corners']);
+  await fireEvent.press(screen.getByRole('button', { name: 'Scrapbook' }));
+  expect(shown()).toEqual([]);
+  expect(screen.getByRole('button', { name: 'Card matte' })).toBeTruthy(); // the scrapbook ground
+}, 30000);

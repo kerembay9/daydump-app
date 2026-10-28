@@ -73,6 +73,13 @@ const boxAt = (x: number, y: number, w: number, h: number, r = 0): Cell => ({ x,
  * Where each photo of a slide goes in a W x H slide (photo i -> cells[i]), plus the matte area. Border = matte:
  * 14 (mock px) inset, radius 14, shadow. Gap and Corners from the Frame. Scrapbook = 3 tilted prints on the matte.
  */
+/** Which Frame controls change this layout: Gap and Corners only between cells (single: Corners inside a Matte; scrapbook's prints are fixed), the matte colour only where it shows. */
+export function frameControls(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' | 'corners'>) {
+  const multi = layout === 'split' || layout === 'bento' || layout === 'grid';
+  const corners = multi || (layout === 'single' && frame.fit === 'border');
+  return { gap: multi, corners, matte: frame.fit === 'border' || layout === 'scrapbook' || (multi && frame.gap > 0) || (corners && frame.corners > 0) };
+}
+
 export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' | 'corners'>, W: number, H: number): { inner: Cell; cells: Cell[] } {
   const u = W / UNIT;
   const { fit } = frame;
@@ -114,7 +121,8 @@ export function slideCells(layout: LayoutKey, frame: Pick<Frame, 'fit' | 'gap' |
       };
     }
     default:
-      return { inner, cells: [box(x, y, w, h)] };
+      // single: Corners only inside a Matte (frameControls hides it otherwise)
+      return { inner, cells: [box(x, y, w, h, fit === 'border' ? frame.corners * u : 0)] };
   }
 }
 

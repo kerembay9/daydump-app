@@ -6,7 +6,7 @@ import { useApp } from '../../state/AppState';
 import { markSeen, Story, storyById } from '../../services/stories';
 import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
-import { Frame, frameOf, frameText, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
+import { Crop, Frame, frameOf, frameText, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
 import { Adjust, editedOwn, filterOf, FilterState, Look, lookFor, lookOf } from '../../services/filters';
 import { toneOf } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
@@ -166,6 +166,26 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
     return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: similar }];
   };
 
+  const onCrop = useCallback((id: string, crop: Crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p))), []);
+  // Memoised on what it shows and what its handlers read: a Frame slider step re-renders only the slides, not every
+  // thumbnail (each with its own Skia canvas and gestures).
+  const strip = useMemo(() => (
+    <Filmstrip
+      photos={photos}
+      active={active}
+      selected={sel}
+      images={images}
+      filter={filter}
+      onTap={tap}
+      onMove={move}
+      onRemove={(i) => setPhotos(photos.filter((_, k) => k !== i))}
+      onReplace={(i, p) => setPhotos(photos.map((x, k) => (k === i ? p : x)))}
+      onAdd={(p) => setPhotos((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]))}
+      swapsFor={swapsFor}
+      addable={addable}
+    />
+  ), [photos, active, sel, images, filter, tab, layout, library, story]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Screen contentContainerStyle={{ paddingBottom: bottom + 16 }}>
       <View style={{ paddingTop: 2, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -211,28 +231,15 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
 
       <SlidePager slides={slides} ratio={ratio} frame={frame} layout={layout} filter={filter} index={cur} mode={tab}
         images={images} onIndex={setSlide} onLayout={(l) => { setLayout(l); setSlide(0); }}
-        onCrop={(id, crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p)))} />
+        onCrop={onCrop} />
       {/* right under the canvas, so the order is on the first screen; the tab's card goes below */}
-      <Filmstrip
-        photos={photos}
-        active={active}
-        selected={sel}
-        images={images}
-        filter={filter}
-        onTap={tap}
-        onMove={move}
-        onRemove={(i) => setPhotos(photos.filter((_, k) => k !== i))}
-        onReplace={(i, p) => setPhotos(photos.map((x, k) => (k === i ? p : x)))}
-        onAdd={(p) => setPhotos((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]))}
-        swapsFor={swapsFor}
-        addable={addable}
-      />
+      {strip}
       {tab === 'photos' ? (
         <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
           onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
           image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
       ) : (
-        <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} />
+        <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} layout={layout} />
       )}
     </Screen>
   );

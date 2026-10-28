@@ -22,7 +22,7 @@ import { PaywallModal } from '../components/PaywallModal';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../services/profile';
 import { ratioOf } from '../services/layouts';
 import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
@@ -325,7 +325,7 @@ function Section({ title, note, pad, children }: { title: string; note?: string;
   const { t } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
-      <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 4, paddingHorizontal: 4 }]}>{title}</Text>
+      <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 4, paddingHorizontal: 4 }]}>{caps(title)}</Text>
       <FrameCard radius={18} padding={pad ? 8 : 0} style={{ overflow: 'hidden' }}>{children}</FrameCard>
       {note ? <Text style={[ui(10), { color: t.inkMuted, marginTop: 4, paddingHorizontal: 4 }]}>{note}</Text> : null}
     </View>

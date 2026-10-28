@@ -1,21 +1,22 @@
 import React from 'react';
 import { Switch, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
-import { label, ui } from '../../theme/type';
+import { caps, label, ui } from '../../theme/type';
 import { FrameCard } from '../ui/FrameCard';
 import { Tap } from '../ui/Tap';
 import { Slider } from './Slider';
-import { Fit, Frame, MATTES } from '../../services/layouts';
+import { Fit, Frame, frameControls, LayoutKey, MATTES } from '../../services/layouts';
 
 const FITS: { key: Fit; label: string }[] = [{ key: 'bleed', label: 'Fill' }, { key: 'border', label: 'Matte' }, { key: 'blur', label: 'Blur fill' }];
 
-/** FRAME card (Layout tab): Fit, Gap, Corners, the matte colour and the grid guide (4:5 only). */
-export function FramePanel({ frame, onFrame, ratio }: { frame: Frame; onFrame: (f: Frame) => void; ratio: string }) {
+/** FRAME card (Layout tab): Fit, Gap, Corners, the matte colour (each only when it changes this layout) and the grid guide (4:5 only). */
+export function FramePanel({ frame, onFrame, ratio, layout }: { frame: Frame; onFrame: (f: Frame) => void; ratio: string; layout: LayoutKey }) {
   const { t } = useTheme();
+  const uses = frameControls(layout, frame);
   const set = (p: Partial<Frame>) => onFrame({ ...frame, ...p });
   const row = (name: string, body: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 30 }}>
-      <Text style={[label(9, 0.08), { color: t.inkMuted, width: 56 }]}>{name}</Text>
+      <Text style={[label(9, 0.08), { color: t.inkMuted, width: 56 }]}>{caps(name)}</Text>
       {body}
     </View>
   );
@@ -40,9 +41,9 @@ export function FramePanel({ frame, onFrame, ratio }: { frame: Frame; onFrame: (
           })}
         </View>
       ))}
-      {ranged('Gap', 'gap', 12)}
-      {ranged('Corners', 'corners', 16)}
-      {row('Matte', (
+      {uses.gap ? ranged('Gap', 'gap', 12) : null}
+      {uses.corners ? ranged('Corners', 'corners', 16) : null}
+      {uses.matte ? row('Matte', (
         <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
           {MATTES.map((m) => {
             const on = frame.matte === m.key;
@@ -55,7 +56,7 @@ export function FramePanel({ frame, onFrame, ratio }: { frame: Frame; onFrame: (
             );
           })}
         </View>
-      ))}
+      )) : null}
       {ratio === '4:5' ? row('Grid', (
         <>
           <Text style={[ui(9.5, 500), { color: t.inkMuted, flex: 1 }]}>Show what your profile grid crops</Text>

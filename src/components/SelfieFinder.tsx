@@ -5,7 +5,7 @@ import { FrameCard } from './ui/FrameCard';
 import { Pill } from './ui/Pill';
 import { Bar, Developing } from './ModelLoading';
 import { useTheme } from '../theme/ThemeProvider';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { modelsNow, useModels } from '../state/models';
 import { checkSelfies, rankSelfies, Selfie, soloPhotos } from '../services/selfie';
@@ -181,7 +181,7 @@ export function SelfieFinder() {
         )}
       </FrameCard>
       <>
-        <Text style={[label(10, 0.12), { color: t.inkMuted, marginTop: 14, marginBottom: 4, paddingHorizontal: 4 }]}>What&apos;s your name?</Text>
+        <Text style={[label(10, 0.12), { color: t.inkMuted, marginTop: 14, marginBottom: 4, paddingHorizontal: 4 }]}>{caps("What's your name?")}</Text>
         <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4 }}>
           <TextInput value={name} onChangeText={editName} placeholder="Your name" placeholderTextColor={t.inkMuted}
             returnKeyType="done" style={[display(18), { color: t.ink, paddingVertical: 8 }]} />

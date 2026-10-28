@@ -13,7 +13,7 @@ import Animated, { Easing, FadeInDown, interpolate, SharedValue, useAnimatedStyl
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { useTheme } from '../theme/ThemeProvider';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
 import { Tape } from './ui/Tape';
 import { Tap } from './ui/Tap';
@@ -191,7 +191,7 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
     <>
       {/* scrolls only when it doesn't fit (small phone, big font) */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 14, paddingBottom: 12 }}>
-        <Animated.Text entering={FadeInDown.duration(500)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>Daily recap</Animated.Text>
+        <Animated.Text entering={FadeInDown.duration(500)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Daily recap')}</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(80).duration(500)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Your day, ready at 8 PM</Animated.Text>
 
         {/* the lock screen the recap lands on */}
@@ -286,7 +286,7 @@ function SlideBody({ s, i, width }: { s: Slide; i: number; width: number }) {
         </FrameCard>
         <Tape rotate={-6} seed={s.id} style={{ top: -8 }} />
       </View>
-      <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{s.badge}</Text>
+      <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{caps(s.badge)}</Text>
       <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>
       <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{s.description}</Text>
       {s.points && (

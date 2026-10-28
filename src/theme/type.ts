@@ -1,4 +1,4 @@
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 /**
  * Font families embedded by the expo-font plugin (app.json), one family per weight: Android ignores fontWeight
@@ -20,6 +20,14 @@ export const display = (size: number, lineHeight?: number): TextStyle => ({
 
 /** Inter body/meta/buttons. */
 export const ui = (size: number, weight: keyof typeof sans = 400): TextStyle => ({ fontFamily: sans[weight], fontSize: size });
+
+/**
+ * Uppercase a label's English text. Android's textTransform uppercases in the phone's locale, and Turkish and Azeri
+ * make i into İ (GRAİN); there the label goes out already uppercased in English. Elsewhere label()'s transform does it.
+ */
+const phone = Intl.DateTimeFormat().resolvedOptions().locale;
+export const caps = (s: string, locale = phone) =>
+  Platform.OS === 'android' && /^(tr|az)\b/i.test(locale) ? s.toLocaleUpperCase('en-US') : s;
 
 /** Section labels: Inter 600 uppercase, tracking 0.14em (pass color = inkMuted). */
 export const label = (size = 10, tracking = 0.14): TextStyle => ({

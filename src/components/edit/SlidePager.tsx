@@ -54,7 +54,7 @@ type Props = {
   images: Images;
   onIndex: (i: number) => void;
   onLayout: (l: LayoutKey) => void;
-  /** a photo dragged / pinched to a new crop */
+  /** a photo dragged / pinched to a new crop (keep it stable: the gestures are built once) */
   onCrop: (id: string, crop: Crop) => void;
   /** layout = crop gestures, arrangements and the grid guide; photos = hold to see the originals */
   mode: 'layout' | 'photos';
@@ -117,9 +117,13 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
     drawn: s.photos.map((p) => ({ id: p.id, image: images[p.uri], dev: compare ? null : developFor(filter, p.id), crop: p.crop })),
   })), [slides, images, filter, compare]);
 
-  // The handed-up crop is in the props now (same picture), so drop the live one unless a new drag has started.
+  // Once handed up, the live crop equals the photo's crop in the props, so it stays: clearing it here raced Skia picking
+  // up the new props and drew the old crop for a frame (the photo sprang back on release). Dropped only if the props differ.
   useEffect(() => {
-    if (!drag.get()) live.set(null);
+    const l = live.get();
+    if (!l || drag.get()) return;
+    const c = slides.flatMap((s) => s.photos).find((p) => p.id === l.id)?.crop;
+    if (!c || c.x !== l.crop.x || c.y !== l.crop.y || c.z !== l.crop.z) live.set(null);
   }, [slides, drag, live]);
 
   // The active slide's cells in paint order (top-most last), as plain numbers the gesture worklets can hit-test.
@@ -134,40 +138,46 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
   }, [slides, index, images, frame, cw, ch]);
 
   // Pan and pinch run together (two fingers move and zoom at once); the photo is picked where the first finger lands.
-  const begin = (x: number, y: number) => {
-    'worklet';
-    const d = drag.get();
-    if (d) return drag.set({ ...d, down: d.down + 1 });
-    let c = null;
-    for (const h of hits) if (x >= h.x && x <= h.x + h.cw && y >= h.y && y <= h.y + h.ch) c = h; // tilt ignored (a few degrees)
-    if (!c?.iw) return;
-    const start = placePhoto(c.w, c.h, c.iw, c.ih, c.crop).crop;
-    drag.set({ id: c.id, w: c.w, h: c.h, iw: c.iw, ih: c.ih, start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 });
-  };
-  const move = (m: Partial<{ tx: number; ty: number; zoom: number }>) => {
-    'worklet';
-    const prev = drag.get();
-    if (!prev) return;
-    const d = { ...prev, ...m };
-    const z = d.start.z * d.zoom;
-    const { dw, dh } = placePhoto(d.w, d.h, d.iw, d.ih, { ...d.start, z });
-    d.crop = placePhoto(d.w, d.h, d.iw, d.ih, { x: d.start.x - d.tx / dw, y: d.start.y - d.ty / dh, z }).crop;
-    drag.set(d);
-    live.set({ id: d.id, crop: d.crop });
-  };
-  const end = () => {
-    'worklet';
-    const d = drag.get();
-    if (!d) return;
-    if (d.down > 1) return drag.set({ ...d, down: d.down - 1 });
-    drag.set(null);
-    if (d.tx || d.ty || d.zoom !== 1) scheduleOnRN(onCrop, d.id, d.crop); // a tap (no move) leaves the photo as it was
-  };
-  const pan = Gesture.Pan().withTestId('crop-pan')
-    .onBegin((e) => begin(e.x, e.y)).onUpdate((e) => move({ tx: e.translationX, ty: e.translationY })).onFinalize(end);
-  const pinch = Gesture.Pinch().withTestId('crop-pinch')
-    .onBegin((e) => begin(e.focalX, e.focalY)).onUpdate((e) => move({ zoom: e.scale })).onFinalize(end);
-  const gesture = Gesture.Simultaneous(pan, pinch);
+  // Built once (onCrop must be stable): the cells come from a shared value, so a Frame slider step
+  // doesn't rebuild the gestures (and re-send their worklets to the UI thread) on every render.
+  const hitCells = useSharedValue(hits);
+  useEffect(() => hitCells.set(hits), [hits, hitCells]);
+  const gesture = useMemo(() => {
+    const begin = (x: number, y: number) => {
+      'worklet';
+      const d = drag.get();
+      if (d) return drag.set({ ...d, down: d.down + 1 });
+      let c = null;
+      for (const h of hitCells.get()) if (x >= h.x && x <= h.x + h.cw && y >= h.y && y <= h.y + h.ch) c = h; // tilt ignored (a few degrees)
+      if (!c?.iw) return;
+      const start = placePhoto(c.w, c.h, c.iw, c.ih, c.crop).crop;
+      drag.set({ id: c.id, w: c.w, h: c.h, iw: c.iw, ih: c.ih, start, crop: start, tx: 0, ty: 0, zoom: 1, down: 1 });
+    };
+    const move = (m: Partial<{ tx: number; ty: number; zoom: number }>) => {
+      'worklet';
+      const prev = drag.get();
+      if (!prev) return;
+      const d = { ...prev, ...m };
+      const z = d.start.z * d.zoom;
+      const { dw, dh } = placePhoto(d.w, d.h, d.iw, d.ih, { ...d.start, z });
+      d.crop = placePhoto(d.w, d.h, d.iw, d.ih, { x: d.start.x - d.tx / dw, y: d.start.y - d.ty / dh, z }).crop;
+      drag.set(d);
+      live.set({ id: d.id, crop: d.crop });
+    };
+    const end = () => {
+      'worklet';
+      const d = drag.get();
+      if (!d) return;
+      if (d.down > 1) return drag.set({ ...d, down: d.down - 1 });
+      drag.set(null);
+      if (d.tx || d.ty || d.zoom !== 1) scheduleOnRN(onCrop, d.id, d.crop); // a tap (no move) leaves the photo as it was
+    };
+    const pan = Gesture.Pan().withTestId('crop-pan')
+      .onBegin((e) => begin(e.x, e.y)).onUpdate((e) => move({ tx: e.translationX, ty: e.translationY })).onFinalize(end);
+    const pinch = Gesture.Pinch().withTestId('crop-pinch')
+      .onBegin((e) => begin(e.focalX, e.focalY)).onUpdate((e) => move({ zoom: e.scale })).onFinalize(end);
+    return Gesture.Simultaneous(pan, pinch);
+  }, [drag, live, hitCells, onCrop]);
 
   return (
     <FrameCard radius={18} padding={6} style={{ marginBottom: 8 }}>

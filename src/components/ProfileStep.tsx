@@ -5,7 +5,7 @@ import Lock from 'lucide-react-native/icons/lock';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../theme/ThemeProvider';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
 import { Tap } from './ui/Tap';
 import { Icons } from './ui/Icons';
@@ -86,7 +86,7 @@ export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfi
   return (
     <View ref={root} style={{ flex: 1 }}>
       <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 16 }}>
-        <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>Your dump previews</Animated.Text>
+        <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Your dump previews')}</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(60).duration(450)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 10 }]}>Put yourself in your posts</Animated.Text>
         <Animated.View entering={FadeInDown.delay(120).duration(450)} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 10, marginBottom: 18, paddingHorizontal: 8 }}>
           <Lock size={14} color={t.inkMuted} strokeWidth={2} />
@@ -116,7 +116,7 @@ export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfi
 
         {phase === 'name' ? (
           <Animated.View key="name" entering={FadeInDown.delay(320).duration(450)} exiting={FadeOutUp.duration(200)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>What should we call you?</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>{caps('What should we call you?')}</Text>
             <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4 }}>
               <View ref={input} collapsable={false}>
                 <TextInput value={name} onChangeText={setName} onSubmitEditing={submitName} placeholder="Your name" placeholderTextColor={t.inkMuted} autoFocus
@@ -152,7 +152,7 @@ export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfi
           </Animated.View>
         ) : (
           <Animated.View key="picked" entering={FadeInDown.delay(FLY_MS - 120).duration(400)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>Not this one? Pick another</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>{caps('Not this one? Pick another')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 4, paddingVertical: 4 }}>
               {strip.map((s, i) => {
                 const on = s.p.id === picked?.p.id;

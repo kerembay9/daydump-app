@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { Canvas, ColorMatrix, Image as SkiaImage, SkImage } from '@shopify/react-native-skia';
 import { useTheme } from '../../theme/ThemeProvider';
 import { fixed } from '../../theme/tokens';
-import { display, label, ui } from '../../theme/type';
+import { caps, display, label, ui } from '../../theme/type';
 import { FrameCard } from '../ui/FrameCard';
 import { Tap } from '../ui/Tap';
 import { Icons } from '../ui/Icons';
@@ -125,7 +125,7 @@ function PickGrid({ sections, onPick }: { sections: { title: string; photos: Dum
       {!any ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>No other photos to suggest yet. They show up once your library is indexed.</Text> : null}
       {sections.filter((s) => s.photos.length).map((s) => (
         <View key={s.title} style={{ gap: 6 }}>
-          <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{s.title}</Text>
+          <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{caps(s.title)}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {s.photos.map((p) => (
               <Tap key={p.id} onPress={() => onPick(p)} accessibilityRole="button" accessibilityLabel="Use this photo" style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
@@ -170,7 +170,7 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
   return (
     <View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingHorizontal: 2 }}>
-        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>Dump order</Text>
+        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{caps('Dump order')}</Text>
         <Text style={[ui(10, 400), { color: t.inkMuted }]}>Hold to edit</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -ROOM_TOP, marginHorizontal: -ROOM_X }}

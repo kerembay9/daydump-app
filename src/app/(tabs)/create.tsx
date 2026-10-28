@@ -16,7 +16,7 @@ import { createDraft, currentCreateDraft, DumpPhoto, get, remove, setCurrentCrea
 import { photoRange } from '../../services/dumpLabels';
 import { getProfile } from '../../services/profile';
 import { useTheme } from '../../theme/ThemeProvider';
-import { display, label, ui } from '../../theme/type';
+import { caps, display, label, ui } from '../../theme/type';
 import { AvatarButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { PhotoStack } from '../../components/ui/PhotoStack';
@@ -94,7 +94,7 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
       {focused && rows.length ? (
         <FrameCard radius={16} padding={8} style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 30, borderColor: t.borderStrong, boxShadow: `${t.shadowCard}, 0 10px 15px -3px rgba(0,0,0,0.1)` }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 6, paddingBottom: 4 }}>
-            <Text style={[label(9.5, 0.12), { color: t.inkMuted }]}>{recents.length ? 'Last searches' : 'Try'}</Text>
+            <Text style={[label(9.5, 0.12), { color: t.inkMuted }]}>{caps(recents.length ? 'Last searches' : 'Try')}</Text>
             <Tap onPress={() => { input.current?.blur(); Keyboard.dismiss(); }} hitSlop={8} accessibilityRole="button">
               <Text style={[ui(10, 600), { color: t.ink, textDecorationLine: 'underline' }]}>Close</Text>
             </Tap>
@@ -560,7 +560,7 @@ export default function Create() {
             <View style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 20, paddingHorizontal: 2 }}>
                 <Icons.sparkle size={12} color={t.ink} />
-                <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>Similar to your picks</Text>
+                <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{caps('Similar to your picks')}</Text>
               </View>
               <View style={{ marginTop: 4 }}><SimilarStrip photos={similar} sets={sets} onSets={onSets} onAdd={onToggle} onOpen={onOpenSimilar} /></View>
             </View>

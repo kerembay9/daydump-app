@@ -4,7 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Dump, DumpStatus, duplicate, list, remove } from '../../services/dumps';
 import { kindLabel, matches, metaLines } from '../../services/dumpLabels';
 import { useTheme } from '../../theme/ThemeProvider';
-import { display, em, sans, ui } from '../../theme/type';
+import { caps, display, em, sans, ui } from '../../theme/type';
 import { Screen } from '../../components/ui/Screen';
 import { AvatarButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
@@ -69,7 +69,7 @@ const Row = React.memo(function Row({ d, onReuse, onDelete }: { d: Dump; onReuse
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={{ fontFamily: sans[700], fontSize: 9, letterSpacing: em(9, 0.05), textTransform: 'uppercase', paddingHorizontal: 6, borderRadius: 8, overflow: 'hidden', backgroundColor: draft ? t.accentFab : t.dark ? t.borderStrong : 'rgba(0,0,0,0.09)', color: draft ? t.accentFabText : t.inkMuted }}>
-            {draft ? 'Draft' : 'Posted'}
+            {caps(draft ? 'Draft' : 'Posted')}
           </Text>
           <Text style={[ui(10, 500), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{kindLabel(d)}</Text>
         </View>
