@@ -64,7 +64,9 @@ export default function Preview() {
   if (dump === null && id === 'today') return <Stub back title="Today" note="Nothing taken today yet. Take a few photos and your Today dump shows up here." />;
   if (dump === null) return <Stub back title="Preview" note="This dump is no longer available." />;
   if (!dump.photos.length) return <Stub back title="Preview" note="The photos in this dump are no longer on your phone." />;
-  return <PostedPreview key={dump.id} dump={dump} story={stories.find((s) => s.id === dump.storyId)} stories={stories} library={library} />;
+  // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
+  const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
+  return <PostedPreview key={dump.id} dump={dump} story={own} stories={stories} library={library} />;
 }
 
 /**
@@ -110,19 +112,21 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [hd, setHd] = useState(profileNow().exportHD);
   useEffect(() => { getProfile().then((p) => { setProf(p); setHd(p.exportHD); }); }, []);
 
-  // grid: your Posted dumps' covers, then your top Discover dumps' covers; never raw recent photos (often
-  // screenshots and documents) nor this dump's own photos. Fewer than 8 → the rest stay empty tiles.
+  // grid: your Posted dumps' covers, then your top open Discover dumps' covers (a locked one's cover is one of its
+  // picks); never raw recent photos (often screenshots and documents) nor this dump's own photos. Fewer than 8 → the
+  // rest stay empty tiles.
   const [postedCovers, setPostedCovers] = useState<string[]>([]);
   useEffect(() => { list('posted').then((ds) => setPostedCovers(ds.filter((d) => d.id !== dump.id).map((d) => d.photos[0]?.uri).filter(Boolean))); }, [dump.id]);
+  const { isPro, openPaywall, accessOf } = usePro();
   const others = useMemo(() => {
     const mine = new Set(dump.photos.map((p) => p.uri));
     const out = new Set<string>();
-    for (const u of [...postedCovers, ...stories.map((s) => s.picks[0]?.uri)]) {
+    for (const u of [...postedCovers, ...stories.filter((s) => accessOf(s) === 'open').map((s) => s.picks[0]?.uri)]) {
       if (out.size >= 8) break;
       if (u && !mine.has(u)) out.add(u);
     }
     return [...out];
-  }, [postedCovers, stories, dump.photos]);
+  }, [postedCovers, stories, dump.photos, accessOf]);
 
   const onHandle = (raw: string) => {
     const handle = raw.replace(/[^A-Za-z0-9._]/g, '').toLowerCase().slice(0, 30);
@@ -141,7 +145,6 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   const [picking, setPicking] = useState(false);
-  const { isPro, openPaywall } = usePro();
   /** set while the "Pro look" sheet is up: what to do once the user picks */
   const [finishAsk, setFinishAsk] = useState<((strip: boolean) => void) | null>(null);
   /** the PostSheet path: whether the pending post drops the Pro looks */

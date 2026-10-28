@@ -73,15 +73,15 @@ function Action({ text, onPress, disabled, danger }: { text: string; onPress: ()
   );
 }
 
-/** Grid of photos to pick from, in sections. */
-function PickGrid({ sections, onPick }: { sections: { title: string; photos: DumpPhoto[] }[]; onPick: (p: DumpPhoto) => void }) {
+/** Grid of photos to pick from, in sections. empty: what to say when there are none. */
+function PickGrid({ sections, onPick, empty }: { sections: { title: string; photos: DumpPhoto[] }[]; onPick: (p: DumpPhoto) => void; empty?: string }) {
   const { t } = useTheme();
   const win = useWindowDimensions();
   const size = (win.width - 32 - 3 * 6) / 4;
   const any = sections.some((s) => s.photos.length);
   return (
     <RNScrollView style={{ maxHeight: win.height * 0.55 }} contentContainerStyle={{ gap: 12 }}>
-      {!any ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>No other photos to suggest yet. They show up once your library is indexed.</Text> : null}
+      {!any ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>{empty ?? 'No other photos to suggest yet. They show up once your library is indexed.'}</Text> : null}
       {sections.filter((s) => s.photos.length).map((s) => (
         <View key={s.title} style={{ gap: 6 }}>
           <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{s.title}</Text>
@@ -111,14 +111,17 @@ type Props = {
   onRemove: (i: number) => void;
   onReplace: (i: number, p: DumpPhoto) => void;
   onAdd: (p: DumpPhoto) => void;
-  swapsFor: (i: number) => DumpPhoto[];
+  /** null: no swaps for this dump (hides "Swap for a similar photo") */
+  swapsFor: ((i: number) => DumpPhoto[]) | null;
   addable: () => { title: string; photos: DumpPhoto[] }[];
+  /** the pickers' text when they have nothing to offer */
+  empty?: string;
 };
 
 type Open = { kind: 'menu' | 'swap'; i: number } | { kind: 'add' } | null;
 
 /** DUMP ORDER filmstrip: tap = select (tap the selected one again = make it the cover), hold = menu, hold + drag = move, + = add. */
-export function Filmstrip({ photos, active, selected, images, filter, onTap, onMove, onRemove, onReplace, onAdd, swapsFor, addable }: Props) {
+export function Filmstrip({ photos, active, selected, images, filter, onTap, onMove, onRemove, onReplace, onAdd, swapsFor, addable, empty }: Props) {
   const { t } = useTheme();
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
@@ -145,7 +148,7 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
       <Sheet visible={open?.kind === 'menu'} onClose={close}>
         <Text style={[display(19), { color: t.ink, marginBottom: 4 }]}>Photo {i + 1}{i === 0 ? ' · cover' : ''}</Text>
         <Action text="Make cover" disabled={i === 0} onPress={() => { onMove(i, 0); close(); }} />
-        <Action text="Swap for a similar photo" onPress={() => setOpen({ kind: 'swap', i })} />
+        {swapsFor && <Action text="Swap for a similar photo" onPress={() => setOpen({ kind: 'swap', i })} />}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 1 }}><Action text="← Move left" disabled={i <= 0} onPress={() => { onMove(i, i - 1); setOpen({ kind: 'menu', i: i - 1 }); }} /></View>
           <View style={{ flex: 1 }}><Action text="Move right →" disabled={i >= n - 1} onPress={() => { onMove(i, i + 1); setOpen({ kind: 'menu', i: i + 1 }); }} /></View>
@@ -155,7 +158,7 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
 
       <Sheet visible={open?.kind === 'swap'} onClose={close}>
         <Text style={[display(19), { color: t.ink }]}>Swap photo {i + 1}</Text>
-        {open?.kind === 'swap' ? <PickGrid sections={[{ title: 'Similar photos', photos: swapsFor(open.i) }]} onPick={(p) => { onReplace(open.i, p); close(); }} /> : null}
+        {open?.kind === 'swap' && swapsFor ? <PickGrid sections={[{ title: 'Similar photos', photos: swapsFor(open.i) }]} empty={empty} onPick={(p) => { onReplace(open.i, p); close(); }} /> : null}
       </Sheet>
 
       <Sheet visible={open?.kind === 'add'} onClose={close}>
@@ -165,20 +168,21 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
             <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Done</Text>
           </Tap>
         </View>
-        {open?.kind === 'add' ? <AddGrid addable={addable} onAdd={onAdd} /> : null}
+        {open?.kind === 'add' ? <AddGrid addable={addable} onAdd={onAdd} empty={empty} /> : null}
       </Sheet>
     </View>
   );
 }
 
 /** Add sheet body: each tap appends that photo and drops it from the list. */
-function AddGrid({ addable, onAdd }: { addable: Props['addable']; onAdd: Props['onAdd'] }) {
+function AddGrid({ addable, onAdd, empty }: { addable: Props['addable']; onAdd: Props['onAdd']; empty?: string }) {
   const [sections] = useState(addable);
   const [added, setAdded] = useState<Set<string>>(new Set());
   return (
     <PickGrid
       sections={sections.map((s) => ({ ...s, photos: s.photos.filter((p) => !added.has(p.id)) }))}
       onPick={(p) => { setAdded((a) => new Set(a).add(p.id)); onAdd(p); }}
+      empty={empty}
     />
   );
 }

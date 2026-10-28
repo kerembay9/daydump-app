@@ -57,7 +57,9 @@ export default function Edit() {
   if (dump === null) return <Stub back title="Edit" note="This dump is no longer available." />;
   if (dump && !dump.photos.length) return <Stub back title="Edit" note="The photos in this dump are no longer on your phone." />;
   if (!dump) return null;
-  return <Studio dump={dump} story={stories.find((s) => s.id === dump.storyId)} library={library} />;
+  // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
+  const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
+  return <Studio dump={dump} story={own} library={library} />;
 }
 
 type Saved = Pick<Dump, 'title' | 'photos' | 'ratio' | 'fit' | 'layout' | 'filter'>;
@@ -153,14 +155,19 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       .finally(() => setTimeout(() => { opening.current = false; }, 600));
   };
 
-  const swapsFor = (i: number) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, photos[i]), 16).map(fromAsset) : []);
+  // Free: swaps and "Similar photos" draw only from this dump's story; ranking the whole library is search, which is
+  // Pro. A dump with no story (Create basket, shared-in photos) has nothing to draw from, so no swap.
+  const pool = useMemo(() => (isPro ? undefined : new Set((story?.photos ?? []).map((p) => p.id))), [isPro, story]);
+  const similar = (target: DumpPhoto) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, target), 16, pool).map(fromAsset) : []);
+  const swapsFor = isPro || story ? (i: number) => similar(photos[i]) : null;
   const addable = () => {
     const have = new Set(photos.map((p) => p.id));
     const fromStory = (story?.photos ?? []).filter((p) => !have.has(p.id)).slice(0, 24).map(fromAsset);
     const ids = new Set(fromStory.map((p) => p.id));
-    const similar = library && photos[0] ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, photos[0]), 16).map(fromAsset).filter((p) => !ids.has(p.id)) : [];
-    return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: similar }];
+    const more = photos[0] ? similar(photos[0]).filter((p) => !ids.has(p.id)) : [];
+    return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: more }];
   };
+  const empty = isPro ? undefined : story ? 'No other photos from this story.' : 'Similar photos from your whole library come with Pro.';
 
   return (
     <Screen contentContainerStyle={{ paddingBottom: bottom + 16 }}>
@@ -213,6 +220,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
         onAdd={(p) => setPhotos((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]))}
         swapsFor={swapsFor}
         addable={addable}
+        empty={empty}
       />
     </Screen>
   );
