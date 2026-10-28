@@ -13,8 +13,14 @@ android {
     versionName '0.1.0'
     consumerProguardFiles 'proguard-rules.pro'
   }
-  // Debug builds (Metro, adb installs) carry the packs' models in the APK; release downloads them (ModelPacks.kt).
-  sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets']
+  // Debug builds (Metro, adb installs) carry the packs' models in the APK, and the selfie gate (for the no-vision dev switch).
+  // Release carries the packs the pack config puts in the install (app.json → app.plugin.js → clipEmbedder.basePacks) and
+  // downloads the rest (ModelPacks.kt); the gate only stands in for CLIP, so it ships only when visionpack doesn't.
+  def basePacks = (findProperty('clipEmbedder.basePacks') ?: '').tokenize(',')
+  sourceSets.debug.assets.srcDirs += ['visionpack/src/main/assets', 'facepack/src/main/assets', 'textpack/src/main/assets', 'src/gate/assets']
+  sourceSets.release.assets.srcDirs += basePacks.collect { "$it/src/main/assets" } + ('visionpack' in basePacks ? [] : ['src/gate/assets'])
+  // ...and the translate feature module's code (release downloads it on demand: TranslateFeature in QueryTranslateModule.kt).
+  sourceSets.debug.java.srcDirs += ['translate/src/main/java']
 }
 
 dependencies {
@@ -30,9 +36,11 @@ dependencies {
   // Background indexing while charging (BackgroundIndex.kt); both versions are already in the app via other deps.
   implementation 'androidx.work:work-runtime:2.9.1'
   implementation 'androidx.exifinterface:exifinterface:1.3.6' // GPS the same way expo-media-library reads it
-  // Search in other languages (QueryTranslateModule.kt): translation models download per language on request; language ID is bundled (~1 MB).
-  implementation 'com.google.mlkit:translate:17.0.3'
-  implementation 'com.google.mlkit:language-id:17.0.6'
+  // Search in other languages (QueryTranslateModule.kt): ML Kit is in the translate feature module (translate/build.gradle,
+  // same versions); debug builds compile it in. Translation models download per language on request.
+  debugImplementation 'com.google.mlkit:translate:17.0.3'
+  debugImplementation 'com.google.mlkit:language-id:17.0.6'
+  implementation 'com.google.android.play:feature-delivery:2.1.0'
   // Release: the big models arrive as asset packs after the install (ModelPacks.kt).
   implementation 'com.google.android.play:asset-delivery:2.3.0'
 }

@@ -22,7 +22,9 @@ import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
 import android.util.Size
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.Exceptions
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -73,6 +75,8 @@ class ClipEmbedderModule : Module() {
   private val yunet by lazy { YuNet(ctx, null, 320) }
   // selfieCheck's own: detect is synchronized, and the finder overlaps the check with the next photos' thumbnails (faces)
   private val yunetCheck by lazy { YuNet(ctx, null, 320) }
+  private val yunetTidy by lazy { YuNet(ctx, null, 320) }
+  private var pendingTrash: expo.modules.kotlin.Promise? = null
   private val selfieGate by lazy { Gate(ctx) }
   private val sface by lazy { SFace(ctx, ModelPacks.dir(ctx, ModelPacks.Pack.FACES)?.resolve("sface.tflite")?.path) }
   private var packListener: com.google.android.play.core.assetpacks.AssetPackStateUpdateListener? = null
@@ -133,6 +137,10 @@ class ClipEmbedderModule : Module() {
 
     // The model downloads (ModelPacks), per pack: ready | downloading (progress 0..1) | queued | waiting | failed | unavailable (no Play).
     AsyncFunction("modelState") Coroutine { -> withContext(Dispatchers.IO) { ModelPacks.state(ctx) } }
+    AsyncFunction("askToDownload") { promise: Promise ->
+      val act = appContext.currentActivity ?: return@AsyncFunction promise.resolve(false)
+      ModelPacks.askToDownload(act).addOnSuccessListener { promise.resolve(it) }.addOnFailureListener { promise.reject("ERR_MODELS", it.message, it) }
+    }.runOnQueue(Queues.MAIN)
     Function("wantModel") { pack: String -> ModelPacks.Pack.entries.firstOrNull { it.key == pack }?.let { ModelPacks.want(ctx, it) } }
     OnCreate {
       packListener = ModelPacks.listen(ctx) { sendEvent("onModels", it) }
@@ -229,6 +237,34 @@ class ClipEmbedderModule : Module() {
       }
     }
 
+    // Tidy (Tidy.kt). Stats decode 4 at a time like faces(); faces adds YuNet (on its own instance: detect is synchronized).
+    AsyncFunction("tidyList") Coroutine { -> withContext(Dispatchers.IO) { tidyList(ctx) } }
+    AsyncFunction("tidyStats") Coroutine { ids: List<String>, side: Int, faces: Boolean ->
+      withContext(Dispatchers.Default) {
+        val sf = if (faces) runCatching { sface }.getOrNull() else null // null while the faces pack hasn't landed
+        ids.chunked(4).flatMap { c -> c.map { id -> async(Dispatchers.IO) { runCatching { tidyStats(ctx, id, side, if (faces) yunetTidy else null, sf) }.getOrNull() } }.awaitAll() }
+      }
+    }
+    AsyncFunction("tidyHash") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { ids.map { headHash(ctx, it) } } }
+    AsyncFunction("tidySets") { vecs: expo.modules.kotlin.typedarray.Float32Array, times: List<Double>, strict: List<Boolean> ->
+      val v = FloatArray(vecs.length)
+      vecs.toDirectBuffer().order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(v)
+      tidySets(v, times.toDoubleArray(), strict.toBooleanArray())
+    }
+    AsyncFunction("trashState") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { trashState(ctx, ids) } }
+    // Android's own "Move to Trash?" (or restore) dialog; resolves true if the user allowed it. Never a permanent delete.
+    AsyncFunction("trash") { ids: List<String>, trashed: Boolean, promise: expo.modules.kotlin.Promise ->
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw IllegalStateException("Trash needs Android 11")
+      val activity = appContext.currentActivity ?: throw Exceptions.MissingActivity()
+      val req = android.provider.MediaStore.createTrashRequest(ctx.contentResolver, ids.map(::imageUri), trashed)
+      pendingTrash?.resolve(false)
+      pendingTrash = promise
+      activity.startIntentSenderForResult(req.intentSender, TRASH_REQUEST, null, 0, 0, 0)
+    }.runOnQueue(expo.modules.kotlin.functions.Queues.MAIN)
+    OnActivityResult { _, r ->
+      if (r.requestCode == TRASH_REQUEST) { pendingTrash?.resolve(r.resultCode == android.app.Activity.RESULT_OK); pendingTrash = null }
+    }
+
     // The app calls this on every touch: indexing waits until then (holdIndexing).
     Function("holdIndexing") { ms: Double -> holdUntil = SystemClock.uptimeMillis() + ms.toLong() }
     AsyncFunction("conceptNames") Coroutine { -> withContext(Dispatchers.Default) { clip.vocabNames.toList() } }
@@ -250,9 +286,12 @@ class ClipEmbedderModule : Module() {
     AsyncFunction("cancelDailyRecap") { DailyRecap.cancel(ctx) }
     AsyncFunction("postDailyRecap") Coroutine { -> withContext(Dispatchers.IO) { DailyRecap.post(ctx, test = true) } }
     Function("setRecapCover") { uri: String -> DailyRecap.setCover(ctx, uri) }
+    Function("setWeekRecap") { uri: String, id: String -> DailyRecap.setWeek(ctx, uri, id) }
+    AsyncFunction("postWeekRecap") Coroutine { -> withContext(Dispatchers.IO) { DailyRecap.postWeek(ctx, test = true) } }
   }
 }
 
+private const val TRASH_REQUEST = 4917
 private val SHARE_ACTIONS = setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_VIEW, Intent.ACTION_EDIT)
 private val TARGETS = mapOf(
   "instagram" to listOf("com.instagram.android"),
@@ -497,15 +536,20 @@ class ClipEngine private constructor(private val ctx: Context) {
     mapOf("ms" to (SystemClock.elapsedRealtime() - t0).toDouble(), "thumbs" to thumbs.get().toDouble(), "failed" to failed.toDouble())
   }
 
+  // A few photos (new ones on coming back to the app: Today waits on them) take ~0.1 s each: they don't wait for touches.
+  @Volatile private var quick = false
+  private fun hold() { if (!quick) waitForUser() }
+
   private suspend fun embedImagesLocked(uris: List<String>, thumb: Int): FloatArray {
     if (uris.isEmpty()) return FloatArray(0)
     thumbs.set(0)
     val n = uris.size
+    quick = n <= 8
     val input = FloatArray(n * 3 * PLANE)
     val t0 = SystemClock.elapsedRealtime()
     // waits first: on a fresh install the GPU model build (seconds of CPU) would land on the selfie finder's first look
-    val model = withContext(liteThread) { waitForUser(); liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
-    return embedLite(model, n, input, t0) { waitForUser(); fill(uris[it], thumb, input, it) }
+    val model = withContext(liteThread) { hold(); liteModel() } ?: throw IllegalStateException("LiteRT can't run on this device")
+    return embedLite(model, n, input, t0) { hold(); fill(uris[it], thumb, input, it) }
   }
 
   // The selfie finder's few photos while indexing runs: its own vision_dw8 on a normal-priority thread, so neither the
@@ -581,7 +625,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val hOut = h?.createOutputBuffers()
         try {
           while (true) {
-            waitForUser()
+            hold()
             val i = take(cpu = true).takeIf { it >= 0 } ?: break
             if (jobs[i].await() == null) continue
             runLite(h, hIn!!, hOut!!, input, i, out)
@@ -597,7 +641,7 @@ class ClipEngine private constructor(private val ctx: Context) {
         val outBuf = model.createOutputBuffers()
         try {
           while (true) {
-            waitForUser()
+            hold()
             val i = take(cpu = false).takeIf { it >= 0 } ?: break
             jobs[i].await()?.also {
               val t = SystemClock.elapsedRealtime()

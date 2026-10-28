@@ -1,0 +1,544 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding Motion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,500;0,8..60,600;1,8..60,500&display=swap">
+<style>
+/* Onboarding motion: three variants each for slide 1 (hook), slide 2 (privacy) and Home's first dump. Phones are the A54 at 0.75x (384 dp -> 288 px). Photos are painted placeholders: the slides run before photo access. */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --card: #EFE6DA; --paper: #FFFCF7; --print: #FAF6F0;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --accent: #A84A2F; --pencil: #D64933;
+  --tape: rgba(212,196,182,0.78); --tape-line: rgba(140,115,95,0.22);
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.18), 0 2px 5px rgba(74,52,40,0.05);
+  --print-shadow: 0 7px 16px -4px rgba(55,38,28,0.28), 0 2px 4px rgba(55,38,28,0.14);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45);
+  --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, serif;
+  --sans: Inter, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--sans); padding: 28px 16px 60px; }
+h1 { font: 600 26px/1.1 var(--serif); margin: 0 auto 4px; max-width: 1000px; }
+.lede { color: var(--muted); font-size: 14px; margin: 0 auto 28px; max-width: 1000px; }
+h2 { font: 600 19px/1.2 var(--serif); margin: 36px auto 14px; max-width: 1000px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 26px 18px; max-width: 1000px; margin: 0 auto; }
+.cell { display: flex; flex-direction: column; align-items: center; }
+.phone { width: 304px; padding: 8px; border-radius: 40px; background: var(--bezel); box-shadow: var(--phone-shadow); }
+.screen { width: 288px; height: 600px; border-radius: 32px; background: var(--bg); background-image: var(--screen); overflow: hidden; display: flex; flex-direction: column; padding: 18px 8px 16px; position: relative; }
+.top { font: 500 15px var(--serif); padding: 0 10px; height: 24px; }
+.hi { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; height: 36px; }
+.hi b { font: 500 21px var(--serif); letter-spacing: -0.02em; }
+.hi i { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #E0A98A 0 26%, transparent 27%), radial-gradient(ellipse at 50% 105%, #3D405B 0 45%, transparent 46%), #F2CC8F; border: 1.5px solid var(--paper); box-shadow: var(--shadow); }
+.stage { position: relative; height: 300px; flex: none; }
+.home .stage { height: 470px; }
+.txt { text-align: center; padding: 6px 18px 0; flex: 1; }
+.badge { font: 600 7.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.ttl { font: 500 21px/1.12 var(--serif); letter-spacing: -0.02em; }
+.dots { display: flex; gap: 5px; justify-content: center; margin: 4px 0 14px; }
+.dots i { width: 5px; height: 5px; border-radius: 3px; background: var(--line2); }
+.dots i.on { width: 17px; background: var(--ink); }
+.btn { margin: 0 16px; height: 40px; border-radius: 12px; background: var(--ink); color: var(--bg); font: 600 11.5px var(--sans); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+.tabs { display: flex; justify-content: space-around; margin: auto 30px 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.tabs i { width: 18px; height: 18px; border-radius: 6px; border: 1.6px solid var(--muted); opacity: .6; }
+.tabs i:first-child { border-color: var(--ink); opacity: 1; }
+.vn { font: 600 14px var(--serif); margin: 14px 0 2px; }
+.vd { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 300px; text-align: center; line-height: 1.45; }
+.pick { font-size: 11px; font-weight: 600; color: var(--accent); margin-left: 6px; }
+
+/* the pieces animations are made of */
+.abs, .tape, .stamp, .card, .chip { position: absolute; left: 0; top: 0; }
+.print { position: absolute; left: 0; top: 0; background: var(--print); padding: 3px 3px 9px; border-radius: 2px; box-shadow: var(--print-shadow); }
+.print .img, .img { width: 100%; height: 100%; border-radius: 1px; }
+.tape { position: absolute; width: 44px; height: 14px; background: var(--tape); border: 1px solid var(--tape-line); }
+.stamp { position: absolute; font: 700 7.5px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pencil); border: 1.5px solid var(--pencil); border-radius: 3px; padding: 2px 4px; background: rgba(255,252,247,0.85); white-space: nowrap; }
+.card { position: absolute; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.chip { position: absolute; font: 600 9.5px var(--sans); color: var(--ink); background: var(--paper); border: 1px solid var(--line2); border-radius: 10px; padding: 4px 8px; display: flex; gap: 5px; align-items: center; box-shadow: var(--shadow); white-space: nowrap; }
+.chip b { font-variant-numeric: tabular-nums; }
+.dk { color: #261F1B; }
+svg.ic { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+
+<h1>Onboarding motion</h1>
+<p class="lede">Three variants for each place that has no motion yet. The 8 PM recap and the profile step already animate. Everything loops here; in the app each plays once when the slide shows, then rests on the last frame.</p>
+
+<h2>Round 2 · the combinations</h2>
+<div class="row" id="r0"></div>
+<p class="lede" style="margin-top:28px">Round 1 below, for reference.</p>
+<h2>Slide 1 · Turn camera roll chaos into dumps</h2>
+<div class="row" id="r1"></div>
+<h2>Slide 2 · Picked on your phone, not in the cloud</h2>
+<div class="row" id="r2"></div>
+<h2>Home · the first dump arrives</h2>
+<div class="row" id="r3"></div>
+
+<script>
+// painted stand-ins for photos (no photo access on the slides yet)
+const SC = {
+  sunset: 'radial-gradient(circle at 50% 60%, #FFE3A3 0 10%, rgba(255,227,163,.0) 22%), linear-gradient(#F4A261 0%, #E76F51 58%, #2A3D4F 58.5%, #1D2B38 100%)',
+  beach: 'radial-gradient(ellipse at 70% 20%, #fff 0 6%, transparent 7%), linear-gradient(#9CC9E8 0 44%, #3E8FB0 44% 60%, #7FC8D6 60% 64%, #E9D3A6 64%)',
+  city: 'radial-gradient(circle at 78% 18%, #F7E7B4 0 6%, transparent 7%), linear-gradient(#1B2340 0 40%, transparent 40%), repeating-linear-gradient(90deg, transparent 0 5px, rgba(255,214,120,.85) 5px 7px, transparent 7px 11px), repeating-linear-gradient(0deg, #2B3352 0 5px, #232A47 5px 9px)',
+  food: 'radial-gradient(circle at 42% 46%, #E63946 0 6%, transparent 7%), radial-gradient(circle at 58% 56%, #2A9D8F 0 7%, transparent 8%), radial-gradient(circle at 50% 50%, #E9C46A 0 20%, #F4F1EA 21% 36%, rgba(0,0,0,.18) 37%, transparent 40%), linear-gradient(135deg, #8B5E3C, #6B4429)',
+  peaks: 'linear-gradient(135deg, transparent 50%, #4F6D7A 50%) 0 100%/55% 62% no-repeat, linear-gradient(225deg, transparent 50%, #3B5563 50%) 100% 100%/60% 72% no-repeat, linear-gradient(#CFE3EC, #F2EEE4)',
+  forest: 'radial-gradient(circle at 25% 72%, #2D6A4F 0 24%, transparent 25%), radial-gradient(circle at 72% 62%, #40916C 0 28%, transparent 29%), radial-gradient(circle at 50% 90%, #1B4332 0 22%, transparent 23%), linear-gradient(#D8F3DC, #95D5B2)',
+  you: 'radial-gradient(circle at 50% 40%, #E0A98A 0 15%, transparent 16%), radial-gradient(circle at 50% 33%, #3B2A22 0 17%, transparent 18%), radial-gradient(ellipse at 50% 100%, #3D405B 0 40%, transparent 41%), linear-gradient(#F2CC8F, #E07A5F)',
+  coffee: 'radial-gradient(circle at 50% 50%, #F1E3D3 0 7%, #6F4E37 8% 21%, #FFFFFF 22% 29%, rgba(0,0,0,.15) 30%, transparent 33%), linear-gradient(160deg, #D4B08C, #B08560)',
+  bloom: 'radial-gradient(circle at 30% 40%, #FF8FAB 0 9%, transparent 10%), radial-gradient(circle at 66% 55%, #FFB3C6 0 11%, transparent 12%), radial-gradient(circle at 44% 72%, #FB6F92 0 8%, transparent 9%), linear-gradient(#95D5B2, #52B788)',
+  friends: 'radial-gradient(circle at 35% 44%, #C68B59 0 11%, transparent 12%), radial-gradient(circle at 65% 40%, #E8B996 0 11%, transparent 12%), radial-gradient(ellipse at 35% 104%, #264653 0 30%, transparent 31%), radial-gradient(ellipse at 65% 104%, #E76F51 0 30%, transparent 31%), linear-gradient(#A8DADC, #F1FAEE)',
+  shot: 'linear-gradient(#3A86FF 0 12%, transparent 12%), repeating-linear-gradient(#fff 0 9px, #E2E2E2 9px 11px)',
+};
+const ROLL = ['sunset', 'beach', 'city', 'food', 'peaks', 'forest', 'you', 'coffee', 'bloom', 'friends'];
+
+const W = (ms) => new Promise((r) => setTimeout(r, ms));
+const SPRING = 'cubic-bezier(.34,1.56,.64,1)', OUT = 'cubic-bezier(.22,1,.36,1)', IN = 'cubic-bezier(.55,0,.75,.2)', INOUT = 'cubic-bezier(.65,0,.35,1)';
+const tr = (x, y, r = 0, s = 1) => `translate(${x}px,${y}px) rotate(${r}deg) scale(${s})`;
+function el(parent, cls, css = '', html = '') { const e = document.createElement('div'); if (cls) e.className = cls; e.style.cssText = css; if (html) e.innerHTML = html; parent.appendChild(e); return e; }
+/** animate to `to`, then keep it as the element's own style */
+function go(e, to, ms = 600, ease = SPRING, delay = 0) {
+  const a = e.animate([to], { duration: ms, easing: ease, delay, fill: 'forwards' });
+  return a.finished.then(() => { Object.assign(e.style, to); a.cancel(); }, () => {});
+}
+function print(parent, scene, w, h, x, y, r = 0, extra = '') {
+  const p = el(parent, 'print', `width:${w}px;height:${h}px;transform:${tr(x, y, r)};${extra}`);
+  el(p, 'img', `background:${SC[scene]}`);
+  return p;
+}
+const ICON = {
+  phone: '<svg class="ic" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>',
+  cloudOff: '<svg class="ic" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M18 18H7a4 4 0 0 1-.9-7.9M9.5 6.3A6 6 0 0 1 17.7 10 3.5 3.5 0 0 1 21 13.5c0 .9-.3 1.7-.9 2.3"/></svg>',
+  lock: '<svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  check: '<svg class="ic" viewBox="0 0 24 24" style="width:9px;height:9px;stroke-width:3"><path d="M5 12l5 5 9-10"/></svg>',
+};
+
+/** one phone per variant; `run(stage)` plays once, the loop clears and replays */
+function phone(row, kind, name, desc, run, pick) {
+  const cell = el(document.getElementById(row), 'cell');
+  const ph = el(cell, 'phone');
+  const sc = el(ph, 'screen' + (kind === 'home' ? ' home' : ''));
+  if (kind === 'home') el(sc, 'hi', '', '<b>Hi, Batu</b><i></i>');
+  else el(sc, 'top', '', 'PicDump');
+  const stage = el(sc, 'stage');
+  if (kind === 'hook' || kind === 'privacy') {
+    const hook = kind === 'hook';
+    el(sc, 'txt', '', `<div class="badge">${hook ? 'Effortless photo dumps' : 'On-device curation'}</div><div class="ttl">${hook ? 'Turn camera roll chaos into dumps' : 'Picked on your phone, not in the cloud'}</div>`);
+    el(sc, 'dots', '', hook ? '<i class="on"></i><i></i>' : '<i></i><i class="on"></i>');
+    el(sc, 'btn', '', hook ? 'Continue' : 'Allow photos &amp; continue');
+  } else el(sc, 'tabs', '', '<i></i><i></i><i></i>');
+  el(cell, 'vn', '', name + (pick ? '<span class="pick">my pick</span>' : ''));
+  el(cell, 'vd', '', desc);
+  (async () => { for (;;) { stage.innerHTML = ''; stage.style.opacity = 1; await run(stage); await go(stage, { opacity: 0 }, 350, 'ease'); await W(250); } })();
+}
+
+/* ---------- Slide 1 ---------- */
+
+phone('r1', 'hook', 'A · The pile sorts itself', 'Prints land in a heap. The blurry, repeat and screenshot ones get stamped and drop away; the rest line up as a taped dump and swipe.', async (st) => {
+  const items = [
+    { s: 'sunset', x: 12, y: 16, r: -12 }, { s: 'you', x: 98, y: 6, r: 8 }, { s: 'shot', x: 184, y: 20, r: -6, bad: 'Screenshot' },
+    { s: 'beach', x: 26, y: 104, r: 9 }, { s: 'you', x: 108, y: 98, r: -4, bad: 'Same shot' }, { s: 'peaks', x: 186, y: 110, r: 13, blur: 1, bad: 'Blurry' },
+    { s: 'friends', x: 8, y: 194, r: -5 }, { s: 'city', x: 96, y: 190, r: 10, blur: 1, bad: 'Blurry' }, { s: 'food', x: 180, y: 198, r: -8 },
+  ];
+  const ps = items.map((it, i) => {
+    const p = print(st, it.s, 72, 90, it.x, it.y - 50, it.r * 2, `opacity:0;z-index:${i}`);
+    if (it.blur) p.firstChild.style.filter = 'blur(2.5px)';
+    go(p, { transform: tr(it.x, it.y, it.r), opacity: 1 }, 650, SPRING, i * 70);
+    return p;
+  });
+  await W(1500);
+  const bad = items.map((it, i) => it.bad ? i : -1).filter((i) => i >= 0);
+  const stamps = bad.map((i, k) => { const s = el(st, 'stamp', `transform:${tr(items[i].x + 6, items[i].y + 36, -8, 1.8)};opacity:0;z-index:20`); s.textContent = items[i].bad; go(s, { transform: tr(items[i].x + 6, items[i].y + 36, -8, 1), opacity: 1 }, 380, SPRING, k * 160); return s; });
+  await W(1400);
+  bad.forEach((i, k) => { go(ps[i], { transform: tr(items[i].x, items[i].y + 380, items[i].r * 3), opacity: 0 }, 650, IN, k * 60); go(stamps[k], { transform: tr(items[i].x + 6, items[i].y + 416, -20), opacity: 0 }, 650, IN, k * 60); });
+  await W(550);
+  const keep = items.map((it, i) => it.bad ? -1 : i).filter((i) => i >= 0);
+  keep.forEach((i, j) => { ps[i].style.zIndex = 30 + j; go(ps[i], { transform: tr(14 + j * 106, 70), width: '98px', height: '124px' }, 700, SPRING, j * 80); });
+  const dots = el(st, 'abs', 'transform:translate(0,212px);width:272px;display:flex;gap:4px;justify-content:center;opacity:0', keep.map((_, j) => `<i style="width:${j ? 4 : 12}px;height:4px;border-radius:2px;background:var(--${j ? 'line2' : 'ink'});transition:all .3s"></i>`).join(''));
+  await W(900);
+  const tape = el(st, 'tape', `transform:${tr(40, 56, -7, 1.6)};opacity:0;z-index:50`);
+  go(tape, { transform: tr(40, 62, -7), opacity: 1 }, 380, SPRING); go(dots, { opacity: 1 }, 300, 'ease');
+  await W(1000);
+  for (let k = 1; k <= 2; k++) {
+    keep.forEach((i, j) => go(ps[i], { transform: tr(14 + (j - k) * 106, 70) }, 700, INOUT));
+    go(tape, { transform: tr(40 - k * 106, 62, -7) }, 700, INOUT);
+    [...dots.children].forEach((d, j) => { d.style.width = (j === k ? 12 : 4) + 'px'; d.style.background = `var(--${j === k ? 'ink' : 'line2'})`; });
+    await W(1300);
+  }
+}, true);
+
+phone('r1', 'hook', 'B · Contact sheet', 'A film contact sheet. A red grease pencil circles the keepers and crosses out the rest, and the circled frames lift off into a taped stack.', async (st) => {
+  const sheet = el(st, 'abs', 'transform:translate(10px,6px);width:252px;height:178px;background:#1E1915;border-radius:3px;box-shadow:var(--print-shadow);opacity:0');
+  const holes = 'repeating-linear-gradient(90deg, transparent 0 5px, rgba(246,239,230,.55) 5px 9px, transparent 9px 12px)';
+  el(sheet, 'abs', `width:100%;height:4px;transform:translateY(4px);background:${holes}`);
+  el(sheet, 'abs', `width:100%;height:4px;transform:translateY(170px);background:${holes}`);
+  const frames = [];
+  for (let i = 0; i < 12; i++) {
+    const x = 9 + (i % 4) * 60, y = 14 + Math.floor(i / 4) * 52;
+    const f = el(sheet, 'abs', `transform:translate(${x}px,${y}px);width:54px;height:44px;background:${SC[ROLL[(i * 7) % 10]]};border-radius:1px`);
+    if (i === 5 || i === 10) f.style.filter = 'blur(2px)';
+    frames.push({ f, x: x + 10, y: y + 6 });
+  }
+  await go(sheet, { opacity: 1 }, 400, 'ease');
+  await W(500);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', 272); svg.setAttribute('height', 200); svg.style.cssText = 'position:absolute;left:0;top:0;overflow:visible';
+  st.appendChild(svg);
+  const pen = (tag, attrs) => { const n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) n.setAttribute(k, attrs[k]); n.setAttribute('pathLength', 1); n.style.cssText = 'fill:none;stroke:#D64933;stroke-width:2.6;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1'; svg.appendChild(n); return n; };
+  const keep = [1, 4, 7, 11], cross = [5, 10, 2];
+  for (const i of keep) {
+    const { x, y } = frames[i];
+    const c = pen('ellipse', { cx: x + 27, cy: y + 22, rx: 33, ry: 27, transform: `rotate(-8 ${x + 27} ${y + 22})` });
+    await go(c, { strokeDashoffset: '0' }, 330, 'ease-out');
+  }
+  for (const i of cross) {
+    const { x, y } = frames[i];
+    const a = pen('path', { d: `M${x + 6} ${y + 6} L${x + 48} ${y + 38}` }), b = pen('path', { d: `M${x + 48} ${y + 6} L${x + 6} ${y + 38}` });
+    await go(a, { strokeDashoffset: '0' }, 140, 'ease-out'); await go(b, { strokeDashoffset: '0' }, 140, 'ease-out');
+  }
+  await W(500);
+  go(sheet, { opacity: 0.3 }, 500, 'ease'); go(svg, { opacity: 0.3 }, 500, 'ease');
+  const ps = keep.map((i, j) => {
+    const { x, y } = frames[i];
+    const p = print(st, ROLL[(i * 7) % 10], 60, 54, x - 3, y - 3, 0, 'z-index:5');
+    go(p, { transform: tr(52 + j * 22, 176 - j * 3, -9 + j * 6), width: '120px', height: '104px' }, 750, SPRING, 150 + j * 140);
+    return p;
+  });
+  await W(1300);
+  const tape = el(st, 'tape', `transform:${tr(120, 166, 4, 1.6)};opacity:0;z-index:10`);
+  await go(tape, { transform: tr(120, 170, 4), opacity: 1 }, 380, SPRING);
+  await W(1800);
+});
+
+phone('r1', 'hook', 'C · Deal and flick', 'Photos are dealt one at a time. Misses flick off to the left, keepers land on a neat pile, and a counter keeps score.', async (st) => {
+  const deal = [['sunset', 1], ['shot', 0], ['you', 1], ['you', 0, 'Same shot'], ['beach', 1], ['city', 0, 'Blurry'], ['peaks', 0, 'Blurry'], ['friends', 1], ['food', 1]];
+  const count = el(st, 'chip', `transform:translate(86px,272px)`, '<span>Kept</span><b>0</b><span>of</span><b>0</b>');
+  const [kept, seen] = count.querySelectorAll('b');
+  let k = 0;
+  for (const [i, [s, keep, why]] of deal.entries()) {
+    const p = print(st, s, 92, 114, 90, -150, -10, `z-index:${10 + i}`);
+    if (why === 'Blurry') p.firstChild.style.filter = 'blur(2.5px)';
+    await go(p, { transform: tr(90, 22, 0, 1.08) }, 300, OUT);
+    seen.textContent = i + 1;
+    await W(160);
+    if (keep) {
+      go(p, { transform: tr(92 + (k % 2 ? 6 : -6), 140 - k * 3, -7 + k * 3.5, 0.9) }, 420, SPRING);
+      kept.textContent = ++k;
+    } else {
+      if (why) { const t = el(st, 'stamp', `transform:${tr(104, 58, -10)};z-index:40`); t.textContent = why; go(t, { transform: tr(-150, 92, -40), opacity: 0 }, 330, IN, 120); }
+      go(p, { transform: tr(-170, 70, -32, 1), opacity: 0.2 }, 330, IN, 120);
+    }
+    await W(330);
+  }
+  const tape = el(st, 'tape', `transform:${tr(116, 126, -5, 1.6)};opacity:0;z-index:60`);
+  await go(tape, { transform: tr(116, 132, -5), opacity: 1 }, 380, SPRING);
+  await W(1800);
+});
+
+/* ---------- Slide 2 ---------- */
+
+phone('r2', 'privacy', 'A · Read here, sent nowhere', 'A scan passes over a grid of photos. "Read" counts up to thousands while "Uploaded" sits at 0; the picks lift and get a check.', async (st) => {
+  const read = el(st, 'chip', 'transform:translate(18px,4px)', `${ICON.phone}<span>Read</span><b>0</b>`).querySelector('b');
+  el(st, 'chip', 'transform:translate(150px,4px)', `${ICON.cloudOff}<span>Uploaded</span><b>0</b>`);
+  const card = el(st, 'card', 'transform:translate(26px,44px);width:220px;height:220px;padding:9px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px');
+  const tiles = Array.from({ length: 16 }, (_, i) => el(card, '', `position:relative;border-radius:3px;background:${SC[ROLL[(i * 3) % 10]]};transition:opacity .4s`));
+  const best = [1, 6, 8, 13];
+  const line = el(st, 'abs', 'transform:translate(20px,48px);width:232px;height:2px;background:var(--accent);box-shadow:0 0 10px 2px rgba(168,74,47,.55);border-radius:1px;opacity:0;z-index:20');
+  await W(500);
+  line.style.opacity = 1;
+  const t0 = performance.now(), dur = 2600;
+  await new Promise((done) => {
+    const f = (now) => {
+      const p = Math.min(1, (now - t0) / dur), e = p * p * (3 - 2 * p);
+      line.style.transform = `translate(20px,${48 + e * 210}px)`;
+      read.textContent = Math.round(4812 * e).toLocaleString('en-US');
+      tiles.forEach((t, i) => {
+        if (!best.includes(i) || t.dataset.on || 9 + Math.floor(i / 4) * 52 + 26 > e * 210) return;
+        t.dataset.on = 1; t.style.zIndex = 5;
+        go(t, { transform: 'scale(1.16) rotate(-3deg)', boxShadow: 'var(--print-shadow)' }, 420, SPRING);
+        el(t, 'abs', 'left:auto;top:auto;right:-4px;bottom:-4px;width:15px;height:15px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center', ICON.check);
+      });
+      p < 1 ? requestAnimationFrame(f) : done();
+    };
+    requestAnimationFrame(f);
+  });
+  go(line, { opacity: 0 }, 300, 'ease');
+  tiles.forEach((t, i) => { if (!best.includes(i)) t.style.opacity = 0.32; });
+  await W(2600);
+}, true);
+
+phone('r2', 'privacy', 'B · The cloud stays empty', 'Photos jump up out of the phone toward a cloud, bonk on a dashed line and fall back in. The cloud keeps saying 0.', async (st) => {
+  const cloud = el(st, 'abs', 'transform:translate(86px,4px);width:100px;height:60px;color:var(--muted)', `<svg viewBox="0 0 100 60" width="100" height="60" style="fill:none;stroke:currentColor;stroke-width:2;stroke-dasharray:4 4"><path d="M24 52h54a16 16 0 0 0 1-32A22 22 0 0 0 37 14 18 18 0 0 0 24 52z"/></svg><div style="position:absolute;inset:18px 0 0;text-align:center;font:600 13px var(--sans);color:var(--muted)">0</div>`);
+  const ceil = el(st, 'abs', 'transform:translate(20px,92px);width:232px;border-top:2px dashed var(--line2);transition:border-color .15s');
+  el(st, 'abs', 'transform:translate(0,98px);width:272px;text-align:center;font:600 7.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)', 'stays on your phone');
+  const ph = el(st, 'abs', 'transform:translate(84px,126px);width:104px;height:170px;border:3px solid var(--ink);border-radius:18px;padding:16px 8px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:24px;gap:4px;background:var(--paper)');
+  const tiles = Array.from({ length: 15 }, (_, i) => el(ph, '', `border-radius:2px;background:${SC[ROLL[(i * 3 + 1) % 10]]}`));
+  await W(600);
+  const jump = async (i, d) => {
+    await W(d);
+    const t = tiles[i], r = t.getBoundingClientRect(), s = st.getBoundingClientRect();
+    const x = r.left - s.left, y = r.top - s.top;
+    const f = print(st, ROLL[(i * 3 + 1) % 10], 30, 32, x, y, 0, 'z-index:9');
+    t.style.opacity = 0.25;
+    await go(f, { transform: tr(x + (i % 3 - 1) * 14, 96, (i % 2 ? 12 : -12), 1.25) }, 520, 'cubic-bezier(.2,.8,.3,1)');
+    ceil.style.borderColor = 'var(--accent)';
+    await go(f, { transform: tr(x + (i % 3 - 1) * 14, 92, 0, 1.25) + ' scaleY(.75)' }, 90, 'ease-out');
+    ceil.style.borderColor = 'var(--line2)';
+    await go(f, { transform: tr(x, y, 0, 1) }, 650, 'cubic-bezier(.5,0,.5,1.4)');
+    t.style.opacity = 1; f.remove();
+  };
+  await Promise.all([0, 4, 8, 11, 13].map((i, k) => jump(i, k * 380)));
+  const lock = el(st, 'abs', `transform:${tr(122, 112, 0, 0)};width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;z-index:12`, ICON.lock);
+  lock.querySelector('svg').style.cssText = 'width:14px;height:14px';
+  await go(lock, { transform: tr(122, 112, 0, 1) }, 450, SPRING);
+  await W(2000);
+});
+
+phone('r2', 'privacy', 'C · The phone sees what\'s in them', 'One photo at a time. A viewfinder snaps onto what\'s in it and labels it ("You", "Sunset", "Food"), with a note that this happens on the phone.', async (st) => {
+  const shots = [
+    { s: 'you', tags: [[78, 52, 58, 62, 'You']] },
+    { s: 'sunset', tags: [[84, 108, 46, 46, 'Sunset'], [8, 152, 196, 66, 'Sea']] },
+    { s: 'food', tags: [[48, 66, 116, 116, 'Food']] },
+  ];
+  el(st, 'chip', 'transform:translate(66px,272px)', `${ICON.phone}<span>Seen on this phone, sent nowhere</span>`);
+  let prev = null;
+  for (const [n, { s, tags }] of shots.entries()) {
+    const p = print(st, s, 220, 252, 330, 8, 8, `padding:5px 5px 16px;z-index:${n + 1}`);
+    if (prev) go(prev, { transform: tr(-300, 18, -14), opacity: 0 }, 520, IN);
+    await go(p, { transform: tr(26, 8, n % 2 ? 1.5 : -1.5) }, 650, SPRING);
+    prev = p;
+    const box = el(p, 'abs', 'transform:translate(105px,121px);width:10px;height:10px;opacity:0;z-index:3');
+    const L = 'position:absolute;width:13px;height:13px;border:2.5px solid #fff;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))';
+    el(box, '', L + ';left:-2px;top:-2px;border-right:0;border-bottom:0');
+    el(box, '', L + ';right:-2px;top:-2px;border-left:0;border-bottom:0');
+    el(box, '', L + ';left:-2px;bottom:-2px;border-right:0;border-top:0');
+    el(box, '', L + ';right:-2px;bottom:-2px;border-left:0;border-top:0');
+    for (const [x, y, w, h, name] of tags) {
+      await go(box, { transform: `translate(${x + 5}px,${y + 5}px)`, width: w + 'px', height: h + 'px', opacity: 1 }, 520, SPRING);
+      const t = el(p, 'chip', `transform:${tr(x + 5, y + h + 9, 0, 0.4)};opacity:0;z-index:4;background:var(--ink);color:var(--bg);border:0`, name);
+      go(t, { transform: tr(x + 5, y + h + 9), opacity: 1 }, 320, SPRING);
+      await W(650);
+    }
+    await W(500);
+  }
+  await W(900);
+});
+
+/* ---------- Home ---------- */
+
+function dumpCard(st, y, title, meta, scenes, h = 176) {
+  const c = el(st, 'card', `transform:translate(8px,${y}px);width:256px;padding:8px 8px 10px;background:var(--paper)`);
+  const g = el(c, '', `height:${h}px;display:grid;grid-template-columns:1.55fr 1fr;gap:3px;border-radius:10px;overflow:hidden;position:relative;background:#F3EDE4`);
+  const imgs = el(g, '', 'position:absolute;inset:0;display:grid;grid-template-columns:1.55fr 1fr;gap:3px');
+  el(imgs, '', `background:${SC[scenes[0]]}`);
+  const side = el(imgs, '', 'display:grid;gap:3px');
+  scenes.slice(1).forEach((s) => el(side, '', `background:${SC[s]}`));
+  const t = el(c, '', 'font:500 15px var(--serif);letter-spacing:-0.01em;margin-top:8px;min-height:19px;color:#261F1B');
+  const m = el(c, '', 'font:400 10px var(--sans);color:#766860;margin-top:2px;min-height:13px;opacity:0', meta);
+  return { c, imgs, t, m, title };
+}
+async function type(node, text, ms = 45) { for (let i = 1; i <= text.length; i++) { node.textContent = text.slice(0, i); await W(ms); } }
+function building(st) {
+  const n = el(st, 'card', 'transform:translate(8px,6px) rotate(-1deg);width:256px;padding:14px');
+  el(n, '', 'font:500 15px var(--serif);margin-bottom:4px', 'Building your dumps…');
+  el(n, '', 'font:400 10px/1.4 var(--sans);color:var(--muted);margin-bottom:10px', 'They show up here as your photos are read.');
+  const bar = el(el(n, '', 'height:4px;border-radius:2px;background:var(--line2)'), '', 'height:4px;width:0;border-radius:2px;background:var(--ink)');
+  el(st, 'tape', `transform:${tr(112, -1, -4)}`);
+  return { n, bar };
+}
+
+phone('r3', 'home', 'A · It develops like a Polaroid', 'The "Building" note fills, then the first dump appears washed out and blurry and sharpens into colour while its title types in. The next dump slides in under it.', async (st) => {
+  const { n, bar } = building(st);
+  await W(300);
+  await go(bar, { width: '42%' }, 1300, OUT);
+  go(n, { opacity: 0, transform: 'translate(8px,-6px) rotate(-1deg)' }, 350, 'ease');
+  const d = dumpCard(st, 6, 'Saturday in Kadıköy', '14 photos · Oct 25', ['sunset', 'friends', 'food']);
+  d.c.style.opacity = 0; d.c.style.transform += ' translateY(18px)';
+  d.imgs.style.filter = 'grayscale(1) sepia(.35) blur(8px) brightness(1.5) contrast(.6)'; d.imgs.style.opacity = 0.35;
+  await go(d.c, { opacity: 1, transform: 'translate(8px,6px)' }, 550, SPRING);
+  go(d.imgs, { filter: 'grayscale(0) sepia(0) blur(0px) brightness(1) contrast(1)', opacity: 1 }, 2600, OUT);
+  await type(d.t, d.title); go(d.m, { opacity: 1 }, 300, 'ease');
+  await W(1300);
+  const e = dumpCard(st, 248, 'A week in Seattle', '9 photos · Aug 4–10', ['peaks', 'city', 'coffee'], 120);
+  e.t.textContent = e.title; e.m.style.opacity = 1; e.c.style.opacity = 0; e.c.style.transform = 'translate(8px,300px)';
+  await go(e.c, { opacity: 1, transform: 'translate(8px,248px)' }, 600, SPRING);
+  await W(2200);
+}, true);
+
+phone('r3', 'home', 'B · Darkroom', 'The card sits under a red safelight while the picture slowly comes up on blank paper. Then the light clicks to daylight and a strip of tape pins it.', async (st) => {
+  const d = dumpCard(st, 20, 'Saturday in Kadıköy', '14 photos · Oct 25', ['sunset', 'friends', 'food'], 210);
+  d.imgs.style.opacity = 0; d.imgs.style.filter = 'contrast(.4) brightness(1.4)';
+  const red = el(st, 'abs', 'inset:-30px;width:332px;height:530px;background:#A3160C;mix-blend-mode:multiply;opacity:.78;z-index:10');
+  const flash = el(st, 'abs', 'inset:-30px;width:332px;height:530px;background:#fff;opacity:0;z-index:11');
+  await W(500);
+  await go(d.imgs, { opacity: 1, filter: 'contrast(1) brightness(1)' }, 3000, 'cubic-bezier(.4,0,.2,1)');
+  await W(300);
+  red.style.opacity = 0; flash.style.opacity = 0.7;
+  await go(flash, { opacity: 0 }, 500, 'ease-out');
+  const tape = el(st, 'tape', `transform:${tr(108, 2, -5, 1.7)};opacity:0;z-index:5`);
+  go(tape, { transform: tr(108, 10, -5), opacity: 1 }, 380, SPRING);
+  await type(d.t, d.title, 35); go(d.m, { opacity: 1 }, 300, 'ease');
+  await W(2200);
+});
+
+phone('r3', 'home', 'C · Photo booth strip', 'A slot at the top prints the first dump as a booth strip, a frame at a time; each frame develops as it comes out, then the strip drops and settles.', async (st) => {
+  el(st, 'abs', 'transform:translate(70px,8px);width:132px;height:12px;border-radius:6px;background:var(--bezel);box-shadow:inset 0 2px 3px rgba(0,0,0,.6)');
+  const clip = el(st, 'abs', 'transform:translate(80px,14px);width:112px;height:440px;overflow:hidden');
+  const strip = el(clip, 'abs', 'transform:translate(6px,-330px);width:100px;padding:6px 6px 0;background:var(--print);box-shadow:var(--print-shadow);display:flex;flex-direction:column;gap:5px');
+  const frames = ['sunset', 'friends', 'food', 'you'].map((s) => el(strip, '', `height:68px;background:${SC[s]};filter:grayscale(1) brightness(1.7) contrast(.4);border-radius:1px`));
+  el(strip, '', 'font:500 italic 11px var(--serif);text-align:center;padding:6px 0 7px;color:#261F1B', 'Sat · Kadıköy');
+  await W(400);
+  for (let k = 1; k <= 4; k++) {
+    await go(strip, { transform: `translate(6px,${-330 + k * 73}px)` }, 520, 'cubic-bezier(.3,0,.2,1)');
+    go(frames[k - 1], { filter: 'grayscale(0) brightness(1) contrast(1)' }, 1400, OUT);
+    await W(260);
+  }
+  await go(strip, { transform: 'translate(6px,22px)' }, 380, 'ease-in-out');
+  clip.style.overflow = 'visible';
+  await go(strip, { transform: 'translate(10px,40px) rotate(5deg)' }, 700, SPRING);
+  const t = el(st, 'abs', 'transform:translate(0,418px);width:272px;text-align:center;font:500 15px var(--serif);opacity:0', 'Saturday in Kadıköy');
+  await go(t, { opacity: 1 }, 400, 'ease');
+  await W(2000);
+});
+
+/* ---------- Round 2 ---------- */
+
+phone('r0', 'hook', 'Slide 1 · Pile, then the keeper stack', 'A\'s heap and stamps; the rejects drop away, then the keepers fly one by one onto C\'s taped pile while the count goes up.', async (st) => {
+  const items = [
+    { s: 'sunset', x: 12, y: 16, r: -12 }, { s: 'you', x: 98, y: 6, r: 8 }, { s: 'shot', x: 184, y: 20, r: -6, bad: 'Screenshot' },
+    { s: 'beach', x: 26, y: 104, r: 9 }, { s: 'you', x: 108, y: 98, r: -4, bad: 'Same shot' }, { s: 'peaks', x: 186, y: 110, r: 13, blur: 1, bad: 'Blurry' },
+    { s: 'friends', x: 8, y: 194, r: -5 }, { s: 'city', x: 96, y: 190, r: 10, blur: 1, bad: 'Blurry' }, { s: 'food', x: 180, y: 198, r: -8 },
+  ];
+  const ps = items.map((it, i) => {
+    const p = print(st, it.s, 72, 90, it.x, it.y - 50, it.r * 2, `opacity:0;z-index:${i}`);
+    if (it.blur) p.firstChild.style.filter = 'blur(2.5px)';
+    go(p, { transform: tr(it.x, it.y, it.r), opacity: 1 }, 650, SPRING, i * 70);
+    return p;
+  });
+  await W(1500);
+  const bad = items.map((it, i) => it.bad ? i : -1).filter((i) => i >= 0);
+  const stamps = bad.map((i, k) => { const s = el(st, 'stamp', `transform:${tr(items[i].x + 6, items[i].y + 36, -8, 1.8)};opacity:0;z-index:20`); s.textContent = items[i].bad; go(s, { transform: tr(items[i].x + 6, items[i].y + 36, -8, 1), opacity: 1 }, 380, SPRING, k * 160); return s; });
+  await W(1400);
+  bad.forEach((i, k) => { go(ps[i], { transform: tr(items[i].x, items[i].y + 380, items[i].r * 3), opacity: 0 }, 650, IN, k * 60); go(stamps[k], { transform: tr(items[i].x + 6, items[i].y + 416, -20), opacity: 0 }, 650, IN, k * 60); });
+  await W(500);
+  const count = el(st, 'chip', 'transform:translate(96px,272px);opacity:0;z-index:70', `<span>Kept</span><b>0</b><span>of ${items.length}</span>`);
+  const kept = count.querySelector('b');
+  go(count, { opacity: 1 }, 250, 'ease');
+  const keep = items.map((it, i) => it.bad ? -1 : i).filter((i) => i >= 0);
+  for (const [k, i] of keep.entries()) {
+    ps[i].style.zIndex = 30 + k;
+    go(ps[i], { transform: tr(80 + (k % 2 ? 7 : -7), 70 - k * 3, -8 + k * 3.5), width: '112px', height: '140px' }, 460, SPRING);
+    await W(170);
+    kept.textContent = k + 1;
+    await W(120);
+  }
+  await W(250);
+  const tape = el(st, 'tape', `transform:${tr(114, 50, -5, 1.6)};opacity:0;z-index:60`);
+  await go(tape, { transform: tr(114, 56, -5), opacity: 1 }, 380, SPRING);
+  await W(2000);
+});
+
+phone('r0', 'privacy', 'Slide 2 · Scan, tag, locked in', 'A\'s scan; each pick it passes gets C\'s viewfinder and a label. The photos sit inside a locked bubble: one jumps for the crossed-out cloud, hits the bubble, the lock pulses and it drops back.', async (st) => {
+  const cloud = el(st, 'abs', 'transform:translate(114px,0);width:44px;height:30px;color:var(--muted)', '<svg viewBox="0 0 24 24" width="44" height="30" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 3l18 18"/><path d="M18 18H7a4 4 0 0 1-.9-7.9M9.5 6.3A6 6 0 0 1 17.7 10 3.5 3.5 0 0 1 21 13.5c0 .9-.3 1.7-.9 2.3"/></svg>');
+  const bubble = el(st, 'abs', 'transform:translate(28px,58px);width:216px;height:228px;border:2px solid var(--line2);border-radius:30px;background:rgba(255,252,247,.35)');
+  const lock = el(st, 'abs', 'transform:translate(122px,44px);width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;z-index:30;box-shadow:var(--shadow)', ICON.lock);
+  lock.querySelector('svg').style.cssText = 'width:13px;height:13px';
+  const card = el(st, 'card', 'transform:translate(40px,80px);width:192px;height:192px;padding:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px');
+  const scene = (i) => ROLL[(i * 3) % 10];
+  const tiles = Array.from({ length: 16 }, (_, i) => el(card, '', `position:relative;border-radius:3px;background:${SC[scene(i)]};transition:opacity .4s`));
+  const names = { you: 'You', sunset: 'Sunset', food: 'Food', beach: 'Beach', friends: 'Friends', peaks: 'Mountains', city: 'City', bloom: 'Flowers', coffee: 'Coffee', forest: 'Forest' };
+  const picks = [2, 7, 10, 13];
+  const line = el(st, 'abs', 'transform:translate(34px,84px);width:204px;height:2px;background:var(--accent);box-shadow:0 0 10px 2px rgba(168,74,47,.55);border-radius:1px;opacity:0;z-index:20');
+  const tag = (t) => {
+    const r = t.getBoundingClientRect(), s = st.getBoundingClientRect(), x = r.left - s.left, y = r.top - s.top;
+    const box = el(st, 'abs', `transform:translate(${x + r.width / 2}px,${y + r.height / 2}px);width:0;height:0;z-index:25`);
+    const L = 'position:absolute;width:9px;height:9px;border:2px solid #fff;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.5))';
+    el(box, '', L + ';left:-2px;top:-2px;border-right:0;border-bottom:0'); el(box, '', L + ';right:-2px;top:-2px;border-left:0;border-bottom:0');
+    el(box, '', L + ';left:-2px;bottom:-2px;border-right:0;border-top:0'); el(box, '', L + ';right:-2px;bottom:-2px;border-left:0;border-top:0');
+    go(box, { transform: `translate(${x - 5}px,${y - 5}px)`, width: r.width + 10 + 'px', height: r.height + 10 + 'px' }, 420, SPRING);
+    const c = el(st, 'chip', `transform:${tr(x - 4, y + r.height + 2, 0, 0.4)};opacity:0;z-index:26;background:var(--ink);color:var(--bg);border:0;padding:3px 7px;font-size:8.5px`, names[t.dataset.s]);
+    go(c, { transform: tr(x - 4, y + r.height + 2), opacity: 1 }, 320, SPRING, 180);
+    return [box, c];
+  };
+  tiles.forEach((t, i) => { t.dataset.s = scene(i); });
+  await W(500);
+  line.style.opacity = 1;
+  const marks = [];
+  const t0 = performance.now(), dur = 3000;
+  await new Promise((done) => {
+    const f = (now) => {
+      const p = Math.min(1, (now - t0) / dur), e = p * p * (3 - 2 * p);
+      line.style.transform = `translate(34px,${84 + e * 184}px)`;
+      picks.forEach((i) => {
+        const t = tiles[i];
+        if (t.dataset.on || 8 + Math.floor(i / 4) * 45 + 22 > e * 184) return;
+        t.dataset.on = 1; t.style.zIndex = 5;
+        go(t, { transform: 'scale(1.12)', boxShadow: 'var(--print-shadow)' }, 420, SPRING);
+        marks.push(...tag(t));
+      });
+      p < 1 ? requestAnimationFrame(f) : done();
+    };
+    requestAnimationFrame(f);
+  });
+  go(line, { opacity: 0 }, 300, 'ease');
+  tiles.forEach((t, i) => { if (!picks.includes(i)) t.style.opacity = 0.32; });
+  await W(900);
+  // one pick tries for the cloud and hits the bubble
+  const t = tiles[10], r = t.getBoundingClientRect(), s = st.getBoundingClientRect(), x = r.left - s.left, y = r.top - s.top;
+  const f = print(st, t.dataset.s, r.width + 6, r.height + 8, x - 3, y - 3, 0, 'z-index:40');
+  t.style.opacity = 0.2;
+  marks.forEach((m) => go(m, { opacity: 0.25 }, 200, 'ease'));
+  await go(f, { transform: tr(x + 20, 66, 10, 1.15) }, 520, 'cubic-bezier(.2,.8,.3,1)');
+  bubble.style.borderColor = 'var(--accent)';
+  const ring = el(st, 'abs', 'transform:translate(28px,58px);width:216px;height:228px;border:2px solid var(--accent);border-radius:30px;z-index:1');
+  go(ring, { transform: 'translate(16px,46px)', width: '240px', height: '252px', borderRadius: '40px', opacity: 0 }, 650, OUT).then(() => ring.remove());
+  go(lock, { transform: 'translate(122px,44px) scale(1.3)' }, 160, 'ease-out').then(() => go(lock, { transform: 'translate(122px,44px) scale(1)' }, 420, SPRING));
+  await go(f, { transform: tr(x + 20, 62, 0, 1.15) + ' scaleY(.75)' }, 90, 'ease-out');
+  await go(f, { transform: tr(x - 3, y - 3, 0, 1) }, 680, 'cubic-bezier(.5,0,.5,1.4)');
+  bubble.style.borderColor = 'var(--line2)';
+  t.style.opacity = 1; f.remove();
+  marks.forEach((m) => go(m, { opacity: 1 }, 200, 'ease'));
+  await W(2200);
+});
+
+phone('r0', 'home', 'Home · Strip prints when the dump is ready', 'The "Building" note stays until a dump exists, however long that is. Only then the slot appears and prints it as a booth strip. If it\'s ready before onboarding ends, it prints right away.', async (st) => {
+  const { n, bar } = building(st);
+  await W(300);
+  await go(bar, { width: '64%' }, 2200, OUT);
+  await go(n, { opacity: 0, transform: 'translate(8px,-10px) rotate(-1deg)' }, 350, 'ease');
+  st.querySelector('.tape').remove();
+  const slot = el(st, 'abs', 'transform:translate(70px,8px) scaleX(0);width:132px;height:12px;border-radius:6px;background:var(--bezel);box-shadow:inset 0 2px 3px rgba(0,0,0,.6)');
+  await go(slot, { transform: 'translate(70px,8px) scaleX(1)' }, 380, SPRING);
+  const clip = el(st, 'abs', 'transform:translate(80px,14px);width:112px;height:440px;overflow:hidden');
+  const strip = el(clip, 'abs', 'transform:translate(6px,-330px);width:100px;padding:6px 6px 0;background:var(--print);box-shadow:var(--print-shadow);display:flex;flex-direction:column;gap:5px');
+  const frames = ['sunset', 'friends', 'food', 'you'].map((s) => el(strip, '', `height:68px;background:${SC[s]};filter:grayscale(1) brightness(1.7) contrast(.4);border-radius:1px`));
+  el(strip, '', 'font:500 italic 11px var(--serif);text-align:center;padding:6px 0 7px;color:#261F1B', 'Sat · Kadıköy');
+  for (let k = 1; k <= 4; k++) {
+    await go(strip, { transform: `translate(6px,${-330 + k * 73}px)` }, 520, 'cubic-bezier(.3,0,.2,1)');
+    go(frames[k - 1], { filter: 'grayscale(0) brightness(1) contrast(1)' }, 1400, OUT);
+    await W(260);
+  }
+  await go(strip, { transform: 'translate(6px,22px)' }, 380, 'ease-in-out');
+  clip.style.overflow = 'visible';
+  go(slot, { opacity: 0 }, 400, 'ease', 300);
+  await go(strip, { transform: 'translate(10px,40px) rotate(5deg)' }, 700, SPRING);
+  const t = el(st, 'abs', 'transform:translate(0,418px);width:272px;text-align:center;font:500 15px var(--serif);opacity:0', 'Saturday in Kadıköy');
+  await go(t, { opacity: 1 }, 400, 'ease');
+  await W(2000);
+});
+</script>

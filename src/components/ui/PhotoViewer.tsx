@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Modal, NativeScrollEvent, NativeSyntheticEvent, Text, useWindowDimensions, View } from 'react-native';
 import { FlatList, Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ui } from '../../theme/type';
@@ -10,19 +11,19 @@ import { Icons } from './Icons';
 
 const PEEK = 24, SP = 8; // the neighbours show PEEK - SP px at each side: there's more to swipe to
 
-type Photo = { id: string; uri: string };
+type Photo = { id: string; uri: string; created?: number };
 
 /** Pinch zooms toward the fingers and springs back on release (Instagram-style: no pan, so it never fights the swipe). */
 function Zoomable({ uri, w, h, onZoom }: { uri: string; w: number; h: number; onZoom: (on: boolean) => void }) {
   const s = useSharedValue(1), tx = useSharedValue(0), ty = useSharedValue(0), fx = useSharedValue(0), fy = useSharedValue(0);
+  // on the UI thread: the zoom keeps up with the fingers even while JS is busy
   const pinch = Gesture.Pinch()
-    .runOnJS(true)
-    .onStart((e) => { fx.value = e.focalX - w / 2; fy.value = e.focalY - h / 2; onZoom(true); })
+    .onStart((e) => { fx.value = e.focalX - w / 2; fy.value = e.focalY - h / 2; scheduleOnRN(onZoom, true); })
     .onUpdate((e) => {
       s.value = Math.max(1, Math.min(4, e.scale));
       tx.value = fx.value * (1 - s.value); ty.value = fy.value * (1 - s.value); // the pinched point stays under the fingers
     })
-    .onFinalize(() => { s.value = withSpring(1); tx.value = withSpring(0); ty.value = withSpring(0); onZoom(false); });
+    .onFinalize(() => { s.value = withSpring(1); tx.value = withSpring(0); ty.value = withSpring(0); scheduleOnRN(onZoom, false); });
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: s.value }] }));
   return (
     <GestureDetector gesture={pinch}>
@@ -53,8 +54,12 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
   const itemW = win.width - 2 * PEEK, slot = itemW + SP;
   const n = photos.length;
   const i = Math.min(at, n - 1);
-  const go = (to: number) => { setAt(to); list.current?.scrollToIndex({ index: to }); };
+  // Only a finger's scroll moves the counter: our own animated scroll (‹ ›) reports in-between offsets, often late, which
+  // pulled `at` back mid-flight, so fast taps went from a stale photo (a ‹ after a few › kept going right).
+  const dragging = useRef(false);
+  const go = (to: number) => { dragging.current = false; setAt(to); list.current?.scrollToIndex({ index: to }); };
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!dragging.current) return;
     const k = Math.max(0, Math.min(n - 1, Math.round(e.nativeEvent.contentOffset.x / slot)));
     if (k !== at) setAt(k);
   };
@@ -74,7 +79,14 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
       {/* a Modal is its own window: gestures need their own root there */}
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', paddingTop: insets.top, paddingBottom: insets.bottom + 12 }}>
         <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(12, 600), { color: '#fff' }]}>{i + 1} / {n}</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={[ui(12, 600), { color: '#fff' }]}>{i + 1} / {n}</Text>
+            {photos[i]?.created ? (
+              <Text style={[ui(11), { color: 'rgba(255,255,255,0.6)', marginTop: 2 }]}>
+                {new Date(photos[i].created!).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text>
+            ) : null}
+          </View>
           <Tap onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo" hitSlop={10}
             style={{ position: 'absolute', right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
             <Icons.close size={16} color="#fff" />
@@ -96,6 +108,7 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
               getItemLayout={(_, k) => ({ length: slot, offset: slot * k, index: k })}
               initialNumToRender={3}
               windowSize={3}
+              onScrollBeginDrag={() => { dragging.current = true; }}
               onScroll={onScroll}
               scrollEventThrottle={32}
               extraData={i}

@@ -1,5 +1,5 @@
 # Pick 2 photos -> Edit -> Preview, stopping at the share/export step
-# (doesn't tap Post / Save only: those leave the app or write to the photo album).
+# (doesn't tap Post / Save to phone: those leave the app or write to the photo album).
 appId: com.horizonzeta.picdump
 name: 05 create -> edit -> share step
 ---
@@ -21,5 +21,5 @@ name: 05 create -> edit -> share step
 - takeScreenshot: vr_edit
 - tapOn: "Preview"
 - assertVisible: "Post on Instagram or TikTok|Post on IG / TikTok"
-- assertVisible: "Save only"
-- assertVisible: "Quality: .*"
+- assertVisible: "Save to phone"
+- assertVisible: "HD export for this dump"

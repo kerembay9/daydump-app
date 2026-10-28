@@ -73,7 +73,9 @@ internal class YuNet(ctx: Context, file: String?, private val size: Int) : AutoC
     val faces = keep.map { i ->
       val b = i * N
       val f = mutableMapOf<String, Any>("score" to o[b].toDouble(), "x" to ((o[b + 1] - o[b + 3] / 2) / bw).toDouble(), "y" to ((o[b + 2] - o[b + 4] / 2) / bh).toDouble(),
-        "w" to (o[b + 3] / bw).toDouble(), "h" to (o[b + 4] / bh).toDouble())
+        "w" to (o[b + 3] / bw).toDouble(), "h" to (o[b + 4] / bh).toDouble(),
+        // 5 landmarks (eyes, nose, mouth corners) as fractions, x then y: Tidy's head-turn check
+        "lm" to List(10) { (o[b + 5 + it] / if (it % 2 == 0) bw else bh).toDouble() })
       if (sface != null && (!solo || keep.size == 1)) f["vec"] = encode(sface.embed(full, FloatArray(10) { o[b + 5 + it] * up }))
       f
     }

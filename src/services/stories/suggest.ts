@@ -1,6 +1,8 @@
-// Create's suggestions from the basket: the "Similar to your N selected" strip and (P6b) the two Y sets of
-// "2 ways to finish". Pure (type-only imports), so scripts/selfcheck.ts can test it.
+// Create's suggestions from the basket: the "Similar to your picks" strip and its "N sets". No React or native
+// imports, so scripts/selfcheck.ts can test it.
 import type { IndexedPhoto, Library } from '../index/photoIndex';
+import { placeFor } from '../index/cityLookup';
+import { dateRange } from './titles';
 import { DIM, dot, isZero } from '../index/vectors';
 
 /** swaps.ts near-duplicate rule: cosine above this = the same shot. */
@@ -51,61 +53,42 @@ export function neighbours(lib: Library, selected: string[], k: number, opts: { 
 export const similarTo = (lib: Library, selected: string[], k = 8, query?: Float32Array | null): IndexedPhoto[] =>
   neighbours(lib, selected, k, { query }).map((i) => lib.photos[i]);
 
+/** A ready-made group of photos to add, named by when / where it was taken. */
+export type FillSet = { name: string; photos: IndexedPhoto[] };
+
+/** a moment: photos less than 2 h apart */
+const MOMENT = 2 * 3_600_000;
+
 /**
- * Two different ways to finish the dump from the same selection (decisions.md "X+Y"): the top CLIP neighbours of the
- * selection, split in two by 2-means (cosine), the best `size` of each cluster. Y1 ∩ Y2 = ∅ always; a short cluster
- * tops up from photos the other Y didn't take. `exclude` = earlier picks, so Regenerate gives new sets. ms = timing.
+ * Create's "N sets": the top 60 CLIP neighbours of the selection, cut into moments (time gaps). The two strongest
+ * moments with 2+ photos become sets (≤5 each, "Kadıköy, Aug 12"); the best photo of each other moment fills
+ * "Different moments" / "More moments" sets up to 3 in all, so a library of one-off shots (a coffee a day) still gets
+ * sets to compare. Sets are disjoint, the one with the best match first; [] when nothing selected is embedded.
+ * ponytail: fixed 2 h gap and 60-photo pool, tuned on one library; per-library gaps if moments come out wrong.
  */
-export function finishSets(lib: Library, selected: string[], size: number, exclude: Set<string> = new Set()): { ys: [IndexedPhoto[], IndexedPhoto[]]; ms: number } {
-  const t0 = Date.now();
-  const pool = neighbours(lib, selected, Math.max(24, size * 6), { exclude });
-  if (!pool.length || size <= 0) return { ys: [[], []], ms: Date.now() - t0 };
-
-  // 2-means seeded with the best neighbour and the pool row least like it; pool order (best first) stays the rank.
-  const far = pool.reduce((a, b) => (dot(lib.vecs, b, lib.vecs, pool[0]) < dot(lib.vecs, a, lib.vecs, pool[0]) ? b : a));
-  const cents: Float32Array[] = [pool[0], far].map((r) => lib.vecs.slice(r * DIM, (r + 1) * DIM));
-  let side = pool.map(() => 0);
-  for (let it = 0; it < 8; it++) {
-    const next = pool.map((r) => (dot(lib.vecs, r, cents[1], 0) > dot(lib.vecs, r, cents[0], 0) ? 1 : 0));
-    const moved = next.some((s, j) => s !== side[j]);
-    side = next;
-    for (const k of [0, 1]) {
-      const c = new Float32Array(DIM);
-      pool.forEach((r, j) => { if (side[j] === k) for (let d = 0; d < DIM; d++) c[d] += lib.vecs[r * DIM + d]; });
-      if (side.includes(k)) cents[k] = unit(c);
-    }
-    if (!moved && it) break;
+export function fillSets(lib: Library, selected: string[], now = Date.now()): FillSet[] {
+  const pool = neighbours(lib, selected, 60).map((i) => lib.photos[i]);
+  const rank = new Map(pool.map((p, i) => [p.id, i]));
+  const byTime = [...pool].sort((a, b) => a.creationTime - b.creationTime);
+  const moments: IndexedPhoto[][] = [];
+  byTime.forEach((p, i) => { if (!i || p.creationTime - byTime[i - 1].creationTime > MOMENT) moments.push([]); moments[moments.length - 1].push(p); });
+  // each moment best first, the strongest moment first
+  const ms = moments.map((m) => m.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)).sort((a, b) => rank.get(a[0].id)! - rank.get(b[0].id)!);
+  const big = ms.filter((m) => m.length >= 2).slice(0, 2);
+  const sets: FillSet[] = big.map((m) => ({ name: nameOf(m, now), photos: m.slice(0, 5) }));
+  const mix = ms.filter((m) => !big.includes(m)).map((m) => m[0]);
+  for (let i = 0; sets.length < 3 && mix.length - i >= 2; i += 5) {
+    sets.push({ name: i ? 'More moments' : 'Different moments', photos: mix.slice(i, i + 5) });
   }
-
-  const taken = new Set<number>();
-  const ys: [number[], number[]] = [[], []];
-  const fill = (k: 0 | 1, from: number[]) => {
-    for (const r of from) {
-      if (ys[k].length >= size) return;
-      if (!taken.has(r)) { ys[k].push(r); taken.add(r); }
-    }
-  };
-  fill(0, pool.filter((_, j) => side[j] === 0));
-  fill(1, pool.filter((_, j) => side[j] === 1));
-  fill(0, pool);
-  fill(1, pool);
-  return { ys: [ys[0].map((r) => lib.photos[r]), ys[1].map((r) => lib.photos[r])], ms: Date.now() - t0 };
+  // the set holding the best match first
+  return sets.sort((a, b) => rank.get(a.photos[0].id)! - rank.get(b.photos[0].id)!);
 }
 
-type Pick = { id: string };
-/**
- * "Use this" on a way Y (generic so selfcheck needn't load dumps.ts): Y's photos join the end of the basket in place
- * of any other way the section placed; on a Y that's fully in already, the photos it placed come out again.
- * `placed` = ids the section put in (never the user's own picks, even when a Y holds them too).
- */
-export function adoptWay<P extends Pick>(basket: P[], placed: Set<string>, y: P[]): { next: P[]; placed: Set<string> } {
-  const ids = new Set(y.map((p) => p.id));
-  const inBasket = new Set(basket.map((p) => p.id));
-  if (y.length && y.every((p) => inBasket.has(p.id))) {
-    return { next: basket.filter((p) => !(placed.has(p.id) && ids.has(p.id))), placed: new Set([...placed].filter((id) => !ids.has(id))) };
-  }
-  const keep = basket.filter((p) => !placed.has(p.id) || ids.has(p.id));
-  const have = new Set(keep.map((p) => p.id));
-  const add = y.filter((p) => !have.has(p.id));
-  return { next: [...keep, ...add], placed: new Set([...[...placed].filter((id) => ids.has(id)), ...add.map((p) => p.id)]) };
+/** "Kadıköy, Aug 12" (the first photo with GPS names the place), or just the dates. */
+function nameOf(ps: IndexedPhoto[], now: number): string {
+  const ts = ps.map((p) => p.creationTime);
+  const at = ps.find((p) => p.location)?.location;
+  const city = at && placeFor(at.latitude, at.longitude)?.city;
+  const when = dateRange(Math.min(...ts), Math.max(...ts), now);
+  return city ? `${city}, ${when}` : when;
 }

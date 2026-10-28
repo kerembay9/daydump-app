@@ -78,11 +78,11 @@ function Root() {
   return (
     <View {...onTouch} style={{ flex: 1, backgroundColor: now.bgScreen, experimental_backgroundImage: now.bgGrad ?? undefined }}>
       <NavThemeProvider value={navTheme}>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade', freezeOnBlur: true }}>
           {/* listed screens come first, so the tabs stay the initial route */}
           <Stack.Screen name="(tabs)" />
           {/* one screen per route + id: a fast double tap pushed two, so Back showed the same page again */}
-          {['preview/[id]', 'edit/[id]', 'profile', 'selfie', 'people'].map((name) => <Stack.Screen key={name} name={name} dangerouslySingular />)}
+          {['preview/[id]', 'edit/[id]', 'profile', 'selfie', 'people', 'today', 'today-tags', 'tidy/sets', 'tidy/[pile]', 'tidy/history'].map((name) => <Stack.Screen key={name} name={name} dangerouslySingular />)}
         </Stack>
       </NavThemeProvider>
       <Sheet visible={!!ask} onClose={() => { if (ask) discardShared(ask); setAsk(null); ToastAndroid.show('Shared photos not added', ToastAndroid.SHORT); }}>

@@ -1,0 +1,21 @@
+# Create: the Similar strip's "N sets" tile opens a sheet of sets; tick 1 photo in a set, Add 1 adds only it.
+appId: com.horizonzeta.picdump
+name: 11 fill sets
+---
+- runFlow: subflows/ready.yaml
+- runFlow:
+    file: subflows/pick.yaml
+    env:
+      N: 2
+- extendedWaitUntil:
+    visible: "\\d sets? of similar photos"
+    timeout: 20000
+- tapOn: "\\d sets? of similar photos"
+- assertVisible: "Sets for your 2 picks"
+- tapOn:
+    text: "Tick this photo"
+    index: 0
+- tapOn: "Add 1 from .*"
+- assertVisible: "Continue with 3 photos"
+- assertVisible: "In your picks"
+- tapOn: "Close sets"

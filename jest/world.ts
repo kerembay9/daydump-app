@@ -1,10 +1,16 @@
 // The fake phone behind the native mocks (jest/setup.ts): a photo library with GPS + CLIP concepts, the background
 // indexer's state, and what the share sheet / "Open with" hands the app. Tests build one with seedWorld().
 import { floatsToB64, b64ToFloats, DIM } from '../src/services/index/vectors';
+import type { TidyStats } from '../modules/clip-embedder';
 
-export type FakePhoto = { id: string; uri: string; created: number; w: number; h: number; lat?: number; lon?: number; concepts: number[] };
+export type FakePhoto = { id: string; uri: string; created: number; w: number; h: number; lat?: number; lon?: number; concepts: number[];
+  /** file size in bytes (Tidy's listing; default 2 MB), IS_FAVORITE */
+  size?: number; fav?: boolean;
+  /** id of another photo whose own axis this one shares: the same shot (cosine ~1) */
+  twin?: string;
+};
 
-/** Concept c lives on axis C0 + c; every photo also gets its own axis (so no two photos are near-duplicates). */
+/** Concept c lives on axis C0 + c; every photo also gets its own axis (so no two photos are near-duplicates), a twin its twin's. */
 const C0 = 10, N_CONCEPTS = 90, U0 = 200;
 const FILLER = Array.from({ length: 10 }, (_, i) => N_CONCEPTS + i);
 
@@ -25,9 +31,19 @@ export const world = {
   shareTargets: ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'] as string[],
   /** expo-file-system copy/move are async on the phone: a file is in `written` once its promise resolves; while `held` is set, they wait there */
   files: { written: new Set<string>(), held: null as (() => void)[] | null },
-  /** search languages (QueryTranslate): the phone's language, downloaded models, and a gate translation downloads wait on */
-  lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string> },
+  /** search languages (QueryTranslate): the phone's language, downloaded models, a gate translation downloads wait on, and
+   *  whether the translate feature module (ML Kit's code, on demand from Play) is installed: download installs it */
+  lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string>, module: true },
+  /**
+   * Tidy (Tidy.kt): pixel checks and 64 KB hashes per id (defaults: a sharp normal photo, `h<id>`), Trash state per id,
+   * whether Android's Trash/Restore dialog is allowed, and the photos in Trash (out of `photos` until restored).
+   */
+  tidy: newTidy(),
 };
+
+function newTidy() {
+  return { stats: {} as Record<string, TidyStats | null>, hash: {} as Record<string, string | null>, trash: {} as Record<string, { trashed: boolean; expires: number }>, allow: true, binned: [] as FakePhoto[] };
+}
 
 let n = 0;
 export function photo(created: Date, concepts: number[], at?: { lat: number; lon: number }, camera = true): FakePhoto {
@@ -36,6 +52,12 @@ export function photo(created: Date, concepts: number[], at?: { lat: number; lon
     id, uri: camera ? `file:///storage/emulated/0/DCIM/Camera/IMG_${id}.jpg` : `file:///storage/emulated/0/Pictures/IMG_${id}.jpg`,
     created: created.getTime(), w: 3000, h: 4000, lat: at?.lat, lon: at?.lon, concepts,
   };
+}
+
+/** n takes of one shot, 2 s apart: the rest are twins of the first. */
+export function burst(created: Date, n: number, concepts: number[]): FakePhoto[] {
+  const first = photo(created, concepts);
+  return [first, ...Array.from({ length: n - 1 }, (_, i) => ({ ...photo(new Date(created.getTime() + 2000 * (i + 1)), concepts), twin: first.id }))];
 }
 
 /**
@@ -58,6 +80,7 @@ export function seedWorld(photos = defaultLibrary()) {
   world.shareResult = 'com.instagram.android';
   world.shareTargets = ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'];
   world.files = { written: new Set(), held: null };
+  world.tidy = newTidy();
 }
 
 export const byUri = (uri: string) => world.photos.find((p) => p.uri === uri);
@@ -73,7 +96,7 @@ export function photoVec(p: FakePhoto): Float32Array {
   const v = new Float32Array(DIM);
   v[0] = v[1] = v[2] = 0.1; // real CLIP rows are never zero up front (vectors.isZero)
   for (const c of p.concepts) v[C0 + c] = 1;
-  v[U0 + (+p.id % (DIM - U0))] = 1;
+  v[U0 + (+(p.twin ?? p.id) % (DIM - U0))] = 1;
   return normalize(v);
 }
 

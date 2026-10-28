@@ -29,12 +29,19 @@ export const DEFAULT_TOPIC_OPTIONS: TopicOptions = { minPhotos: 6, minDays: 3, m
 
 const DAY = 86_400_000;
 const EVENT_GAP = 2 * DAY;
+/** A recurring tag makes up to this many topics: its densest window, then the densest of what's left. */
+const MAX_WINDOWS = 3;
+/** Rarity counts down to this share: rarer tags are as often a wrong tag as a niche one ("ford e-series"). */
+const RARE = 0.01;
+/** Topics with more than this share of the smaller one's photos in common are one topic. */
+const SAME = 0.6;
 
 /**
  * Topics from an inverted index over each photo's top vocab concepts (computed at index time).
  * Chosen over embedding clustering: O(n*k), and every topic comes with the word that explains it.
+ * skip: tags that never make a topic (curate.ts noTopic: people words, dull or obscure tags).
  */
-export function findTopics(photos: IndexedPhoto[], names: string[], o: TopicOptions = DEFAULT_TOPIC_OPTIONS, isEvent?: (c: number) => boolean): Topic[] {
+export function findTopics(photos: IndexedPhoto[], names: string[], o: TopicOptions = DEFAULT_TOPIC_OPTIONS, isEvent?: (c: number) => boolean, skip?: (c: number) => boolean): Topic[] {
   const n = photos.length;
   if (!n) return [];
   const postings = new Map<number, { p: IndexedPhoto; s: number }[]>();
@@ -46,37 +53,40 @@ export function findTopics(photos: IndexedPhoto[], names: string[], o: TopicOpti
   const topics: Topic[] = [];
   for (const [c, all] of postings) {
     const share = all.length / n;
-    if (all.length < o.minPhotos || share > o.maxShare) continue;
+    if (all.length < o.minPhotos || share > o.maxShare || skip?.(c)) continue;
     all.sort((a, b) => a.p.creationTime - b.p.creationTime);
     // Private events keep one burst: another couple's engagement weeks later isn't "my engagement".
     const ev = isEvent?.(c) ?? false;
-    const win = ev ? densestCluster(all, EVENT_GAP) : densestWindow(all, o.windowDays * DAY);
-    const days = new Set(win.map((x) => new Date(x.p.creationTime).toDateString())).size;
-    // Recurring (spread over days) or one big event.
-    if (win.length < o.minPhotos || (!ev && days < o.minDays && win.length < 2 * o.minPhotos)) continue;
-    const mean = win.reduce((a, x) => a + x.s, 0) / win.length;
-    topics.push({
-      conceptId: c,
-      name: names[c] ?? `concept ${c}`,
-      related: [],
-      photos: win.map((x) => x.p),
-      start: win[0].p.creationTime,
-      end: win[win.length - 1].p.creationTime,
-      days,
-      share,
-      // an event is one burst by nature: no penalty for few days
-      score: Math.sqrt(win.length) * Math.log(1 / share) * mean * (ev ? 5 : Math.min(days, 5)),
-    });
+    let left = all;
+    for (let k = 0; k < (ev ? 1 : MAX_WINDOWS) && left.length >= o.minPhotos; k++) {
+      const win = ev ? densestCluster(left, EVENT_GAP) : densestWindow(left, o.windowDays * DAY);
+      const used = new Set(win);
+      left = left.filter((x) => !used.has(x));
+      const days = new Set(win.map((x) => new Date(x.p.creationTime).toDateString())).size;
+      // Recurring (spread over days) or one big event.
+      if (win.length < o.minPhotos || (!ev && days < o.minDays && win.length < 2 * o.minPhotos)) continue;
+      const mean = win.reduce((a, x) => a + x.s, 0) / win.length;
+      topics.push({
+        conceptId: c,
+        name: names[c] ?? `concept ${c}`,
+        related: [],
+        photos: win.map((x) => x.p),
+        start: win[0].p.creationTime,
+        end: win[win.length - 1].p.creationTime,
+        days,
+        share,
+        // an event is one burst by nature: no penalty for few days
+        score: Math.sqrt(win.length) * Math.log(1 / Math.max(share, RARE)) * mean * (ev ? 5 : Math.min(days, 5)),
+      });
+    }
   }
 
   topics.sort((a, b) => b.score - a.score);
-  // Merge near-identical topics ("cinnamon roll" vs "pastry" on the same photos).
+  // Merge topics on mostly the same photos ("pastry" on the cinnamon rolls, "latte art" inside "coffee"): the better one names it.
   const kept: Topic[] = [];
   for (const t of topics) {
-    // jaccard ≤ smaller / bigger size, so most pairs need no set at all
     let ids: Set<IndexedPhoto> | undefined;
-    const dup = kept.find((k) => Math.min(t.photos.length, k.photos.length) > 0.5 * Math.max(t.photos.length, k.photos.length)
-      && jaccard((ids ??= new Set(t.photos)), k.photos) > 0.5);
+    const dup = kept.find((k) => k.start <= t.end && t.start <= k.end && shared((ids ??= new Set(t.photos)), k.photos) > SAME);
     if (dup) dup.related.push(t.name);
     else kept.push(t);
   }
@@ -103,8 +113,9 @@ export function densestCluster<T extends { p: { creationTime: number } }>(sorted
   return sorted.slice(best[0], best[1]);
 }
 
-function jaccard<T>(a: Set<T>, b: T[]): number {
+/** Photos in common over the smaller set's size. */
+function shared<T>(a: Set<T>, b: T[]): number {
   let inter = 0;
   for (const p of b) if (a.has(p)) inter++;
-  return inter / (a.size + b.length - inter);
+  return inter / Math.min(a.size, b.length);
 }

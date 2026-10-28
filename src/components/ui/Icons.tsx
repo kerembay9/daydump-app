@@ -3,12 +3,14 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import type { LucideIcon } from 'lucide-react-native';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import Bookmark from 'lucide-react-native/icons/bookmark';
+import Camera from 'lucide-react-native/icons/camera';
 import Check from 'lucide-react-native/icons/check';
 import CircleDashed from 'lucide-react-native/icons/circle-dashed';
 import Clapperboard from 'lucide-react-native/icons/clapperboard';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Clock from 'lucide-react-native/icons/clock';
+import Trash from 'lucide-react-native/icons/trash';
 import Copy from 'lucide-react-native/icons/copy';
 import Crop from 'lucide-react-native/icons/crop';
 import Download from 'lucide-react-native/icons/download';
@@ -67,6 +69,15 @@ export const WorkspaceEdit = (p: IconProps) => (
   </Custom>
 );
 
+/** Tidy tab: a frame with a check, a second frame peeling off behind it. */
+export const FrameCheck = (p: IconProps) => (
+  <Custom {...p}>
+    <Path d="M8 4.5h10.5a2 2 0 0 1 2 2V17" />
+    <Rect x={3.5} y={7.5} width={13} height={13} rx={2} />
+    <Path d="m7 14.2 2.6 2.5 4.4-5" />
+  </Custom>
+);
+
 /** Mock's two-arc refresh (re-roll). */
 export const Refresh = (p: IconProps) => (
   <Custom {...p}>
@@ -91,6 +102,7 @@ export const Icons = {
   back: lucide(ChevronLeft),
   chevron: lucide(ChevronRight),
   clock: lucide(Clock),
+  trash: lucide(Trash),
   close: lucide(X),
   settings: lucide(Settings),
   user: lucide(User),
@@ -98,6 +110,7 @@ export const Icons = {
   comment: lucide(MessageCircle),
   send: lucide(Send),
   bookmark: lucide(Bookmark),
+  camera: lucide(Camera),
   music: lucide(Music),
   download: lucide(Download),
   check: lucide(Check),

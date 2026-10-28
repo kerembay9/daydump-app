@@ -5,7 +5,7 @@ import { FrameCard } from './ui/FrameCard';
 import { Pill } from './ui/Pill';
 import { Bar, Developing } from './ModelLoading';
 import { useTheme } from '../theme/ThemeProvider';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { modelsNow, useModels } from '../state/models';
 import { checkSelfies, rankSelfies, Selfie, soloPhotos } from '../services/selfie';
@@ -33,14 +33,14 @@ const pickFrom = (pool: Selfie[], skipped: Set<string>, notMe: Float32Array[]) =
  * on: scan (onboarding turns it on at the photo grant). best: on screen; wait: [title, body, progress] while there's none yet.
  */
 export function useSelfiePick(on = true) {
-  const models = useModels('faces');
+  useModels('faces'); // fetched next: sharpens the pick once it's there
   /** cur: on screen (null = none right now); passed: one was passed already; scanned: photos scanned; firstBy: scanned before the first pick; done: all scanned, or ENOUGH found */
   const [st, setSt] = useState<{ pool: Selfie[]; cur: Selfie | null; passed: boolean; scanned: number; firstBy: number; done: boolean }>({ pool: [], cur: null, passed: false, scanned: 0, firstBy: FIRST_BY, done: false });
   const [verdict, setVerdict] = useState<'up' | 'down' | null>(null);
   const skipped = useRef(new Set<string>()); // photos shown and passed
   const notMe = useRef<Float32Array[]>([]); // faces turned down
 
-  const go = on && !!models;
+  const go = on; // not waiting on the models' state: if it never arrives, the scan still runs (faces read when it has)
   const best = st.cur;
 
   useEffect(() => {
@@ -138,7 +138,6 @@ export function useSelfiePick(on = true) {
 
   // what it waits for: [title, body, progress or null]
   const wait: [string, string, number | null] | null = best ? null
-    : !models ? ['Getting ready', 'One moment.', null]
     : st.done ? null
     : !st.passed ? ['Picking your best selfie', 'Looking through your recent photos. Nothing leaves your phone.', Math.min(1, st.scanned / st.firstBy)]
     : ['Looking further back', 'Checking older photos.', null];
@@ -182,7 +181,7 @@ export function SelfieFinder() {
         )}
       </FrameCard>
       <>
-        <Text style={[label(10, 0.12), { color: t.inkMuted, marginTop: 14, marginBottom: 4, paddingHorizontal: 4 }]}>What&apos;s your name?</Text>
+        <Text style={[label(10, 0.12), { color: t.inkMuted, marginTop: 14, marginBottom: 4, paddingHorizontal: 4 }]}>{caps("What's your name?")}</Text>
         <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4 }}>
           <TextInput value={name} onChangeText={editName} placeholder="Your name" placeholderTextColor={t.inkMuted}
             returnKeyType="done" style={[display(18), { color: t.ink, paddingVertical: 8 }]} />

@@ -17,7 +17,7 @@ android/app/build/outputs/bundle/release/app-release.aab
 
 ## 2. Keystore Signing Details
 
-* **Keystore File Location:** `android/app/daydump-release.keystore`
+* **Keystore File Location:** `daydump-release.keystore` at the repo root (gitignored). `plugins/withReleaseSigning.js` points the release build at it, so `expo prebuild` keeps signing
 * **Keystore Type:** PKCS12 (2048-bit RSA)
 * **Key Alias:** `daydump-key-alias`
 * **Store Password:** `daydump2026`

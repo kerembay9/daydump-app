@@ -5,14 +5,14 @@ import { placeFor } from '../src/services/index/cityLookup';
 import type { IndexedPhoto } from '../src/services/index/photoIndex';
 import { suggestSwaps } from '../src/services/stories/swaps';
 import { parseQuery, placeKey, searchLibrary } from '../src/services/stories/search';
-import { adoptWay, finishSets, similarTo } from '../src/services/stories/suggest';
+import { fillSets, similarTo } from '../src/services/stories/suggest';
 import { findTopics } from '../src/services/stories/topics';
 import { findTrips, tripTitle } from '../src/services/stories/trips';
 import { dateRange, disambiguate, topicTitle } from '../src/services/stories/titles';
 import { copyTitle, kindLabel, matches, photoRange, rowLine, statusLine } from '../src/services/dumpLabels';
 import type { Dump } from '../src/services/dumps';
-import { cellAt, chunk, exportSize, LAYOUTS, placePhoto, slideCells } from '../src/services/layouts';
-import { IDENTITY, lookFor, matrixFor, PRESETS } from '../src/services/filters';
+import { cellAt, chunk, DEFAULT_FRAME, exportSize, frameOf, frameText, LAYOUTS, placePhoto, slideCells } from '../src/services/layouts';
+import { autoAdjust, brighten, developFor, DEFAULT_FILTER, filterOf, IDENTITY, isDark, lookFor, matrixFor, PRESETS } from '../src/services/filters';
 import { postDump, PostDeps, saveOnly } from '../src/services/post';
 
 const H = 3_600_000, D = 24 * H;
@@ -91,12 +91,14 @@ assert.equal(dr([2023, 1, 1], [2025, 5, 1]), '2023–2025'); // > 12 months
 assert.equal(dr([2026, 4, 18], [2026, 4, 12]), 'May 12–18'); // order-proof
 assert.equal(dateRange(new Date(2025, 0, 1).getTime(), new Date(2025, 5, 1).getTime()), 'Jan–Jun 2025');
 
-// duplicate titles get the shortest suffix that tells them apart
+// duplicate titles get the shortest suffix that tells them apart, never this year
 const st = (title: string, a: [number, number, number], b: [number, number, number]) => ({ title, start: new Date(...a).getTime(), end: new Date(...b).getTime() });
 assert.deepEqual(disambiguate([st('Coffee', [2024, 4, 1], [2024, 4, 9]), st('Coffee', [2025, 4, 1], [2025, 4, 9]), st('Tea', [2025, 1, 1], [2025, 1, 2])], NOW).map((s) => s.title),
   ['Coffee, 2024', 'Coffee, 2025', 'Tea']);
+assert.deepEqual(disambiguate([st('Coffee', [2024, 4, 1], [2024, 4, 9]), st('Coffee', [2026, 4, 1], [2026, 4, 9])], NOW).map((s) => s.title),
+  ['Coffee, 2024', 'Coffee']);
 assert.deepEqual(disambiguate([st('Coffee', [2025, 3, 1], [2025, 3, 9]), st('Coffee', [2025, 9, 1], [2025, 9, 9])], NOW).map((s) => s.title),
-  ['Coffee, spring 2025', 'Coffee, autumn 2025']);
+  ['Coffee in spring 2025', 'Coffee in autumn 2025']);
 assert.deepEqual(disambiguate([st('Coffee', [2026, 3, 1], [2026, 3, 3]), st('Coffee', [2026, 3, 10], [2026, 3, 12])], NOW).map((s) => s.title),
   ['Coffee, Apr 1–3', 'Coffee, Apr 10–12']);
 // swaps: set = beach photos (axis 0); a near-copy of a slide is skipped, other beach photos beat dogs (axis 1)
@@ -134,56 +136,37 @@ assert.equal(parseQuery('yesterday', isPl, new Date(2026, 9, 20, 9).getTime()).d
   assert.deepEqual(searchLibrary(L, parseQuery('may picnic', yes), [vec(0, 1), vec(1, 0)]), [3, 2, 0]); // each photo's best of the query + its translation
 }
 
-// Create suggestions: X on axis 0; cluster A leans to axis 1, cluster B to axis 2, every member its own extra axis
-// (no two are near-duplicates); one near-copy of X. finishSets -> one Y per cluster, disjoint, no near-copy.
+// Create's "N sets": X on axis 0; moment A (4 photos, an hour apart) and moment B (3, a day later) lean off it, every
+// photo its own extra axis (no near-duplicates); 3 lone photos days apart, closer to X than A or B; one near-copy of X.
+// fillSets -> the lone ones as "Different moments" first (best match), then A and B; disjoint, never X or its copy.
 {
   const xs = [vec(1, 0, 0, 0.1), vec(1, 0, 0, -0.1)];
   const at = (a: number, b: number) => vec(...Array.from({ length: b + 1 }, (_, j) => (j === 0 ? 1 : j === a ? 0.8 : j === b ? 0.6 : 0)));
-  const A = [0, 1, 2, 3, 4, 5].map((j) => at(1, 10 + j));
-  const B = [0, 1, 2, 3, 4, 5].map((j) => at(2, 20 + j));
-  const dupX = vec(1, 0, 0, 0.1, 0.02);
-  const all = [...xs, ...A, ...B, dupX];
-  const ph = all.map((_, i) => photo(base + i * H));
+  const when = [base, base + D, base + H, base + 2 * H, base + 3 * H, base + 4 * H, base + 2 * D, base + 2 * D + H, base + 2 * D + 2 * H,
+    base + 5 * D, base + 8 * D, base + 11 * D, base];
+  const all = [...xs, ...[0, 1, 2, 3].map((j) => at(1, 10 + j)), ...[0, 1, 2].map((j) => at(2, 20 + j)), ...[0, 1, 2].map((j) => vec(...Array.from({ length: 31 + j }, (_, k) => (k === 0 ? 1 : k === 3 || k === 30 + j ? 0.3 : 0)))), vec(1, 0, 0, 0.1, 0.02)];
+  const ph = all.map((_, i) => photo(when[i]));
   const L = { photos: ph, vecs: new Float32Array(all.length * 512), conceptNames: [], hasClip: true };
   all.forEach((x, i) => L.vecs.set(x, i * 512));
   const X = [ph[0].id, ph[1].id];
-  const inA = new Set(ph.slice(2, 8).map((p) => p.id)), inB = new Set(ph.slice(8, 14).map((p) => p.id));
-  const { ys: [y1, y2] } = finishSets(L, X, 3);
-  assert.equal(y1.length, 3);
-  assert.equal(y2.length, 3);
-  assert.equal(y1.filter((p) => y2.includes(p)).length, 0); // Y1 ∩ Y2 = ∅
-  const side = (y: typeof y1) => (y.every((p) => inA.has(p.id)) ? 'A' : y.every((p) => inB.has(p.id)) ? 'B' : 'mixed');
-  assert.deepEqual([side(y1), side(y2)].sort(), ['A', 'B']);
-  assert.ok(![...y1, ...y2].some((p) => p.id === ph[14].id || X.includes(p.id)));
-  // Regenerate: earlier picks excluded, still disjoint
-  const ex = new Set([...y1, ...y2].map((p) => p.id));
-  const { ys: [z1, z2] } = finishSets(L, X, 3, ex);
-  assert.ok([...z1, ...z2].every((p) => !ex.has(p.id)));
-  assert.equal(z1.filter((p) => z2.includes(p)).length, 0);
-  // bigger than the pool: still disjoint, never repeats
-  const { ys: [w1, w2] } = finishSets(L, X, 10);
-  assert.equal(new Set([...w1, ...w2]).size, w1.length + w2.length);
-  assert.deepEqual(finishSets(L, [], 3).ys, [[], []]);
-  assert.ok(!similarTo(L, X, 8).some((p) => p.id === ph[14].id || X.includes(p.id)));
+  const sets = fillSets(L, X);
+  const ids = sets.map((st) => st.photos.map((p) => ph.indexOf(p)).sort((m, n) => m - n));
+  assert.deepEqual(sets[0].name, 'Different moments');
+  assert.deepEqual(ids[0], [9, 10, 11]);
+  assert.deepEqual(ids.slice(1).sort((m, n) => m.length - n.length), [[6, 7, 8], [2, 3, 4, 5]]);
+  assert.equal(new Set(ids.flat()).size, ids.flat().length); // disjoint
+  assert.ok(!ids.flat().some((i) => i < 2 || i === 12));
+  assert.deepEqual(fillSets(L, []), []);
+  assert.ok(!similarTo(L, X, 8).some((p) => p.id === ph[12].id || X.includes(p.id)));
 }
-
-// "Use this": add Y1 after X, swap to Y2 (Y1 out), tap Added (Y2 out); a user pick that Y2 also holds stays
+// one-off shots (a coffee a day, 12 days): no moment has 2 photos, so 3 mixed sets of 5, 5, 2
 {
-  const P = (id: string) => ({ id });
-  const ids = (b: { id: string }[]) => b.map((p) => p.id).join(',');
-  const X = [P('x1'), P('x2')], Y1 = [P('a'), P('b')], Y2 = [P('c'), P('x2')];
-  const u1 = adoptWay(X, new Set(), Y1);
-  assert.equal(ids(u1.next), 'x1,x2,a,b');
-  assert.deepEqual([...u1.placed].sort(), ['a', 'b']);
-  const u2 = adoptWay(u1.next, u1.placed, Y2);
-  assert.equal(ids(u2.next), 'x1,x2,c');
-  assert.deepEqual([...u2.placed], ['c']);
-  const u3 = adoptWay(u2.next, u2.placed, Y2); // fully in -> "Added" tapped: out again, x2 is the user's
-  assert.equal(ids(u3.next), 'x1,x2');
-  assert.equal(u3.placed.size, 0);
-  // a Y photo the user took out by hand: Use this tops it back up without duplicates
-  const u4 = adoptWay([...X, P('a')], new Set(['a']), Y1);
-  assert.equal(ids(u4.next), 'x1,x2,a,b');
+  const all = [vec(1, 0, 0, 0.1), ...Array.from({ length: 12 }, (_, j) => vec(...Array.from({ length: 41 + j }, (_, k) => (k === 0 ? 1 : k === 40 + j ? 0.7 : 0))))];
+  const ph = all.map((_, i) => photo(base + i * D));
+  const L = { photos: ph, vecs: new Float32Array(all.length * 512), conceptNames: [], hasClip: true };
+  all.forEach((x, i) => L.vecs.set(x, i * 512));
+  const sets = fillSets(L, [ph[0].id]);
+  assert.deepEqual(sets.map((st) => [st.name, st.photos.length]), [['Different moments', 5], ['More moments', 5], ['More moments', 2]]);
 }
 
 // dumps (Library rows, search, Reuse)
@@ -216,7 +199,7 @@ const six = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 for (const l of LAYOUTS) {
   const slides = chunk(six, l.key);
   assert.deepEqual(slides.flatMap((s) => s.photos), six, l.key);
-  for (const s of slides) assert.equal(slideCells(s.layout, 'bleed', 1080, 1350).cells.length, s.photos.length, `${l.key} cells`);
+  for (const s of slides) assert.equal(slideCells(s.layout, DEFAULT_FRAME, 1080, 1350).cells.length, s.photos.length, `${l.key} cells`);
 }
 assert.deepEqual(chunk(six, 'grid').map((s) => [s.layout, s.photos.length]), [['grid', 4], ['bento', 3]]);
 assert.deepEqual(chunk(six, 'split').map((s) => s.layout), ['split', 'split', 'split', 'single']);
@@ -232,25 +215,28 @@ assert.deepEqual(exportSize('nope'), { width: 1080, height: 1350 });
   assert.ok(Math.abs(placePhoto(900, 1600, 4000, 3000, { x: 9, y: 0.5, z: 1 }).dx - (900 - c.dw)) < 1e-6);
   assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 0.2 }).crop.z, 1);
   assert.equal(placePhoto(900, 1600, 4000, 3000, { x: 0.5, y: 0.5, z: 9 }).crop.z, 4);
-  const { cells } = slideCells('split', 'bleed', 1080, 1350);
+  const { cells } = slideCells('split', DEFAULT_FRAME, 1080, 1350);
   assert.deepEqual([cellAt(cells, 'split', 10, 10), cellAt(cells, 'split', 1070, 10)], [0, 1]);
-  assert.equal(cellAt(slideCells('scrapbook', 'bleed', 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
+  assert.equal(cellAt(slideCells('scrapbook', DEFAULT_FRAME, 1080, 1350).cells, 'scrapbook', 540, 675), 0); // cover on top
 }
-{ // cells stay inside the slide; border insets them
+{ // cells stay inside the slide
   const W = 1080, H = 1350;
-  for (const l of LAYOUTS) for (const fit of ['bleed', 'border'] as const) for (const c of slideCells(l.key, fit, W, H).cells) {
-    assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= W + 1e-6 && c.y + c.h <= H + 1e-6, `${l.key} ${fit} in bounds`);
+  for (const l of LAYOUTS) for (const c of slideCells(l.key, { ...DEFAULT_FRAME, gap: 12, corners: 16 }, W, H).cells) {
+    assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= W + 1e-6 && c.y + c.h <= H + 1e-6, `${l.key} in bounds`);
   }
-  assert.ok(slideCells('single', 'border', W, H).cells[0].x > 40);
-  assert.equal(slideCells('single', 'bleed', W, H).cells[0].w, W);
+  // gap and corners in mock px: 0 gap = touching halves, corners round every cell
+  const tight = slideCells('split', { ...DEFAULT_FRAME, gap: 0, corners: 8 }, W, H).cells;
+  assert.equal(tight[1].x, tight[0].w);
+  assert.equal(tight[0].r, (8 * W) / 288);
+  assert.equal(slideCells('single', DEFAULT_FRAME, W, H).cells[0].w, W);
   // scrapbook: tilted prints (rotated corners included) keep >= 12 mock px of matte on every ratio
-  for (const [w, h] of [[1080, 1350], [1080, 1080], [1080, 1920], [1080, 1440]]) for (const fit of ['bleed', 'border'] as const) {
-    const { inner, cells } = slideCells('scrapbook', fit, w, h);
+  for (const [w, h] of [[1080, 1350], [1080, 1080], [1080, 1920], [1080, 1440]]) {
+    const { inner, cells } = slideCells('scrapbook', DEFAULT_FRAME, w, h);
     const m = (12 * w) / 288 - 1e-6;
     for (const c of cells) {
       const r = (Math.abs(c.rot) * Math.PI) / 180, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
       const hx = (c.w * Math.cos(r) + c.h * Math.sin(r)) / 2, hy = (c.w * Math.sin(r) + c.h * Math.cos(r)) / 2;
-      assert.ok(cx - hx >= inner.x + m && cy - hy >= inner.y + m && cx + hx <= inner.x + inner.w - m && cy + hy <= inner.y + inner.h - m, `scrapbook ${w}x${h} ${fit} margin`);
+      assert.ok(cx - hx >= inner.x + m && cy - hy >= inner.y + m && cx + hx <= inner.x + inner.w - m && cy + hy <= inner.y + inner.h - m, `scrapbook ${w}x${h} margin`);
     }
     assert.ok(cells[0].h / cells[0].w <= 1.85, `scrapbook ${w}x${h} cover not a strip`);
   }
@@ -268,11 +254,33 @@ assert.ok(close(bw.slice(0, 5), bw.slice(5, 10)) && close(bw.slice(5, 10), bw.sl
 assert.ok(close(bw.slice(15), [0, 0, 0, 1, 0])); // alpha untouched
 const w68 = matrixFor({ key: 'warm35', pct: 68 })!;
 assert.ok(w68[0] > w68[10] && w68.length === 20); // warm: red gains more than blue
-// per-photo looks only when Apply to all is off
-const fs = { key: 'warm35' as const, pct: 68, all: true, per: { p1: { key: 'noir' as const, pct: 50 } } };
-assert.equal(lookFor(fs, 'p1').key, 'warm35');
-assert.equal(lookFor({ ...fs, all: false }, 'p1').key, 'noir');
-assert.equal(lookFor({ ...fs, all: false }, 'p2').key, 'warm35');
+// a photo's own look wins, the rest follow the dump's; rows from before per-photo looks read the same
+const fs = { key: 'warm35' as const, pct: 68, per: { p1: { key: 'noir' as const, pct: 50 } }, adj: {} };
+assert.equal(lookFor(fs, 'p1').key, 'noir');
+assert.equal(lookFor(fs, 'p2').key, 'warm35');
+assert.deepEqual(filterOf({ key: 'noir', pct: 40, all: true, per: {} }), { key: 'noir', pct: 40, per: {}, adj: {} });
+assert.deepEqual(filterOf(null), DEFAULT_FILTER);
+assert.deepEqual(filterOf({ key: 'noir', pct: 40, grain: 30, fade: 0, per: {}, adj: { p1: { light: 20 } } }), { key: 'noir', pct: 40, grain: 30, per: {}, adj: { p1: { light: 20 } } });
+// develop: nothing set = untouched; Adjust is per photo; Light raises the diagonal; Fade lifts black; texture rides the look
+assert.deepEqual(developFor(DEFAULT_FILTER, 'p1'), { matrix: null, shadows: 0, sharpen: 0, grain: 0, vignette: 0 });
+const dev = developFor({ ...DEFAULT_FILTER, fade: 50, grain: 40, adj: { p1: { light: 50, shadows: -20, sharpen: 30 } } }, 'p1');
+assert.ok(dev.matrix && dev.matrix[0] > 1 - 0.1 && dev.matrix[4] > 0, 'light + fade');
+assert.deepEqual([dev.shadows, dev.sharpen, dev.grain], [-0.2, 0.3, 0.4]);
+assert.equal(developFor({ ...DEFAULT_FILTER, adj: { p1: { light: 50 } } }, 'p2').matrix, null);
+// Auto / Brighten: a dark photo brightens, a bright one darkens, a blue cast warms up
+const dark = { mean: 0.18, sd: 0.1, lo: 0.3, hi: 0, cast: 0.1 };
+assert.ok(isDark(dark) && !isDark({ ...dark, mean: 0.5 }));
+const a = autoAdjust(dark);
+assert.ok(a.light! > 30 && a.shadows! > 30 && a.warmth! > 0 && a.contrast! > 0);
+assert.ok(autoAdjust({ ...dark, mean: 0.8, lo: 0 }).light! < 0);
+assert.ok(brighten({ ...dark, mean: 0.33, lo: 0 }, { warmth: 5 }).light! >= 25 && brighten(dark, { warmth: 5 }).warmth === 5);
+// frame: old 'border' (Matte) / 'bleed' rows read as Fill, so does a saved Matte frame; the JSON round-trips; junk falls back
+assert.deepEqual(frameOf('border'), DEFAULT_FRAME);
+assert.equal(frameOf('{"fit":"border","gap":6}').fit, 'bleed');
+assert.deepEqual(frameOf(null), DEFAULT_FRAME);
+const fr = { fit: 'blur' as const, gap: 6, corners: 4, matte: 'kraft' as const, guide: false };
+assert.deepEqual(frameOf(frameText(fr)), fr);
+assert.deepEqual(frameOf('{nope'), DEFAULT_FRAME);
 
 // an undated photo (created 0) must not stretch the range back to 1970
 const jun = new Date(2026, 5, 13).getTime();

@@ -24,8 +24,8 @@ test('"Posting also saves to gallery" off: Post shares but writes nothing to the
   const saves = MediaLibrary.createAssetAsync as jest.Mock, albums = MediaLibrary.createAlbumAsync as jest.Mock;
   const before = saves.mock.calls.length + albums.mock.calls.length;
   await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(`${LONG}, 7 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
-  await fireEvent.press(await screen.findByLabelText('Post on Instagram or TikTok'));
+  await fireEvent.press(await screen.findByLabelText(`${LONG}, 6 photos · Sep 22–Oct 22, 2025`, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText('Post'));
   await fireEvent.press(await screen.findByLabelText('Instagram post'));
   expect(await screen.findByText('Posted to Instagram')).toBeTruthy();
   expect(screen.queryByText(/saved to the PicDump album/)).toBeNull();

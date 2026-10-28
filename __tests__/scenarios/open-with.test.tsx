@@ -13,7 +13,7 @@ beforeAll(() => seedWorld());
 test('opened with photos and no draft in progress: a new Create draft, no question', async () => {
   world.initialShare = { action: 'VIEW', uris: [media('5'), 'content://com.whatsapp.provider/media/IMG-1.jpg'], mimeType: 'image/jpeg' };
   const app = await bootApp('/');
-  expect(await screen.findByLabelText('2 selected. Review', {}, { timeout: 10000 })).toBeTruthy();
+  expect(await screen.findByLabelText('Picks: 2. Review', {}, { timeout: 10000 })).toBeTruthy();
   expect(app.getPathname()).toBe('/create');
   expect(screen.queryByText(ASK)).toBeNull();
   const d = await currentCreateDraft();
@@ -33,7 +33,7 @@ test('shared while a draft is in progress: opens Create and asks; Add joins it, 
   expect(app.getPathname()).toBe('/create'); // on Create already, under the question
   expect(screen.getByText(/^2 photos shared to PicDump\./)).toBeTruthy();
   await fireEvent.press(screen.getByText('Add to my draft'));
-  expect(await screen.findByLabelText('4 selected. Review')).toBeTruthy();
+  expect(await screen.findByLabelText('Picks: 4. Review')).toBeTruthy();
   expect((await currentCreateDraft())!.id).toBe(first);
   expect((await ids()).slice(2)).toEqual(['10', '11']);
 
@@ -41,7 +41,7 @@ test('shared while a draft is in progress: opens Create and asks; Add joins it, 
   await shareIn([media('12')]);
   expect(await screen.findByText(/^1 photo shared to PicDump\./)).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Start a new dump'));
-  expect(await screen.findByLabelText('1 selected. Review')).toBeTruthy();
+  expect(await screen.findByLabelText('Picks: 1. Review')).toBeTruthy();
   await settle();
   const now = (await currentCreateDraft())!;
   expect(now.id).not.toBe(first);

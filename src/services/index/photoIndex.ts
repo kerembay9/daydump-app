@@ -23,7 +23,12 @@ export type IndexedPhoto = PhotoAsset & {
 };
 
 /** Everything the story engine needs. vecs is row-major n*512 aligned with photos; zero row = no embedding. */
-export type Library = { photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean };
+export type Library = {
+  photos: IndexedPhoto[]; vecs: Float32Array; conceptNames: string[]; hasClip: boolean;
+  /** Tidy's pixel checks by photo id, JSON as stored (tidy_photos; only after a Tidy scan): Discover's picks use them */
+  looks?: Map<string, Looks>;
+};
+export type Looks = { stats: string | null; faces: string | null; sharp: number | null };
 
 type Row = { id: string; uri: string; created: number; w: number; h: number; lat: number | null; lon: number | null; emb: Uint8Array | null; concepts: string | null };
 
@@ -35,10 +40,12 @@ export function db() {
     await d.execAsync(`CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY, uri TEXT NOT NULL, created INTEGER NOT NULL, w INTEGER, h INTEGER,
       lat REAL, lon REAL, emb BLOB, concepts TEXT);
-      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)`);
+      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+      -- Tidy (services/tidy): pixel checks of every photo, and vectors of the ones the index skips (bursts, panoramas)
+      CREATE TABLE IF NOT EXISTS tidy_photos (id TEXT PRIMARY KEY, stats TEXT, faces TEXT, sharp REAL, emb BLOB, concepts TEXT)`);
     // Another model's vectors live in a different space: drop them so run() re-embeds every photo.
     if ((await d.getFirstAsync<{ v: string }>("SELECT v FROM meta WHERE k = 'model'"))?.v !== MODEL) {
-      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
+      await d.execAsync('UPDATE photos SET emb = NULL, concepts = NULL; UPDATE tidy_photos SET emb = NULL, concepts = NULL; PRAGMA user_version = 0');
       await d.runAsync("INSERT OR REPLACE INTO meta (k, v) VALUES ('model', ?)", [MODEL]);
     }
     return d;
@@ -66,17 +73,16 @@ let running: Promise<number> | null = null;
  */
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
-let handedOff = false;
-/** True once a run left work to the background worker: call indexLibrary() again on return to pick it up. */
-export const wasHandedOff = () => handedOff;
-
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
-  return (running ??= run(onProgress).finally(() => (running = null)));
+  return (running ??= run(onProgress).finally(() => { running = null; setReading(0); }));
 }
+
+/** How many new photos the foreground index is reading right now (Today: "Checking 2 new photos…"). */
+export const reading = { n: 0, subs: new Set<() => void>() };
+const setReading = (n: number) => { reading.n = n; reading.subs.forEach((f) => f()); };
 
 async function run(onProgress?: IndexProgressFn): Promise<number> {
   const d = await db();
-  handedOff = false;
   const bg = await ClipEmbedder?.backgroundIndexStatus();
   // A fast or paused run is the user's to stop; a charging-only job just yields to the app.
   if (bg && bg.state !== 'running' && bg.state !== 'paused') await ClipEmbedder!.cancelBackgroundIndex();
@@ -103,10 +109,7 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   // deleted photos count as a change too: their stories must go
   const retagged = (await retagIfVocabChanged(d)) + undated.length + gone.length;
   if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
-  if (bg?.state === 'paused') { // waits for Resume or the next charge
-    handedOff = true;
-    return merged + retagged;
-  }
+  if (bg?.state === 'paused') return merged + retagged; // waits for Resume or the next charge
 
   const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
   if (ClipEmbedder && bg?.canFast && todo.length >= FAST_MIN) {
@@ -117,11 +120,11 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
   let nextInfos = infosOf(todo.slice(0, BATCH));
   let i = 0;
+  setReading(todo.length);
   for (; i < todo.length; i += BATCH) {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);
       await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL, false);
-      handedOff = true;
       console.log(`[photoIndex] app left the foreground: ${rest.length} photos handed to the background worker`);
       break;
     }
@@ -176,10 +179,7 @@ async function follow(d: SQLite.SQLiteDatabase, byId: ById, onProgress?: IndexPr
     n += m.n;
     last = m.last ?? last;
     if (last) onProgress?.(s.total - s.left, s.total, last, { batteryPct: s.batteryPct, etaSec: s.msPerPhoto == null ? null : (s.left * s.msPerPhoto) / 1000 });
-    if (s.state !== 'running') {
-      handedOff = s.state !== 'done';
-      return n;
-    }
+    if (s.state !== 'running') return n;
   }
 }
 
@@ -272,7 +272,8 @@ export async function loadLibrary(): Promise<Library> {
     };
   });
   if (ClipEmbedder && !names) names = await ClipEmbedder.conceptNames();
-  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder };
+  const tidy = await d.getAllAsync<Looks & { id: string }>('SELECT id, stats, faces, sharp FROM tidy_photos WHERE stats IS NOT NULL');
+  return { photos, vecs, conceptNames: names ?? [], hasClip: !!ClipEmbedder, looks: new Map(tidy.map(({ id, ...l }) => [id, l])) };
 }
 
 /** One text query -> 512-d vector, 1.33 long (build_assets.py TEXT_SCALE: cosines on 45M's scale), or null without CLIP. */

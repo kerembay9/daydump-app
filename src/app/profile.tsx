@@ -22,13 +22,12 @@ import { PaywallModal } from '../components/PaywallModal';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
-import { display, label, ui } from '../theme/type';
+import { caps, display, label, ui } from '../theme/type';
 import { getProfile, Profile as ProfileT, profileNow, setProfile } from '../services/profile';
-import { list } from '../services/dumps';
 import { ratioOf } from '../services/layouts';
 import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
-import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
+import { AppIcon, ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
 import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
@@ -54,7 +53,6 @@ function ProfileBody() {
   const app = useApp();
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
-  const [dumps, setDumps] = useState(0);
   const [access, setAccess] = useState<'all' | 'limited' | 'none' | null>(null);
   const [recap, setRecap] = useState(true);
   const [legal, setLegal] = useState<LegalDocType | null>(null);
@@ -63,6 +61,7 @@ function ProfileBody() {
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
   const [sub, setSub] = useState<Sub | null>(null);
+  const [icon, setIcon] = useState(() => AppIcon?.get());
   const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
@@ -75,7 +74,6 @@ function ProfileBody() {
       const v = typed.current, cur = profileNow();
       if (v.name !== cur.name || v.handle !== cur.handle) setProfile(v).catch(() => {});
     };
-    list().then((d) => setDumps(d.length), () => {});
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
     getSubscription().then(setSub);
@@ -120,6 +118,12 @@ function ProfileBody() {
     setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
+  // Discover's photos per dump: min 4..max, max min..20
+  const setSlides = (k: 'slidesMin' | 'slidesMax', v: number) => {
+    setP((x) => ({ ...x, [k]: v }));
+    setProfile({ [k]: v }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
+  };
+
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
     title: 'Reindex your library?',
@@ -139,11 +143,6 @@ function ProfileBody() {
     setDevHint(left > 0 && left <= 2 ? `${left} more tap${left > 1 ? 's' : ''} for developer tools` : '');
   };
 
-  const { paused } = app;
-  const { progress } = useProgress();
-  const indexLine = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
-    : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
-    : app.library ? `${app.library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
   const accessLine = access === 'all' ? 'All photos' : access === 'limited' ? 'Selected photos only' : access === 'none' ? 'Not allowed' : '…';
   const ratio = ratioOf(p.ratio);
 
@@ -181,16 +180,23 @@ function ProfileBody() {
             </View>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.borderSubtle, marginTop: 10, paddingTop: 10 }}>
-          <Stat n={app.stories.length} label="Discover" onPress={() => router.navigate('/')} />
-          <Stat n={app.library?.photos.length ?? 0} label="Total Photos" onPress={() => router.navigate('/create')} />
-          <Stat n={dumps} label="Library" onPress={() => router.navigate('/library')} />
-        </View>
       </FrameCard>
 
       <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
 
-      <Section title="Social post & size defaults" note="New dumps start with the size and quality set here.">
+      <Section title="Dump picks">
+        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
+            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
+            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
+          </View>} />
+        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
+        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
+        <Row label="Recap" sub="Today’s dump at 8 PM, your week on Sunday at noon" onPress={toggleRecap} toggle={recap} last />
+      </Section>
+
+      <Section title="Export & posting" note="New dumps start with the size and quality set here.">
         <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
         <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
@@ -216,37 +222,22 @@ function ProfileBody() {
         </View>
       </Section>
 
-      <Section title="Data privacy">
-        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
-      </Section>
-
-      <Section title="Daily recap">
-        <Row label="8 PM recap" sub="A nudge when today’s dump is ready" onPress={toggleRecap} toggle={recap} last />
-      </Section>
-
-      <Section title="Photo library">
+      <Section title="Photo library & search">
         <Row label="Access" right={access && access !== 'all'
           ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
-        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
-        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
-        <Row label="Index" sub={indexLine} last right={
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={app.pause} />}
-            {paused && !progress && <SmallBtn label="Resume" onPress={app.resume} />}
-            {!progress && <SmallBtn label="Reindex" onPress={reindex} />}
-          </View>} />
+        <IndexRow onReindex={reindex} last={!QueryTranslate} />
+        {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
+          setP((x) => ({ ...x, searchLangs: l }));
+          setSearchLangs(l).catch((e) => console.warn('[profile] search languages failed:', e));
+        }} />}
       </Section>
 
-      {QueryTranslate && <SearchLangs langs={searchLangs(p)} onChange={(l) => {
-        setP((x) => ({ ...x, searchLangs: l }));
-        setSearchLangs(l).catch((e) => console.warn('[profile] search languages failed:', e));
-      }} />}
-
-      <Section title="About">
-        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+      <Section title="Privacy & about">
+        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Contact" onPress={() => Linking.openURL('mailto:support@picdump.app?subject=PicDump').catch(() => toast('No mail app found. Write to support@picdump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@picdump.app</Text>} />
         <Row label="Version" sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
@@ -259,13 +250,27 @@ function ProfileBody() {
             onPress={() => ClipEmbedder?.setDevModel(DEV_MODEL ? null : 'tc45')} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Today tags" sub="The Today card's checklist on one day's photos, with every score" onPress={() => router.push('/today-tags')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
             NotificationService.sendTestNotification().catch((e) => toast(e.message));
           }} />
+          <Row label="Send Sunday recap now" sub="Uses this week's dump, or the top story" onPress={() => {
+            const s = app.stories.find((x) => x.id.startsWith('recap:week:')) ?? app.stories[0];
+            if (s?.picks[0]) ClipEmbedder?.setWeekRecap(s.picks[0].uri, s.id);
+            NotificationService.sendTestNotification(true).catch((e) => toast(e.message));
+          }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
+          <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
+          <Row label="Cards" sub="Discover's cards: rounded, or paper sheets with tape (light mode). Tap to switch" onPress={() => save({ cards: CARDS[(CARDS.indexOf(p.cards) + 1) % CARDS.length] })}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{CARD_NAMES[p.cards]}</Text>} />
+          {icon && <Row label="App icon" sub="Launcher icon. Tap to switch; the home screen can take a few seconds"
+            onPress={() => { AppIcon!.set(icon.icons[(icon.icons.indexOf(icon.current) + 1) % icon.icons.length]); setIcon(AppIcon!.get()); }}
+            right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{ICON_NAMES[icon.current] ?? icon.current}</Text>} />}
           <Row label="Hide developer tools" onPress={() => save({ dev: false })} last />
         </Section>
       )}
@@ -286,6 +291,16 @@ function dropAvatarFile(uri: string) {
   if (!uri) return;
   try { new File(uri).delete(); } catch { /* already gone */ }
 }
+
+/** Developer tools' Bands switch, in tap order. */
+const BANDS: ProfileT['bands'][] = ['default', 'more', 'none'];
+const BAND_NAMES: Record<ProfileT['bands'], string> = { none: 'No bands', default: 'Default', more: 'Scrapbook' };
+/** Developer tools' Cards switch, in tap order. */
+const CARDS: ProfileT['cards'][] = ['paper', 'tinted', 'classic'];
+const CARD_NAMES: Record<ProfileT['cards'], string> = { classic: 'Classic', paper: 'Paper, tone tape', tinted: 'Paper, colour tape' };
+
+/** Developer tools' App icon switch: the launcher aliases' names (plugins/withAppIcons.js). */
+const ICON_NAMES: Record<string, string> = { default: 'Pic dump', dark: 'Dark', cards: 'Cards' };
 
 /** Developer tools' CLIP switch: null = the shipped model. */
 const clipName = (m: string | null) => (m === null ? 'distillv2' : m === 'tc45' ? 'tinyclip45M' : m);
@@ -317,22 +332,12 @@ function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
   );
 }
 
-function Stat({ n, label: l, onPress }: { n: number; label: string; onPress: () => void }) {
-  const { t } = useTheme();
-  return (
-    <Tap onPress={onPress} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={[display(17), { color: t.ink }]}>{n.toLocaleString()}</Text>
-      <Text style={[ui(10), { color: t.inkMuted, marginTop: 2 }]}>{l}</Text>
-    </Tap>
-  );
-}
-
 /** Section label (10px uppercase, tracking .12em) over a frame-card of divided rows (or padded content). */
 function Section({ title, note, pad, children }: { title: string; note?: string; pad?: boolean; children: React.ReactNode }) {
   const { t } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
-      <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 4, paddingHorizontal: 4 }]}>{title}</Text>
+      <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 4, paddingHorizontal: 4 }]}>{caps(title)}</Text>
       <FrameCard radius={18} padding={pad ? 8 : 0} style={{ overflow: 'hidden' }}>{children}</FrameCard>
       {note ? <Text style={[ui(10), { color: t.inkMuted, marginTop: 4, paddingHorizontal: 4 }]}>{note}</Text> : null}
     </View>
@@ -340,6 +345,23 @@ function Section({ title, note, pad, children }: { title: string; note?: string;
 }
 
 /** `toggle` set: the row is one switch to accessibility (the Toggle drawn on the right is visual only). */
+/** The Index row, its own component: progress ticks every batch while indexing, and only this row redraws. */
+function IndexRow({ onReindex, last }: { onReindex: () => void; last?: boolean }) {
+  const { paused, library, pause, resume } = useApp();
+  const { progress } = useProgress();
+  const line = progress ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`
+    : paused ? `Paused at ${paused.done.toLocaleString()} of ${paused.total.toLocaleString()}`
+    : library ? `${library.photos.length.toLocaleString()} photos ready` : 'Not read yet';
+  return (
+    <Row label="Index" sub={line} last={last} right={
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {progress && progress.batteryPct !== undefined && <SmallBtn label="Pause" onPress={pause} />}
+        {paused && !progress && <SmallBtn label="Resume" onPress={resume} />}
+        {!progress && <SmallBtn label="Reindex" onPress={onReindex} />}
+      </View>} />
+  );
+}
+
 function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; sub?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; toggle?: boolean }) {
   const { t } = useTheme();
   const body = (
@@ -355,27 +377,31 @@ function Row({ label: l, sub, right, onPress, last, toggle }: { label: string; s
 }
 
 /** Mock toggle: 36x20 track (ink on, 18% black off), 16px screen-coloured knob. */
-/** English always; the others are translated to English on the phone after a one-time download (index/queryLang.ts). */
+/** English always; the others are translated to English on the phone after a one-time download (index/queryLang.ts).
+ *  One row (the chosen languages, plus any download in progress or failed) that opens the picker; opening it retries failed downloads. */
 function SearchLangs({ langs, onChange }: { langs: string[]; onChange: (langs: string[]) => void }) {
   const { t } = useTheme();
   const states = useLangStates();
   const [pick, setPick] = useState(false);
   const all = useMemo(() => QueryTranslate?.languages().filter((l) => l.code !== 'en') ?? [], []);
-  const status = (l: string) => states[l] === 'ready' ? 'Ready' : states[l] === 'failed' ? 'Download failed. Tap to retry' : 'Downloading (about 30 MB)…';
+  const status = (l: string) => states[l] === 'ready' ? 'Ready' : states[l] === 'failed' ? 'Download failed. Retries when you open this' : 'Downloading (about 30 MB)…';
+  const failed = langs.filter((l) => states[l] === 'failed'), loading = langs.filter((l) => states[l] !== 'ready' && states[l] !== 'failed');
+  const names = (ls: string[]) => ls.map(langName).join(', ');
+  const sub = ['English', ...langs.map(langName)].join(', ')
+    + (failed.length ? ` · ${names(failed)} failed. Tap to retry` : loading.length ? ` · ${names(loading)} downloading…` : '');
   return (
     <>
-      <Section title="Search languages" note="Searches in these languages are translated to English on your phone. Each one is a one-time download of about 30 MB.">
-        <Row label="English" sub="Built in" />
-        {langs.map((l) => <Row key={l} label={langName(l)} sub={status(l)} onPress={states[l] === 'failed' ? () => { syncLangs().catch(() => {}); } : undefined} />)}
-        <Row label="Choose languages" onPress={() => setPick(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} last />
-      </Section>
+      <Row label="Search languages" sub={sub} last right={<Icons.chevron size={14} color={t.inkMuted} />}
+        onPress={() => { if (failed.length) syncLangs().catch(() => {}); setPick(true); }} />
       <Sheet visible={pick} onClose={() => setPick(false)}>
         <Text style={[display(18), { color: t.ink }]}>Search languages</Text>
+        <Text style={[ui(11), { color: t.inkMuted }]}>Searches in these languages are translated to English on your phone. Each one is a one-time download of about 30 MB.</Text>
         <Text style={[ui(11), { color: t.inkMuted }]}>Turning one off deletes its download.</Text>
         <ScrollView style={{ maxHeight: 420 }}>
+          <Row label="English" sub="Built in" />
           {all.map((l, i) => {
             const on = langs.includes(l.code);
-            return <Row key={l.code} label={l.name} toggle={on} last={i === all.length - 1}
+            return <Row key={l.code} label={l.name} sub={on ? status(l.code) : undefined} toggle={on} last={i === all.length - 1}
               onPress={() => onChange(on ? langs.filter((x) => x !== l.code) : [...langs, l.code])} />;
           })}
         </ScrollView>
@@ -389,6 +415,27 @@ function Toggle({ on }: { on: boolean }) {
   return (
     <View style={{ width: 36, height: 20, borderRadius: 10, padding: 2, backgroundColor: on ? t.ink : t.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)' }}>
       <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: t.bgScreen, transform: [{ translateX: on ? 16 : 0 }] }} />
+    </View>
+  );
+}
+
+/** − n + for a number in lo..hi; the label names it for screen readers ("Fewest photos, 4"). */
+function Stepper({ label: l, value, lo, hi, onChange }: { label: string; value: number; lo: number; hi: number; onChange: (v: number) => void }) {
+  const { t } = useTheme();
+  const step = (d: number, name: string) => {
+    const off = d < 0 ? value <= lo : value >= hi;
+    return (
+      <Tap onPress={off ? undefined : () => onChange(value + d)} accessibilityRole="button" accessibilityLabel={`${name} ${l.toLowerCase()}`} accessibilityState={{ disabled: off }} hitSlop={6}
+        style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+        <Text style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
+      </Tap>
+    );
+  };
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessible={false}>
+      {step(-1, 'Lower')}
+      <Text accessibilityLabel={`${l}, ${value}`} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
+      {step(1, 'Raise')}
     </View>
   );
 }

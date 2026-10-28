@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Photos Tab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* The Photos tab of the Edit studio: Look (dump-wide), Adjust (one photo), Texture (follows the scope chip). Three phones, same screen, three starting states. */
+/* tokens and phone frame are copied from edit-layout.html so the two tabs read as one screen */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --card: #EFE6DA; --print: #FAF6F0;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --rust: #A84A2F; --danger: #B4412A;
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.18), 0 2px 5px rgba(74,52,40,0.05);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45);
+  --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --print: #F3ECE3;
+  --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --danger: #E08A6E;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --card: #2E2418; --print: #F3ECE3;
+  --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17);
+  --ink: #F3ECE3; --muted: #9E9080; --danger: #E08A6E;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.25);
+  --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, .ruler:focus-visible, .cell:focus-visible, [contenteditable]:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body { background: var(--page); color: var(--ink); font-family: var(--sans); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 48px; }
+.wrap { max-width: 1260px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+header h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 5vw, 42px); line-height: 1.05; margin: 0 0 8px; letter-spacing: -0.02em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 66ch; }
+header a { color: var(--ink); }
+.theme { flex: none; font: 600 13px var(--sans); background: none; border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; }
+.theme:hover { background: var(--card); }
+.stage { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+.col-phone { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(390px, 100%); }
+.caption { font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center; max-width: 36ch; margin: 0; }
+.caption b { color: var(--ink); font-weight: 600; }
+
+/* ---------- phone ---------- */
+.phone { position: relative; width: 100%; height: 844px; border-radius: 44px; border: 10px solid var(--bezel); background: var(--screen); box-shadow: var(--phone-shadow); overflow: hidden; display: flex; flex-direction: column; }
+.status { height: 24px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-size: 11.5px; font-weight: 600; }
+.hdr { height: 44px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.back { position: relative; width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line2); background: none; display: grid; place-items: center; font-size: 20px; line-height: 1; padding: 0 0 2px; }
+.title { flex: 1; min-width: 0; text-align: center; font-family: var(--serif); font-weight: 500; font-size: 18.5px; line-height: 1.1; max-height: 41px; letter-spacing: -0.02em; overflow: hidden; overflow-wrap: anywhere; border-radius: 6px; outline: none; }
+.title:focus { background: var(--card); }
+.preview { position: relative; flex: none; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--ink); color: var(--bg); border: 0; font-size: 11.5px; font-weight: 600; }
+/* small controls keep their spec'd look but get a >=40px hit area */
+.back::before, .preview::before { content: ""; position: absolute; inset: -6px; }
+.scroll { flex: 1; overflow-y: auto; padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.seg { flex: none; display: flex; padding: 2px; height: 36px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.seg button { flex: 1; border: 0; background: transparent; border-radius: 16px; font-size: 12px; font-weight: 600; }
+.seg button.on { background: var(--ink); color: var(--bg); cursor: default; }
+
+/* scope bar */
+.scope { position: relative; height: 32px; flex: none; display: flex; align-items: center; justify-content: space-between; }
+.chip { position: relative; height: 28px; border-radius: 14px; border: 1.5px solid var(--ink); background: transparent; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.chip.photo { background: var(--ink); color: var(--bg); padding: 0 4px 0 4px; gap: 6px; }
+.chip .av { width: 20px; height: 20px; border-radius: 10px; background: var(--line2) center / cover; }
+.chip .x { position: relative; width: 20px; height: 20px; border-radius: 10px; border: 0; padding: 0; background: rgba(128,128,128,.28); font-size: 10px; line-height: 1; }
+.textbtn { position: relative; border: 0; background: none; padding: 6px 2px; font-size: 10.5px; font-weight: 500; color: var(--muted); }
+.more { position: relative; width: 28px; height: 28px; border-radius: 14px; border: 1px solid var(--line2); background: var(--card); padding: 0; font-size: 14px; line-height: 1; }
+button.chip::before, .more::before { content: ""; position: absolute; inset: -7px -2px; }
+.chip .x::before { content: ""; position: absolute; inset: -10px -10px -10px -8px; }
+.textbtn::before { content: ""; position: absolute; inset: -8px -6px; }
+.menu { position: absolute; top: 34px; right: 0; z-index: 20; min-width: 172px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--line2); box-shadow: var(--shadow), 0 12px 30px -10px rgba(0,0,0,.25); display: flex; flex-direction: column; }
+.menu button { min-height: 40px; border: 0; background: none; text-align: left; padding: 0 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+.menu button:hover { background: var(--line); }
+.menu button.danger { color: var(--danger); }
+
+/* canvas */
+/* same slide as Layout: 4:5, 3 Bento (3fr 2fr), gap 3, cream matte, capped at 354px tall */
+.canvas-card { flex: none; padding: 6px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.cwrap { position: relative; width: min(100%, 283px); margin: 0 auto; }
+.canvas { aspect-ratio: 4 / 5; border-radius: 13px; overflow: hidden; display: grid; gap: 3px; grid-template-columns: 3fr 2fr; grid-template-rows: 1fr 1fr; background: #FAF6F0; box-shadow: inset 0 0 0 1px var(--line2); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y; cursor: pointer; }
+.canvas .cell:first-child { grid-row: 1 / 3; }
+.cell { position: relative; overflow: hidden; isolation: isolate; transition: opacity .2s; }
+.cell.empty { display: grid; place-items: center; color: rgba(128,110,96,.75); font-size: 20px; border: 1.5px dashed rgba(128,110,96,.55); cursor: default; }
+.chev { position: absolute; z-index: 5; top: 50%; margin-top: -11px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0,0,0,.3); color: #fff; font-size: 15px; line-height: 1; display: grid; place-items: center; padding: 0 0 2px; }
+.chev::before { content: ""; position: absolute; inset: -9px; }
+.chev.l { left: 6px; } .chev.r { right: 6px; }
+.chev[disabled] { opacity: .35; cursor: default; }
+.cell.dim { opacity: .45; }
+/* as Layout's .sel: 2px ink ring plus a 2px print ring, so it still shows on a dark photo */
+.cell.tgt::after { content: ""; position: absolute; inset: 0; z-index: 3; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--print); pointer-events: none; }
+.ph { position: absolute; inset: 0; background: var(--line2) center / cover; }
+.ov { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.ov.warm { mix-blend-mode: soft-light; }
+.ov.fade { background: rgba(246,236,222,1); mix-blend-mode: lighten; }
+.ov.grain { mix-blend-mode: overlay; background-size: 160px 160px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.ov.vig { background: radial-gradient(transparent 55%, rgba(30,20,12,.55)); }
+.cchip { position: absolute; z-index: 4; height: 22px; padding: 0 9px; border-radius: 11px; display: inline-flex; align-items: center; background: rgba(0,0,0,.6); color: #F3ECE3; border: 1px solid rgba(255,255,255,.15); font-size: 9.5px; font-weight: 600; pointer-events: none; font-variant-numeric: tabular-nums; }
+.cchip.tl { top: 8px; left: 8px; }
+.cchip.tr { top: 8px; right: 8px; }
+.cchip.mid { top: 50%; left: 50%; transform: translate(-50%, -50%); height: 26px; padding: 0 14px; font-size: 11px; }
+/* sub-tabs: 32px row, 40px hit area */
+.subtabs { flex: none; height: 32px; display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.subtabs button { position: relative; border: 0; background: none; padding: 0 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.subtabs button::before { content: ""; position: absolute; inset: -6px 0 0; }
+.subtabs button.on { color: var(--ink); }
+.subtabs button.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 1px; background: var(--ink); }
+
+/* FrameCard */
+.frame { flex: none; padding: 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.foot { margin: 8px 0 0; font-size: 10px; color: var(--muted); line-height: 1.4; }
+.link { position: relative; border: 0; background: none; padding: 0; font-size: 10px; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.link::before { content: ""; position: absolute; inset: -14px -6px; }
+/* slider copied from edit-layout.html; --p is the filled share, set in JS */
+input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 28px; margin: 0; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--p, 0%), var(--line2) var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line2); }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ink); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: var(--ink); border: 2px solid var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); border: 2px solid var(--card); }
+
+/* look tray */
+.tray { display: flex; gap: 8px; overflow-x: auto; padding: 4px; margin: -4px -4px 0; scrollbar-width: none; }
+.tray::-webkit-scrollbar { display: none; }
+.lt { flex: none; width: 64px; height: 84px; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.lt-img { width: 64px; height: 64px; border-radius: 10px; background: var(--line2) center / cover; overflow: hidden; }
+.lt.on .lt-img { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+.lt-n { font-size: 10px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.lt.on .lt-n { color: var(--ink); }
+.lt.soon { cursor: default; }
+.lt.soon .lt-img { background: none; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--muted); font-size: 18px; }
+.strength { display: flex; align-items: center; gap: 10px; height: 34px; margin: 6px -6px 0; padding: 0 6px; border-radius: 10px; }
+.strength span, .trow > span { font-size: 11px; font-weight: 600; }
+.strength b, .trow b { width: 32px; text-align: right; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pulse-on { animation: pulse .7s ease-out; }
+@keyframes pulse { 0% { background: transparent; } 30% { background: var(--line2); transform: scale(1.02); } 100% { background: transparent; } }
+
+/* adjust */
+.sugg { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.sugg:empty { display: none; }
+.spill { position: relative; height: 26px; padding: 0 11px; border-radius: 13px; background: var(--bg); border: 1px solid var(--line2); font-size: 10.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.spill.done { color: var(--muted); }
+.spill::before { content: ""; position: absolute; inset: -7px 0; }
+.sugg { padding-block: 4px; }
+.tools { display: flex; gap: 8px; overflow-x: auto; padding: 2px; margin: 0 -2px; scrollbar-width: none; }
+.tools::-webkit-scrollbar { display: none; }
+.tool { flex: none; width: 50px; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ring { width: 44px; height: 44px; border-radius: 22px; padding: 2px; background: var(--line2); }
+.ring i { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--ink); font-style: normal; }
+.tool.on .ring i { background: var(--ink); color: var(--bg); }
+.tn { font-size: 9.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.tool.on .tn { color: var(--ink); font-weight: 600; }
+.ruler { position: relative; height: 48px; margin-top: 10px; overflow: hidden; cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent); }
+.rstrip { position: absolute; left: 0; bottom: 6px; height: 20px; }
+.tk { position: absolute; bottom: 0; width: 2px; height: 8px; margin-left: -1px; border-radius: 1px; background: var(--line2); }
+.tk.big { height: 14px; }
+.tk.z { height: 18px; }
+.needle { position: absolute; left: 50%; bottom: 3px; width: 2px; height: 26px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+.rv { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rpulse { position: absolute; top: 0; left: calc(50% + 18px); font-size: 16px; line-height: 1; opacity: 0; color: var(--rust); }
+
+/* texture */
+.trow { height: 36px; display: flex; align-items: center; gap: 10px; }
+.trow > span { width: 58px; flex: none; }
+.trow.off { opacity: .55; justify-content: space-between; }
+.trow.off > span { width: auto; }
+.trow em { font-style: normal; font-size: 10.5px; color: var(--muted); }
+
+/* filmstrip */
+/* filmstrip: same as Layout's Order strip (46x50, Cover badge, underline = current slide) plus the rust dot */
+.order { padding: 10px 12px 12px; }
+.strip-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
+.lbl { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.strip-head span:last-child { font-size: 10px; color: var(--muted); }
+.strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 6px; margin: 0 -4px; }
+.strip::-webkit-scrollbar { display: none; }
+.th { position: relative; flex: none; width: 46px; height: 50px; border-radius: 8px; border: 0; padding: 0; background: none; transition: transform .15s; }
+.th .im { position: absolute; inset: 0; border-radius: 8px; overflow: hidden; }
+.th .im i { position: absolute; inset: 0; background: var(--line2) center / cover; }
+.th.cur::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -6px; height: 2px; border-radius: 1px; background: var(--ink); }
+.th.tgt { transform: scale(1.12); box-shadow: 0 0 0 2px var(--ink); z-index: 1; }
+.th .cover { position: absolute; left: 3px; top: 3px; padding: 0 4px; border-radius: 4px; background: var(--print); color: #261F1B; font-size: 7.5px; font-weight: 700; line-height: 12px; }
+.th .dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 3px; background: var(--rust); box-shadow: 0 0 0 1.5px var(--print); }
+.th.add { display: grid; place-items: center; border: 1.5px dashed var(--line2); color: var(--muted); font-size: 18px; cursor: default; }
+
+/* toast */
+.toast { position: absolute; left: 16px; right: 16px; bottom: 18px; z-index: 30; min-height: 40px; padding: 9px 14px; border-radius: 14px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 500; line-height: 1.35;
+  box-shadow: 0 12px 24px -10px rgba(0,0,0,.45); opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.toast.on { opacity: 1; transform: none; pointer-events: auto; }
+.toast button { flex: none; min-height: 40px; margin: -9px -4px; padding: 0 4px; border: 0; background: none; color: var(--bg); font-size: 12px; font-weight: 700; }
+.toast a { color: var(--bg); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .toast, .cell, .th { transition: none; } .pulse-on { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Edit studio · Photos</h1>
+      <p>The second tab of the Edit studio. <a href="edit-layout.html">Layout</a> sets the dump: ratio, arrangement, gap, matte and crop. Photos changes the pixels: a <b>Look</b> for the whole dump, <b>Adjust</b> for one photo, and <b>Texture</b> for the film feel. Tap a photo to edit it alone, and hold the canvas to see the originals. Every phone below is the same screen in a different starting state, and all of them work. Everything here is a Skia colour matrix, shader or blend on the phone; the suggestions come from scores Tidy already computes.</p>
+    </div>
+    <button class="theme" id="theme" type="button">Dark</button>
+  </header>
+
+  <div class="stage">
+    <div class="col-phone">
+      <div class="phone" id="p1"></div>
+      <p class="caption"><b>Look · All photos.</b> This is the view when you open the tab: one look on every photo. The tiles preview your own photo, not a colour dot. Tap the active look again to find Strength.</p>
+    </div>
+    <div class="col-phone">
+      <div class="phone" id="p2"></div>
+      <p class="caption"><b>Adjust · This photo.</b> When you tap a photo, it gets its own edits and the rest dim. Tidy already knows the second photo is dark, so the fix is one tap. Drag the ruler. It clicks at 0.</p>
+    </div>
+    <div class="col-phone">
+      <div class="phone" id="p3"></div>
+      <p class="caption"><b>Texture.</b> Grain, Fade and Vignette come bundled with each look and follow the scope chip. A rust dot in the strip marks a photo with its own edits (the fourth one is on B&amp;W Roll).</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- data ----------
+  // same photos and URLs as edit-layout.html (dd1..dd8, dd3 and dd6 landscape)
+  const LAND = ['dd3', 'dd6'];
+  const url = (seed) => `https://picsum.photos/seed/${seed}/${LAND.includes(seed) ? '1000/750' : '800/1000'}`;
+  // raw = how the photo really looks (the "Original"); flags are what Tidy.kt already measures
+  const PHOTOS = [
+    { seed: 'dd1' },
+    { seed: 'dd2', raw: 'brightness(.68) contrast(.92)', flag: 'dark' },
+    { seed: 'dd3' },
+    { seed: 'dd4' },
+    { seed: 'dd5', tilt: 3, flag: 'tilt' },
+    { seed: 'dd6' },
+    { seed: 'dd7', raw: 'blur(1.4px)', flag: 'blur', alt: 'dd7b' },
+    { seed: 'dd8' },
+  ];
+  const SLIDES = [[0, 1, 2], [3, 4, 5], [6, 7, null]]; // 3 Bento, 8 photos; like Layout, the last slide has an empty well
+  const LOOKS = [
+    { key: 'original', name: 'Original' }, { key: 'warm', name: 'Warm 35mm' }, { key: 'cashmere', name: 'Cashmere' },
+    { key: 'soft', name: 'Soft Film' }, { key: 'sunfade', name: 'Sunfade' }, { key: 'bw', name: 'B&W Roll' },
+  ];
+  const r3 = (n) => +n.toFixed(3);
+  const lookCss = (key, pct) => {
+    const p = pct / 100;
+    switch (key) {
+      case 'warm': return `sepia(${r3(.38 * p)}) saturate(${r3(1 + .28 * p)}) contrast(${r3(1 + .08 * p)}) brightness(${r3(1 + .03 * p)})`;
+      case 'cashmere': return `sepia(${r3(.26 * p)}) brightness(${r3(1 + .07 * p)}) contrast(${r3(1 - .06 * p)}) saturate(${r3(1 - .12 * p)})`;
+      case 'soft': return `contrast(${r3(1 + .18 * p)}) sepia(${r3(.18 * p)}) brightness(${r3(1 - .03 * p)})`;
+      case 'sunfade': return `sepia(${r3(.32 * p)}) brightness(${r3(1 + .1 * p)}) saturate(${r3(1 + .18 * p)})`;
+      case 'bw': return `grayscale(${r3(p)}) contrast(${r3(1 + .22 * p)})`;
+      default: return '';
+    }
+  };
+  const BUNDLE = {
+    warm: { grain: 12, fade: 0, vignette: 15 }, soft: { grain: 22, fade: 12, vignette: 0 }, sunfade: { grain: 0, fade: 18, vignette: 0 },
+    bw: { grain: 28, fade: 0, vignette: 20 }, cashmere: { grain: 0, fade: 8, vignette: 0 }, original: { grain: 0, fade: 0, vignette: 0 },
+  };
+  const ZERO = { light: 0, contrast: 0, shadows: 0, warmth: 0, saturation: 0, sharpen: 0 };
+  const adjCss = (a) => [
+    a.light && `brightness(${r3(1 + a.light / 250)})`,
+    a.contrast && `contrast(${r3(1 + a.contrast / 200)})`,
+    a.shadows && `brightness(${r3(1 + a.shadows / 500)}) contrast(${r3(1 - a.shadows / 500)})`,
+    a.saturation && `saturate(${r3(1 + a.saturation / 100)})`,
+    a.sharpen && `contrast(${r3(1 + a.sharpen / 800)})`, // visual only
+  ].filter(Boolean).join(' ');
+  const svg = (d) => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const TOOLS = [
+    { k: 'auto', n: 'Auto', i: svg('<path d="M4 20 14 10"/><path d="M17 3v4M15 5h4M20 10v2M19 11h2M11 4v2M10 5h2"/>') },
+    { k: 'light', n: 'Light', i: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>') },
+    { k: 'contrast', n: 'Contrast', i: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>') },
+    { k: 'shadows', n: 'Shadows', i: svg('<circle cx="12" cy="12" r="8"/><path d="M4 12a8 8 0 0 0 16 0z" fill="currentColor"/>') },
+    { k: 'warmth', n: 'Warmth', i: svg('<path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 9v7"/>') },
+    { k: 'saturation', n: 'Saturation', i: svg('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>') },
+    { k: 'sharpen', n: 'Sharpen', i: svg('<path d="M12 4 20 19H4z"/>'), min: 0 },
+  ];
+  const U = 2.4; // ruler px per unit
+  const fmt = (v) => (v > 0 ? `+${v}` : `${v}`);
+
+  const TPL = `
+    <div class="status" aria-hidden="true"><span>9:41</span>
+      <svg width="40" height="11" viewBox="0 0 40 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="9" rx="1"/><rect x="18" y="1" width="19" height="9" rx="2.5" fill="none" stroke="currentColor"/><rect x="20" y="3" width="13" height="5" rx="1"/><rect x="38" y="4" width="2" height="3" rx="1"/></svg></div>
+    <div class="hdr">
+      <button class="back" type="button" data-act="back" aria-label="Back">‹</button>
+      <div class="title" contenteditable="true" spellcheck="false" aria-label="Dump title">Ankara weekend</div>
+      <button class="preview" type="button" data-act="preview">Preview →</button>
+    </div>
+    <div class="scroll">
+      <div class="seg" role="tablist" aria-label="Edit"><button role="tab" data-act="layout" aria-selected="false">Layout</button><button role="tab" class="on" aria-selected="true">Photos</button></div>
+      <div class="scope"></div>
+      <div class="canvas-card"><div class="cwrap">
+        <div class="canvas"></div>
+        <span class="cchip tl">Hold to compare</span><span class="cchip tr"></span><span class="cchip mid" hidden>Original</span>
+        <button class="chev l" type="button" data-act="prev" aria-label="Previous slide">‹</button>
+        <button class="chev r" type="button" data-act="next" aria-label="Next slide">›</button>
+      </div></div>
+      <div class="subtabs" role="tablist" aria-label="Photo tools"><button role="tab" data-sub="look">Look</button><button role="tab" data-sub="adjust">Adjust</button><button role="tab" data-sub="texture">Texture</button></div>
+      <div class="frame panel"></div>
+      <div class="frame order"><div class="strip-head"><span class="lbl">Photos</span><span>Tap one to edit it alone</span></div><div class="strip"></div></div>
+    </div>
+    <div class="toast" role="status" aria-live="polite"></div>`;
+
+  function mount(root, init) {
+    root.innerHTML = TPL;
+    const q = (s) => root.querySelector(s);
+    const S = Object.assign({
+      cur: 0, target: null, look: { key: 'warm', pct: 68 }, tex: { ...BUNDLE.warm }, per: {}, adj: {},
+      sub: 'look', tool: 'light', holding: false, clip: null, photos: PHOTOS.map((p) => ({ ...p })),
+    }, init);
+    let toastT = 0, undoSnap = null;
+
+    // ---------- state helpers ----------
+    const per = (i) => S.per[i] || (S.per[i] = {});
+    const adj = (i) => S.adj[i] || (S.adj[i] = { ...ZERO });
+    const effLook = (i) => (i != null && S.per[i]?.look) || S.look;
+    const effTex = (i) => (i != null && S.per[i]?.tex) || S.tex;
+    const edited = (i) => { const p = S.per[i] || {}; return !!(p.look || p.tex || p.straight || p.autoPrev) || Object.values(S.adj[i] || {}).some(Boolean); };
+    const focus = () => S.target ?? SLIDES[S.cur][0];
+    const tool = () => TOOLS.find((t) => t.k === S.tool);
+    const snap = () => structuredClone({ look: S.look, tex: S.tex, per: S.per, adj: S.adj, photos: S.photos });
+    const tiltOf = (i, orig) => { const P = S.photos[i]; return P.tilt && (orig || !S.per[i]?.straight) ? `rotate(${P.tilt}deg) scale(1.12)` : ''; };
+    const filterOf = (i, withEdits) => {
+      const L = effLook(i);
+      return [S.photos[i].raw, withEdits && lookCss(L.key, L.pct), withEdits && adjCss(adj(i))].filter(Boolean).join(' ') || 'none';
+    };
+
+    // ---------- builders (structure) ----------
+    function buildCanvas() {
+      q('.canvas').innerHTML = SLIDES[S.cur].map((i) => i == null ? '<div class="cell empty" aria-hidden="true">+</div>'
+        : `<div class="cell" data-i="${i}" role="button" tabindex="0" aria-label="Photo ${i + 1}"><div class="ph"></div><div class="ov warm"></div><div class="ov fade"></div><div class="ov grain"></div><div class="ov vig"></div></div>`).join('');
+    }
+    function buildStrip() {
+      q('.strip').innerHTML = S.photos.map((_, i) => `<button class="th" data-i="${i}" aria-label="Photo ${i + 1}${i ? '' : ', cover'}"><span class="im"><i></i></span>${i ? '' : '<span class="cover">Cover</span>'}<span class="dot"></span></button>`).join('')
+        + '<span class="th add" aria-hidden="true">+</span>';
+    }
+    function renderScope() {
+      const t = S.target;
+      q('.scope').innerHTML = t == null
+        ? `<button class="chip" data-act="scope-hint">All photos ▾</button><button class="textbtn" data-act="reset-look">Reset look</button>`
+        : `<span class="chip photo"><span class="av" style="background-image:url(${url(S.photos[t].seed)})"></span>This photo<button class="x" data-act="clear" aria-label="Back to all photos">✕</button></span>
+           <button class="more" data-act="menu" aria-label="More for this photo" aria-expanded="false">⋯</button>
+           <div class="menu" hidden><button data-act="promote">Use on every photo</button><button data-act="copy">Copy edits</button>${S.clip && S.clip.from !== t ? '<button data-act="paste">Paste edits</button>' : ''}<button class="danger" data-act="reset-photo">Reset photo</button></div>`;
+    }
+    function renderPanel() {
+      const P = q('.panel');
+      if (S.sub === 'look') {
+        P.innerHTML = `<div class="tray">${LOOKS.map((l) => `<button class="lt" data-look="${l.key}"><span class="lt-img"></span><span class="lt-n">${l.name}</span></button>`).join('')}<span class="lt soon" aria-hidden="true"><span class="lt-img">+</span><span class="lt-n">More soon</span></span></div>
+          <label class="strength"><span>Strength</span><input type="range" min="0" max="100" data-strength aria-label="Strength"><b></b></label><p class="foot"></p>`;
+      } else if (S.sub === 'adjust') {
+        P.innerHTML = `<div class="sugg"></div><div class="tools">${TOOLS.map((t) => `<button class="tool" data-tool="${t.k}" aria-label="${t.n}"><span class="ring"><i>${t.i}</i></span><span class="tn">${t.n}</span></button>`).join('')}</div>
+          <div class="ruler" role="slider" tabindex="0" aria-label="Value"><span class="rv"></span><span class="rpulse" aria-hidden="true">•</span><div class="rstrip"></div><span class="needle"></span></div>
+          <p class="foot">Double-tap a tool to reset it.</p>`;
+        renderRuler();
+      } else {
+        P.innerHTML = ['grain', 'fade', 'vignette'].map((k) => `<label class="trow"><span>${k[0].toUpperCase() + k.slice(1)}</span><input type="range" min="0" max="100" data-tex="${k}" aria-label="${k}"><b></b></label>`).join('')
+          + `<div class="trow off"><span>Light leak · Date stamp</span><em>Coming next</em></div><p class="foot"></p>`;
+      }
+    }
+    function renderRuler() {
+      const min = tool().min ?? -100, st = q('.rstrip');
+      let h = '';
+      for (let v = min; v <= 100; v += 5) h += `<i class="tk${v === 0 ? ' z' : v % 50 === 0 ? ' big' : ''}" style="left:${(v - min) * U}px"></i>`;
+      st.innerHTML = h;
+      st.style.width = `${(100 - min) * U}px`;
+    }
+
+    // ---------- paint (values only; safe to call on every drag frame) ----------
+    function paint() {
+      const h = S.holding, t = S.target;
+      q('.canvas').classList.toggle('holding', h);
+      q('.cchip.mid').hidden = !h;
+      q('.cchip.tl').hidden = h;
+      q('.cchip.tr').textContent = `${S.cur + 1}/${SLIDES.length}`;
+      q('.chev.l').disabled = S.cur === 0;
+      q('.chev.r').disabled = S.cur === SLIDES.length - 1;
+      q('.canvas').querySelectorAll('.cell[data-i]').forEach((c) => {
+        const i = +c.dataset.i, T = effTex(i), a = adj(i);
+        const ph = c.firstElementChild, [w, f, g, v] = c.querySelectorAll('.ov');
+        ph.style.backgroundImage = `url(${url(S.photos[i].seed)})`;
+        ph.style.filter = filterOf(i, !h);
+        ph.style.transform = tiltOf(i, h);
+        w.style.background = a.warmth > 0 ? '#FF9A3C' : '#3C7BFF';
+        w.style.opacity = h ? 0 : Math.abs(a.warmth) / 220;
+        f.style.opacity = h ? 0 : T.fade / 250;
+        g.style.opacity = h ? 0 : T.grain / 200;
+        v.style.opacity = h ? 0 : T.vignette / 100;
+        c.classList.toggle('tgt', t === i && !h);
+        c.classList.toggle('dim', t != null && t !== i && !h);
+      });
+      q('.strip').querySelectorAll('.th[data-i]').forEach((b) => {
+        const i = +b.dataset.i, im = b.querySelector('.im i');
+        im.style.backgroundImage = `url(${url(S.photos[i].seed)})`;
+        im.style.filter = filterOf(i, true);
+        im.style.transform = tiltOf(i, false);
+        b.classList.toggle('cur', SLIDES[S.cur].includes(i));
+        b.classList.toggle('tgt', t === i);
+        b.querySelector('.dot').hidden = !edited(i);
+      });
+      root.querySelectorAll('.subtabs button').forEach((b) => { const on = b.dataset.sub === S.sub; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      paintPanel();
+      q('.panel').querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', `${r.value}%`));
+    }
+    function paintPanel() {
+      const t = S.target, P = q('.panel');
+      if (S.sub === 'look') {
+        const L = effLook(t), i = focus();
+        P.querySelectorAll('.lt[data-look]').forEach((b) => {
+          const im = b.firstElementChild, on = b.dataset.look === L.key;
+          im.style.backgroundImage = `url(${url(S.photos[i].seed)})`;
+          im.style.filter = [S.photos[i].raw, lookCss(b.dataset.look, L.pct)].filter(Boolean).join(' ') || 'none';
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', on);
+        });
+        const row = P.querySelector('.strength');
+        row.hidden = L.key === 'original';
+        row.querySelector('input').value = L.pct;
+        row.querySelector('b').textContent = `${L.pct}%`;
+        P.querySelector('.foot').innerHTML = t == null ? 'Every photo, unless you change one.'
+          : 'Only this photo. <button class="link" data-act="promote">Use on every photo</button>';
+      } else if (S.sub === 'adjust') {
+        const i = focus(), A = adj(i), Ph = S.photos[i], p = S.per[i] || {};
+        const pills = [];
+        if (Ph.flag === 'dark') pills.push(p.autoPrev ? '<button class="spill done" data-act="brighten">✓ Brightened</button>' : '<button class="spill" data-act="brighten">☀ Brighten · looks dark</button>');
+        if (Ph.flag === 'tilt') pills.push(p.straight ? '<button class="spill done" data-act="straighten">✓ Straightened</button>' : '<button class="spill" data-act="straighten">⟲ Straighten · 3° tilt</button>');
+        if (Ph.flag === 'blur') pills.push('<button class="spill" data-act="sharper">Sharper take</button>');
+        const sg = P.querySelector('.sugg'), html = pills.join('');
+        if (sg.innerHTML !== html) sg.innerHTML = html;
+        P.querySelectorAll('.tool').forEach((b) => {
+          const k = b.dataset.tool, ring = b.querySelector('.ring');
+          if (k === 'auto') {
+            ring.style.background = p.autoPrev ? 'var(--ink)' : 'var(--line2)';
+            b.querySelector('.tn').textContent = p.autoPrev ? 'Auto ✓' : 'Auto';
+            return;
+          }
+          const v = A[k], f = Math.abs(v) / 100;
+          ring.style.background = v >= 0 ? `conic-gradient(var(--ink) ${f}turn, var(--line2) 0)` : `conic-gradient(var(--line2) ${1 - f}turn, var(--ink) 0)`;
+          b.classList.toggle('on', k === S.tool);
+        });
+        const r = P.querySelector('.ruler'), v = A[S.tool], min = tool().min ?? -100;
+        P.querySelector('.rstrip').style.transform = `translateX(${r.clientWidth / 2 - (v - min) * U}px)`;
+        P.querySelector('.rv').textContent = fmt(v);
+        r.setAttribute('aria-label', tool().n);
+        r.setAttribute('aria-valuemin', min); r.setAttribute('aria-valuemax', 100); r.setAttribute('aria-valuenow', v);
+      } else {
+        const T = effTex(t);
+        P.querySelectorAll('[data-tex]').forEach((inp) => { inp.value = T[inp.dataset.tex]; inp.nextElementSibling.textContent = T[inp.dataset.tex]; });
+        P.querySelector('.foot').textContent = t == null ? 'Goes on every photo with the look.' : 'Only this photo.';
+      }
+    }
+    const full = () => { renderScope(); renderPanel(); paint(); };
+
+    // ---------- actions ----------
+    function toast(msg, undo) {
+      const el = q('.toast');
+      undoSnap = undo || null;
+      el.innerHTML = `<span>${msg}</span>${undo ? '<button data-act="undo">Undo</button>' : ''}`;
+      el.classList.add('on');
+      clearTimeout(toastT);
+      toastT = setTimeout(() => el.classList.remove('on'), 4200);
+    }
+    function setTarget(i) {
+      S.target = i;
+      if (i == null && S.sub === 'adjust') S.sub = 'look';
+      full();
+    }
+    function goSlide(k) {
+      if (k < 0 || k >= SLIDES.length || k === S.cur) return;
+      S.cur = k;
+      buildCanvas();
+      if (S.target != null && !SLIDES[k].includes(S.target)) S.target = S.sub === 'adjust' ? SLIDES[k][0] : null;
+      full();
+    }
+    function pickLook(key) {
+      const t = S.target, cur = effLook(t);
+      if (cur.key === key) return pulseStrength();
+      const L = { key, pct: cur.pct }, T = { ...BUNDLE[key] };
+      if (t == null) { S.look = L; S.tex = T; } else { per(t).look = L; per(t).tex = T; }
+      paint();
+    }
+    function pulseStrength() {
+      const row = q('.strength');
+      if (!row || row.hidden) return;
+      const sc = q('.scroll'), r = row.getBoundingClientRect(), s = sc.getBoundingClientRect();
+      if (r.bottom > s.bottom - 8) sc.scrollBy({ top: r.bottom - s.bottom + 24, behavior: 'smooth' });
+      row.classList.remove('pulse-on'); void row.offsetWidth; row.classList.add('pulse-on');
+    }
+    let autoRun = 0;
+    function runAuto(i) {
+      const A = adj(i), p = per(i), run = ++autoRun; // a second tap mid-animation takes over
+      let to;
+      if (p.autoPrev) { to = p.autoPrev; delete p.autoPrev; }
+      else { p.autoPrev = { ...A }; to = S.photos[i].flag === 'dark' ? { ...A, light: 22, shadows: 30, contrast: 8, warmth: 4 } : { ...A, light: 6, contrast: 5 }; }
+      const from = { ...A }, t0 = performance.now();
+      const step = (now) => {
+        if (run !== autoRun) return;
+        const k = Math.min(1, (now - t0) / 300), e = 1 - Math.pow(1 - k, 3);
+        for (const key in to) A[key] = Math.round(from[key] + (to[key] - from[key]) * e);
+        paint();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    function rulerPulse() {
+      const el = q('.rpulse');
+      if (el) el.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.3)', offset: .3 }, { opacity: 0, transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' });
+      q('.needle')?.animate([{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.18)' }, { transform: 'scaleY(1)' }], { duration: 120 });
+    }
+    function setValue(v) {
+      const i = focus(), A = adj(i), min = tool().min ?? -100;
+      A[S.tool] = Math.max(min, Math.min(100, v));
+      paint();
+    }
+
+    const ACT = {
+      back: () => toast('Back to your dumps. Edits save as you go.'),
+      preview: () => toast('Preview opens with these looks applied.'),
+      layout: () => toast('Back to Layout, on this slide with your edits kept. <a href="edit-layout.html">Open the Layout mock</a>'),
+      'scope-hint': () => toast('Tap a photo to give it its own edits.'),
+      clear: () => setTarget(null),
+      prev: () => goSlide(S.cur - 1),
+      next: () => goSlide(S.cur + 1),
+      menu: () => { const m = q('.menu'), b = q('.more'); m.hidden = !m.hidden; b.setAttribute('aria-expanded', !m.hidden); },
+      promote: () => {
+        const t = S.target; if (t == null) return;
+        const s = snap();
+        S.look = { ...effLook(t) }; S.tex = { ...effTex(t) };
+        Object.values(S.per).forEach((p) => { delete p.look; delete p.tex; });
+        full();
+        toast(`Look used on all ${S.photos.length} photos`, s);
+      },
+      copy: () => {
+        const t = S.target;
+        S.clip = { from: t, look: { ...effLook(t) }, tex: { ...effTex(t) }, adj: { ...adj(t) } };
+        renderScope();
+        toast('Edits copied. Tap another photo, then ⋯ › Paste edits.');
+      },
+      paste: () => {
+        const t = S.target, s = snap();
+        Object.assign(per(t), { look: { ...S.clip.look }, tex: { ...S.clip.tex } });
+        S.adj[t] = { ...S.clip.adj };
+        full();
+        toast('Edits pasted on this photo', s);
+      },
+      'reset-photo': () => { const t = S.target, s = snap(); delete S.per[t]; delete S.adj[t]; full(); toast('Photo reset', s); },
+      'reset-look': () => { const s = snap(); S.look = { key: 'original', pct: 68 }; S.tex = { ...BUNDLE.original }; paint(); toast('Look reset', s); },
+      undo: () => {
+        if (!undoSnap) return;
+        Object.assign(S, structuredClone(undoSnap));
+        undoSnap = null;
+        buildCanvas(); buildStrip(); full();
+        q('.toast').classList.remove('on');
+      },
+      brighten: () => runAuto(focus()),
+      straighten: () => { const p = per(focus()); p.straight = !p.straight; paint(); },
+      sharper: () => {
+        const i = focus(), s = snap(), P = S.photos[i];
+        Object.assign(P, { seed: P.alt, raw: '', flag: null });
+        buildCanvas(); buildStrip(); full();
+        toast('Swapped in the sharpest take from that moment', s);
+      },
+    };
+
+    // ---------- events ----------
+    root.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-act],[data-look],[data-sub],[data-tool],.th[data-i]');
+      const menu = q('.menu');
+      if (menu && !menu.hidden && !e.target.closest('.menu,.more')) { menu.hidden = true; q('.more').setAttribute('aria-expanded', false); }
+      if (!el) return;
+      if (el.dataset.act) { if (el.closest('.menu')) menu.hidden = true; return ACT[el.dataset.act]?.(); }
+      if (el.dataset.look) return pickLook(el.dataset.look);
+      if (el.dataset.sub) {
+        if (el.dataset.sub === S.sub) return;
+        S.sub = el.dataset.sub;
+        if (S.sub === 'adjust' && S.target == null) S.target = SLIDES[S.cur][0];
+        return full();
+      }
+      if (el.dataset.tool) {
+        if (el.dataset.tool === 'auto') return runAuto(focus());
+        if (el.dataset.tool !== S.tool) { S.tool = el.dataset.tool; renderRuler(); paint(); }
+        return;
+      }
+      const i = +el.dataset.i; // filmstrip
+      if (!SLIDES[S.cur].includes(i)) { S.cur = SLIDES.findIndex((s) => s.includes(i)); buildCanvas(); }
+      setTarget(i);
+    });
+    root.addEventListener('dblclick', (e) => {
+      const b = e.target.closest('.tool'); if (!b) return;
+      const k = b.dataset.tool, i = focus();
+      if (k === 'auto') { if (S.per[i]?.autoPrev) runAuto(i); return; }
+      adj(i)[k] = 0;
+      paint();
+    });
+    root.addEventListener('input', (e) => {
+      const inp = e.target, v = +inp.value, t = S.target;
+      if (inp.matches('[data-strength]')) {
+        if (t == null) S.look = { ...S.look, pct: v }; else per(t).look = { ...effLook(t), pct: v };
+      } else if (inp.dataset.tex) {
+        const k = inp.dataset.tex;
+        if (t == null) S.tex = { ...S.tex, [k]: v }; else per(t).tex = { ...effTex(t), [k]: v };
+      } else return;
+      paint();
+    });
+    root.addEventListener('keydown', (e) => {
+      if (e.target.matches('.ruler') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        setValue(adj(focus())[S.tool] + (e.key === 'ArrowRight' ? 5 : -5));
+      }
+      if (e.target.matches('.cell[data-i]') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setTarget(+e.target.dataset.i); }
+      if (e.target.matches('.title') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    });
+
+    // hold to compare, tap to target, swipe to change slide
+    let hold = null;
+    const cv = q('.canvas');
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
+    cv.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return;
+      cv.setPointerCapture(e.pointerId);
+      hold = { x: e.clientX, t0: performance.now(), cell: e.target.closest('.cell[data-i]'), moved: false, t: setTimeout(() => { S.holding = true; paint(); }, 150) };
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!hold || S.holding) return;
+      if (Math.abs(e.clientX - hold.x) > 8) { hold.moved = true; clearTimeout(hold.t); }
+    });
+    const release = (e, ok) => {
+      if (!hold) return;
+      clearTimeout(hold.t);
+      const h = hold; hold = null;
+      // a slow tap (under 350 ms) still targets the photo, so a 200 ms thumb press is not lost to the compare
+      if (S.holding) { S.holding = false; paint(); if (performance.now() - h.t0 > 350) return; }
+      if (!ok) return;
+      const dx = e.clientX - h.x;
+      if (h.moved && Math.abs(dx) > 40) goSlide(S.cur + (dx < 0 ? 1 : -1));
+      else if (!h.moved && h.cell) setTarget(+h.cell.dataset.i);
+    };
+    cv.addEventListener('pointerup', (e) => release(e, true));
+    cv.addEventListener('pointercancel', (e) => release(e, false));
+
+    // ruler drag: scrolls under the fixed needle, snaps for 80 ms when it crosses 0
+    let dg = null;
+    root.addEventListener('pointerdown', (e) => {
+      const r = e.target.closest('.ruler'); if (!r) return;
+      r.setPointerCapture(e.pointerId);
+      dg = { x0: e.clientX, v0: adj(focus())[S.tool], snap: 0 };
+    });
+    root.addEventListener('pointermove', (e) => {
+      if (!dg) return;
+      const now = performance.now();
+      if (now < dg.snap) { dg.x0 = e.clientX; dg.v0 = 0; return; }
+      const min = tool().min ?? -100, prev = adj(focus())[S.tool];
+      let v = Math.max(min, Math.min(100, Math.round(dg.v0 - (e.clientX - dg.x0) / U)));
+      if (prev !== 0 && (v === 0 || Math.sign(v) !== Math.sign(prev))) { v = 0; dg.snap = now + 80; dg.x0 = e.clientX; dg.v0 = 0; rulerPulse(); }
+      setValue(v);
+    });
+    const endDrag = () => { dg = null; };
+    root.addEventListener('pointerup', endDrag);
+    root.addEventListener('pointercancel', endDrag);
+
+    buildCanvas(); buildStrip(); full();
+    addEventListener('resize', () => { if (S.sub === 'adjust') paintPanel(); });
+  }
+
+  const html = document.documentElement, themeBtn = document.getElementById('theme');
+  const dark = () => html.dataset.theme ? html.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const syncTheme = () => { themeBtn.textContent = dark() ? 'Light' : 'Dark'; };
+  themeBtn.addEventListener('click', () => { html.dataset.theme = dark() ? 'light' : 'dark'; syncTheme(); });
+  syncTheme();
+
+  mount(document.getElementById('p1'), {});
+  mount(document.getElementById('p2'), { target: 1, sub: 'adjust', tool: 'light' });
+  mount(document.getElementById('p3'), { sub: 'texture', cur: 1, per: { 3: { look: { key: 'bw', pct: 68 }, tex: { ...BUNDLE.bw } } } });
+})();
+</script>
