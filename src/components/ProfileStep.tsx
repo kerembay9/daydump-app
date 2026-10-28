@@ -1,6 +1,6 @@
 import React, { ReactNode, RefObject, useEffect, useRef, useState } from 'react';
 import { Keyboard, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutLeft, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutLeft, FadeOutUp, SlideInRight, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 import Lock from 'lucide-react-native/icons/lock';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
@@ -29,8 +29,9 @@ const at = (r: RefObject<View | null>) => new Promise<Rect | null>((res) => (r.c
  * is asked first and flies into the header; meanwhile the selfie scan (useSelfiePick, from the grant) runs. Then the pick:
  * "That's me" flies the face into the header's avatar, and a strip of the same person's other selfies lets them swap it
  * (right person, wrong photo); "Not me" moves to the next person. Continue saves the avatar; Skip leaves the initial letter.
+ * Onboarding's page 4: slides in, its dots (OnboardingModal's) and buttons stay put.
  */
-export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfiePick>; onDone: () => void }) {
+export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof useSelfiePick>; dots: ReactNode; onDone: () => void }) {
   const { t } = useTheme();
   const [name, setName] = useState('');
   const [phase, setPhase] = useState<'name' | 'selfie' | 'picked'>('name');
@@ -85,6 +86,7 @@ export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfi
 
   return (
     <View ref={root} style={{ flex: 1 }}>
+      <Animated.View entering={SlideInRight.duration(320)} style={{ flex: 1 }}>
       <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 16 }}>
         <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Your dump previews')}</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(60).duration(450)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 10 }]}>Put yourself in your posts</Animated.Text>
@@ -174,8 +176,10 @@ export function ProfileStep({ pick, onDone }: { pick: ReturnType<typeof useSelfi
           </Animated.View>
         )}
       </ScrollView>
+      </Animated.View>
 
       <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
+        {dots}
         <Tap onPress={() => (phase === 'name' ? submitName() : canGo && void done(true))} accessibilityRole="button" accessibilityState={{ disabled: phase !== 'name' && !canGo }}
           style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, opacity: phase === 'name' || canGo ? 1 : 0.35, alignItems: 'center', justifyContent: 'center', boxShadow: t.shadowCard }}>
           <Text style={[ui(15, 600), { color: t.bgScreen }]}>{phase === 'name' ? 'Next' : 'Continue'}</Text>

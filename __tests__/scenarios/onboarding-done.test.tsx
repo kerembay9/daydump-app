@@ -27,7 +27,7 @@ async function toAsk() {
 
 test('onboarding: done is saved at the end, not at the photo grant (killed before the recap ask, it shows again)', async () => {
   await fireEvent.press(await toAsk());
-  expect(await screen.findByText('Your day, ready at 8 PM')).toBeTruthy();
+  expect(await screen.findByText('Your day at 8 PM, your week on Sunday')).toBeTruthy();
   expect(await AsyncStorage.getItem(DONE)).toBeNull();
 
   await fireEvent.press(screen.getByText('Not now'));

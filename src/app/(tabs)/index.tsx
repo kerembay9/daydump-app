@@ -19,6 +19,7 @@ import { type PaperStyle, ScrapTapes } from '../../components/ui/ScrapPaper';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
 import { TodayCard } from '../../components/TodayCard';
+import { FirstDumpStrip, useFirstDump } from '../../components/FirstDumpStrip';
 import { useModels } from '../../state/models';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
@@ -154,7 +155,8 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, limited, askPhotos, paused, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { stories, loaded, permission, limited, askPhotos, paused, pause, resume, shuffleStories, moreStories, showMoreStories, onboarding } = useApp();
+  const first = useFirstDump(stories, loaded, onboarding);
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
@@ -247,6 +249,7 @@ export default function Discover() {
           <RefreshControl refreshing={refreshing} onRefresh={shuffle} enabled={stories.length > 1} colors={[t.ink]} progressBackgroundColor={t.bgCard} progressViewOffset={insets.top} />
         }
       />
+      {first.story && <FirstDumpStrip story={first.story} onDone={first.done} />}
       <StatusScrim />
       {paper && <Paper height={insets.top} />}
     </View>
