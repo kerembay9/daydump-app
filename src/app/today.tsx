@@ -1,5 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Linking, Platform, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+// Photos inside a card that Save / Share capture are RN's Image: it clips itself to its rounded box when drawn. Skia's
+// makeImageFromView skips overflow: hidden on RN 0.86 (it calls ReactViewGroup.dispatchOverflowDraw, which is gone), so an
+// expo-image cover spills out of its square in the saved PNG.
+import { ActivityIndicator, Animated, Image as Photo, Linking, Platform, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle, Defs, Path, Text as SvgText, TextPath } from 'react-native-svg';
 import { File, Paths } from 'expo-file-system';
@@ -14,8 +17,9 @@ import { Icons } from '../components/ui/Icons';
 import { Screen } from '../components/ui/Screen';
 import { Tap } from '../components/ui/Tap';
 import { IconButton } from '../components/ui/TopHeader';
+import { PhotoViewer } from '../components/ui/PhotoViewer';
 import { useApp } from '../state/AppState';
-import { AlbumDay, Cell, dayKey, Hub, monday, setSquare, swapCell, useChecking, useHub } from '../services/today';
+import { AlbumDay, Cell, dayKey, Hub, monday, photosOn, setPrint, setSquare, swapCell, useChecking, useHub } from '../services/today';
 import { useTheme } from '../theme/ThemeProvider';
 import { fixed, type Theme } from '../theme/tokens';
 import { display, sans, ui } from '../theme/type';
@@ -49,14 +53,14 @@ function Corners({ t }: { t: Theme }) {
   return <>{tri({ top: 0, left: 0 }, 'Left', 'Top')}{tri({ top: 0, right: 0 }, 'Right', 'Top')}{tri({ bottom: 0, left: 0 }, 'Left', 'Bottom')}{tri({ bottom: 0, right: 0 }, 'Right', 'Bottom')}</>;
 }
 
-function Square({ c, swaps, flip, onFix }: { c: Cell; swaps: number; flip: ReturnType<typeof useSlotPop>['flip']; onFix: (c: Cell) => void }) {
+function Square({ c, swaps, flip, onFix, onView }: { c: Cell; swaps: number; flip: ReturnType<typeof useSlotPop>['flip']; onFix: (c: Cell) => void; onView: (c: Cell) => void }) {
   const { t } = useTheme();
   const box = { width: '100%' as const, aspectRatio: 1, borderRadius: 9, overflow: 'hidden' as const, alignItems: 'center' as const, justifyContent: 'center' as const, padding: 6 };
   if (!c.key) return <View style={[box, { backgroundColor: accentTint(t) }]}><Text style={[display(15), { color: accent(t) }]}>Free</Text></View>;
   if (c.on) return (
-    <Tap onPress={() => onFix(c)} accessibilityRole="button" accessibilityLabel={`${c.label}, done`} style={{ width: '100%', aspectRatio: 1 }}>
+    <Tap onPress={() => onFix(c)} onLongPress={() => onView(c)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={`${c.label}, done`} accessibilityHint="Hold to enlarge" style={{ width: '100%', aspectRatio: 1 }}>
     <Animated.View style={[box, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, flip(c.key)]}>
-      {c.uri ? <Image testID="square-photo" source={{ uri: c.uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" recyclingKey={c.uri} /> : null}
+      {c.uri ? <Photo testID="square-photo" source={{ uri: c.uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 9 }} resizeMode="cover" /> : null}
       <Text style={[ui(11, 600), shade, { color: fixed.printBorder, textAlign: 'center' }]}>{c.label}</Text>
       <Text style={[ui(11, 600), shade, { color: fixed.printBorder, position: 'absolute', right: 6, top: 5 }]}>✓</Text>
       {c.win ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 9, borderWidth: 3, borderColor: accent(t) }} /> : null}
@@ -95,20 +99,39 @@ function FixSheet({ c, shots, onClose }: { c: Cell | null; shots: string[]; onCl
   );
 }
 
+/** Album: pick the photo for a day's print from that day's camera photos. */
+function PrintSheet({ k, print, onClose }: { k: string | null; print?: string; onClose: () => void }) {
+  const { t } = useTheme();
+  const { library } = useApp();
+  const at = k ? new Date(k + 'T12:00') : null;
+  const shots = at && library ? photosOn(library, at.getTime()).map((p) => p.uri) : [];
+  return (
+    <Sheet visible={!!k} onClose={onClose}>
+      <Text style={[display(19), { color: t.ink }]}>{at?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>Pick the photo for this day’s print.</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
+        {shots.map((uri, n) => (
+          <Tap key={uri} onPress={() => { onClose(); if (k) void setPrint(k, uri); }} accessibilityRole="button" accessibilityLabel={`Photo ${n + 1} of the day`} accessibilityState={{ selected: uri === print }}
+            style={{ width: 76, height: 76, borderRadius: 10, overflow: 'hidden', borderWidth: uri === print ? 3 : 0, borderColor: accent(t), backgroundColor: t.borderStrong }}>
+            <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={uri} />
+          </Tap>
+        ))}
+      </ScrollView>
+    </Sheet>
+  );
+}
+
 /**
- * Save (to the PicDump album) and Share (the system sheet, caption with the hashtag) for the view under `card`. Its buttons sit
- * inside the card: `hide` turns them invisible while the card is captured.
+ * Save (to the PicDump album) and Share (the system sheet, caption with the hashtag) for the view under `card`. Its buttons look
+ * inside the card but sit on top of it, outside `card`, so the capture leaves them out and they never blink.
  */
 function useShare(card: React.RefObject<View | null>, name: string, caption: string) {
   const [said, setSaid] = useState<string | null>(null);
-  const [hide, setHide] = useState(false);
   const say = (x: string) => { setSaid(x); setTimeout(() => setSaid(null), 3000); };
   const run = async (what: 'save' | 'share') => {
     try {
-      setHide(true);
-      await new Promise((r) => setTimeout(r, 60)); // the hidden buttons drawn before the capture
       // makeImageFromView: Android needs the view uncollapsed
-      const img = await makeImageFromView(card).finally(() => setHide(false));
+      const img = await makeImageFromView(card);
       if (!img) throw new Error('nothing to capture');
       const file = new File(Paths.cache, `${name}-${Date.now().toString(36)}.png`);
       file.write(img.encodeToBytes(ImageFormat.PNG));
@@ -116,16 +139,17 @@ function useShare(card: React.RefObject<View | null>, name: string, caption: str
       if (what === 'save') { await saveToAlbum([file.uri]); say('Saved to PicDump ✓'); } else await shareImages([file.uri], caption, null);
     } catch (e) { console.warn(`[today] ${what} failed:`, e); say(what === 'save' ? 'Couldn’t save' : 'Couldn’t share'); }
   };
-  return { run, said, hide };
+  return { run, said };
 }
 
-function ShareButtons({ name, run, hide, shareLabel = 'Share' }: { name: string; run: (w: 'save' | 'share') => void; hide: boolean; shareLabel?: string }) {
+/** `ghost`: an invisible copy inside the captured card that holds the buttons' place; the real ones sit over it, outside the card. */
+function ShareButtons({ name, run, ghost, shareLabel = 'Share' }: { name: string; run?: (w: 'save' | 'share') => void; ghost?: boolean; shareLabel?: string }) {
   const { t } = useTheme();
   const pill = { height: 28, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center' as const, justifyContent: 'center' as const };
   return (
-    <View style={{ flexDirection: 'row', gap: 6, opacity: hide ? 0 : 1 }}>
-      <Tap onPress={() => { run('save'); }} accessibilityRole="button" accessibilityLabel={`Save ${name}`} style={pill}><Text style={[ui(11.5, 600), { color: t.ink }]}>Save</Text></Tap>
-      <Tap onPress={() => { run('share'); }} accessibilityRole="button" accessibilityLabel={`Share ${name}`} style={[pill, shareLabel !== 'Share' ? { backgroundColor: t.ink, borderColor: t.ink } : null]}>
+    <View style={{ flexDirection: 'row', gap: 6, opacity: ghost ? 0 : 1 }} pointerEvents={ghost ? 'none' : 'auto'} accessibilityElementsHidden={ghost} importantForAccessibility={ghost ? 'no-hide-descendants' : 'auto'}>
+      <Tap onPress={() => { run?.('save'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : `Save ${name}`} style={pill}><Text style={[ui(11.5, 600), { color: t.ink }]}>Save</Text></Tap>
+      <Tap onPress={() => { run?.('share'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : `Share ${name}`} style={[pill, shareLabel !== 'Share' ? { backgroundColor: t.ink, borderColor: t.ink } : null]}>
         <Text style={[ui(11.5, 600), { color: shareLabel !== 'Share' ? t.bgScreen : t.ink }]}>{shareLabel}</Text>
       </Tap>
     </View>
@@ -144,7 +168,7 @@ function Stamp({ text, uri, t }: { text: string; uri?: string; t: Theme }) {
         {uri ? null : <Circle cx={50} cy={50} r={25} fill={accentTint(t)} />}
         {uri ? null : <Path d="M38 61c4-8 7-12 11-12s4 5 8 5 3-4 3-4M44 42m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0M55 38l3 3m3-3l-3 3" stroke={a} strokeWidth={2.2} fill="none" strokeLinecap="round" />}
       </Svg>
-      {uri ? <Image testID="quest-photo" source={{ uri }} style={{ position: 'absolute', left: 17.5, top: 17.5, width: 35, height: 35, borderRadius: 18 }} contentFit="cover" recyclingKey={uri} /> : null}
+      {uri ? <Photo testID="quest-photo" source={{ uri }} style={{ position: 'absolute', left: 17.5, top: 17.5, width: 35, height: 35, borderRadius: 18 }} resizeMode="cover" /> : null}
     </View>
   );
 }
@@ -164,6 +188,8 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
   const story = stories.find((x) => x.kind === 'today');
   const board = useRef<View>(null), questCard = useRef<View>(null);
   const [fixing, setFixing] = useState<Cell | null>(null);
+  const [view, setView] = useState<number | null>(null);
+  const shown = hub.cells.filter((c) => c.on && c.uri).map((c) => ({ id: c.uri!, uri: c.uri! }));
   const bingo = useShare(board, 'bingo card', `${hub.bingo ? 'Bingo! ' : ''}Today’s photo bingo #picdumpbingo`);
   const q = hub.quest;
   const quest = useShare(questCard, 'side quest', `Side quest: ${q.label} ✓ #picdumpquest #${q.label.toLowerCase().replace(/[^a-z]/g, '')}`);
@@ -173,26 +199,18 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
 
   return (
     <>
-      <View ref={board} collapsable={false} style={{ marginBottom: 8 }}>
+      <View style={{ marginBottom: 8 }}>
+      <View ref={board} collapsable={false}>
         <FrameCard radius={14} padding={12}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9, minHeight: 34 }}>
             <Text style={[display(17), { color: t.ink }]}>Today’s bingo</Text>
-            <ShareButtons name="bingo card" run={bingo.run} hide={bingo.hide} />
-            {/* the phone's camera; back in the app, the new photo is checked
-                ponytail: Android only (iOS can't open its Camera app); expo-image-picker's camera + a save if iOS ships */}
-            {Platform.OS === 'android' ? (
-              <Tap onPress={() => Linking.sendIntent('android.media.action.STILL_IMAGE_CAMERA').catch((e) => console.warn('[today] camera:', e))}
-                accessibilityRole="button" accessibilityLabel="Open camera"
-                style={{ position: 'absolute', left: '50%', marginLeft: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', opacity: bingo.hide ? 0 : 1 }}>
-                <Icons.camera size={17} color={t.bgScreen} />
-              </Tap>
-            ) : null}
+            <ShareButtons name="bingo card" ghost />
           </View>
           <View style={{ gap: 6 }}>
             {[0, 3, 6].map((r) => (
               <View key={r} style={{ flexDirection: 'row', gap: 6 }}>
                 {/* equal thirds: a square's own padding and border would widen its flex share */}
-                {hub.cells.slice(r, r + 3).map((c) => <View key={c.i} style={{ flex: 1 }}><Square c={c} swaps={hub.swapsLeft} flip={flip} onFix={setFixing} /></View>)}
+                {hub.cells.slice(r, r + 3).map((c) => <View key={c.i} style={{ flex: 1 }}><Square c={c} swaps={hub.swapsLeft} flip={flip} onFix={setFixing} onView={(x) => setView(shown.findIndex((p) => p.uri === x.uri))} /></View>)}
               </View>
             ))}
           </View>
@@ -204,21 +222,36 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
         </FrameCard>
         <Corners t={t} />
       </View>
+        {/* over the header, outside the capture: FrameCard's 1px border + 12 padding */}
+        <View pointerEvents="box-none" style={{ position: 'absolute', top: 13, left: 13, right: 13, height: 34, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+          {/* the phone's camera; back in the app, the new photo is checked
+              ponytail: Android only (iOS can't open its Camera app); expo-image-picker's camera + a save if iOS ships */}
+          {Platform.OS === 'android' ? (
+            <Tap onPress={() => Linking.sendIntent('android.media.action.STILL_IMAGE_CAMERA').catch((e) => console.warn('[today] camera:', e))}
+              accessibilityRole="button" accessibilityLabel="Open camera"
+              style={{ position: 'absolute', left: '50%', marginLeft: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
+              <Icons.camera size={17} color={t.bgScreen} />
+            </Tap>
+          ) : null}
+          <ShareButtons name="bingo card" run={bingo.run} />
+        </View>
+      </View>
       <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginBottom: 14 }]} numberOfLines={1}>
-        {checking ?? bingo.said ?? (hub.swapsLeft ? 'Tap an empty square to swap it, once a day' : 'No swaps left today')}
+        {checking ?? bingo.said ?? (hub.swapsLeft ? 'Tap an empty square to swap it, once a day' : '')}
       </Text>
 
-      <View ref={questCard} collapsable={false} style={{ marginBottom: 14 }}>
+      <View style={{ marginBottom: 14 }}>
+      <View ref={questCard} collapsable={false}>
         <FrameCard radius={14} padding={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Stamp t={t} uri={q.uri} text={q.found ? `FOUND · ${q.label.toUpperCase()} ·${q.label.length < 11 ? ' FOUND ·' : ''}` : `WEEKLY QUEST · ${fmt(new Date(q.from))} – ${fmt(end)} ·`} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[ui(9.5, 700), { color: accent(t), letterSpacing: 1, textTransform: 'uppercase' }]}>{q.found ? `Found ${on}` : 'This week’s side quest'}</Text>
             <Text style={[display(19), { color: t.ink }]}>{q.label}</Text>
             <Text style={[ui(11.5), { color: t.inkMuted, lineHeight: 16 }]}>
-              {q.found ? `Stuck on ${on === 'today' ? 'today' : weekday(q.day!)}’s polaroid. Next quest on Monday.` : 'Find it any day this week. It’s stuck on that day’s polaroid.'}
+              {q.found ? `Stuck on ${on === 'today' ? 'today' : weekday(q.day!)}’s polaroid. Next quest on Monday.` : 'Find it any day this week.'}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
-              {q.found ? <ShareButtons name="side quest" run={quest.run} hide={quest.hide} />
+              {q.found ? <ShareButtons name="side quest" ghost />
                 : <><Chip t={t} hot text={q.left === 1 ? 'Last day' : `${q.left} days left`} /><Chip t={t} text="New on Monday" /></>}
             </View>
           </View>
@@ -229,6 +262,11 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
           ) : null}
         </FrameCard>
       </View>
+        {/* over the ghost under the text, outside the capture: border + padding, the 70 stamp and its 12 gap; the text column is the taller one */}
+        {q.found ? (
+          <View style={{ position: 'absolute', left: 95, bottom: Platform.OS === 'android' ? 14 : 13 }}><ShareButtons name="side quest" run={quest.run} /></View>
+        ) : null}
+      </View>
       {quest.said ? <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: -8, marginBottom: 12 }]}>{quest.said}</Text> : null}
 
       {story ? (
@@ -238,24 +276,25 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
         </Tap>
       ) : null}
       <FixSheet c={fixing} shots={hub.shots} onClose={() => setFixing(null)} />
+      <PhotoViewer photos={shown} index={view} onClose={() => setView(null)} />
     </>
   );
 }
 
 /** A bingo day's print as a polaroid; the week's quest sticker on the day that found it. */
-function Polaroid({ day, w, tilt, label, peg, t }: { day: AlbumDay; w: number; tilt: number; label: string; peg?: boolean; t: Theme }) {
+function Polaroid({ day, w, tilt, label, peg, onPress, onLongPress, t }: { day: AlbumDay; w: number; tilt: number; label: string; peg?: boolean; onPress: () => void; onLongPress: () => void; t: Theme }) {
   const st = Math.round(w * 0.42);
   return (
-    <View accessibilityLabel={`${label}: bingo${day.quest ? `, ${day.quest.label}` : ''}`} style={{ width: w, padding: 3, paddingBottom: 0, backgroundColor: fixed.printBorder, borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(55,38,28,0.25)', transform: [{ rotate: `${tilt}deg` }] }}>
-      <Image testID="album-print" source={{ uri: day.print }} style={{ width: w - 6, height: w - 6, backgroundColor: t.borderStrong }} contentFit="cover" recyclingKey={day.print} />
+    <Tap onPress={onPress} onLongPress={onLongPress} delayLongPress={350} accessibilityRole="button" accessibilityHint="Hold to enlarge" accessibilityLabel={`${label}: bingo${day.quest ? `, ${day.quest.label}` : ''}`} style={{ width: w, padding: 3, paddingBottom: 0, backgroundColor: fixed.printBorder, borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(55,38,28,0.25)', transform: [{ rotate: `${tilt}deg` }] }}>
+      <Photo testID="album-print" source={{ uri: day.print }} style={{ width: w - 6, height: w - 6, backgroundColor: t.borderStrong }} resizeMode="cover" />
       <Text numberOfLines={1} style={[ui(w < 50 ? 8 : 9.5, 600), { color: '#5a4a3f', textAlign: 'center', paddingVertical: w < 50 ? 1 : 3 }]}>{label}</Text>
       {peg ? <View style={{ position: 'absolute', top: -7, left: w / 2 - 4, width: 8, height: 14, borderRadius: 2, backgroundColor: '#b79b7f' }} /> : null}
       {day.quest ? (
         <View testID="album-sticker" style={{ position: 'absolute', right: -st / 4, top: w * 0.55 - st / 2, width: st, height: st, borderRadius: st / 2, borderWidth: 2, borderColor: fixed.printBorder, backgroundColor: accent(t), overflow: 'hidden', transform: [{ rotate: '-10deg' }] }}>
-          {day.quest.uri ? <Image testID="album-sticker-photo" source={{ uri: day.quest.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={day.quest.uri} /> : null}
+          {day.quest.uri ? <Photo testID="album-sticker-photo" source={{ uri: day.quest.uri }} style={{ flex: 1, borderRadius: st / 2 }} resizeMode="cover" /> : null}
         </View>
       ) : null}
-    </View>
+    </Tap>
   );
 }
 
@@ -280,6 +319,8 @@ function AlbumTab({ hub }: { hub: Hub }) {
   const { width } = useWindowDimensions();
   const [view, setView] = useState<'Week' | 'Month'>('Week');
   const [off, setOff] = useState(0);
+  const [picking, setPicking] = useState<string | null>(null);
+  const [big, setBig] = useState<number | null>(null);
   const card = useRef<View>(null);
   const today = hub.day, first = Object.keys(hub.album).sort()[0], now = new Date(today + 'T12:00');
   const W = width - 32 - 26; // the screen's gutters, the card's padding and border
@@ -294,7 +335,7 @@ function AlbumTab({ hub }: { hub: Hub }) {
     const item = (k: string, j: number) => {
       const label = k === today ? 'Today' : new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short' });
       const d = hub.album[k];
-      return d?.print ? <Polaroid key={k} day={d} w={pw} tilt={TILT[j]} label={label} peg t={t} />
+      return d?.print ? <Polaroid key={k} day={d} w={pw} tilt={TILT[j]} label={label} peg onPress={() => setPicking(k)} onLongPress={() => setBig(shown.findIndex((p) => p.id === k))} t={t} />
         : <Blank key={k} w={pw} h={pw + 12} label={label} state={k === today ? 'today' : k > today ? 'later' : !first || k < first ? 'off' : 'miss'} t={t} />;
     };
     body = [[0, 3], [3, 7]].map(([a, b]) => (
@@ -317,7 +358,7 @@ function AlbumTab({ hub }: { hub: Hub }) {
           const d = hub.album[k];
           return (
             <View key={k} style={{ width: cw, height: pw + 20, alignItems: 'center', justifyContent: 'center' }}>
-              {d?.print ? <Polaroid day={d} w={pw} tilt={TILT[j % TILT.length]} label={String(j + 1)} t={t} />
+              {d?.print ? <Polaroid day={d} w={pw} tilt={TILT[j % TILT.length]} label={String(j + 1)} onPress={() => setPicking(k)} onLongPress={() => setBig(shown.findIndex((p) => p.id === k))} t={t} />
                 : <Blank w={pw} h={pw + 10} label={String(j + 1)} state={k === today ? 'today' : k > today ? 'later' : !first || k < first ? 'off' : 'miss'} t={t} />}
             </View>
           );
@@ -325,7 +366,8 @@ function AlbumTab({ hub }: { hub: Hub }) {
       </View>
     );
   }
-  const prints = days.filter((k) => hub.album[k]?.print).length, quests = days.filter((k) => hub.album[k]?.quest).length;
+  const shown = days.filter((k) => hub.album[k]?.print).map((k) => ({ id: k, uri: hub.album[k].print! }));
+  const prints = shown.length, quests = days.filter((k) => hub.album[k]?.quest).length;
   const sum = view === 'Week' ? `${s(prints, 'bingo')} · quest ${quests ? 'found' : off ? 'missed' : 'open'}` : `${title}: ${s(prints, 'bingo')}, ${s(quests, 'side quest')}`;
   const name = view === 'Week' ? 'week' : 'month';
   const share = useShare(card, name, `${view === 'Week' ? 'My week' : title} in photo bingo #picdumpbingo`);
@@ -342,16 +384,22 @@ function AlbumTab({ hub }: { hub: Hub }) {
         <Pill items={['Week', 'Month'] as const} on={view} onPick={(v) => { setView(v); setOff(0); }} />
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>{arrow(-1, canBack)}<Text style={[ui(12.5, 600), { color: t.ink, minWidth: 74, textAlign: 'center' }]}>{title}</Text>{arrow(1, off > 0)}</View>
       </View>
+      <View>
       <View ref={card} collapsable={false}>
         <FrameCard radius={14} padding={12}>
           {body}
           <Text style={[ui(12, 600), { color: t.inkMuted, textAlign: 'center', marginTop: 2 }]}>{sum}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-            <ShareButtons name={name} run={share.run} hide={share.hide} shareLabel={`Share ${name}`} />
+            <ShareButtons name={name} ghost shareLabel={`Share ${name}`} />
           </View>
         </FrameCard>
       </View>
+        {/* over the ghost, outside the capture: border + padding */}
+        <View style={{ position: 'absolute', right: 13, bottom: Platform.OS === 'android' ? 14 : 13 }}><ShareButtons name={name} run={share.run} shareLabel={`Share ${name}`} /></View>
+      </View>
       {share.said ? <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: 8 }]}>{share.said}</Text> : null}
+      <PhotoViewer photos={shown} index={big} onClose={() => setBig(null)} />
+      <PrintSheet k={picking} print={picking ? hub.album[picking]?.print : undefined} onClose={() => setPicking(null)} />
     </>
   );
 }
@@ -360,20 +408,20 @@ function AlbumTab({ hub }: { hub: Hub }) {
 export default function Today() {
   const { t } = useTheme();
   const hub = useHub(useApp().library);
-  const [tab, setTab] = useState<'Today' | 'Album'>('Today');
+  const [tab, setTab] = useState<'Bingo' | 'Album'>('Bingo');
   const [focused, setFocused] = useState(false);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
-  const { text, anim, flip } = useSlotPop(hub, focused && tab === 'Today');
+  const { text, anim, flip } = useSlotPop(hub, focused && tab === 'Bingo');
 
   return (
     <View style={{ flex: 1 }}>
       <Screen>
         <View style={{ paddingTop: 2, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
           <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}><Icons.back size={16} /></IconButton>
-          <View style={{ flex: 1, alignItems: 'center' }}><Pill big items={['Today', 'Album'] as const} on={tab} onPick={setTab} /></View>
+          <View style={{ flex: 1, alignItems: 'center' }}><Pill big items={['Bingo', 'Album'] as const} on={tab} onPick={setTab} /></View>
           <View style={{ width: 36 }} />
         </View>
-        {!hub ? <ActivityIndicator color={t.ink} /> : tab === 'Today' ? <TodayTab hub={hub} flip={flip} /> : <AlbumTab hub={hub} />}
+        {!hub ? <ActivityIndicator color={t.ink} /> : tab === 'Bingo' ? <TodayTab hub={hub} flip={flip} /> : <AlbumTab hub={hub} />}
       </Screen>
       <PopToast text={text} anim={anim} t={t} />
     </View>

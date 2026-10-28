@@ -26,7 +26,7 @@ test('the side quest is one a week, Monday to Sunday', () => {
 test('Today: a quest found on Monday stays found all week, its sticker on Monday’s polaroid', async () => {
   await AsyncStorage.setItem('@daydump_today', JSON.stringify({ days: { '2026-10-26': { cells: Array(9).fill(''), print: mon.uri, quest: quest.key, questUri: mon.uri } } }));
   const app = await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(/^Today: /, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^Bingo: /, {}, { timeout: 10000 }));
   await waitFor(() => expect(app.getPathname()).toBe('/today'));
   expect(await screen.findByText('Found on Monday')).toBeTruthy();
   expect(screen.getByText('Stuck on Monday’s polaroid. Next quest on Monday.')).toBeTruthy();

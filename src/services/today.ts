@@ -52,8 +52,13 @@ export const QUESTS: { key: string; label: string; phrase: string }[] = [
   ['ticket', 'A ticket', 'a photo of a ticket or a receipt'], ['music', 'Music', 'a photo of a musical instrument or a record'],
 ].map(([key, label, phrase]) => ({ key, label, phrase }));
 
-/** ponytail: one floor + margin for every phrase (the search's 0.2 / 0.03); per-slot cutoffs if the tag test shows a phrase over- or under-firing */
-const FLOOR = 0.2, MARGIN = 0.03;
+/**
+ * A phrase matches when it's over FLOOR and stands out from the photo's scores for the 16 prompts by Z standard deviations: a dark
+ * or busy photo scores every phrase alike (0.19-0.24 for a plant by a screen) and matches none. Z from the phone's Today tags:
+ * every true match was 2.0 or more, the false ones 1.8 or less.
+ * ponytail: one Z for every phrase; per-slot cutoffs if the tag screen shows a phrase over- or under-firing
+ */
+const FLOOR = 0.2, Z = 1.9;
 /** Same shot (the stories' near-duplicate cutoff): a later take of an earlier photo counts as a duplicate, not a second photo. */
 const SAME_SHOT = 0.92;
 const DAY = 86_400_000;
@@ -90,11 +95,11 @@ export const photosOn = (lib: Library, day: number) => {
   return lib.photos.filter((p) => isCameraPhoto(p.uri) && new Date(p.creationTime).toDateString() === key).sort((a, b) => a.creationTime - b.creationTime);
 };
 
-/** Zero-shot, multi-label: every phrase over FLOOR and within MARGIN of the photo's best phrase. */
-const hits = (scores: Record<string, number>, skip?: (k: string) => boolean) => {
-  const ks = Object.keys(scores).filter((k) => !skip?.(k));
-  const best = Math.max(...ks.map((k) => scores[k]));
-  return ks.filter((k) => scores[k] >= FLOOR && scores[k] >= best - MARGIN);
+/** Zero-shot, multi-label: every phrase over FLOOR and Z standard deviations over the mean of the prompts' scores. */
+export const hits = (scores: Record<string, number>, skip?: (k: string) => boolean) => {
+  const xs = SLOTS.map((s) => scores[s.key]).filter((x) => x != null);
+  const m = xs.reduce((a, x) => a + x, 0) / xs.length, sd = Math.sqrt(xs.reduce((a, x) => a + (x - m) ** 2, 0) / xs.length);
+  return Object.keys(scores).filter((k) => !skip?.(k) && scores[k] >= FLOOR && scores[k] - m >= Z * sd);
 };
 
 export async function checkDay(lib: Library, day = Date.now()): Promise<DayCheck> {
@@ -196,6 +201,8 @@ type Day = {
   cells: (Slot | '')[]; swapped?: boolean; print?: string; quest?: string; questUri?: string; seen?: Slot[];
   /** the user's fixes: the photo they put in a square, and photos they took out of one (it's not that) */
   pick?: Partial<Record<Slot, string>>; not?: Partial<Record<Slot, string[]>>;
+  /** the photo the user chose for the print (Album: tap a polaroid) */
+  printPick?: string;
 };
 type Game = { days: Record<string, Day> };
 const KEY = '@daydump_today';
@@ -257,11 +264,13 @@ function score(d: Day, c: DayCheck) {
     .forEach((m) => { if (!by[m.k] && !used.has(m.uri) && !d.not?.[m.k]?.includes(m.uri)) { by[m.k] = m; used.add(m.uri); } });
   const on = d.cells.map((k, i) => i === FREE || (!!k && !!by[k]));
   const w = wins(on);
-  if (w.length && !d.print) {
-    const best = w.flat().filter((i) => i !== FREE).map((i) => by[d.cells[i] as Slot]!).sort((a, b) => b.s - a.s)[0];
-    d.print = best?.uri;
-  }
-  if (c.questFound && !d.quest) { d.quest = c.quest.key; d.questUri = c.questUri; }
+  // the print: the user's choice, else it stays while its photo is still in a winning row, else the best photo of the rows
+  if (w.length) {
+    const won = w.flat().filter((i) => i !== FREE).map((i) => by[d.cells[i] as Slot]!);
+    d.print = d.printPick ?? (won.some((m) => m.uri === d.print) ? d.print : won.sort((a, b) => b.s - a.s)[0]?.uri);
+  } else if (c.photos.length) delete d.print; // a fix broke the row (no photos: not indexed yet, keep it)
+  // rechecked every time, like the print (no photos: not indexed yet, keep it)
+  if (c.questFound) { d.quest = c.quest.key; d.questUri = c.questUri; } else if (c.photos.length) { delete d.quest; delete d.questUri; }
   return { by, on, w };
 }
 
@@ -377,6 +386,15 @@ export async function setSquare(i: number, uri: string | null) {
     const was = h.cells[i].uri;
     if (was) not[k] = [...(not[k] ?? []), was];
   }
+  await save();
+  await playToday(lastLib);
+}
+
+/** Album: puts photo `uri` on day `key`'s print. */
+export async function setPrint(key: string, uri: string) {
+  const g = await load(), d = g.days[key];
+  if (!d?.print || !lastLib) return;
+  d.printPick = d.print = uri;
   await save();
   await playToday(lastLib);
 }

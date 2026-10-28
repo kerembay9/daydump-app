@@ -47,11 +47,11 @@ export function TodayCard({ more, paper }: { more: boolean; paper?: boolean }) {
 
   return (
     <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
-      <FrameCard radius={16} padding={10} rotate={more ? -1.2 : -0.6} paper={paper ? 'today' : undefined} onPress={() => router.push('/today')} label={`Today: ${sub}`}
+      <FrameCard radius={16} padding={10} rotate={more ? -1.2 : -0.6} paper={paper ? 'today' : undefined} onPress={() => router.push('/today')} label={`Bingo: ${sub}`}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
         <Mini hub={hub} flip={pop.flip} />
         <View style={{ flex: 1 }}>
-          <Text style={[display(17.5), { color: t.ink }]}>Today</Text>
+          <Text style={[display(17.5), { color: t.ink }]}>Bingo</Text>
           <Text style={[ui(11, 500), { color: hub.bingo ? ACCENT : t.inkMuted, marginTop: 2 }]} numberOfLines={2}>{sub}</Text>
           <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
             {hub.week.map((d) => (

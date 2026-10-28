@@ -11,12 +11,12 @@ beforeAll(() => seedWorld([...defaultLibrary(), ...history, photo(at(9), [0, 9])
 
 test('Today hub: one photo fills one square; the week’s quest is open, no dump footer', async () => {
   const app = await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(/^Today: /, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^Bingo: /, {}, { timeout: 10000 }));
   await waitFor(() => expect(app.getPathname()).toBe('/today'));
   await screen.findByText('This week’s side quest');
   expect(screen.queryAllByLabelText(/^(The sky|Somewhere wide), done$/)).toHaveLength(1);
   expect(screen.getByText(/^Tap an empty square to swap it, once a day$/)).toBeTruthy();
-  expect(screen.getByText('Find it any day this week. It’s stuck on that day’s polaroid.')).toBeTruthy();
+  expect(screen.getByText('Find it any day this week.')).toBeTruthy();
   expect(screen.getByText(/^(\d days left|Last day)$/)).toBeTruthy();
   expect(screen.queryByText(/today becomes a dump/)).toBeNull();
 }, 30000);

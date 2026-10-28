@@ -20,7 +20,7 @@ jest.spyOn(ClipEmbedder!, 'embedImages').mockImplementation(async (uris) => {
 
 test('Today: "Checking 1 new photo…" while a photo shot outside the app is read', async () => {
   const app = await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(/^Today: /, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^Bingo: /, {}, { timeout: 10000 }));
   await waitFor(() => expect(app.getPathname()).toBe('/today'));
   expect(await screen.findByText(/^Tap an empty square to swap it, once a day$/)).toBeTruthy();
   expect(screen.queryByLabelText('The sky, done')).toBeNull();

@@ -18,7 +18,7 @@ beforeAll(() => seedWorld([...defaultLibrary(), ...history, ...burst(at(11), 3, 
 
 test('Today hub: the card is drawn from what you shoot, two everyday photos make a bingo and a print, one square swaps', async () => {
   const app = await bootApp('/');
-  const card = await screen.findByLabelText('Today: Bingo! Today’s print is in', {}, { timeout: 10000 });
+  const card = await screen.findByLabelText('Bingo: Bingo! Today’s print is in', {}, { timeout: 10000 });
   expect(screen.queryByLabelText('Preview A week in Seattle')).toBeNull();
 
   await fireEvent.press(card);
@@ -33,7 +33,17 @@ test('Today hub: the card is drawn from what you shoot, two everyday photos make
 
   // the bingo card and the found quest save to the PicDump album and share with their hashtags
   const share = jest.spyOn(ClipEmbedder!, 'shareImages');
+  // the captured photos are RN Images, which clip to their rounded square in the saved PNG (expo-image spills out of it there)
+  for (const id of ['square-photo', 'quest-photo']) expect(screen.getAllByTestId(id)[0].type).toBe('Image');
+  // the buttons sit over the card, outside the capture: they stay up while it is taken
+  const skia = jest.requireMock('@shopify/react-native-skia');
+  let up: boolean[] = [];
+  skia.makeImageFromView.mockImplementationOnce(async () => {
+    up = ['Open camera', 'Save bingo card', 'Share bingo card'].map((l) => screen.queryByLabelText(l) != null && !JSON.stringify(screen.getByLabelText(l).props.style).includes('"opacity":0'));
+    return skia.drawAsImage();
+  });
   await fireEvent.press(screen.getByLabelText('Share bingo card'));
+  await waitFor(() => expect(up).toEqual([true, true, true]));
   await waitFor(() => expect(share).toHaveBeenLastCalledWith([expect.stringMatching(/^file:\/\/\/cache\/bingo card-.*\.png$/)], expect.stringContaining('Bingo! Today’s photo bingo #picdumpbingo'), null));
   await fireEvent.press(screen.getByLabelText('Share side quest'));
   const tag = quest.label.toLowerCase().replace(/[^a-z]/g, '');
@@ -48,8 +58,9 @@ test('Today hub: the card is drawn from what you shoot, two everyday photos make
   expect(empty).toHaveLength(6);
   const before = empty[0].props.accessibilityLabel;
   await fireEvent.press(empty[0]);
-  expect(await screen.findByText(/No swaps left/, {}, { timeout: 5000 })).toBeTruthy(); // after the 3 s "Saved" note
-  expect(screen.queryAllByLabelText(/Tap to swap$/)).toHaveLength(0);
+  await waitFor(() => expect(screen.queryAllByLabelText(/Tap to swap$/)).toHaveLength(0));
+  // no swap left: the hint line says nothing about it
+  await waitFor(() => expect(screen.queryByText(/swap/)).toBeNull(), { timeout: 5000 }); // after the 3 s "Saved" note
   expect(screen.queryByLabelText(before.replace('. Tap to swap', ''))).toBeNull();
 
   // Album: today's print on the week's line with the quest's sticker; the days before had no card (the app wasn't open)
@@ -63,7 +74,7 @@ test('Today hub: the card is drawn from what you shoot, two everyday photos make
   const month = now.toLocaleDateString('en-US', { month: 'long' });
   expect(await screen.findByText(`${month}: 1 bingo, 1 side quest`)).toBeTruthy();
   expect(screen.getByLabelText(`${now.getDate()}: bingo, ${quest.label}`)).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText('Today'));
+  await fireEvent.press(screen.getByLabelText('Bingo'));
 
   await fireEvent.press(await screen.findByText(/^Make a dump from today · \d+ photos$/));
   await waitFor(() => expect(app.getPathname()).toMatch(/^\/preview\//));

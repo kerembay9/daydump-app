@@ -15,7 +15,7 @@ const photoIn = (label: string) => JSON.stringify(within(screen.getByLabelText(l
 
 test('Today: a filled square takes another of today’s photos or none; the camera button opens the camera', async () => {
   const app = await bootApp('/');
-  await fireEvent.press(await screen.findByLabelText(/^Today: /, {}, { timeout: 10000 }));
+  await fireEvent.press(await screen.findByLabelText(/^Bingo: /, {}, { timeout: 10000 }));
   await waitFor(() => expect(app.getPathname()).toBe('/today'));
   expect(await screen.findByLabelText('Somewhere wide, done')).toBeTruthy();
   expect(photoIn('The sky, done')).toContain(sunset.uri);

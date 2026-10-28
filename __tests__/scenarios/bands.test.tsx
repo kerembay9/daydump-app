@@ -23,7 +23,7 @@ test('Bands: default keeps the tiles bare; the one masking tape is the Today car
   await setProfile({ bands: 'default' });
   await bootApp('/');
   await screen.findByLabelText(SEATTLE, {}, { timeout: 10000 });
-  await screen.findByLabelText(/^Today: /);
+  await screen.findByLabelText(/^Bingo: /);
   expect(tapes()).toEqual([cashmere.tapeBg]);
 }, 30000);
 
