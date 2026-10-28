@@ -11,7 +11,7 @@ import { Icons } from './Icons';
 
 const PEEK = 24, SP = 8; // the neighbours show PEEK - SP px at each side: there's more to swipe to
 
-type Photo = { id: string; uri: string };
+type Photo = { id: string; uri: string; created?: number };
 
 /** Pinch zooms toward the fingers and springs back on release (Instagram-style: no pan, so it never fights the swipe). */
 function Zoomable({ uri, w, h, onZoom }: { uri: string; w: number; h: number; onZoom: (on: boolean) => void }) {
@@ -79,7 +79,14 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
       {/* a Modal is its own window: gestures need their own root there */}
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', paddingTop: insets.top, paddingBottom: insets.bottom + 12 }}>
         <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(12, 600), { color: '#fff' }]}>{i + 1} / {n}</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={[ui(12, 600), { color: '#fff' }]}>{i + 1} / {n}</Text>
+            {photos[i]?.created ? (
+              <Text style={[ui(11), { color: 'rgba(255,255,255,0.6)', marginTop: 2 }]}>
+                {new Date(photos[i].created!).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text>
+            ) : null}
+          </View>
           <Tap onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo" hitSlop={10}
             style={{ position: 'absolute', right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
             <Icons.close size={16} color="#fff" />
