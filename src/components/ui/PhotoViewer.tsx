@@ -54,8 +54,12 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
   const itemW = win.width - 2 * PEEK, slot = itemW + SP;
   const n = photos.length;
   const i = Math.min(at, n - 1);
-  const go = (to: number) => { setAt(to); list.current?.scrollToIndex({ index: to }); };
+  // Only a finger's scroll moves the counter: our own animated scroll (‹ ›) reports in-between offsets, often late, which
+  // pulled `at` back mid-flight, so fast taps went from a stale photo (a ‹ after a few › kept going right).
+  const dragging = useRef(false);
+  const go = (to: number) => { dragging.current = false; setAt(to); list.current?.scrollToIndex({ index: to }); };
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!dragging.current) return;
     const k = Math.max(0, Math.min(n - 1, Math.round(e.nativeEvent.contentOffset.x / slot)));
     if (k !== at) setAt(k);
   };
@@ -97,6 +101,7 @@ export function PhotoViewer<P extends Photo>({ photos, index, onClose, footer }:
               getItemLayout={(_, k) => ({ length: slot, offset: slot * k, index: k })}
               initialNumToRender={3}
               windowSize={3}
+              onScrollBeginDrag={() => { dragging.current = true; }}
               onScroll={onScroll}
               scrollEventThrottle={32}
               extraData={i}
