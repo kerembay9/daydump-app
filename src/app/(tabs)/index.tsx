@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlatList, Linking, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
@@ -178,7 +178,8 @@ const FIRST_PAYWALL = '@picdump_first_paywall_shown';
 
 /**
  * Once ever: when indexing is done and Discover shows locked dumps, the paywall lists what it found. Most trials start
- * on day one, and this is the first moment the user can see what Pro opens.
+ * on day one, and this is the first moment the user can see what Pro opens. settled also means Discover is on screen
+ * (not under onboarding, Edit or a Post) and RevenueCat has answered this session: a subscriber is free until then.
  */
 function useFirstPaywall(stories: Story[], settled: boolean, isLocked: (s: Story) => boolean, openPaywall: (source: 'first-discover', found: string[]) => void) {
   const locked = useMemo(() => stories.filter(isLocked).map((s) => s.title), [stories, isLocked]);
@@ -198,7 +199,7 @@ function useFirstPaywall(stories: Story[], settled: boolean, isLocked: (s: Story
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { stories, loaded, permission, paused, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
+  const { stories, loaded, permission, paused, onboarding, pause, resume, shuffleStories, moreStories, showMoreStories } = useApp();
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
@@ -209,8 +210,8 @@ export default function Discover() {
   const pro = usePro();
   const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
   const open = useCallback((s: Story) => (isLocked(s) ? pro.askUnlock(s) : preview(s.id)), [isLocked, pro]);
-  useFirstPaywall(stories, loaded && !progress && !paused, isLocked, pro.openPaywall);
-
+  const focused = useIsFocused();
+  useFirstPaywall(stories, loaded && !progress && !paused && !onboarding && focused && pro.checked, isLocked, pro.openPaywall);
 
   const hero = stories[0];
   const others = useMemo(() => stories.filter((s) => s !== hero), [stories, hero]);
@@ -269,7 +270,7 @@ export default function Discover() {
         data={blocks}
         keyExtractor={(b) => b[0].id}
         renderItem={renderBento}
-        extraData={[more, isLocked]}
+        extraData={renderBento}
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}

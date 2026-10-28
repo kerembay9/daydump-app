@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { PAYWALLS_ENABLED } from '../constants/flags';
 import { access, Access } from '../services/access';
@@ -21,8 +22,12 @@ export type PaywallSource = 'first-discover' | 'locked-dump' | 'search' | 'finis
 type ProValue = {
   /** PicDump Pro, or paywalls off (PAYWALLS_ENABLED = false: everyone is Pro) */
   isPro: boolean;
-  /** the subscription as Profile shows it; null = none */
+  /** the subscription as Profile shows it; null = none (or not known yet) */
   sub: Sub | null;
+  /** Pro or free is known: RevenueCat answered this session, or the last answer was cached. False = assumed free. */
+  known: boolean;
+  /** RevenueCat answered this session (a cached answer may be stale) */
+  checked: boolean;
   unlocks: Unlocks;
   accessOf: (s: Pick<Story, 'id' | 'kind' | 'start' | 'end'>) => Access;
   /** The id this story was unlocked under (a re-index can re-id it since); its draft is the snapshot. Null = never unlocked. */
@@ -39,8 +44,26 @@ type ProValue = {
 
 const Ctx = createContext<ProValue | null>(null);
 
+/** RevenueCat's last answer, so a subscriber starts Pro on a cold start (offline too) instead of free until it answers. */
+const KNOWN = '@picdump_pro_known';
+type Known = { sub: Sub | null; known: boolean; checked: boolean };
+
+async function loadKnown(now: number): Promise<Sub | null | undefined> {
+  try {
+    const raw = await AsyncStorage.getItem(KNOWN);
+    if (!raw) return undefined;
+    const { sub } = JSON.parse(raw) as { sub: Sub | null };
+    // a cancelled sub past its end is over, whatever RevenueCat says later
+    return sub && !sub.renews && sub.until < now ? null : sub;
+  } catch {
+    return undefined;
+  }
+}
+
 export function ProProvider({ children }: { children: React.ReactNode }) {
-  const [sub, setSub] = useState<Sub | null>(null);
+  // until the cache is read, nothing renders: a subscriber's first frame would show locked dumps
+  const [ready, setReady] = useState(false);
+  const [pro, setPro] = useState<Known>({ sub: null, known: false, checked: false });
   const [unlocks, setU] = useState<Unlocks>(NO_UNLOCKS);
   // until the stored unlocks are in, spending would overwrite them with NO_UNLOCKS
   const [unlocksLoaded, setUnlocksLoaded] = useState(false);
@@ -48,14 +71,26 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   // `at`: when the sheet opened, so its text is computed outside render
   const [asking, setAsking] = useState<{ story: Story; at: number } | null>(null);
 
-  const refresh = useCallback(async () => { setSub(await getSubscription()); }, []);
-  useEffect(() => {
-    loadUnlocks().then((u) => { setU(u); setUnlocksLoaded(true); });
-    getSubscription().then(setSub);
-    // renewals, cancellations and purchases made elsewhere (another device, the store's own page)
-    return RevenueCatService.addCustomerInfoListener(() => { getSubscription().then(setSub); });
+  // undefined: RevenueCat couldn't tell (offline with nothing cached, an SDK error): keep what we knew
+  const apply = useCallback((sub: Sub | null | undefined) => {
+    if (sub === undefined) return;
+    setPro({ sub, known: true, checked: true });
+    AsyncStorage.setItem(KNOWN, JSON.stringify({ sub })).catch((e) => console.warn('[pro] cache failed:', e));
   }, []);
+  const refresh = useCallback(async () => { apply(await getSubscription()); }, [apply]);
+  useEffect(() => {
+    loadKnown(Date.now()).then((sub) => {
+      // RevenueCat may have answered first: its answer wins
+      if (sub !== undefined) setPro((cur) => (cur.checked ? cur : { sub, known: true, checked: false }));
+      setReady(true);
+    });
+    loadUnlocks().then((u) => { setU(u); setUnlocksLoaded(true); });
+    getSubscription().then(apply);
+    // renewals, cancellations and purchases made elsewhere (another device, the store's own page)
+    return RevenueCatService.addCustomerInfoListener(() => { getSubscription().then(apply); });
+  }, [apply]);
 
+  const { sub, known, checked } = pro;
   const isPro = !PAYWALLS_ENABLED || sub != null;
   const setUnlocks = useCallback(async (u: Unlocks) => { setU(u); await saveUnlocks(u); }, []);
   const openPaywall = useCallback((source: PaywallSource, found?: string[]) => {
@@ -64,11 +99,11 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<ProValue>(() => ({
-    isPro, sub, unlocks, refresh, setUnlocks, openPaywall,
+    isPro, sub, known, checked, unlocks, refresh, setUnlocks, openPaywall,
     accessOf: (s) => access(s, isPro, unlocks),
     unlockedIdOf: (s) => unlockedAs(unlocks, s),
     askUnlock: (s) => setAsking({ story: s, at: Date.now() }),
-  }), [isPro, sub, unlocks, refresh, setUnlocks, openPaywall]);
+  }), [isPro, sub, known, checked, unlocks, refresh, setUnlocks, openPaywall]);
 
   /**
    * Spends the week's unlock and makes the story's draft now: the draft is the snapshot Preview and Edit open.
@@ -98,7 +133,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider value={value}>
-      {children}
+      {ready && children}
       <UnlockSheet story={asking?.story ?? null} now={asking?.at ?? 0} unlocks={unlocks} ready={unlocksLoaded} spending={spendingNow} onUse={spendUnlock} onPro={() => { setAsking(null); openPaywall('locked-dump'); }} onClose={() => setAsking(null)} />
       <PaywallModal visible={!!paywall} source={paywall?.source ?? 'profile'} found={paywall?.found} onClose={() => setPaywall(null)} onPurchased={refresh} />
     </Ctx.Provider>

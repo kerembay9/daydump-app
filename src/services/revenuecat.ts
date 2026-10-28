@@ -37,13 +37,20 @@ type CustomerInfoCallback = (customerInfo: CustomerInfo, isPro: boolean) => void
 export class RevenueCatService {
   private static isConfigured = false;
   private static listeners: CustomerInfoCallback[] = [];
+  /** the init in flight: every caller on a cold start (Pro, the paywall) waits for one configure and one listener */
+  private static initing: Promise<void> | null = null;
 
   /**
    * 1. Initialize and configure the RevenueCat SDK
    */
-  static async init(): Promise<void> {
-    if (this.isConfigured) return;
+  static init(): Promise<void> {
+    if (this.isConfigured) return Promise.resolve();
+    // a failed init clears itself, so the next call tries again
+    this.initing ??= this.configure().finally(() => { this.initing = null; });
+    return this.initing;
+  }
 
+  private static async configure(): Promise<void> {
     try {
       // Use custom key if overridden in developer tools, otherwise use configured API key
       const customKey = await AsyncStorage.getItem(STORAGE_KEYS.API_KEY);

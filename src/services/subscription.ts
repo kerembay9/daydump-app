@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { RevenueCatService, REVENUECAT_CONFIG } from './revenuecat';
+import { type CustomerInfo, RevenueCatService, REVENUECAT_CONFIG } from './revenuecat';
 
 /** PicDump Pro as Profile shows it. renews false = cancelled: Pro until `until`, then it ends. */
 export type Sub = { plan: 'Weekly' | 'Monthly' | 'Yearly'; until: number; renews: boolean };
@@ -9,36 +9,40 @@ const FAKE = '@daydump_fake_sub';
 const DAY = 86_400_000;
 
 /**
- * Reads active Pro entitlement from RevenueCat, or falls back to dev fake sub in dev mode.
+ * PicDump Pro as RevenueCat says, or the dev fake sub in dev builds. null = no entitlement (free); undefined = couldn't
+ * tell (RevenueCat unreachable or failing, with no cached customer info): callers keep what they last knew.
  */
-export async function getSubscription(): Promise<Sub | null> {
+export async function getSubscription(): Promise<Sub | null | undefined> {
+  let rc: Sub | null | undefined;
   try {
+    // null here is an error the service already logged
     const info = await RevenueCatService.getCustomerInfo();
-    if (info && RevenueCatService.isEntitledToPro(info)) {
-      const activeEnt =
-        info.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] ??
-        info.entitlements.active['picdump_pro'] ??
-        Object.values(info.entitlements.active)[0];
-
-      if (activeEnt) {
-        const prodId = (activeEnt.productIdentifier || '').toLowerCase();
-        const plan: 'Weekly' | 'Monthly' | 'Yearly' =
-          prodId.includes('week') ? 'Weekly'
-          : prodId.includes('month') ? 'Monthly'
-          : 'Yearly';
-        const until = activeEnt.expirationDateMillis ?? (Date.now() + 30 * DAY);
-        const renews = activeEnt.willRenew ?? true;
-        return { plan, until, renews };
-      }
-    }
+    rc = info ? subOf(info) : undefined;
   } catch (e) {
     console.warn('[subscription] Failed to fetch customer info:', e);
   }
-
+  if (rc) return rc;
   if (__DEV__) {
-    try { return JSON.parse((await AsyncStorage.getItem(FAKE)) ?? 'null'); } catch { return null; }
+    try {
+      const fake: Sub | null = JSON.parse((await AsyncStorage.getItem(FAKE)) ?? 'null');
+      if (fake) return fake;
+    } catch { /* no fake sub */ }
   }
-  return null;
+  return rc;
+}
+
+function subOf(info: CustomerInfo): Sub | null {
+  if (!RevenueCatService.isEntitledToPro(info)) return null;
+  const activeEnt =
+    info.entitlements.active[REVENUECAT_CONFIG.ENTITLEMENT_ID] ??
+    info.entitlements.active['picdump_pro'] ??
+    Object.values(info.entitlements.active)[0];
+  if (!activeEnt) return null;
+  const prodId = (activeEnt.productIdentifier || '').toLowerCase();
+  const plan: Sub['plan'] = prodId.includes('week') ? 'Weekly' : prodId.includes('month') ? 'Monthly' : 'Yearly';
+  const until = activeEnt.expirationDateMillis ?? (Date.now() + 30 * DAY);
+  const renews = activeEnt.willRenew ?? true;
+  return { plan, until, renews };
 }
 
 /** Developer tools (dev builds): none → yearly, renewing → monthly, cancelled → none. */
