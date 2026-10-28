@@ -18,7 +18,7 @@ import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
 import { PrivacyModal } from '../components/OnboardingModal';
-import { PaywallModal } from '../components/PaywallModal';
+import { usePro } from '../state/Pro';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
@@ -30,7 +30,7 @@ import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
-import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
@@ -52,6 +52,8 @@ export default function Profile() {
 function ProfileBody() {
   const { t, mode, setMode } = useTheme();
   const app = useApp();
+  const pro = usePro();
+  const sub = pro.sub;
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
   const [dumps, setDumps] = useState(0);
@@ -62,8 +64,6 @@ function ProfileBody() {
   const [bench, setBench] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
-  const [sub, setSub] = useState<Sub | null>(null);
-  const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
   // Leaving while a field is still focused: Android may not fire onEndEditing, so save typed text on the way out.
@@ -78,7 +78,6 @@ function ProfileBody() {
     list().then((d) => setDumps(d.length), () => {});
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
-    getSubscription().then(setSub);
     return flushTyped;
   }, []));
 
@@ -188,7 +187,7 @@ function ProfileBody() {
         </View>
       </FrameCard>
 
-      <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
+      <SubCard sub={sub} onGoPro={() => pro.openPaywall('profile')} />
 
       <Section title="Social post & size defaults" note="New dumps start with the size and quality set here.">
         <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
@@ -260,7 +259,7 @@ function ProfileBody() {
             onPress={() => ClipEmbedder?.setDevModel(DEV_MODEL ? null : 'tc45')} />}
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
+          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(pro.refresh)} />}
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
@@ -278,7 +277,6 @@ function ProfileBody() {
       <PrivacyModal visible={privacy} onClose={() => setPrivacy(false)} />
       <AvatarSheet visible={avatarSheet} onClose={() => setAvatarSheet(false)} hasAvatar={!!p.avatar} onUse={setAvatarFrom} onGallery={pickAvatar}
         onRemove={() => { dropAvatarFile(p.avatar); save({ avatar: '' }); }} />
-      <PaywallModal visible={paywall} onClose={() => setPaywall(false)} onPurchased={() => { getSubscription().then(setSub); }} />
       <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       <DebugStoriesModal visible={debug} onClose={() => setDebug(false)} onResetIndex={app.refreshStories} />
       <BenchModal visible={bench} onClose={() => setBench(false)} />

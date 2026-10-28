@@ -27,6 +27,8 @@ export const world = {
   files: { written: new Set<string>(), held: null as (() => void)[] | null },
   /** search languages (QueryTranslate): the phone's language, downloaded models, and a gate translation downloads wait on */
   lang: { device: 'en' as string | null, downloaded: ['en'], gate: Promise.resolve(), dict: { 'gün batımı': 'sunset' } as Record<string, string> },
+  /** RevenueCat says the user has PicDump Pro (default: yes, so scenarios not about monetization see no locks) */
+  pro: true,
 };
 
 let n = 0;
@@ -58,6 +60,7 @@ export function seedWorld(photos = defaultLibrary()) {
   world.shareResult = 'com.instagram.android';
   world.shareTargets = ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'];
   world.files = { written: new Set(), held: null };
+  world.pro = true;
 }
 
 export const byUri = (uri: string) => world.photos.find((p) => p.uri === uri);

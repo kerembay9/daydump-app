@@ -19,6 +19,8 @@ export function PaywallModal({
   visible: boolean;
   onClose: () => void;
   onPurchased?: () => void;
+  source?: string;
+  found?: string[];
 }) {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();

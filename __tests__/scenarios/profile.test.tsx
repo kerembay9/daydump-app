@@ -82,6 +82,7 @@ test('Profile: stats show Total Photos and Library, no Discover count', async ()
 }, 30000);
 
 test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
+  world.pro = false;
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
   expect(screen.getByText('PicDump Pro')).toBeTruthy();
@@ -90,15 +91,18 @@ test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
   expect(screen.queryByText('Done')).toBeNull();
   expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
   await fireEvent.press(screen.getByLabelText('Close paywall'));
+  world.pro = true;
 }, 30000);
 
 test('a renewing subscription shows its renewal date and Manage', async () => {
+  world.pro = false;
   await AsyncStorage.setItem('@daydump_fake_sub', JSON.stringify({ plan: 'Yearly', until: Date.UTC(2027, 4, 12, 12), renews: true }));
   await bootApp('/profile');
   expect(await screen.findByText(/^Yearly · renews .*2027/, {}, { timeout: 10000 })).toBeTruthy();
   expect(screen.getByText('Manage')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Go Pro' })).toBeNull();
   await AsyncStorage.removeItem('@daydump_fake_sub');
+  world.pro = true;
 }, 30000);
 
 // Profile has the Pro card (above); everywhere else stays paywall-free

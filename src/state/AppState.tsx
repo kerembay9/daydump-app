@@ -204,7 +204,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       await resumeIndexing();
       refreshStories();
     },
-    // The onboarding paywall hook is gone (PAYWALLS_ENABLED = false).
     start,
     finishOnboarding: async (started) => {
       setOnboarding(false);

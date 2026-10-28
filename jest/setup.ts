@@ -63,7 +63,9 @@ jest.mock('react-native-purchases', () => ({
     setLogLevel: jest.fn(),
     configure: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(),
-    getCustomerInfo: jest.fn(async () => ({ entitlements: { active: {} } })),
+    getCustomerInfo: jest.fn(async () => ({
+      entitlements: { active: require('./world').world.pro ? { daydump_pro: { productIdentifier: 'picdump_yearly', willRenew: true, expirationDateMillis: Date.now() + 365 * 86400000 } } : {} },
+    })),
     getOfferings: jest.fn(async () => ({
       current: {
         availablePackages: [

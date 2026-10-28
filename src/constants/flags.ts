@@ -1,5 +1,5 @@
 /**
- * Paywalls are off: everyone gets Pro. No crown/upgrade UI, no daily limit, no frame/tone locks, no watermark, and
- * RevenueCat is never initialised (revenuecat.ts and react-native-purchases stay in the repo for later).
+ * Paywalls: free users see every Discover dump's title but only the 8 PM recap and one dump a week unlocked; Pro opens
+ * everything (docs/superpowers/specs/2026-10-28-monetization-design.md). false = kill switch: everyone gets Pro.
  */
-export const PAYWALLS_ENABLED = false;
+export const PAYWALLS_ENABLED = true;
