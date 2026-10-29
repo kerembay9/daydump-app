@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "关闭",
+    "back": "返回",
+    "termsOfService": "服务条款",
+    "privacyPolicy": "隐私政策"
+  },
+  "tabs": {
+    "discover": "发现",
+    "create": "制作",
+    "tidy": "整理",
+    "library": "图库"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "轻松生成图片集",
+      "title": "告别相册杂乱，一键生成 dump",
+      "description": "无需再从成千上万张照片中逐一翻找。PicDump 会挑选出你日常生活与旅途中最精彩的瞬间，流畅排版呈现。",
+      "point1": "胶片质感滤镜、精美边框与适配 IG / TikTok 的尺寸",
+      "point2": "拼图排版，只需轻轻一滑"
+    },
+    "privacy": {
+      "badge": "端侧本地精选",
+      "title": "照片只在手机上筛选，不上云端",
+      "description": "照片挑选、搜索及 dump 制作全在你的手机本地运行。PicDump 不会上传你的照片进行筛选。",
+      "point1": "开启相册权限，让应用为你发掘高光时刻"
+    },
+    "allowContinue": "允许访问照片并继续",
+    "continue": "继续",
+    "page": "第 {{n}} 页 / 共 {{total}} 页",
+    "notifPreview": "通知预览",
+    "notifNow": "· 刚刚",
+    "notifTitle": "你的 PicDump 已就绪 🎞️",
+    "notifBody": "今天的照片已精选归纳为一个 dump。睡前看一眼吧。",
+    "notifyHeading": "每晚 8 点回顾今日，周日回顾一周",
+    "notifyBody": "每晚 8 点当今日 dump 准备就绪时提醒你，周日中午为你带来本周精选。",
+    "turnOn": "开启",
+    "notNow": "以后再说"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "相册中的每一个 dump。",
+      "sub": "免费版可获取精彩回顾和每周一个 dump。升级 Pro 解锁全部。"
+    },
+    "tidy": {
+      "heading": "清理冗余杂乱。",
+      "sub": "免费版可找出所有重复和模糊照片。升级 Pro 一键将它们移至最近删除。"
+    },
+    "finish": {
+      "heading": "保留胶片质感。",
+      "sub": "Original、Warm 35mm 和 Adjust 免费提供。Pro 可导出所有滤镜风格与质感。"
+    },
+    "search": {
+      "heading": "搜索你的手机相册。",
+      "sub": "用文字寻找地点、月份或事物。Pro 专属搜索功能。"
+    },
+    "found": {
+      "heading": {
+        "one": "我们在你的相册中找到了 {{count}} 个 dump。",
+        "other": "我们在你的相册中找到了 {{count}} 个 dump。"
+      },
+      "sub": "{{titles}}。Pro 可解锁全部。",
+      "subMore": "{{titles}} 等更多内容。Pro 可解锁全部。"
+    },
+    "welcome": "欢迎加入 PicDump Pro！",
+    "purchaseNotActive": "购买已完成，但 Pro 尚未激活。请点击「恢复购买」。",
+    "restored": "购买已恢复。欢迎回到 Pro！",
+    "noSubscription": "未找到有效的 PicDump Pro 订阅。",
+    "close": "关闭付费墙",
+    "feature": {
+      "dumps": {
+        "title": "解锁所有 dump",
+        "sub": "「发现」中找到的每一次旅行与故事，不再限制每周仅一次。"
+      },
+      "search": {
+        "title": "搜索你的手机相册",
+        "sub": "用文字搜索特定地点、月份或物品。"
+      },
+      "looks": {
+        "title": "全部胶片滤镜",
+        "sub": "Cashmere、Soft Film、Sunfade、B&W Roll，以及颗粒、褪色与暗角调节。"
+      },
+      "tidy": {
+        "title": "清理重复与杂乱照片",
+        "sub": "一次性将重复照片、模糊拍摄及截屏移入废纸篓。"
+      },
+      "yours": {
+        "title": "随心定制你的专属 dump",
+        "sub": "去除 PicDump 结尾幻灯片，每个 dump 支持 4 至 20 张照片。"
+      }
+    },
+    "plansFailed": "无法加载订阅方案。请检查网络连接后重试。",
+    "startTrial": "开始体验 {{trial}}",
+    "continue": "继续",
+    "restore": "恢复购买",
+    "trialThen": "试用期内免费，之后 {{price}}。 ",
+    "disclosure": "费用将从你的应用商店账户中扣除。除非在当前订阅期结束前至少 24 小时取消，否则订阅将自动续期。"
+  },
+  "profile": {
+    "title": "个人资料与设置",
+    "changePhoto": "更换个人头像",
+    "namePlaceholder": "你的姓名",
+    "handlePlaceholder": "your_account",
+    "theme": {
+      "system": "跟随系统",
+      "auto": "自动",
+      "cashmere": "Cashmere",
+      "light": "浅色",
+      "espresso": "Espresso",
+      "dark": "深色"
+    },
+    "reindex": {
+      "title": "重新建立图库索引？",
+      "body": "PicDump 将重新读取每张照片。这需要几分钟并消耗少量电量。图库中现有的 dump 将被保留。",
+      "action": "重新索引"
+    },
+    "dumpPicks": {
+      "title": "Dump 精选设置",
+      "photosPerDump": "每个 dump 照片数量",
+      "photosPerDumpSub": "「发现」将在此范围内挑选照片数量，多取中间值。",
+      "fewest": "最少照片数",
+      "to": "至",
+      "most": "最多照片数",
+      "hideSensitive": "隐藏敏感照片",
+      "hideSensitiveSub": "身份证件、银行卡和医疗凭证绝不会出现在 dump 中。",
+      "screenshots": "包含屏幕截图",
+      "screenshotsSub": "屏幕截图可能会出现在 dump 中。",
+      "recap": "精彩回顾",
+      "recapSub": "今日 dump 每晚 8 点，本周精选周日中午"
+    },
+    "export": {
+      "title": "导出与发布",
+      "note": "新生成的 dump 将默认采用此处设置的尺寸与画质。",
+      "postSize": "默认发布尺寸",
+      "quality": "默认导出画质",
+      "hd": "高清 HD (2160 px)",
+      "standard": "标准 Standard (1080 px)",
+      "saveOnPost": "发布时同步保存至相册",
+      "saveOnPostSub": "在 PicDump 相册中保留一份幻灯片副本"
+    },
+    "appearance": {
+      "title": "外观与主题"
+    },
+    "library": {
+      "title": "照片图库与搜索",
+      "access": "访问权限",
+      "openSettings": "打开系统设置"
+    },
+    "about": {
+      "title": "隐私与关于",
+      "onDevice": "全部在手机本地完成",
+      "onDeviceSub": "了解 PicDump 如何在不上传照片的前提下进行精选",
+      "contact": "联系我们",
+      "noMail": "未找到邮件客户端。请写信至 info@horizonzeta.com",
+      "version": "版本"
+    }
+  }
+}

@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Sluiten",
+    "back": "Terug",
+    "termsOfService": "Algemene voorwaarden",
+    "privacyPolicy": "Privacybeleid"
+  },
+  "tabs": {
+    "discover": "Ontdekken",
+    "create": "Maken",
+    "tidy": "Opruimen",
+    "library": "Bibliotheek"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Moeiteloze fotodumps",
+      "title": "Maak van je filmrol-chaos dumps",
+      "description": "Nooit meer scrollen door duizenden foto's. PicDump kiest de beste foto's van je dagen en reizen, met een natuurlijke flow.",
+      "point1": "Filmlooks, kaders en formaten voor IG en TikTok",
+      "point2": "Collagelay-outs, swipe voor swipe"
+    },
+    "privacy": {
+      "badge": "Curatie op je apparaat",
+      "title": "Gekozen op je telefoon, niet in de cloud",
+      "description": "Fotoselectie, zoeken en dumps draaien op je telefoon. PicDump uploadt je foto's nooit om ze te cureren.",
+      "point1": "Met fototoegang worden je mooiste momenten gevonden"
+    },
+    "allowContinue": "Geef toegang tot foto's en ga door",
+    "continue": "Doorgaan",
+    "page": "Pagina {{n}} van {{total}}",
+    "notifPreview": "Meldingsvoorbeeld",
+    "notifNow": "· zojuist",
+    "notifTitle": "Je PicDump staat klaar 🎞️",
+    "notifBody": "De foto's van vandaag samengevat in één dump. Bekijk het voor het slapengaan.",
+    "notifyHeading": "Je dag om 20:00, je week op zondag",
+    "notifyBody": "Een seintje om 20:00 wanneer de dump van vandaag klaarstaat, en op zondag om 12:00 met je weekoverzicht.",
+    "turnOn": "Inschakelen",
+    "notNow": "Niet nu"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Elke dump in je filmrol.",
+      "sub": "Met Gratis krijg je recaps en één dump per week. Pro ontgrendelt ze allemaal."
+    },
+    "tidy": {
+      "heading": "Ruim de rommel op.",
+      "sub": "Met Gratis vind je herhalingen en onscherpe foto's. Pro verplaatst ze in één keer naar de Prullenmand."
+    },
+    "finish": {
+      "heading": "Behoud de filmlook.",
+      "sub": "Original, Warm 35mm en Adjust zijn gratis. Pro exporteert elke look en textuur."
+    },
+    "search": {
+      "heading": "Zoek in je filmrol.",
+      "sub": "Zoek een plek, maand of voorwerp met woorden. Zoeken is inbegrepen bij Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "We hebben {{count}} dump gevonden in je filmrol.",
+        "other": "We hebben {{count}} dumps gevonden in je filmrol."
+      },
+      "sub": "{{titles}}. Pro ontgrendelt ze allemaal.",
+      "subMore": "{{titles}} en meer. Pro ontgrendelt ze allemaal."
+    },
+    "welcome": "Welkom bij PicDump Pro!",
+    "purchaseNotActive": "De aankoop is gelukt, maar Pro is nog niet geactiveerd. Tik op Aankopen herstellen.",
+    "restored": "Aankopen hersteld. Welkom terug bij Pro!",
+    "noSubscription": "Geen actief PicDump Pro-abonnement gevonden.",
+    "close": "Betaalscherm sluiten",
+    "feature": {
+      "dumps": {
+        "title": "Elke dump ontgrendeld",
+        "sub": "Elke reis en elk verhaal dat Ontdekken vindt, niet slechts één per week."
+      },
+      "search": {
+        "title": "Doorzoek je filmrol",
+        "sub": "Zoek een plek, maand of voorwerp met woorden."
+      },
+      "looks": {
+        "title": "Alle filmlooks",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus korrel, fade en vignet."
+      },
+      "tidy": {
+        "title": "Verwijder dubbele foto's en rommel",
+        "sub": "Verplaats dubbele, onscherpe foto's en screenshots in één keer naar de Prullenmand."
+      },
+      "yours": {
+        "title": "Jouw dump, op jouw manier",
+        "sub": "Geen PicDump-einddia en 4 tot 20 foto's per dump."
+      }
+    },
+    "plansFailed": "Abonnementen konden niet worden geladen. Controleer je verbinding en probeer het opnieuw.",
+    "startTrial": "Start {{trial}}",
+    "continue": "Doorgaan",
+    "restore": "Aankopen herstellen",
+    "trialThen": "Gratis tijdens de proefperiode, daarna {{price}}. ",
+    "disclosure": "De betaling wordt in rekening gebracht via je account van de app store. Abonnementen worden automatisch verlengd, tenzij ze ten minste 24 uur voor het einde van de huidige periode worden opgezegd."
+  },
+  "profile": {
+    "title": "Profiel en instellingen",
+    "changePhoto": "Profielfoto wijzigen",
+    "namePlaceholder": "Je naam",
+    "handlePlaceholder": "jouw_account",
+    "theme": {
+      "system": "Systeem",
+      "auto": "Automatisch",
+      "cashmere": "Cashmere",
+      "light": "Licht",
+      "espresso": "Espresso",
+      "dark": "Donker"
+    },
+    "reindex": {
+      "title": "Je bibliotheek opnieuw indexeren?",
+      "body": "PicDump leest elke foto opnieuw in. Dit duurt een paar minuten en kost wat batterij. Je dumps in Bibliotheek blijven bewaard.",
+      "action": "Opnieuw indexeren"
+    },
+    "dumpPicks": {
+      "title": "Dumpselectie",
+      "photosPerDump": "Foto's per dump",
+      "photosPerDumpSub": "Ontdekken kiest een aantal binnen dit bereik, meestal ergens in het midden.",
+      "fewest": "Minste foto's",
+      "to": "tot",
+      "most": "Meeste foto's",
+      "hideSensitive": "Gevoelige foto's verbergen",
+      "hideSensitiveSub": "ID-bewijzen, bankpassen en medische documenten verschijnen nooit in dumps.",
+      "screenshots": "Schermafbeeldingen opnemen",
+      "screenshotsSub": "Schermafbeeldingen kunnen in dumps verschijnen.",
+      "recap": "Overzicht",
+      "recapSub": "De dump van vandaag om 20:00, je week op zondag om 12:00"
+    },
+    "export": {
+      "title": "Exporteren en delen",
+      "note": "Nieuwe dumps gebruiken standaard het formaat en de kwaliteit die hier zijn ingesteld.",
+      "postSize": "Standaard postformaat",
+      "quality": "Standaard exportkwaliteit",
+      "hd": "HD (2160 px)",
+      "standard": "Standaard (1080 px)",
+      "saveOnPost": "Delen slaat ook op in galerij",
+      "saveOnPostSub": "Bewaart een kopie van de dia's in het PicDump-album"
+    },
+    "appearance": {
+      "title": "Weergave en thema"
+    },
+    "library": {
+      "title": "Fotobibliotheek en zoeken",
+      "access": "Toegang",
+      "openSettings": "Instellingen openen"
+    },
+    "about": {
+      "title": "Privacy en over",
+      "onDevice": "Alles gebeurt op je telefoon",
+      "onDeviceSub": "Hoe PicDump foto's selecteert zonder ze te uploaden"
+      ,"contact": "Contact",
+      "noMail": "Geen e-mailapp gevonden. Schrijf naar info@horizonzeta.com",
+      "version": "Versie"
+    }
+  }
+}

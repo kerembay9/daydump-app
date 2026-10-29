@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Chiudi",
+    "back": "Indietro",
+    "termsOfService": "Termini di servizio",
+    "privacyPolicy": "Informativa sulla privacy"
+  },
+  "tabs": {
+    "discover": "Scopri",
+    "create": "Crea",
+    "tidy": "Riordina",
+    "library": "Libreria"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dump senza sforzo",
+      "title": "Trasforma il caos del rullino in dump perfetti",
+      "description": "Basta scorrere all'infinito tra migliaia di scatti. PicDump seleziona le foto migliori delle tue giornate e dei tuoi viaggi, con il giusto ritmo.",
+      "point1": "Effetti pellicola, bordi e formati per IG / TikTok",
+      "point2": "Layout collage con un semplice tocco"
+    },
+    "privacy": {
+      "badge": "Selezione locale sul dispositivo",
+      "title": "Scelte sul tuo telefono, non nel cloud",
+      "description": "Selezione delle foto, ricerca e creazione dei dump avvengono interamente sul tuo dispositivo. PicDump non carica mai le tue foto per selezionarle.",
+      "point1": "L'accesso alle foto permette di trovare i tuoi momenti indimenticabili"
+    },
+    "allowContinue": "Consenti foto e continua",
+    "continue": "Continua",
+    "page": "Pagina {{n}} di {{total}}",
+    "notifPreview": "Anteprima notifica",
+    "notifNow": "· adesso",
+    "notifTitle": "Il tuo PicDump è pronto 🎞️",
+    "notifBody": "Le foto di oggi raccolte in un unico dump. Dacci un'occhiata prima di andare a dormire!",
+    "notifyHeading": "La tua giornata alle 20:00, la tua settimana la domenica",
+    "notifyBody": "Un avviso alle 20:00 quando il dump di oggi è pronto, e la domenica a mezzogiorno con il riepilogo della settimana.",
+    "turnOn": "Attiva",
+    "notNow": "Non ora"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Ogni dump nel tuo rullino.",
+      "sub": "La versione gratuita include i riepiloghi e un dump a settimana. Pro sblocca tutti i dump."
+    },
+    "tidy": {
+      "heading": "Elimina il disordine.",
+      "sub": "La versione gratuita trova scatti doppi e sfocati. Pro li sposta nel Cestino in un solo tocco."
+    },
+    "finish": {
+      "heading": "Conserva lo stile pellicola.",
+      "sub": "Original, Warm 35mm e Adjust sono gratuiti. Pro esporta tutti gli stili e le texture."
+    },
+    "search": {
+      "heading": "Cerca nel tuo rullino.",
+      "sub": "Trova un luogo, un mese o un oggetto con semplici parole. La ricerca è inclusa in Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Abbiamo trovato {{count}} dump nel tuo rullino.",
+        "other": "Abbiamo trovato {{count}} dump nel tuo rullino."
+      },
+      "sub": "{{titles}}. Pro li sblocca tutti.",
+      "subMore": "{{titles}} e altri ancora. Pro li sblocca tutti."
+    },
+    "welcome": "Ti diamo il benvenuto in PicDump Pro!",
+    "purchaseNotActive": "L'acquisto è andato a buon fine ma Pro non si è ancora attivato. Tocca Ripristina acquisti.",
+    "restored": "Acquisti ripristinati. Bentornato in Pro!",
+    "noSubscription": "Nessun abbonamento PicDump Pro attivo trovato.",
+    "close": "Chiudi paywall",
+    "feature": {
+      "dumps": {
+        "title": "Tutti i dump sbloccati",
+        "sub": "Ogni viaggio e momento speciale trovato da Scopri, non solo uno a settimana."
+      },
+      "search": {
+        "title": "Cerca nel tuo rullino",
+        "sub": "Trova un posto, un mese o un oggetto digitando semplici parole."
+      },
+      "looks": {
+        "title": "Tutti gli stili pellicola",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, oltre a grana, dissolvenza e vignettatura."
+      },
+      "tidy": {
+        "title": "Elimina duplicati e disordine",
+        "sub": "Sposta doppioni, foto sfocate e screenshot nel Cestino con un solo tocco."
+      },
+      "yours": {
+        "title": "Il tuo dump, come piace a te",
+        "sub": "Senza slide finale PicDump e da 4 a 20 foto per ogni dump."
+      }
+    },
+    "plansFailed": "Impossibile caricare i piani. Controlla la connessione e riprova.",
+    "startTrial": "Inizia {{trial}}",
+    "continue": "Continua",
+    "restore": "Ripristina acquisti",
+    "trialThen": "Gratis per il periodo di prova, poi {{price}}. ",
+    "disclosure": "Il pagamento viene addebitato sul tuo account dello store. Gli abbonamenti si rinnovano automaticamente a meno che non vengano annullati almeno 24 ore prima del termine del periodo in corso."
+  },
+  "profile": {
+    "title": "Profilo e impostazioni",
+    "changePhoto": "Modifica foto profilo",
+    "namePlaceholder": "Il tuo nome",
+    "handlePlaceholder": "tuo_account",
+    "theme": {
+      "system": "Sistema",
+      "auto": "Automatico",
+      "cashmere": "Cashmere",
+      "light": "Chiaro",
+      "espresso": "Espresso",
+      "dark": "Scuro"
+    },
+    "reindex": {
+      "title": "Reindicizzare la libreria?",
+      "body": "PicDump analizzerà nuovamente ogni foto. L'operazione richiederà alcuni minuti e un po' di batteria. I dump salvati in Libreria verranno conservati.",
+      "action": "Reindicizza"
+    },
+    "dumpPicks": {
+      "title": "Preferenze dump",
+      "photosPerDump": "Foto per dump",
+      "photosPerDumpSub": "Scopri sceglie un numero di foto in questo intervallo, orientandosi verso la media.",
+      "fewest": "Meno foto",
+      "to": "a",
+      "most": "Più foto",
+      "hideSensitive": "Nascondi foto riservate",
+      "hideSensitiveSub": "Documenti di identità, carte di pagamento e referti medici non appariranno mai nei dump.",
+      "screenshots": "Includi screenshot",
+      "screenshotsSub": "Gli screenshot possono apparire nei dump.",
+      "recap": "Riepilogo",
+      "recapSub": "Il dump di oggi alle 20:00, quello settimanale la domenica a mezzogiorno"
+    },
+    "export": {
+      "title": "Esportazione e condivisione",
+      "note": "I nuovi dump useranno le dimensioni e la qualità impostate qui.",
+      "postSize": "Dimensioni post predefinite",
+      "quality": "Qualità di esportazione predefinita",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Salva anche nella galleria quando pubblichi",
+      "saveOnPostSub": "Salva una copia delle slide nell'album PicDump"
+    },
+    "appearance": {
+      "title": "Aspetto e tema"
+    },
+    "library": {
+      "title": "Libreria foto e ricerca",
+      "access": "Accesso",
+      "openSettings": "Apri impostazioni"
+    },
+    "about": {
+      "title": "Privacy e informazioni",
+      "onDevice": "Tutto avviene sul tuo telefono",
+      "onDeviceSub": "Come PicDump seleziona le foto senza caricarle online",
+      "contact": "Contatti",
+      "noMail": "Nessuna app di posta trovata. Scrivi a info@horizonzeta.com",
+      "version": "Versione"
+    }
+  }
+}

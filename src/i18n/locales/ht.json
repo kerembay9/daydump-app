@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Fèmen",
+    "back": "Tounen",
+    "termsOfService": "Kondisyon Itilizasyon",
+    "privacyPolicy": "Politik sou Konfidansyalite"
+  },
+  "tabs": {
+    "discover": "Dekouvri",
+    "create": "Kreye",
+    "tidy": "Ranje",
+    "library": "Bibliyotèk"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dumps san tèt chaje",
+      "title": "Chanje dezòd galri w an photo dumps",
+      "description": "Bliye defile nan mitan plizyè milye foto. PicDump chwazi pi bon foto jounen ak vwayaj ou yo avèk yon bèl ritm.",
+      "point1": "Estil fim, kad ak dimansyon pou IG / TikTok",
+      "point2": "Koleksyon fòma kolaj, yon glise alafwa"
+    },
+    "privacy": {
+      "badge": "Seleksyon sou aparèy la menm",
+      "title": "Chwazi sou telefòn ou, pa nan nwaj la",
+      "description": "Chwa foto yo, rechèch ak dumps fèt dirèkteman sou telefòn ou. PicDump pa voye foto w sou entènèt pou triye yo.",
+      "point1": "Aksè nan foto yo pèmèt li jwenn pi bèl moman w yo"
+    },
+    "allowContinue": "Otorize foto & kontinye",
+    "continue": "Kontinye",
+    "page": "Paj {{n}} sou {{total}}",
+    "notifPreview": "Aperçu notifikasyon",
+    "notifNow": "· kounye a",
+    "notifTitle": "PicDump ou a pare 🎞️",
+    "notifBody": "Foto jodi a, rasanble nan yon sèl dump. Jete yon koutje anvan w dòmi.",
+    "notifyHeading": "Jounen w a 8 PM, semèn ou dimanch",
+    "notifyBody": "Yon rapèl a 8 PM lè dump jodi a pare, epi dimanch a midi avèk rezime semèn ou.",
+    "turnOn": "Aktive",
+    "notNow": "Pa kounye a"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Chak dump nan galri w.",
+      "sub": "Vèsyon gratis la ba w rezime yo ak yon dump pa semèn. Pro debloke yo tout."
+    },
+    "tidy": {
+      "heading": "Netwaye dezòd la.",
+      "sub": "Vèsyon gratis la jwenn tout foto ki repete ak sa ki flou. Pro mete yo nan bwat fatra an yon sèl kou."
+    },
+    "finish": {
+      "heading": "Kenbe bèl stil fim nan.",
+      "sub": "Original, Warm 35mm ak Adjust gratis. Pro ekspòte tout estil ak teksti."
+    },
+    "search": {
+      "heading": "Chèche nan galri foto w.",
+      "sub": "Jwenn yon kote, yon mwa oswa yon bagay ak mo senp. Rechèch disponib ak Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Nou jwenn {{count}} dump nan galri w.",
+        "other": "Nou jwenn {{count}} dumps nan galri w."
+      },
+      "sub": "{{titles}}. Pro debloke yo tout.",
+      "subMore": "{{titles}} ak plis ankò. Pro debloke yo tout."
+    },
+    "welcome": "Byenvini nan PicDump Pro!",
+    "purchaseNotActive": "Acha a fin fèt men Pro poko aktive. Klike sou Retabli acha yo.",
+    "restored": "Acha yo retabli. Byenvini ankò nan Pro!",
+    "noSubscription": "Pa jwenn okenn abònman aktif pou PicDump Pro.",
+    "close": "Fèmen paj abònman an",
+    "feature": {
+      "dumps": {
+        "title": "Tout dump yo debloke",
+        "sub": "Chak vwayaj ak istwa Dekouvri jwenn, pa sèlman youn pa semèn."
+      },
+      "search": {
+        "title": "Chèche nan galri foto w",
+        "sub": "Jwenn yon kote, yon mwa oswa yon objè ak mo."
+      },
+      "looks": {
+        "title": "Tout estil fim yo",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plis grenn fim, fennen ak viyèt."
+      },
+      "tidy": {
+        "title": "Retire foto doub ak dezòd",
+        "sub": "Mete foto doub, foto flou ak kapti ekran nan fatra an yon sèl kou."
+      },
+      "yours": {
+        "title": "Dump ou, nan jan w vle",
+        "sub": "San dènye imaj PicDump la, epi 4 rive 20 foto pou chak dump."
+      }
+    },
+    "plansFailed": "Plan yo pa t ka chaje. Verifye koneksyon w epi eseye ankò.",
+    "startTrial": "Kòmanse {{trial}}",
+    "continue": "Kontinye",
+    "restore": "Retabli acha yo",
+    "trialThen": "Gratis pandan peryòd esè a, apre sa {{price}}. ",
+    "disclosure": "Peman an ap debite sou kont magazen w lan. Abònman an renouvle otomatikman si w pa anile l omwen 24 èdtan anvan fen peryòd la."
+  },
+  "profile": {
+    "title": "Pwofil & Anviwònman",
+    "changePhoto": "Chanje foto pwofil",
+    "namePlaceholder": "Non ou",
+    "handlePlaceholder": "kont_ou",
+    "theme": {
+      "system": "Sistèm",
+      "auto": "Otomatik",
+      "cashmere": "Cashmere",
+      "light": "Klè",
+      "espresso": "Espresso",
+      "dark": "Fonse"
+    },
+    "reindex": {
+      "title": "Re-endekse bibliyotèk ou a?",
+      "body": "PicDump ap reli chak foto ankò. Sa ap pran kèk minit epi sèvi ak yon ti batri. Dump ou yo nan Bibliyotèk ap konsève.",
+      "action": "Re-endekse"
+    },
+    "dumpPicks": {
+      "title": "Chwa dump",
+      "photosPerDump": "Foto pou chak dump",
+      "photosPerDumpSub": "Dekouvri chwazi yon kantite nan entèval sa a, sitou nan mitan an.",
+      "fewest": "Mwens foto",
+      "to": "rive",
+      "most": "Plis foto",
+      "hideSensitive": "Kache foto sansib",
+      "hideSensitiveSub": "Pyès idantite, kat labank ak papye medikal p ap janm parèt nan dump yo.",
+      "screenshots": "Mete kapti ekran yo",
+      "screenshotsSub": "Kapti ekran yo ka parèt nan dump yo.",
+      "recap": "Rezime",
+      "recapSub": "Dump jodi a a 8 PM, semèn ou dimanch a midi"
+    },
+    "export": {
+      "title": "Ekspòtasyon & pataj",
+      "note": "Nouvo dump yo kòmanse ak gwosè ak kalite ki fikse la a.",
+      "postSize": "Gwosè piblikasyon pa defo",
+      "quality": "Kalite ekspòtasyon pa defo",
+      "hd": "HD (2160 px)",
+      "standard": "Estanda (1080 px)",
+      "saveOnPost": "Lè w pibliye, li anrejistre nan galri tou",
+      "saveOnPostSub": "Kenbe yon kopi imaj yo nan albòm PicDump la"
+    },
+    "appearance": {
+      "title": "Aparans & tèm"
+    },
+    "library": {
+      "title": "Bibliyotèk foto & rechèch",
+      "access": "Aksè",
+      "openSettings": "Ouvri anviwònman yo"
+    },
+    "about": {
+      "title": "Konfidansyalite & enfòmasyon",
+      "onDevice": "Tout bagay fèt sou telefòn ou",
+      "onDeviceSub": "Kijan PicDump chwazi foto san li pa telechaje yo nan nwaj",
+      "contact": "Kontak",
+      "noMail": "Pa jwenn okenn aplikasyon imel. Ekri nan info@horizonzeta.com",
+      "version": "Vèsyon"
+    }
+  }
+}

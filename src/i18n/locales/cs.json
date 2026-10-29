@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Zavřít",
+    "back": "Zpět",
+    "termsOfService": "Podmínky služby",
+    "privacyPolicy": "Zásady ochrany soukromí"
+  },
+  "tabs": {
+    "discover": "Objevovat",
+    "create": "Vytvořit",
+    "tidy": "Uklidit",
+    "library": "Knihovna"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Fotodumpy bez námahy",
+      "title": "Proměňte chaos v galerii na stylové dumpy",
+      "description": "Dejte sbohem nekonečnému procházení tisíců fotek. PicDump vybere ty nejlepší snímky z vašich dnů a výletů s přirozeným rytmem.",
+      "point1": "Filmový vzhled, rámečky a formáty pro IG i TikTok",
+      "point2": "Koláže jediným přejetím prstu"
+    },
+    "privacy": {
+      "badge": "Výběr přímo v zařízení",
+      "title": "Vybírá se v telefonu, ne v cloudu",
+      "description": "Výběr fotek, vyhledávání i tvorba dumpů probíhá v telefonu. PicDump vaše fotky pro jejich třídění nikam nenahrává.",
+      "point1": "Přístup k fotkám pomáhá najít vaše nejlepší okamžiky"
+    },
+    "allowContinue": "Povolit přístup k fotkám a pokračovat",
+    "continue": "Pokračovat",
+    "page": "Strana {{n}} z {{total}}",
+    "notifPreview": "Náhled oznámení",
+    "notifNow": "· právě teď",
+    "notifTitle": "Váš PicDump je připraven 🎞️",
+    "notifBody": "Dnešní fotky uspořádané do jednoho dumpu. Podívejte se před spaním.",
+    "notifyHeading": "Váš den ve 20:00, váš týden v neděli",
+    "notifyBody": "Oznámení ve 20:00, když je dnešní dump hotový, a v neděli v poledne s přehledem celého týdne.",
+    "turnOn": "Zapnout",
+    "notNow": "Nyní ne"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Každý dump ve vaší galerii.",
+      "sub": "Zdarma získáte rekapitulace a jeden dump týdně. Pro odemkne všechny."
+    },
+    "tidy": {
+      "heading": "Ukliďte nepořádek.",
+      "sub": "Zdarma najde všechny duplikáty a rozmazané snímky. Pro je přesune do koše najednou."
+    },
+    "finish": {
+      "heading": "Zachovejte filmový nádech.",
+      "sub": "Original, Warm 35mm a Úpravy jsou zdarma. Pro exportuje všechny filtry a textury."
+    },
+    "search": {
+      "heading": "Hledejte ve své galerii.",
+      "sub": "Najděte místo, měsíc nebo věc pomocí slov. Vyhledávání je součástí Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "V galerii jsme našli {{count}} dump.",
+        "other": "V galerii jsme našli {{count}} dumpů."
+      },
+      "sub": "{{titles}}. Pro odemkne všechny.",
+      "subMore": "{{titles}} a další. Pro odemkne všechny."
+    },
+    "welcome": "Vítejte v PicDump Pro!",
+    "purchaseNotActive": "Nákup proběhl, ale Pro se ještě neaktivovalo. Klepněte na Obnovit nákupy.",
+    "restored": "Nákupy byly obnoveny. Vítejte zpět v Pro!",
+    "noSubscription": "Nebylo nalezeno žádné aktivní předplatné PicDump Pro.",
+    "close": "Zavřít",
+    "feature": {
+      "dumps": {
+        "title": "Všechny dumpy odemčeny",
+        "sub": "Každý výlet a příběh, který Objevovat najde – nejen jeden týdně."
+      },
+      "search": {
+        "title": "Hledejte ve své galerii",
+        "sub": "Najděte místo, měsíc nebo věc pomocí slov."
+      },
+      "looks": {
+        "title": "Všechny filmové filtry",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, navíc zrno, vyblednutí a vinětace."
+      },
+      "tidy": {
+        "title": "Odstraňte duplicity a nepořádek",
+        "sub": "Přesuňte duplikáty, rozmazané fotky a snímky obrazovky do koše najednou."
+      },
+      "yours": {
+        "title": "Váš dump podle vašich představ",
+        "sub": "Bez závěrečného snímku PicDump a 4 až 20 fotek v jednom dumpu."
+      }
+    },
+    "plansFailed": "Předplatná se nepodařilo načíst. Zkontrolujte připojení a zkuste to znovu.",
+    "startTrial": "Zahájit {{trial}}",
+    "continue": "Pokračovat",
+    "restore": "Obnovit nákupy",
+    "trialThen": "Během zkušebního období zdarma, poté {{price}}. ",
+    "disclosure": "Platba bude naúčtována na váš účet v obchodě. Předplatné se automaticky obnovuje, pokud není zrušeno alespoň 24 hodin před koncem aktuálního období."
+  },
+  "profile": {
+    "title": "Profil a nastavení",
+    "changePhoto": "Změnit profilovou fotku",
+    "namePlaceholder": "Vaše jméno",
+    "handlePlaceholder": "vas_profil",
+    "theme": {
+      "system": "Podle systému",
+      "auto": "Automaticky",
+      "cashmere": "Cashmere",
+      "light": "Světlý",
+      "espresso": "Espresso",
+      "dark": "Tmavý"
+    },
+    "reindex": {
+      "title": "Přeindexovat knihovnu?",
+      "body": "PicDump znovu projde všechny fotografie. To zabere několik minut a spotřebuje část baterie. Vaše dumpy v Knihovně zůstanou zachovány.",
+      "action": "Přeindexovat"
+    },
+    "dumpPicks": {
+      "title": "Výběr do dumpů",
+      "photosPerDump": "Počet fotek v dumpu",
+      "photosPerDumpSub": "Objevovat vybere počet v tomto rozmezí, nejčastěji zhruba uprostřed.",
+      "fewest": "Nejméně fotek",
+      "to": "až",
+      "most": "Nejvíce fotek",
+      "hideSensitive": "Skrýt citlivé fotografie",
+      "hideSensitiveSub": "Doklady, platební karty a lékařské zprávy se v dumpech nikdy neobjeví.",
+      "screenshots": "Zahrnout snímky obrazovky",
+      "screenshotsSub": "Snímky obrazovky se mohou zobrazit v dumpech.",
+      "recap": "Rekapitulace",
+      "recapSub": "Dnešní dump ve 20:00, týdenní rekapitulace v neděli v poledne"
+    },
+    "export": {
+      "title": "Export a sdílení",
+      "note": "Nové dumpy se vytvoří s velikostí a kvalitou nastavenou zde.",
+      "postSize": "Výchozí velikost příspěvku",
+      "quality": "Výchozí kvalita exportu",
+      "hd": "HD (2160 px)",
+      "standard": "Standardní (1080 px)",
+      "saveOnPost": "Při sdílení také uložit do galerie",
+      "saveOnPostSub": "Uloží kopii snímků do alba PicDump"
+    },
+    "appearance": {
+      "title": "Vzhled a motiv"
+    },
+    "library": {
+      "title": "Fotoknihovna a vyhledávání",
+      "access": "Přístup",
+      "openSettings": "Otevřít nastavení"
+    },
+    "about": {
+      "title": "Soukromí a informace",
+      "onDevice": "Vše probíhá ve vašem telefonu",
+      "onDeviceSub": "Jak PicDump vybírá fotky bez jejich nahrávání na server",
+      "contact": "Kontakt",
+      "noMail": "Nebyla nalezena žádná e-mailová aplikace. Napište na info@horizonzeta.com",
+      "version": "Verze"
+    }
+  }
+}

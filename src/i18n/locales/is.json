@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Loka",
+    "back": "Til baka",
+    "termsOfService": "Þjónustuskilmálar",
+    "privacyPolicy": "Persónuverndarstefna"
+  },
+  "tabs": {
+    "discover": "Uppgötva",
+    "create": "Búa til",
+    "tidy": "Taka til",
+    "library": "Safn"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Áreynslulaus myndasöfn",
+      "title": "Breyttu myndaruglinu í flott dump",
+      "description": "Slepptu því að skruna í gegnum þúsundir mynda. PicDump velur bestu myndirnar frá dögunum og ferðalögunum þínum, með náttúrulegu flæði.",
+      "point1": "Filmuútlit, rammar og IG / TikTok stærðir",
+      "point2": "Klippimyndir með einu stroki"
+    },
+    "privacy": {
+      "badge": "Flokkun í tækinu sjálfu",
+      "title": "Valið í símanum, ekki í skýinu",
+      "description": "Myndaval, leit og gerð dumpa fer alfarið fram í símanum þínum. PicDump hleður aldrei upp myndunum þínum til að flokka þær.",
+      "point1": "Aðgangur að myndum gerir forritinu kleift að finna bestu augnablikin"
+    },
+    "allowContinue": "Leyfa myndaaðgang og halda áfram",
+    "continue": "Halda áfram",
+    "page": "Síða {{n}} af {{total}}",
+    "notifPreview": "Forskoðun tilkynninga",
+    "notifNow": "· núna",
+    "notifTitle": "PicDump-ið þitt er tilbúið 🎞️",
+    "notifBody": "Myndir dagsins flokkaðar í eitt myndadump. Kíktu á það fyrir svefninn.",
+    "notifyHeading": "Dagurinn þinn kl. 20:00, vikan á sunnudegi",
+    "notifyBody": "Tilkynning kl. 20:00 þegar dump dagsins er tilbúið, og á sunnudögum á hádegi með vikunni þinni.",
+    "turnOn": "Kveikja",
+    "notNow": "Ekki núna"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Öll myndadump í myndasafninu þínu.",
+      "sub": "Ókeypis útgáfa veitir samantektir og eitt dump á viku. Pro opnar þau öll."
+    },
+    "tidy": {
+      "heading": "Losaðu þig við óreiðuna.",
+      "sub": "Ókeypis útgáfa finnur allar tvítekningar og óskýrar myndir. Pro flytur þær í ruslið í einu vetfangi."
+    },
+    "finish": {
+      "heading": "Haltu filmuútlitinu.",
+      "sub": "Original, Warm 35mm og Adjust eru ókeypis. Pro flytur út öll útlit og áferðir."
+    },
+    "search": {
+      "heading": "Leitaðu í myndasafninu þínu.",
+      "sub": "Finndu stað, mánuð eða hlut með orðum. Leit fylgir með Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Við fundum {{count}} dump í myndasafninu þínu.",
+        "other": "Við fundum {{count}} dump í myndasafninu þínu."
+      },
+      "sub": "{{titles}}. Pro opnar þau öll.",
+      "subMore": "{{titles}} og fleira. Pro opnar þau öll."
+    },
+    "welcome": "Velkomin(n) í PicDump Pro!",
+    "purchaseNotActive": "Kaupin gengu í gegn en Pro virkjaðist ekki strax. Pikkaðu á Endurheimta kaup.",
+    "restored": "Kaup endurheimt. Velkomin(n) aftur í Pro!",
+    "noSubscription": "Engin virk PicDump Pro áskrift fannst.",
+    "close": "Loka greiðslusíðu",
+    "feature": {
+      "dumps": {
+        "title": "Öll dump opnuð",
+        "sub": "Öll ferðalög og sögur sem Uppgötva finnur, ekki bara eitt á viku."
+      },
+      "search": {
+        "title": "Leitaðu í myndasafninu þínu",
+        "sub": "Finndu stað, mánuð eða hlut með einföldum orðum."
+      },
+      "looks": {
+        "title": "Öll filmuútlit",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, ásamt filmuáferð, dofnun og jaðardökknun."
+      },
+      "tidy": {
+        "title": "Hreinsaðu tvítekningar og óreiðu",
+        "sub": "Færðu afrit, óskýrar myndir og skjáskot í Ruslið í einu lagi."
+      },
+      "yours": {
+        "title": "Þitt dump, á þinn hátt",
+        "sub": "Engin PicDump lokarenna, og 4 til 20 myndir í hverju dumpi."
+      }
+    },
+    "plansFailed": "Ekki tókst að hlaða inn áskriftarleiðum. Athugaðu nettenginguna og reyndu aftur.",
+    "startTrial": "Hefja {{trial}}",
+    "continue": "Halda áfram",
+    "restore": "Endurheimta kaup",
+    "trialThen": "Ókeypis á reynslutímabilinu, síðan {{price}}. ",
+    "disclosure": "Greiðsla er gjaldfærð á forritaverslunarreikning þinn. Áskriftir endurnýjast sjálfkrafa nema þeim sé sagt upp að minnsta kosti 24 tímum fyrir lok núverandi tímabils."
+  },
+  "profile": {
+    "title": "Prófíll og stillingar",
+    "changePhoto": "Breyta prófílmynd",
+    "namePlaceholder": "Nafnið þitt",
+    "handlePlaceholder": "notendanafn",
+    "theme": {
+      "system": "Kerfi",
+      "auto": "Sjálfvirkt",
+      "cashmere": "Cashmere",
+      "light": "Ljóst",
+      "espresso": "Espresso",
+      "dark": "Dökkt"
+    },
+    "reindex": {
+      "title": "Endurraða og lesa myndasafnið aftur?",
+      "body": "PicDump mun lesa hverja mynd aftur. Þetta tekur nokkrar mínútur og notar rafhlöðu. Dumpin þín í Safni haldast óbreytt.",
+      "action": "Endurraða"
+    },
+    "dumpPicks": {
+      "title": "Dump valkostir",
+      "photosPerDump": "Myndir í hverju dumpi",
+      "photosPerDumpSub": "Uppgötva velur fjölda á þessu bili, oftast nálægt miðjunni.",
+      "fewest": "Fæstar myndir",
+      "to": "til",
+      "most": "Flestar myndir",
+      "hideSensitive": "Fela viðkvæmar myndir",
+      "hideSensitiveSub": "Skilríki, greiðslukort og læknisfræðileg skjöl birtast aldrei í dumpum.",
+      "screenshots": "Hafa skjáskot með",
+      "screenshotsSub": "Skjáskot geta birst í dumpum.",
+      "recap": "Samantekt",
+      "recapSub": "Dump dagsins kl. 20:00, vikusamantekt á sunnudögum á hádegi"
+    },
+    "export": {
+      "title": "Útflutningur og birting",
+      "note": "Ný dump hefjast með þeirri stærð og gæðum sem eru stillt hér.",
+      "postSize": "Sjálfgefin færslustærð",
+      "quality": "Sjálfgefin útflutningsgæði",
+      "hd": "HD (2160 px)",
+      "standard": "Staðall (1080 px)",
+      "saveOnPost": "Vistar einnig í myndasafn við birtingu",
+      "saveOnPostSub": "Geymir afrit af myndunum í PicDump albúminu"
+    },
+    "appearance": {
+      "title": "Útlit og þema"
+    },
+    "library": {
+      "title": "Myndasafn og leit",
+      "access": "Aðgangur",
+      "openSettings": "Opna stillingar"
+    },
+    "about": {
+      "title": "Persónuvernd og upplýsingar",
+      "onDevice": "Allt gerist í símanum þínum",
+      "onDeviceSub": "Hvernig PicDump velur myndir án þess að hlaða þeim upp",
+      "contact": "Hafa samband",
+      "noMail": "Ekkert tölvupóstforrit fannst. Sendu póst á info@horizonzeta.com",
+      "version": "Útgáfa"
+    }
+  }
+}

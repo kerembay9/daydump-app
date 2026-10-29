@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Sulje",
+    "back": "Takaisin",
+    "termsOfService": "Käyttöehdot",
+    "privacyPolicy": "Tietosuojakäytäntö"
+  },
+  "tabs": {
+    "discover": "Löydä",
+    "create": "Luo",
+    "tidy": "Siisti",
+    "library": "Kirjasto"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Vaivattomat kuvadumpit",
+      "title": "Muuta kuvavirran kaaos dumpeiksi",
+      "description": "Unohda tuhansien kuvien selaaminen. PicDump poimii päiviesi ja matkojesi parhaat hetket sujuvaksi kokonaisuudeksi.",
+      "point1": "Filmityylit, kehykset sekä IG- ja TikTok-koot",
+      "point2": "Kollaasiasettelut, pyyhkäisy kerrallaan"
+    },
+    "privacy": {
+      "badge": "Kuratoitu suoraan laitteessa",
+      "title": "Valitaan puhelimessasi, ei pilvessä",
+      "description": "Kuvavalinnat, haku ja dumpit toimivat puhelimessasi. PicDump ei lataa kuviasi pilveen kuratoidakseen niitä.",
+      "point1": "Kuvien käyttöoikeus auttaa löytämään tärkeimmät hetkesi"
+    },
+    "allowContinue": "Salli kuvat ja jatka",
+    "continue": "Jatka",
+    "page": "Sivu {{n}} / {{total}}",
+    "notifPreview": "Ilmoituksen esikatselu",
+    "notifNow": "· nyt",
+    "notifTitle": "PicDumpisi on valmis 🎞️",
+    "notifBody": "Tämän päivän kuvat koottuna yhteen dumpiin. Vilkaise ennen nukkumaanmenoa.",
+    "notifyHeading": "Päiväsi klo 20.00, viikkosi sunnuntaina",
+    "notifyBody": "Muistutus klo 20.00, kun päivän dumppi on valmis, ja sunnuntaina puoliltapäivin viikon kooste.",
+    "turnOn": "Ota käyttöön",
+    "notNow": "Ei nyt"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Jokainen dumppi kuvavirrassasi.",
+      "sub": "Ilmaisversio tarjoaa yhteenvedot ja yhden dumpin viikossa. Pro avaa ne kaikki."
+    },
+    "tidy": {
+      "heading": "Siivoa turhat kuvat.",
+      "sub": "Ilmaisversio löytää toistot ja epätarkat otokset. Pro siirtää ne roskakoriin yhdellä kertaa."
+    },
+    "finish": {
+      "heading": "Säilytä filmityyli.",
+      "sub": "Original, Warm 35mm ja Adjust ovat ilmaisia. Pro vie kaikki tyylit ja tekstuurit."
+    },
+    "search": {
+      "heading": "Etsi kuvavirrastasi.",
+      "sub": "Etsi paikkaa, kuukautta tai asiaa sanoilla. Haku sisältyy Pro-versioon."
+    },
+    "found": {
+      "heading": {
+        "one": "Löysimme kuvavirrastasi {{count}} dumpin.",
+        "other": "Löysimme kuvavirrastasi {{count}} dumppia."
+      },
+      "sub": "{{titles}}. Pro avaa ne kaikki.",
+      "subMore": "{{titles}} ja muuta. Pro avaa ne kaikki."
+    },
+    "welcome": "Tervetuloa PicDump Prohon!",
+    "purchaseNotActive": "Ostos tehtiin, mutta Pro ei ole vielä aktivoitunut. Napauta Palauta ostot.",
+    "restored": "Ostot palautettu. Tervetuloa takaisin Prohon!",
+    "noSubscription": "Aktiivista PicDump Pro -tilausta ei löytynyt.",
+    "close": "Sulje tilausnäkymä",
+    "feature": {
+      "dumps": {
+        "title": "Kaikki dumpit avattu",
+        "sub": "Jokainen Löydä-osion löytämä matka ja tarina, ei vain yksi viikossa."
+      },
+      "search": {
+        "title": "Etsi kuvavirrastasi",
+        "sub": "Löydä paikka, kuukausi tai esine sanojen avulla."
+      },
+      "looks": {
+        "title": "Kaikki filmityylit",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll sekä rae, haalistus ja vinjetointi."
+      },
+      "tidy": {
+        "title": "Poista toistot ja turhat kuvat",
+        "sub": "Siirrä kaksoiskappaleet, suttuiset kuvat ja näyttökuvat roskakoriin yhdellä kertaa."
+      },
+      "yours": {
+        "title": "Oma dumppisi, oma tyylisi",
+        "sub": "Ilman PicDump-päätöskuvaa ja 4–20 kuvaa per dumppi."
+      }
+    },
+    "plansFailed": "Tilauksia ei voitu ladata. Tarkista yhteys ja yritä uudelleen.",
+    "startTrial": "Aloita {{trial}}",
+    "continue": "Jatka",
+    "restore": "Palauta ostot",
+    "trialThen": "Kokeilujakso maksutta, sen jälkeen {{price}}. ",
+    "disclosure": "Maksu veloitetaan sovelluskaupan tililtäsi. Tilaus uusiutuu automaattisesti, ellei sitä peruuteta vähintään 24 tuntia ennen kuluvan jakson päättymistä."
+  },
+  "profile": {
+    "title": "Profiili ja asetukset",
+    "changePhoto": "Vaihda profiilikuva",
+    "namePlaceholder": "Nimesi",
+    "handlePlaceholder": "kayttajanimi",
+    "theme": {
+      "system": "Järjestelmä",
+      "auto": "Automaattinen",
+      "cashmere": "Cashmere",
+      "light": "Vaalea",
+      "espresso": "Espresso",
+      "dark": "Tumma"
+    },
+    "reindex": {
+      "title": "Indeksoidaanko kirjasto uudelleen?",
+      "body": "PicDump käy kaikki kuvat läpi uudelleen. Tämä kestää muutaman minuutin ja kuluttaa hieman akkua. Kirjastossa olevat dumppisi säilyvät.",
+      "action": "Indeksoi uudelleen"
+    },
+    "dumpPicks": {
+      "title": "Dumpin valinnat",
+      "photosPerDump": "Kuvia per dumppi",
+      "photosPerDumpSub": "Löydä-osio valitsee määrän tältä väliltä, useimmiten keskivaiheilta.",
+      "fewest": "Vähiten kuvia",
+      "to": "–",
+      "most": "Eniten kuvia",
+      "hideSensitive": "Piilota arkaluontoiset kuvat",
+      "hideSensitiveSub": "Henkilötodistukset, pankkikortit ja lääketieteelliset paperit eivät koskaan näy dumpeissa.",
+      "screenshots": "Sisällytä näyttökuvat",
+      "screenshotsSub": "Näyttökuvat voivat näkyä dumpeissa.",
+      "recap": "Kooste",
+      "recapSub": "Tämän päivän dumppi klo 20.00, viikkosi sunnuntaina klo 12.00"
+    },
+    "export": {
+      "title": "Vienti ja julkaisu",
+      "note": "Uudet dumpit luodaan tässä määritetyllä koolla ja laadulla.",
+      "postSize": "Julkaisun oletuskoko",
+      "quality": "Viennin oletuslaatu",
+      "hd": "HD (2160 px)",
+      "standard": "Vakio (1080 px)",
+      "saveOnPost": "Julkaisu tallentaa myös galleriaan",
+      "saveOnPostSub": "Tallentaa kopion kuvista PicDump-albumiin"
+    },
+    "appearance": {
+      "title": "Ulkoasu ja teema"
+    },
+    "library": {
+      "title": "Kuvakirjasto ja haku",
+      "access": "Käyttöoikeus",
+      "openSettings": "Avaa asetukset"
+    },
+    "about": {
+      "title": "Tietosuoja ja sovellustiedot",
+      "onDevice": "Kaikki tapahtuu laitteessasi",
+      "onDeviceSub": "Miten PicDump valitsee kuvia lataamatta niitä palvelimelle",
+      "contact": "Ota yhteyttä",
+      "noMail": "Sähköpostisovellusta ei löytynyt. Kirjoita osoitteeseen info@horizonzeta.com",
+      "version": "Versio"
+    }
+  }
+}

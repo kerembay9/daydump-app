@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Zapri",
+    "back": "Nazaj",
+    "termsOfService": "Pogoji storitve",
+    "privacyPolicy": "Pravilnik o zasebnosti"
+  },
+  "tabs": {
+    "discover": "Odkrijte",
+    "create": "Ustvarite",
+    "tidy": "Uredite",
+    "library": "Knjižnica"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Enostavni fotodampi",
+      "title": "Spremenite nered v galeriji v dampe",
+      "description": "Pozabite na neskončno drsenje med tisoči posnetkov. PicDump izbere najboljše fotografije vaših dni in potovanj v naravnem ritmu.",
+      "point1": "Filmski videzi, obrobe in formati za IG ter TikTok",
+      "point2": "Postavitve kolažev, en poteg naenkrat"
+    },
+    "privacy": {
+      "badge": "Izbira v napravi",
+      "title": "Izbrano v vašem telefonu, ne v oblaku",
+      "description": "Izbor fotografij, iskanje in dampi potekajo v vašem telefonu. PicDump vaših fotografij ne nalaga v splet za izbiro.",
+      "point1": "Dostop do fotografij aplikaciji omogoča iskanje vaših posebnih trenutkov"
+    },
+    "allowContinue": "Dovoli dostop do fotografij in nadaljuj",
+    "continue": "Nadaljuj",
+    "page": "Stran {{n}} od {{total}}",
+    "notifPreview": "Predogled obvestila",
+    "notifNow": "· zdaj",
+    "notifTitle": "Vaš PicDump je pripravljen 🎞️",
+    "notifBody": "Današnje fotografije, zbrane v en damp. Oglejte si jih pred spanjem.",
+    "notifyHeading": "Vaš dan ob 20. uri, vaš teden v nedeljo",
+    "notifyBody": "Obvestilo ob 20. uri, ko je današnji damp pripravljen, ter v nedeljo opoldne s tedenskim pregledom.",
+    "turnOn": "Vklopi",
+    "notNow": "Ne zdaj"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Vsak damp v vaši galeriji.",
+      "sub": "Brezplačna različica ponuja povzetke in en damp na teden. Pro odklene vse."
+    },
+    "tidy": {
+      "heading": "Počistite nered.",
+      "sub": "Brezplačna različica najde podvojene in zamegljene posnetke. Pro jih z enim dotikom premakne v Smeti."
+    },
+    "finish": {
+      "heading": "Ohranite filmski videz.",
+      "sub": "Original, Warm 35mm in Adjust so brezplačni. Pro izvozi vsak videz in teksturo."
+    },
+    "search": {
+      "heading": "Iščite po svoji galeriji.",
+      "sub": "Poiščite kraj, mesec ali predmet z besedami. Iskanje je vključeno v Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "V vaši galeriji smo našli {{count}} damp.",
+        "other": "V vaši galeriji smo našli {{count}} dampov."
+      },
+      "sub": "{{titles}}. Pro odklene vse.",
+      "subMore": "{{titles}} in še več. Pro odklene vse."
+    },
+    "welcome": "Dobrodošli v PicDump Pro!",
+    "purchaseNotActive": "Nakup je uspel, vendar se Pro še ni vklopil. Dotaknite se Obnovi nakupe.",
+    "restored": "Nakupi so obnovljeni. Dobrodošli nazaj v Pro!",
+    "noSubscription": "Aktivna naročnina PicDump Pro ni bila najdena.",
+    "close": "Zapri plačilni zaslon",
+    "feature": {
+      "dumps": {
+        "title": "Vsak damp, odklenjen",
+        "sub": "Vsako potovanje in zgodba, ki jo najde Odkrijte, ne le ena na teden."
+      },
+      "search": {
+        "title": "Iščite po svoji galeriji",
+        "sub": "Poiščite kraj, mesec ali predmet z besedami."
+      },
+      "looks": {
+        "title": "Vsi filmski videzi",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll ter zrnatost, bledenje in vinjeta."
+      },
+      "tidy": {
+        "title": "Počistite podvojene posnetke in nered",
+        "sub": "Premaknite dvojnike, zamegljene slike in posnetke zaslona v Smeti naenkrat."
+      },
+      "yours": {
+        "title": "Vaš damp, po vaših željah",
+        "sub": "Brez zaključne prosojnice PicDump in od 4 do 20 fotografij na damp."
+      }
+    },
+    "plansFailed": "Paketov ni bilo mogoče naložiti. Preverite povezavo in poskusite znova.",
+    "startTrial": "Začni {{trial}}",
+    "continue": "Nadaljuj",
+    "restore": "Obnovi nakupe",
+    "trialThen": "V poskusnem obdobju brezplačno, nato {{price}}. ",
+    "disclosure": "Plačilo se bremeni z vašega računa v trgovini z aplikacijami. Naročnine se samodejno podaljšajo, razen če jih prekličete vsaj 24 ur pred koncem trenutnega obdobja."
+  },
+  "profile": {
+    "title": "Profil in nastavitve",
+    "changePhoto": "Spremeni profilno fotografijo",
+    "namePlaceholder": "Vaše ime",
+    "handlePlaceholder": "vas_racun",
+    "theme": {
+      "system": "Sistemska",
+      "auto": "Samodejno",
+      "cashmere": "Cashmere",
+      "light": "Svetla",
+      "espresso": "Espresso",
+      "dark": "Temna"
+    },
+    "reindex": {
+      "title": "Želite znova indeksirati knjižnico?",
+      "body": "PicDump bo znova prebral vsako fotografijo. To traja nekaj minut in porabi nekaj baterije. Vaši dampi v Knjižnici se ohranijo.",
+      "action": "Znova indeksiraj"
+    },
+    "dumpPicks": {
+      "title": "Izbira dampov",
+      "photosPerDump": "Fotografij na damp",
+      "photosPerDumpSub": "Odkrijte izbere število v tem razponu, večinoma okoli sredine.",
+      "fewest": "Najmanj fotografij",
+      "to": "do",
+      "most": "Največ fotografij",
+      "hideSensitive": "Skrij občutljive fotografije",
+      "hideSensitiveSub": "Osebni dokumenti, bančne kartice in zdravstveni izvidi se nikoli ne prikažejo v dampih.",
+      "screenshots": "Vključi posnetke zaslona",
+      "screenshotsSub": "Posnetki zaslona se lahko pojavijo v dampih.",
+      "recap": "Povzetek",
+      "recapSub": "Današnji damp ob 20. uri, vaš teden v nedeljo opoldne"
+    },
+    "export": {
+      "title": "Izvoz in objavljanje",
+      "note": "Novi dampi začnejo z velikostjo in kakovostjo, določeno tukaj.",
+      "postSize": "Privzeta velikost objave",
+      "quality": "Privzeta kakovost izvoza",
+      "hd": "HD (2160 px)",
+      "standard": "Standardna (1080 px)",
+      "saveOnPost": "Objava shrani tudi v galerijo",
+      "saveOnPostSub": "Shrani kopijo prosojnic v album PicDump"
+    },
+    "appearance": {
+      "title": "Videz in tema"
+    },
+    "library": {
+      "title": "Knjižnica fotografij in iskanje",
+      "access": "Dostop",
+      "openSettings": "Odpri nastavitve"
+    },
+    "about": {
+      "title": "Zasebnost in o aplikaciji",
+      "onDevice": "Vse se odvija v vašem telefonu",
+      "onDeviceSub": "Kako PicDump izbira fotografije brez nalaganja v splet",
+      "contact": "Stik",
+      "noMail": "Noben e-poštni program ni bil najden. Pišite na info@horizonzeta.com",
+      "version": "Različica"
+    }
+  }
+}

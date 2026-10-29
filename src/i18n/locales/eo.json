@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Fermi",
+    "back": "Reen",
+    "termsOfService": "Uzkondiĉoj",
+    "privacyPolicy": "Privateca politiko"
+  },
+  "tabs": {
+    "discover": "Malkovri",
+    "create": "Krei",
+    "tidy": "Ordigi",
+    "library": "Biblioteko"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Senpenaj fotokolektoj",
+      "title": "Ŝanĝu la ĥaoson de la fotaro en belajn kolektojn",
+      "description": "Adiaŭu senfinan rulumadon tra miloj da fotoj. PicDump elektas la plej bonajn bildojn de viaj tagoj kaj vojaĝoj, kun natura ritmo.",
+      "point1": "Filmaspektoj, bordoj kaj grandecoj por IG kaj TikTok",
+      "point2": "Kolaĝaj aranĝoj, per unu sola glito"
+    },
+    "privacy": {
+      "badge": "Kreado rekte en la aparato",
+      "title": "Elektita en via telefono, ne en la nubo",
+      "description": "Fotelekto, serĉado kaj kolektoj funkcias en via telefono. PicDump ne alŝutas viajn fotojn por organizi ilin.",
+      "point1": "Fotoaliro ebligas trovi viajn plej elstarajn momentojn"
+    },
+    "allowContinue": "Permesi fotojn kaj daŭrigi",
+    "continue": "Daŭrigi",
+    "page": "Paĝo {{n}} el {{total}}",
+    "notifPreview": "Antaŭrigardo de sciigo",
+    "notifNow": "· ĵus",
+    "notifTitle": "Via PicDump estas preta 🎞️",
+    "notifBody": "La hodiaŭaj fotoj, aranĝitaj en unu kolekton. Rigardu antaŭ dormo.",
+    "notifyHeading": "Via tago je la 20-a, via semajno dimanĉe",
+    "notifyBody": "Sciigo je la 20-a kiam la hodiaŭa kolekto estas preta, kaj dimanĉe tagmeze kun via semajno.",
+    "turnOn": "Ŝalti",
+    "notNow": "Ne nun"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Ĉiu kolekto en via fotaro.",
+      "sub": "Senpage vi ricevas resumojn kaj unu kolekton semajne. Pro malŝlosas ĉiujn."
+    },
+    "tidy": {
+      "heading": "Forigu la malordon.",
+      "sub": "Senpage trovas ĉiujn duoblajn kaj neklarajn fotojn. Pro movas ilin al la Rubujo per unu fojo."
+    },
+    "finish": {
+      "heading": "Konservu la filmaspekton.",
+      "sub": "Original, Warm 35mm kaj Alĝustigo estas senpagaj. Pro eksportas ĉiun stilon kaj teksturon."
+    },
+    "search": {
+      "heading": "Serĉu en via fotaro.",
+      "sub": "Trovu lokon, monaton aŭ aĵon per vortoj. Serĉo venas kun Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Ni trovis {{count}} kolekton en via fotaro.",
+        "other": "Ni trovis {{count}} kolektojn en via fotaro."
+      },
+      "sub": "{{titles}}. Pro malŝlosas ĉiujn.",
+      "subMore": "{{titles}} kaj pli. Pro malŝlosas ĉiujn."
+    },
+    "welcome": "Bonvenon al PicDump Pro!",
+    "purchaseNotActive": "Aĉeto sukcesis sed Pro ankoraŭ ne aktiviĝis. Frapetu Restarigi aĉetojn.",
+    "restored": "Aĉetoj restarigitaj. Bonvenon reen al Pro!",
+    "noSubscription": "Neniu aktiva abono al PicDump Pro troviĝis.",
+    "close": "Fermi pagmuron",
+    "feature": {
+      "dumps": {
+        "title": "Ĉiu kolekto, malŝlosita",
+        "sub": "Ĉiu vojaĝo kaj rakonto kiun Malkovri trovas, ne nur unu semajne."
+      },
+      "search": {
+        "title": "Serĉu en via fotaro",
+        "sub": "Trovu lokon, monaton aŭ aĵon per ordinaraj vortoj."
+      },
+      "looks": {
+        "title": "Ĉiuj filmaspektoj",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, krome grajno, fado kaj vinjeto."
+      },
+      "tidy": {
+        "title": "Forigu duoblaĵojn kaj senordon",
+        "sub": "Movu duoblaĵojn, neklarajn fotojn kaj ekrankopiojn al la Rubujo samtempe."
+      },
+      "yours": {
+        "title": "Via kolekto laŭ via maniero",
+        "sub": "Sen la fina bildo de PicDump, kaj 4 ĝis 20 fotoj por kolekto."
+      }
+    },
+    "plansFailed": "Abonplanoj ne povis ŝargiĝi. Kontrolu vian konekton kaj reprovu.",
+    "startTrial": "Komenci {{trial}}",
+    "continue": "Daŭrigi",
+    "restore": "Restarigi aĉetojn",
+    "trialThen": "Senpage dum la provo, poste {{price}}. ",
+    "disclosure": "Pago estas ŝargita al via butika konto. Abonoj aŭtomate renoviĝas krom se nuligitaj almenaŭ 24 horojn antaŭ la fino de la nuna periodo."
+  },
+  "profile": {
+    "title": "Profilo kaj agordoj",
+    "changePhoto": "Ŝanĝi profilfoton",
+    "namePlaceholder": "Via nomo",
+    "handlePlaceholder": "via_konto",
+    "theme": {
+      "system": "Sistema",
+      "auto": "Aŭtomata",
+      "cashmere": "Cashmere",
+      "light": "Hela",
+      "espresso": "Espresso",
+      "dark": "Malhela"
+    },
+    "reindex": {
+      "title": "Reindeksi vian bibliotekon?",
+      "body": "PicDump relegos ĉiun foton denove. Ĉi tio prenas kelkajn minutojn kaj iom da baterio. Viaj kolektoj en Biblioteko estos konservitaj.",
+      "action": "Reindeksi"
+    },
+    "dumpPicks": {
+      "title": "Elekto de kolektoj",
+      "photosPerDump": "Fotoj por kolekto",
+      "photosPerDumpSub": "Malkovri elektas nombron en ĉi tiu gamo, plejparte el la mezo.",
+      "fewest": "Plej malmultaj fotoj",
+      "to": "ĝis",
+      "most": "Plej multaj fotoj",
+      "hideSensitive": "Kaŝi sentemajn fotojn",
+      "hideSensitiveSub": "Identigiloj, bankkartoj kaj kuracistaj dokumentoj neniam aperas en kolektoj.",
+      "screenshots": "Inkluzivi ekrankopiojn",
+      "screenshotsSub": "Ekrankopioj povas aperi en kolektoj.",
+      "recap": "Resumo",
+      "recapSub": "La hodiaŭa kolekto je la 20-a, via semajno dimanĉe tagmeze"
+    },
+    "export": {
+      "title": "Eksporto kaj afiŝado",
+      "note": "Novaj kolektoj komenciĝas per la grandeco kaj kvalito agorditaj ĉi tie.",
+      "postSize": "Defaŭlta afiŝa grandeco",
+      "quality": "Defaŭlta eksporta kvalito",
+      "hd": "HD (2160 px)",
+      "standard": "Norma (1080 px)",
+      "saveOnPost": "Afiŝado ankaŭ konservas al la galerio",
+      "saveOnPostSub": "Konservas kopion de la lumbildoj en la PicDump-albumo"
+    },
+    "appearance": {
+      "title": "Aspekto kaj etoso"
+    },
+    "library": {
+      "title": "Fotobiblioteko kaj serĉo",
+      "access": "Aliro",
+      "openSettings": "Malfermi agordojn"
+    },
+    "about": {
+      "title": "Privateco kaj pri la aplikaĵo",
+      "onDevice": "Ĉio okazas en via telefono",
+      "onDeviceSub": "Kiel PicDump elektas fotojn sen alŝuti ilin",
+      "contact": "Kontakto",
+      "noMail": "Neniu retpoŝta aplikaĵo trovita. Skribu al info@horizonzeta.com",
+      "version": "Versio"
+    }
+  }
+}

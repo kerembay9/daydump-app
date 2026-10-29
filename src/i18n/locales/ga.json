@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Dún",
+    "back": "Ar ais",
+    "termsOfService": "Téarmaí Seirbhíse",
+    "privacyPolicy": "Beartas Príobháideachais"
+  },
+  "tabs": {
+    "discover": "Taiscéal",
+    "create": "Cruthaigh",
+    "tidy": "Slacht",
+    "library": "Leabharlann"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dumpanna grianghraf gan stró",
+      "title": "Déan dumpanna de phraiseach do rolla ceamara",
+      "description": "Slán le scrolláil trí na mílte pictiúr. Roghnaíonn PicDump na grianghraif is fearr de do laethanta agus de do thurais, ar luas nádúrtha.",
+      "point1": "Cuma scannáin, imill agus méideanna do IG / TikTok",
+      "point2": "Leaganacha amach colláise, svaidhpeáil amháin ar an am"
+    },
+    "privacy": {
+      "badge": "Coimeád ar an ngléas",
+      "title": "Roghaithe ar do ghuthán, ní sa scamall",
+      "description": "Ritheann roghnú grianghraf, cuardach agus dumpanna ar do ghuthán féin. Ní uaslódálann PicDump do ghrianghraif chun iad a choimeád.",
+      "point1": "Ligeann rochtain ar ghrianghraif dó na chuimhneacháin is suntasaí a aimsiú"
+    },
+    "allowContinue": "Ceadaigh grianghraif & lean ar aghaidh",
+    "continue": "Lean ar aghaidh",
+    "page": "Leathanach {{n}} de {{total}}",
+    "notifPreview": "Réamhamharc ar fhógra",
+    "notifNow": "· anois",
+    "notifTitle": "Tá do PicDump réidh 🎞️",
+    "notifBody": "Grianghraif an lae inniu, coimeádta in aon dump amháin. Caith súil orthu roimh am codlata.",
+    "notifyHeading": "Do lá ag 8 PM, do sheachtain ar an Domhnach",
+    "notifyBody": "Fógra ag 8 PM nuair a bheidh dump an lae inniu réidh, agus meán lae Dé Domhnaigh le do sheachtain.",
+    "turnOn": "Cuir ar siúl",
+    "notNow": "Níl anois"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Gach dump i do rolla.",
+      "sub": "Tugann an leagan saor in aisce athbhreithnithe agus dump amháin sa tseachtain. Osclaíonn Pro gach ceann acu."
+    },
+    "tidy": {
+      "heading": "Glan an tranglam.",
+      "sub": "Aimsíonn an leagan saor in aisce gach macasamhail agus pictiúr doiléir. Bogann Pro go dtí an Bruscar iad in aon bhuille amháin."
+    },
+    "finish": {
+      "heading": "Coinnigh cuma an scannáin.",
+      "sub": "Tá Original, Warm 35mm agus Adjust saor in aisce. Easpórtálann Pro gach cuma agus uigeacht."
+    },
+    "search": {
+      "heading": "Cuardaigh do rolla ceamara.",
+      "sub": "Aimsigh áit, mí nó rud le focail. Tagann cuardach le Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Fuaireamar {{count}} dump i do rolla.",
+        "other": "Fuaireamar {{count}} dump i do rolla."
+      },
+      "sub": "{{titles}}. Osclaíonn Pro gach ceann acu.",
+      "subMore": "{{titles}} agus níos mó. Osclaíonn Pro gach ceann acu."
+    },
+    "welcome": "Fáilte go PicDump Pro!",
+    "purchaseNotActive": "D'éirigh leis an gceannach ach níor thosaigh Pro fós. Tapáil Athchóirigh ceannacháin.",
+    "restored": "Athchóiríodh na ceannacháin. Fáilte ar ais go Pro!",
+    "noSubscription": "Níor aimsíodh aon síntiús gníomhach PicDump Pro.",
+    "close": "Dún an balla pá",
+    "feature": {
+      "dumps": {
+        "title": "Gach dump, díghlasáilte",
+        "sub": "Gach turas agus scéal a aimsíonn Taiscéal, ní ceann amháin sa tseachtain."
+      },
+      "search": {
+        "title": "Cuardaigh do rolla ceamara",
+        "sub": "Aimsigh áit, mí nó rud le focail shimplí."
+      },
+      "looks": {
+        "title": "Gach cuma scannáin",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, móide grán, céimniú agus vinéad."
+      },
+      "tidy": {
+        "title": "Glan macasamhla agus tranglam",
+        "sub": "Bog dúblaigh, seatanna doiléire agus gabhálacha scáileáin go dtí an Bruscar in éineacht."
+      },
+      "yours": {
+        "title": "Do dhump, ar do nós féin",
+        "sub": "Gan sleamhnán deiridh PicDump, agus 4 go 20 grianghraf in aghaidh an dumpa."
+      }
+    },
+    "plansFailed": "Níorbh fhéidir pleananna a luchtú. Seiceáil do cheangal agus bain triail as arís.",
+    "startTrial": "Tosaigh {{trial}}",
+    "continue": "Lean ar aghaidh",
+    "restore": "Athchóirigh ceannacháin",
+    "trialThen": "Saor in aisce don triail, ansin {{price}}. ",
+    "disclosure": "Gearrtar an íocaíocht ar do chuntas siopa. Déantar síntiúis a athnuachan go huathoibríoch mura gcuirtear ar ceal iad ar a laghad 24 uair an chloig roimh dheireadh na tréimhse reatha."
+  },
+  "profile": {
+    "title": "Próifíl & Socruithe",
+    "changePhoto": "Athraigh grianghraf próifíle",
+    "namePlaceholder": "D'ainm",
+    "handlePlaceholder": "do_chuntas",
+    "theme": {
+      "system": "Córas",
+      "auto": "Uathoibríoch",
+      "cashmere": "Cashmere",
+      "light": "Geal",
+      "espresso": "Espresso",
+      "dark": "Dorcha"
+    },
+    "reindex": {
+      "title": "Athinnéacsú a dhéanamh ar do leabharlann?",
+      "body": "Léifidh PicDump gach grianghraf arís. Tógann sé seo cúpla nóiméad agus roinnt ceallraí. Coimeádtar do chuid dumpanna i Leabharlann.",
+      "action": "Athinnéacsaigh"
+    },
+    "dumpPicks": {
+      "title": "Roghanna dumpa",
+      "photosPerDump": "Grianghraif in aghaidh an dumpa",
+      "photosPerDumpSub": "Roghnaíonn Taiscéal comhaireamh sa raon seo, go hiondúil ón lár.",
+      "fewest": "Is lú grianghraif",
+      "to": "go",
+      "most": "Is mó grianghraif",
+      "hideSensitive": "Folaigh grianghraif íogaire",
+      "hideSensitiveSub": "Ní thaispeántar cártaí aitheantais, cártaí bainc agus páipéir leighis i ndumpanna riamh.",
+      "screenshots": "Cuir gabhálacha scáileáin san áireamh",
+      "screenshotsSub": "Is féidir le gabhálacha scáileáin teacht chun cinn i ndumpanna.",
+      "recap": "Athbhreithniú",
+      "recapSub": "Dump an lae inniu ag 8 PM, do sheachtain ar an Domhnach ag meán lae"
+    },
+    "export": {
+      "title": "Easpórtáil & postáil",
+      "note": "Tosaíonn dumpanna nua leis an méid agus an caighdeán a socraíodh anseo.",
+      "postSize": "Méid réamhshocraithe postála",
+      "quality": "Cáilíocht réamhshocraithe easpórtála",
+      "hd": "HD (2160 px)",
+      "standard": "Caighdeánach (1080 px)",
+      "saveOnPost": "Sábhálann postáil sa ghailearaí freisin",
+      "saveOnPostSub": "Coinníonn sé cóip de na sleamhnáin in albam PicDump"
+    },
+    "appearance": {
+      "title": "Cuma & téama"
+    },
+    "library": {
+      "title": "Leabharlann grianghraf & cuardach",
+      "access": "Rochtain",
+      "openSettings": "Oscail socruithe"
+    },
+    "about": {
+      "title": "Príobháideachas & eolas",
+      "onDevice": "Tarlaíonn gach rud ar do ghuthán",
+      "onDeviceSub": "Conas a roghnaíonn PicDump grianghraif gan iad a uaslódáil",
+      "contact": "Teagmháil",
+      "noMail": "Ní bhfuarthas aon aip ríomhphoist. Scríobh chuig info@horizonzeta.com",
+      "version": "Leagan"
+    }
+  }
+}

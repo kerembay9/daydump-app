@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Zamknij",
+    "back": "Wstecz",
+    "termsOfService": "Warunki korzystania",
+    "privacyPolicy": "Polityka prywatności"
+  },
+  "tabs": {
+    "discover": "Odkrywaj",
+    "create": "Utwórz",
+    "tidy": "Uporządkuj",
+    "library": "Biblioteka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dumpy bez wysiłku",
+      "title": "Zmień chaos w rolce aparatu w dumpy",
+      "description": "Zapomnij o przewijaniu tysięcy zdjęć. PicDump wybiera najlepsze kadry z Twoich dni i wyjazdów, z idealnym wyczuciem rytmu.",
+      "point1": "Klimat analogowy, ramki i formaty na IG / TikToka",
+      "point2": "Układy kolażowe, jedno przesunięcie na raz"
+    },
+    "privacy": {
+      "badge": "Selekcja na Twoim urządzeniu",
+      "title": "Wybierane w telefonie, nie w chmurze",
+      "description": "Wybór zdjęć, wyszukiwanie i dumpy działają na Twoim telefonie. PicDump nie przesyła Twoich zdjęć, aby je selekcjonować.",
+      "point1": "Dostęp do zdjęć pozwala znaleźć najważniejsze chwile"
+    },
+    "allowContinue": "Zezwól na dostęp do zdjęć i kontynuuj",
+    "continue": "Dalej",
+    "page": "Strona {{n}} z {{total}}",
+    "notifPreview": "Podgląd powiadomienia",
+    "notifNow": "· teraz",
+    "notifTitle": "Twój PicDump jest gotowy 🎞️",
+    "notifBody": "Dzisiejsze zdjęcia zebrane w jeden dump. Rzuć okiem przed snem.",
+    "notifyHeading": "Twój dzień o 20:00, Twój tydzień w niedzielę",
+    "notifyBody": "Powiadomienie o 20:00, gdy dzisiejszy dump jest gotowy, oraz w niedzielę w południe z podsumowaniem tygodnia.",
+    "turnOn": "Włącz",
+    "notNow": "Nie teraz"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Każdy dump w Twojej rolce.",
+      "sub": "Wersja darmowa daje podsumowania i jeden dump w tygodniu. Pro odblokowuje wszystkie."
+    },
+    "tidy": {
+      "heading": "Pozbądź się bałaganu.",
+      "sub": "Wersja darmowa znajduje powtórki i nieostre ujęcia. Pro przenosi je do Kosza jednym ruchem."
+    },
+    "finish": {
+      "heading": "Zachowaj analogowy klimat.",
+      "sub": "Original, Warm 35mm i Adjust są bezpłatne. Pro eksportuje każdy styl i teksturę."
+    },
+    "search": {
+      "heading": "Przeszukuj rolkę aparatu.",
+      "sub": "Znajdź miejsce, miesiąc lub przedmiot za pomocą słów. Wyszukiwanie jest dostępne w Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Znaleźliśmy {{count}} dump w Twojej rolce.",
+        "other": "Znaleźliśmy {{count}} dumpów w Twojej rolce."
+      },
+      "sub": "{{titles}}. Pro odblokowuje wszystkie.",
+      "subMore": "{{titles}} i więcej. Pro odblokowuje wszystkie."
+    },
+    "welcome": "Witaj w PicDump Pro!",
+    "purchaseNotActive": "Płatność przeszła, ale Pro nie zostało jeszcze aktywowane. Dotknij Przywróć zakupy.",
+    "restored": "Zakupy zostały przywrócone. Witamy ponownie w Pro!",
+    "noSubscription": "Nie znaleziono aktywnej subskrypcji PicDump Pro.",
+    "close": "Zamknij ekran subskrypcji",
+    "feature": {
+      "dumps": {
+        "title": "Wszystkie dumpy odblokowane",
+        "sub": "Każdy wyjazd i historia wykryta przez Odkrywaj, a nie tylko jeden na tydzień."
+      },
+      "search": {
+        "title": "Przeszukuj rolkę aparatu",
+        "sub": "Znajdź miejsce, miesiąc lub rzecz za pomocą słów."
+      },
+      "looks": {
+        "title": "Wszystkie analogowe style",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll oraz ziarno, blaknięcie i winieta."
+      },
+      "tidy": {
+        "title": "Usuń powtórki i bałagan",
+        "sub": "Przenieś duplikaty, nieostre zdjęcia i zrzuty ekranu do Kosza jednym ruchem."
+      },
+      "yours": {
+        "title": "Twój dump, na Twoich zasadach",
+        "sub": "Bez slajdu końcowego PicDump oraz od 4 do 20 zdjęć w dumpie."
+      }
+    },
+    "plansFailed": "Nie udało się załadować planów. Sprawdź połączenie i spróbuj ponownie.",
+    "startTrial": "Rozpocznij {{trial}}",
+    "continue": "Kontynuuj",
+    "restore": "Przywróć zakupy",
+    "trialThen": "Bezpłatnie w okresie próbnym, potem {{price}}. ",
+    "disclosure": "Płatność zostanie pobrana z Twojego konta w sklepie. Subskrypcje odnawiają się automatycznie, chyba że zostaną anulowane co najmniej 24 godziny przed końcem bieżącego okresu."
+  },
+  "profile": {
+    "title": "Profil i ustawienia",
+    "changePhoto": "Zmień zdjęcie profilowe",
+    "namePlaceholder": "Twoje imię",
+    "handlePlaceholder": "twoje_konto",
+    "theme": {
+      "system": "Systemowy",
+      "auto": "Automatyczny",
+      "cashmere": "Cashmere",
+      "light": "Jasny",
+      "espresso": "Espresso",
+      "dark": "Ciemny"
+    },
+    "reindex": {
+      "title": "Ponownie zindeksować bibliotekę?",
+      "body": "PicDump ponownie odczyta każde zdjęcie. Zajmie to kilka minut i zużyje trochę baterii. Twoje dumpy w Bibliotece zostaną zachowane.",
+      "action": "Indeksuj ponownie"
+    },
+    "dumpPicks": {
+      "title": "Ustawienia selekcji",
+      "photosPerDump": "Liczba zdjęć w dumpie",
+      "photosPerDumpSub": "Odkrywaj dobiera liczbę z tego zakresu, najczęściej pośrodku.",
+      "fewest": "Najmniej zdjęć",
+      "to": "do",
+      "most": "Najwięcej zdjęć",
+      "hideSensitive": "Ukryj wrażliwe zdjęcia",
+      "hideSensitiveSub": "Dowody tożsamości, karty bankowe i dokumenty medyczne nigdy nie pojawią się w dumpach.",
+      "screenshots": "Uwzględniaj zrzuty ekranu",
+      "screenshotsSub": "Zrzuty ekranu mogą pojawiać się w dumpach.",
+      "recap": "Podsumowanie",
+      "recapSub": "Dzisiejszy dump o 20:00, Twój tydzień w niedzielę o 12:00"
+    },
+    "export": {
+      "title": "Eksport i publikacja",
+      "note": "Nowe dumpy rozpoczynają się z rozmiarem i jakością ustawioną tutaj.",
+      "postSize": "Domyślny rozmiar posta",
+      "quality": "Domyślna jakość eksportu",
+      "hd": "HD (2160 px)",
+      "standard": "Standardowa (1080 px)",
+      "saveOnPost": "Publikacja zapisuje także w galerii",
+      "saveOnPostSub": "Zapisuje kopię slajdów w albumie PicDump"
+    },
+    "appearance": {
+      "title": "Wygląd i motyw"
+    },
+    "library": {
+      "title": "Biblioteka zdjęć i wyszukiwanie",
+      "access": "Dostęp",
+      "openSettings": "Otwórz ustawienia"
+    },
+    "about": {
+      "title": "Prywatność i informacje",
+      "onDevice": "Wszystko dzieje się na Twoim telefonie",
+      "onDeviceSub": "Jak PicDump dobiera zdjęcia bez wysyłania ich do sieci",
+      "contact": "Kontakt",
+      "noMail": "Nie znaleziono aplikacji pocztowej. Napisz na adres info@horizonzeta.com",
+      "version": "Wersja"
+    }
+  }
+}

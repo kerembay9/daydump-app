@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Đóng",
+    "back": "Quay lại",
+    "termsOfService": "Điều khoản dịch vụ",
+    "privacyPolicy": "Chính sách quyền riêng tư"
+  },
+  "tabs": {
+    "discover": "Khám phá",
+    "create": "Tạo",
+    "tidy": "Dọn dẹp",
+    "library": "Thư viện"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Tạo photo dump dễ dàng",
+      "title": "Biến cuộn camera lộn xộn thành các bản dump",
+      "description": "Tạm biệt việc cuộn qua hàng ngàn bức ảnh. PicDump chọn lọc những khoảnh khắc đẹp nhất trong ngày và chuyến đi của bạn, sắp xếp liền mạch.",
+      "point1": "Màu phim, khung viền và kích thước chuẩn IG / TikTok",
+      "point2": "Bố cục ảnh ghép, chỉ với một lần lướt"
+    },
+    "privacy": {
+      "badge": "Tuyển chọn ngay trên thiết bị",
+      "title": "Chọn lọc trên điện thoại, không qua đám mây",
+      "description": "Việc chọn ảnh, tìm kiếm và tạo dump diễn ra ngay trên điện thoại của bạn. PicDump không tải ảnh của bạn lên để chọn lọc.",
+      "point1": "Quyền truy cập ảnh giúp ứng dụng tìm thấy những khoảnh khắc nổi bật"
+    },
+    "allowContinue": "Cho phép truy cập ảnh & tiếp tục",
+    "continue": "Tiếp tục",
+    "page": "Trang {{n}} / {{total}}",
+    "notifPreview": "Xem trước thông báo",
+    "notifNow": "· vừa xong",
+    "notifTitle": "PicDump của bạn đã sẵn sàng 🎞️",
+    "notifBody": "Ảnh hôm nay đã được chọn lọc thành một bản dump. Hãy xem lại trước khi ngủ.",
+    "notifyHeading": "Ngày của bạn lúc 8 giờ tối, tuần của bạn vào Chủ Nhật",
+    "notifyBody": "Thông báo lúc 8 giờ tối khi bản dump hôm nay sẵn sàng, và trưa Chủ Nhật với bản tổng kết tuần.",
+    "turnOn": "Bật",
+    "notNow": "Để sau"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Mọi bản dump trong cuộn camera của bạn.",
+      "sub": "Gói miễn phí gồm các bản tổng kết và 1 bản dump mỗi tuần. Pro mở khóa toàn bộ."
+    },
+    "tidy": {
+      "heading": "Dọn dẹp bộ nhớ bừa bộn.",
+      "sub": "Bản miễn phí tìm các ảnh trùng lặp và ảnh mờ. Pro chuyển tất cả vào Thùng rác chỉ trong một lần nhấn."
+    },
+    "finish": {
+      "heading": "Giữ trọn chất màu phim.",
+      "sub": "Original, Warm 35mm và Adjust là miễn phí. Pro xuất được mọi phong cách và hiệu ứng hạt."
+    },
+    "search": {
+      "heading": "Tìm kiếm trong cuộn camera của bạn.",
+      "sub": "Tìm kiếm địa điểm, tháng hoặc đồ vật bằng từ khóa. Tính năng tìm kiếm đi kèm với Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Chúng tôi đã tìm thấy {{count}} bản dump trong cuộn camera của bạn.",
+        "other": "Chúng tôi đã tìm thấy {{count}} bản dump trong cuộn camera của bạn."
+      },
+      "sub": "{{titles}}. Pro mở khóa tất cả.",
+      "subMore": "{{titles}} và nhiều hơn nữa. Pro mở khóa tất cả."
+    },
+    "welcome": "Chào mừng bạn đến với PicDump Pro!",
+    "purchaseNotActive": "Giao dịch đã hoàn tất nhưng Pro chưa kích hoạt. Nhấn Khôi phục giao dịch mua.",
+    "restored": "Đã khôi phục các giao dịch mua. Chào mừng bạn trở lại với Pro!",
+    "noSubscription": "Không tìm thấy gói đăng ký PicDump Pro nào đang hoạt động.",
+    "close": "Đóng paywall",
+    "feature": {
+      "dumps": {
+        "title": "Mở khóa mọi bản dump",
+        "sub": "Mọi chuyến đi và câu chuyện mà mục Khám phá tìm thấy, không chỉ giới hạn một bản mỗi tuần."
+      },
+      "search": {
+        "title": "Tìm kiếm trong cuộn camera của bạn",
+        "sub": "Tìm một địa điểm, một tháng hoặc đồ vật bằng từ ngữ."
+      },
+      "looks": {
+        "title": "Tất cả các màu phim",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, cùng grain, fade và vignette."
+      },
+      "tidy": {
+        "title": "Dọn dẹp ảnh trùng lặp và rác",
+        "sub": "Chuyển ảnh trùng lặp, ảnh chụp mờ và ảnh chụp màn hình vào Thùng rác cùng lúc."
+      },
+      "yours": {
+        "title": "Bản dump của bạn, theo cách của bạn",
+        "sub": "Không có slide kết PicDump, và tùy chọn từ 4 đến 20 ảnh mỗi bản dump."
+      }
+    },
+    "plansFailed": "Không thể tải các gói đăng ký. Kiểm tra kết nối mạng và thử lại.",
+    "startTrial": "Bắt đầu {{trial}}",
+    "continue": "Tiếp tục",
+    "restore": "Khôi phục giao dịch mua",
+    "trialThen": "Miễn phí trong thời gian dùng thử, sau đó {{price}}. ",
+    "disclosure": "Khoản thanh toán được tính vào tài khoản cửa hàng của bạn. Gói đăng ký tự động gia hạn trừ khi bị hủy ít nhất 24 giờ trước khi kết thúc chu kỳ hiện tại."
+  },
+  "profile": {
+    "title": "Hồ sơ & Cài đặt",
+    "changePhoto": "Đổi ảnh đại diện",
+    "namePlaceholder": "Tên của bạn",
+    "handlePlaceholder": "tai_khoan_cua_ban",
+    "theme": {
+      "system": "Hệ thống",
+      "auto": "Tự động",
+      "cashmere": "Cashmere",
+      "light": "Sáng",
+      "espresso": "Espresso",
+      "dark": "Tối"
+    },
+    "reindex": {
+      "title": "Đánh chỉ mục lại thư viện ảnh?",
+      "body": "PicDump sẽ quét lại toàn bộ ảnh. Việc này mất vài phút và tiêu hao một chút pin. Các bản dump trong Thư viện vẫn được giữ nguyên.",
+      "action": "Đánh chỉ mục lại"
+    },
+    "dumpPicks": {
+      "title": "Tùy chọn bản dump",
+      "photosPerDump": "Số ảnh mỗi bản dump",
+      "photosPerDumpSub": "Khám phá sẽ chọn số lượng trong khoảng này, thường là ở khoảng giữa.",
+      "fewest": "Ít ảnh nhất",
+      "to": "đến",
+      "most": "Nhiều ảnh nhất",
+      "hideSensitive": "Ẩn ảnh nhạy cảm",
+      "hideSensitiveSub": "Căn cước công dân, thẻ ngân hàng và giấy tờ y tế không bao giờ xuất hiện trong dump.",
+      "screenshots": "Bao gồm ảnh chụp màn hình",
+      "screenshotsSub": "Ảnh chụp màn hình có thể xuất hiện trong các bản dump.",
+      "recap": "Tổng kết",
+      "recapSub": "Bản dump hôm nay lúc 8 giờ tối, bản tổng kết tuần vào trưa Chủ Nhật"
+    },
+    "export": {
+      "title": "Xuất & đăng bài",
+      "note": "Các bản dump mới sẽ áp dụng kích thước và chất lượng được đặt tại đây.",
+      "postSize": "Kích thước đăng mặc định",
+      "quality": "Chất lượng xuất mặc định",
+      "hd": "HD (2160 px)",
+      "standard": "Tiêu chuẩn (1080 px)",
+      "saveOnPost": "Lưu vào bộ sưu tập khi đăng",
+      "saveOnPostSub": "Lưu một bản sao các slide vào album PicDump"
+    },
+    "appearance": {
+      "title": "Giao diện & chủ đề"
+    },
+    "library": {
+      "title": "Thư viện ảnh & tìm kiếm",
+      "access": "Quyền truy cập",
+      "openSettings": "Mở cài đặt"
+    },
+    "about": {
+      "title": "Quyền riêng tư & giới thiệu",
+      "onDevice": "Mọi thứ diễn ra trên điện thoại của bạn",
+      "onDeviceSub": "Cách PicDump chọn ảnh mà không cần tải lên máy chủ",
+      "contact": "Liên hệ",
+      "noMail": "Không tìm thấy ứng dụng email. Vui lòng gửi thư đến info@horizonzeta.com",
+      "version": "Phiên bản"
+    }
+  }
+}

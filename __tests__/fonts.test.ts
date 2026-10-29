@@ -37,8 +37,11 @@ function codepoints(file: string): Set<number> {
 
 const used = new Set<number>();
 // emojiNames.json: search's emoji lookup keys (index/queryLang.ts), never drawn in Inter
+// non-English locales fall back per glyph to the system font for non-Latin scripts
 for (const f of fs.readdirSync(path.join(root, 'src'), { recursive: true }) as string[]) {
-  if (/\.(tsx?|json)$/.test(f) && !f.endsWith('emojiNames.json')) for (const ch of fs.readFileSync(path.join(root, 'src', f), 'utf8')) used.add(ch.codePointAt(0)!);
+  if (/\.(tsx?|json)$/.test(f) && !f.endsWith('emojiNames.json') && (!f.includes('locales') || f.endsWith('en.json'))) {
+    for (const ch of fs.readFileSync(path.join(root, 'src', f), 'utf8')) used.add(ch.codePointAt(0)!);
+  }
 }
 
 const fonts = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))

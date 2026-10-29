@@ -35,9 +35,11 @@ test('every other language only holds keys that exist in English', () => {
 });
 
 test('an empty language falls back to English', () => {
-  i18n.locale = 'tr';
+  i18n.translations.xx = {};
+  i18n.locale = 'xx';
   expect(tr('tabs.discover')).toBe('Discover');
   expect(tr('onboarding.page', { n: 2, total: 4 })).toBe('Page 2 of 4');
+  delete i18n.translations.xx;
 });
 
 test('plural keys follow the count', () => {

@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Zatvori",
+    "back": "Natrag",
+    "termsOfService": "Uvjeti pružanja usluge",
+    "privacyPolicy": "Pravila privatnosti"
+  },
+  "tabs": {
+    "discover": "Otkrij",
+    "create": "Stvori",
+    "tidy": "Pospremi",
+    "library": "Medijateka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Jednostavni photo dumpovi",
+      "title": "Pretvorite nered u galeriji u dumpove",
+      "description": "Zaboravite na pomicanje kroz tisuće fotografija. PicDump bira najbolje fotografije vaših dana i putovanja, sa savršenim ritmom.",
+      "point1": "Filmski izgledi, rubovi i formati za IG i TikTok",
+      "point2": "Kolažni rasporedi, jedan potez prstom odjednom"
+    },
+    "privacy": {
+      "badge": "Odabir na uređaju",
+      "title": "Odabrano na vašem telefonu, ne u oblaku",
+      "description": "Odabir fotografija, pretraživanje i dumpovi odvijaju se na vašem telefonu. PicDump ne prenosi vaše fotografije radi obrade.",
+      "point1": "Pristup fotografijama omogućuje pronalaženje vaših najboljih trenutaka"
+    },
+    "allowContinue": "Dozvoli pristup fotografijama i nastavi",
+    "continue": "Nastavi",
+    "page": "Stranica {{n}} od {{total}}",
+    "notifPreview": "Pretpregled obavijesti",
+    "notifNow": "· upravo sada",
+    "notifTitle": "Vaš PicDump je spreman 🎞️",
+    "notifBody": "Današnje fotografije, složene u jedan dump. Pogledajte prije spavanja.",
+    "notifyHeading": "Vaš dan u 20:00, vaš tjedan u nedjelju",
+    "notifyBody": "Obavijest u 20:00 kad je današnji dump spreman, te u nedjelju u podne s vašim tjednom.",
+    "turnOn": "Uključi",
+    "notNow": "Ne sada"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Svaki dump iz vaše galerije.",
+      "sub": "Besplatna verzija donosi preglede i jedan dump tjedno. Pro otključava sve."
+    },
+    "tidy": {
+      "heading": "Očistite nered.",
+      "sub": "Besplatna verzija pronalazi ponovljene i mutne snimke. Pro ih premješta u smeće odjednom."
+    },
+    "finish": {
+      "heading": "Zadržite filmski izgled.",
+      "sub": "Original, Warm 35mm i Adjust su besplatni. Pro izvozi svaki izgled i teksturu."
+    },
+    "search": {
+      "heading": "Pretražite svoju galeriju.",
+      "sub": "Pronađite mjesto, mjesec ili stvar pomoću riječi. Pretraživanje dolazi s opcijom Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Pronašli smo {{count}} dump u vašoj galeriji.",
+        "other": "Pronašli smo {{count}} dumpova u vašoj galeriji."
+      },
+      "sub": "{{titles}}. Pro otvara sve njih.",
+      "subMore": "{{titles}} i još mnogo toga. Pro otvara sve njih."
+    },
+    "welcome": "Dobrodošli u PicDump Pro!",
+    "purchaseNotActive": "Kupnja je uspjela, ali Pro još nije aktiviran. Dodirnite Obnovi kupnje.",
+    "restored": "Kupnje su obnovljene. Dobrodošli natrag u Pro!",
+    "noSubscription": "Nije pronađena aktivna PicDump Pro pretplata.",
+    "close": "Zatvori platni zaslon",
+    "feature": {
+      "dumps": {
+        "title": "Svaki dump, otključan",
+        "sub": "Svako putovanje i priča koju Otkrij pronađe, a ne samo jedan tjedno."
+      },
+      "search": {
+        "title": "Pretražite svoju galeriju",
+        "sub": "Pronađite mjesto, mjesec ili predmet riječima."
+      },
+      "looks": {
+        "title": "Svi filmski izgledi",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, uz zrnatost, blijeđenje i vinjetu."
+      },
+      "tidy": {
+        "title": "Uklonite duplikate i nered",
+        "sub": "Premjestite duplikate, mutne snimke i snimke zaslona u smeće jednim potezom."
+      },
+      "yours": {
+        "title": "Vaš dump, na vaš način",
+        "sub": "Bez odjavnog PicDump slajda, i od 4 do 20 fotografija po dumpu."
+      }
+    },
+    "plansFailed": "Učitavanje planova nije uspjelo. Provjerite vezu i pokušajte ponovno.",
+    "startTrial": "Započni {{trial}}",
+    "continue": "Nastavi",
+    "restore": "Obnovi kupnje",
+    "trialThen": "Besplatno tijekom probnog razdoblja, zatim {{price}}. ",
+    "disclosure": "Plaćanje se tereti na vaš račun trgovine. Pretplate se automatski obnavljaju osim ako se ne otkažu najmanje 24 sata prije kraja tekućeg razdoblja."
+  },
+  "profile": {
+    "title": "Profil i postavke",
+    "changePhoto": "Promijeni sliku profila",
+    "namePlaceholder": "Vaše ime",
+    "handlePlaceholder": "vas_korisnicki_racun",
+    "theme": {
+      "system": "Sustav",
+      "auto": "Automatski",
+      "cashmere": "Cashmere",
+      "light": "Svijetlo",
+      "espresso": "Espresso",
+      "dark": "Tamno"
+    },
+    "reindex": {
+      "title": "Ponovno indeksirati medijateku?",
+      "body": "PicDump će ponovno očitati svaku fotografiju. To traje nekoliko minuta i troši malo baterije. Vaši dumpovi u Medijateci bit će sačuvani.",
+      "action": "Ponovno indeksiraj"
+    },
+    "dumpPicks": {
+      "title": "Odabir dumpa",
+      "photosPerDump": "Fotografija po dumpu",
+      "photosPerDumpSub": "Otkrij bira broj u ovom rasponu, najčešće iz sredine.",
+      "fewest": "Najmanje fotografija",
+      "to": "do",
+      "most": "Najviše fotografija",
+      "hideSensitive": "Sakrij osjetljive fotografije",
+      "hideSensitiveSub": "Osobni dokumenti, bankovne kartice i medicinski nalazi nikad se ne prikazuju u dumpovima.",
+      "screenshots": "Uključi snimke zaslona",
+      "screenshotsSub": "Snimke zaslona mogu se pojaviti u dumpovima.",
+      "recap": "Pregled",
+      "recapSub": "Današnji dump u 20:00, vaš tjedan u nedjelju u podne"
+    },
+    "export": {
+      "title": "Izvoz i objavljivanje",
+      "note": "Novi dumpovi počinju s veličinom i kvalitetom postavljenom ovdje.",
+      "postSize": "Zadana veličina objave",
+      "quality": "Zadana kvaliteta izvoza",
+      "hd": "HD (2160 px)",
+      "standard": "Standardno (1080 px)",
+      "saveOnPost": "Objavljivanje također sprema u galeriju",
+      "saveOnPostSub": "Čuva kopiju slajdova u PicDump albumu"
+    },
+    "appearance": {
+      "title": "Izgled i tema"
+    },
+    "library": {
+      "title": "Fototeka i pretraživanje",
+      "access": "Pristup",
+      "openSettings": "Otvori postavke"
+    },
+    "about": {
+      "title": "Privatnost i o aplikaciji",
+      "onDevice": "Sve se odvija na vašem telefonu",
+      "onDeviceSub": "Kako PicDump bira fotografije bez njihovog prijenosa na poslužitelje",
+      "contact": "Kontakt",
+      "noMail": "Nije pronađena aplikacija za e-poštu. Pišite na info@horizonzeta.com",
+      "version": "Verzija"
+    }
+  }
+}

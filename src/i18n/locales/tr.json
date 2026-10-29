@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Kapat",
+    "back": "Geri",
+    "termsOfService": "Kullanım Koşulları",
+    "privacyPolicy": "Gizlilik Politikası"
+  },
+  "tabs": {
+    "discover": "Keşfet",
+    "create": "Oluştur",
+    "tidy": "Düzenle",
+    "library": "Arşiv"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Zahmetsiz fotoğraf dumpları",
+      "title": "Film rulosundaki karmaşayı dumplara dönüştürün",
+      "description": "Binlerce fotoğraf arasında gezinmeye veda edin. PicDump, günlerinizin ve gezilerinizin en iyi fotoğraflarını harika bir akışla bir araya getirir.",
+      "point1": "Film filtreleri, kenarlıklar ve IG / TikTok boyutları",
+      "point2": "Kolaj düzenleri, tek bir kaydırmayla"
+    },
+    "privacy": {
+      "badge": "Cihaz üzerinde kürasyon",
+      "title": "Bulutta değil, telefonunuzda seçilir",
+      "description": "Fotoğraf seçimleri, arama ve dumplar telefonunuzda çalışır. PicDump fotoğraflarınızı seçmek için onları sunuculara yüklemez.",
+      "point1": "Fotoğraf erişimi en özel anlarınızı bulmasını sağlar"
+    },
+    "allowContinue": "Fotoğraflara izin ver ve devam et",
+    "continue": "Devam Et",
+    "page": "Sayfa {{n}} / {{total}}",
+    "notifPreview": "Bildirim önizlemesi",
+    "notifNow": "· şimdi",
+    "notifTitle": "PicDump'ın hazır 🎞️",
+    "notifBody": "Bugünün fotoğrafları tek bir dump'ta toplandı. Uyumadan önce göz at.",
+    "notifyHeading": "Gününüz saat 20:00'de, haftanız Pazar günü",
+    "notifyBody": "Bugünün dump'ı hazır olduğunda saat 20:00'de, haftalık özetin ise Pazar öğlen bildirilir.",
+    "turnOn": "Aç",
+    "notNow": "Şimdi değil"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Film rulondaki her dump.",
+      "sub": "Ücretsiz sürüm özetleri ve haftada bir dump sunar. Pro hepsini açar."
+    },
+    "tidy": {
+      "heading": "Gereksiz kalabalığı temizle.",
+      "sub": "Ücretsiz sürüm tekrar eden ve bulanık kareleri bulur. Pro hepsini tek dokunuşla Çöp Kutusuna taşır."
+    },
+    "finish": {
+      "heading": "Film havasını koru.",
+      "sub": "Original, Warm 35mm ve Ayarla ücretsizdir. Pro tüm stilleri ve dokuları dışa aktarır."
+    },
+    "search": {
+      "heading": "Film rulonda arama yap.",
+      "sub": "Bir yeri, ayı veya nesneyi kelimelerle bul. Arama Pro ile gelir."
+    },
+    "found": {
+      "heading": {
+        "one": "Rulonda {{count}} dump bulduk.",
+        "other": "Rulonda {{count}} dump bulduk."
+      },
+      "sub": "{{titles}}. Pro hepsini açar.",
+      "subMore": "{{titles}} ve fazlası. Pro hepsini açar."
+    },
+    "welcome": "PicDump Pro'ya hoş geldin!",
+    "purchaseNotActive": "Satın alma tamamlandı ancak Pro henüz aktifleşmedi. Satın alımları geri yükle'ye dokun.",
+    "restored": "Satın alımlar geri yüklendi. Pro'ya tekrar hoş geldin!",
+    "noSubscription": "Aktif bir PicDump Pro aboneliği bulunamadı.",
+    "close": "Kapat",
+    "feature": {
+      "dumps": {
+        "title": "Her dump'ın kilidi açık",
+        "sub": "Haftada bir değil, Keşfet'in bulduğu her gezi ve hikaye."
+      },
+      "search": {
+        "title": "Film rulonda arama yap",
+        "sub": "Bir yeri, ayı veya nesneyi kelimelerle bul."
+      },
+      "looks": {
+        "title": "Tüm film görünümleri",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll ve gren, solma ve vinyet."
+      },
+      "tidy": {
+        "title": "Tekrarları ve kalabalığı temizle",
+        "sub": "Yinelenenleri, bulanık kareleri ve ekran görüntülerini tek seferde Çöp Kutusuna taşı."
+      },
+      "yours": {
+        "title": "Senin dump'ın, senin tarzın",
+        "sub": "PicDump bitiş kartı olmadan ve dump başına 4 ila 20 fotoğraf."
+      }
+    },
+    "plansFailed": "Planlar yüklenemedi. Bağlantını kontrol edip tekrar dene.",
+    "startTrial": "{{trial}} Başlat",
+    "continue": "Devam Et",
+    "restore": "Satın alımları geri yükle",
+    "trialThen": "Deneme süresince ücretsiz, ardından {{price}}. ",
+    "disclosure": "Ödeme mağaza hesabınızdan tahsil edilir. Abonelikler, geçerli dönemin bitiminden en az 24 saat önce iptal edilmediği sürece otomatik olarak yenilenir."
+  },
+  "profile": {
+    "title": "Profil ve Ayarlar",
+    "changePhoto": "Profil fotoğrafını değiştir",
+    "namePlaceholder": "Adın",
+    "handlePlaceholder": "kullanici_adin",
+    "theme": {
+      "system": "Sistem",
+      "auto": "Otomatik",
+      "cashmere": "Cashmere",
+      "light": "Açık",
+      "espresso": "Espresso",
+      "dark": "Koyu"
+    },
+    "reindex": {
+      "title": "Arşivin yeniden dizine eklensin mi?",
+      "body": "PicDump her fotoğrafı tekrar tarayacaktır. Bu işlem birkaç dakika sürer ve biraz pil harcar. Arşivdeki dumpların korunur.",
+      "action": "Yeniden Dizinle"
+    },
+    "dumpPicks": {
+      "title": "Dump seçimleri",
+      "photosPerDump": "Dump başına fotoğraf",
+      "photosPerDumpSub": "Keşfet bu aralıkta, çoğunlukla orta değerlerde bir sayı seçer.",
+      "fewest": "En az fotoğraf",
+      "to": "-",
+      "most": "En çok fotoğraf",
+      "hideSensitive": "Hassas fotoğrafları gizle",
+      "hideSensitiveSub": "Kimlikler, banka kartları ve sağlık belgeleri dumplarda asla görünmez.",
+      "screenshots": "Ekran görüntülerini dahil et",
+      "screenshotsSub": "Ekran görüntüleri dumplarda yer alabilir.",
+      "recap": "Özet",
+      "recapSub": "Bugünün dump'ı saat 20:00'de, haftan Pazar öğlen"
+    },
+    "export": {
+      "title": "Dışa aktarma ve paylaşım",
+      "note": "Yeni dumplar burada ayarlanan boyut ve kalitede başlar.",
+      "postSize": "Varsayılan Gönderi Boyutu",
+      "quality": "Varsayılan Dışa Aktarma Kalitesi",
+      "hd": "HD (2160 px)",
+      "standard": "Standart (1080 px)",
+      "saveOnPost": "Paylaşırken galeriye de kaydet",
+      "saveOnPostSub": "Slaytların bir kopyasını PicDump albümünde saklar"
+    },
+    "appearance": {
+      "title": "Görünüm ve tema"
+    },
+    "library": {
+      "title": "Fotoğraf arşivi ve arama",
+      "access": "Erişim",
+      "openSettings": "Ayarları aç"
+    },
+    "about": {
+      "title": "Gizlilik ve hakkında",
+      "onDevice": "Her şey telefonunda gerçekleşir",
+      "onDeviceSub": "PicDump fotoğrafları yüklemeden nasıl seçer?",
+      "contact": "İletişim",
+      "noMail": "E-posta uygulaması bulunamadı. info@horizonzeta.com adresine yazın",
+      "version": "Sürüm"
+    }
+  }
+}

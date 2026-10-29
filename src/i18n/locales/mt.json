@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Agħlaq",
+    "back": "Lura",
+    "termsOfService": "Termini tas-Servizz",
+    "privacyPolicy": "Politika tal-Privatezza"
+  },
+  "tabs": {
+    "discover": "Skopri",
+    "create": "Oħloq",
+    "tidy": "Ratta",
+    "library": "Librerija"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dumps mingħajr tbatija",
+      "title": "Biddel il-kaos tar-roll tar-ritratti f'dumps",
+      "description": "Tinsa l-iskrolljar bla tmiem fost eluf ta' ritratti. PicDump jagħżel l-aqwa ritratti tal-ġranet u l-vjaġġi tiegħek, b'ritmu naturali.",
+      "point1": "Dehriet tal-film, borduri u daqsijiet għal IG u TikTok",
+      "point2": "Tqassim ta' collages, bi swipe waħda kull darba"
+    },
+    "privacy": {
+      "badge": "Għażla fuq it-tagħmir",
+      "title": "Magħżula fuq il-mowbajl tiegħek, mhux fil-cloud",
+      "description": "L-għażla tar-ritratti, it-tfittxija u d-dumps jaħdmu fuq il-mowbajl tiegħek. PicDump ma jtella' l-ebda ritratt biex jagħżilhom.",
+      "point1": "L-aċċess għar-ritratti jippermettilu jsib l-isbaħ mumenti tiegħek"
+    },
+    "allowContinue": "Ippermetti r-ritratti u kompli",
+    "continue": "Kompli",
+    "page": "Paġna {{n}} minn {{total}}",
+    "notifPreview": "Preview tan-notifika",
+    "notifNow": "· issa",
+    "notifTitle": "Il-PicDump tiegħek lest 🎞️",
+    "notifBody": "Ir-ritratti tal-lum magħżula f'dump wieħed. Agħti daqqa t'għajn qabel torqod.",
+    "notifyHeading": "Il-ġurnata tiegħek fit-8 PM, il-ġimgħa tiegħek il-Ħadd",
+    "notifyBody": "Notifika fit-8 PM meta d-dump tal-lum ikun lest, u l-Ħadd f'nofsinhar bil-ġimgħa kollha tiegħek.",
+    "turnOn": "Ixgħel",
+    "notNow": "Mhux issa"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Kull dump fir-roll tiegħek.",
+      "sub": "Verżjoni b'xejn tagħtik ir-riassunti u dump wieħed fil-ġimgħa. Pro tiftaħhom kollha."
+    },
+    "tidy": {
+      "heading": "Naddaf it-tħarbit.",
+      "sub": "Verżjoni b'xejn issib kull ritratt doppju jew imċajpar. Pro titfagħhom fit-Trash f'daqqa waħda."
+    },
+    "finish": {
+      "heading": "Żomm id-dehra tal-film.",
+      "sub": "Original, Warm 35mm u Adjust huma b'xejn. Pro tesporta kull dehra u nisġa."
+    },
+    "search": {
+      "heading": "Fittex fir-roll tar-ritratti tiegħek.",
+      "sub": "Sib post, xahar jew oġġett bil-kliem. It-tfittxija tiġi ma' Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Sibna {{count}} dump fir-roll tiegħek.",
+        "other": "Sibna {{count}} dumps fir-roll tiegħek."
+      },
+      "sub": "{{titles}}. Pro tiftaħhom kollha.",
+      "subMore": "{{titles}} u aktar. Pro tiftaħhom kollha."
+    },
+    "welcome": "Merħba f'PicDump Pro!",
+    "purchaseNotActive": "Ix-xiri sar iżda Pro għadha ma ħadmitx. Tektek Irrestawra x-xiri.",
+    "restored": "Ix-xiri ġie rrestawrat. Merħba lura fi Pro!",
+    "noSubscription": "Ma nstab l-ebda abbonament attiv ta' PicDump Pro.",
+    "close": "Agħlaq il-paywall",
+    "feature": {
+      "dumps": {
+        "title": "Kull dump, miftuħ",
+        "sub": "Kull vjaġġ u storja li ssib Skopri, mhux wieħed fil-ġimgħa biss."
+      },
+      "search": {
+        "title": "Fittex fir-roll tar-ritratti tiegħek",
+        "sub": "Sib post, xahar jew oġġett bil-kliem."
+      },
+      "looks": {
+        "title": "Id-dehriet kollha tal-film",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, flimkien ma' grain, fade u vignette."
+      },
+      "tidy": {
+        "title": "Naddaf ritratti doppji u tħarbit",
+        "sub": "Itfa' ritratti doppji, imċajpra u screenshots fit-Trash f'daqqa waħda."
+      },
+      "yours": {
+        "title": "Id-dump tiegħek, kif tridu int",
+        "sub": "Mingħajr l-aħħar slide ta' PicDump, u bejn 4 u 20 ritratt f'kull dump."
+      }
+    },
+    "plansFailed": "Il-pjanijiet ma setgħux jittellgħu. Iċċekkja l-konnessjoni tiegħek u erġa' pprova.",
+    "startTrial": "Ibda {{trial}}",
+    "continue": "Kompli",
+    "restore": "Irrestawra x-xiri",
+    "trialThen": "B'xejn matul il-prova, imbagħad {{price}}. ",
+    "disclosure": "Il-ħlas jinġibed mill-kont tal-maħżen tal-applikazzjonijiet tiegħek. L-abbonamenti jiġġeddu awtomatikament dment li ma jiġux ikkanċellati mill-inqas 24 siegħa qabel tmiem il-perjodu kurrenti."
+  },
+  "profile": {
+    "title": "Profil u Settings",
+    "changePhoto": "Biddel ir-ritratt tal-profil",
+    "namePlaceholder": "Ismek",
+    "handlePlaceholder": "il_kont_tiegħek",
+    "theme": {
+      "system": "Sistema",
+      "auto": "Awtomatiku",
+      "cashmere": "Cashmere",
+      "light": "Ċar",
+      "espresso": "Espresso",
+      "dark": "Skur"
+    },
+    "reindex": {
+      "title": "Trid terġa' tindeksa l-librerija tiegħek?",
+      "body": "PicDump se jerġa' jaqra kull ritratt. Dan jieħu ftit minuti u juża ftit batterija. Id-dumps tiegħek fil-Librerija jinżammu.",
+      "action": "Erġa' indeksa"
+    },
+    "dumpPicks": {
+      "title": "Għażla tad-dumps",
+      "photosPerDump": "Ritratti f'kull dump",
+      "photosPerDumpSub": "Skopri jagħżel numru f'din il-firxa, l-aktar min-nofs.",
+      "fewest": "L-inqas ritratti",
+      "to": "sa",
+      "most": "L-aktar ritratti",
+      "hideSensitive": "Aħbi ritratti sensittivi",
+      "hideSensitiveSub": "Karti tal-identità, karti tal-bank u dokumenti mediċi qatt ma jidhru fid-dumps.",
+      "screenshots": "Inkludi screenshots",
+      "screenshotsSub": "Screenshots jistgħu jidhru fid-dumps.",
+      "recap": "Riassunt",
+      "recapSub": "Id-dump tal-lum fit-8 PM, il-ġimgħa tiegħek il-Ħadd f'nofsinhar"
+    },
+    "export": {
+      "title": "Esportazzjoni u posting",
+      "note": "Dumps ġodda jibdew bid-daqs u l-kwalità stabbiliti hawnhekk.",
+      "postSize": "Daqs Default tal-Post",
+      "quality": "Kwalità Default tal-Esportazzjoni",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Il-posting isalva wkoll fil-gallerija",
+      "saveOnPostSub": "Iżomm kopja tal-islides fl-album ta' PicDump"
+    },
+    "appearance": {
+      "title": "Dehra u tema"
+    },
+    "library": {
+      "title": "Librerija tar-ritratti u tfittxija",
+      "access": "Aċċess",
+      "openSettings": "Iftaħ is-settings"
+    },
+    "about": {
+      "title": "Privatezza u informazzjoni",
+      "onDevice": "Kollox isir fuq il-mowbajl tiegħek",
+      "onDeviceSub": "Kif PicDump jagħżel ir-ritratti mingħajr ma jtella' xejn",
+      "contact": "Ikkuntattjana",
+      "noMail": "Ma nstabet l-ebda app tal-imejl. Ikteb lil info@horizonzeta.com",
+      "version": "Verżjoni"
+    }
+  }
+}

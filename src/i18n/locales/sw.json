@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Funga",
+    "back": "Rudi",
+    "termsOfService": "Sheria na Masharti",
+    "privacyPolicy": "Sera ya Faragha"
+  },
+  "tabs": {
+    "discover": "Gundua",
+    "create": "Unda",
+    "tidy": "Safisha",
+    "library": "Maktaba"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Mikusanyiko rahisi ya picha",
+      "title": "Badilisha mrundikano wa picha kuwa mikusanyiko",
+      "description": "Aga kupekuza maelfu ya picha. PicDump huchagua picha bora za siku na safari zako, zikiwa na mtiririko mzuri.",
+      "point1": "Muonekano wa filamu, fremu na ukubwa wa IG / TikTok",
+      "point2": "Miundo ya kolagi, kwa kupapasa mara moja"
+    },
+    "privacy": {
+      "badge": "Uteuzi ndani ya kifaa",
+      "title": "Huchaguliwa kwenye simu yako, si kwenye wingu",
+      "description": "Uteuzi wa picha, utafutaji na mikusanyiko hufanyika kwenye simu yako. PicDump haipakii picha zako ili kuziteua.",
+      "point1": "Ruhusa ya picha huiruhusu kupata matukio yako bora"
+    },
+    "allowContinue": "Ruhusu picha na uendelee",
+    "continue": "Endelea",
+    "page": "Ukurasa wa {{n}} kati ya {{total}}",
+    "notifPreview": "Onyesho la arifa",
+    "notifNow": "· sasa hivi",
+    "notifTitle": "PicDump yako iko tayari 🎞️",
+    "notifBody": "Picha za leo zimepangwa katika mkusanyiko mmoja. Zitazame kabla ya kulala.",
+    "notifyHeading": "Siku yako saa 2 usiku, juma lako Jumapili",
+    "notifyBody": "Taarifa saa 2 usiku dump ya leo inapokuwa tayari, na Jumapili mchana kwa muhtasari wa juma.",
+    "turnOn": "Washa",
+    "notNow": "Si sasa"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Kila dump kwenye picha zako.",
+      "sub": "Bila malipo unapata muhtasari na dump moja kwa wiki. Pro inafungua zote."
+    },
+    "tidy": {
+      "heading": "Ondoa mrundikano usiohitajika.",
+      "sub": "Bila malipo inapata picha zinazorudiwa na zenye ukungu. Pro inazihamishia kwenye Tupio zote mara moja."
+    },
+    "finish": {
+      "heading": "Dumisha muonekano wa filamu.",
+      "sub": "Original, Warm 35mm na Adjust ni bure. Pro inatoa kila mtindo na muundo."
+    },
+    "search": {
+      "heading": "Tafuta kwenye picha zako.",
+      "sub": "Tafuta mahali, mwezi au kitu kwa maneno. Utafutaji unakuja na Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Tumepata dump {{count}} kwenye picha zako.",
+        "other": "Tumepata dumps {{count}} kwenye picha zako."
+      },
+      "sub": "{{titles}}. Pro inafungua zote.",
+      "subMore": "{{titles}} na zinginezo. Pro inafungua zote."
+    },
+    "welcome": "Karibu kwenye PicDump Pro!",
+    "purchaseNotActive": "Malipo yamekamilika lakini Pro haijawashwa bado. Gusa Rejesha ununuzi.",
+    "restored": "Ununuzi umerejeshwa. Karibu tena kwenye Pro!",
+    "noSubscription": "Hakuna usajili unaofanya kazi wa PicDump Pro uliopatikana.",
+    "close": "Funga ukurasa wa malipo",
+    "feature": {
+      "dumps": {
+        "title": "Kila dump, imefunguliwa",
+        "sub": "Kila safari na hadithi inayopatikana kwenye Gundua, si moja kwa wiki."
+      },
+      "search": {
+        "title": "Tafuta kwenye picha zako",
+        "sub": "Tafuta mahali, mwezi au kitu kwa maneno."
+      },
+      "looks": {
+        "title": "Mitindo yote ya filamu",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, pamoja na grain, fade na vignette."
+      },
+      "tidy": {
+        "title": "Futa picha zilizorudiwa na mrundikano",
+        "sub": "Hamishia picha rudufu, zenye ukungu na picha za skrini kwenye Tupio mara moja."
+      },
+      "yours": {
+        "title": "Dump yako, kwa njia yako",
+        "sub": "Bila slaidi ya mwisho ya PicDump, na picha 4 hadi 20 kwa kila dump."
+      }
+    },
+    "plansFailed": "Imeshindwa kupakia vifurushi. Angalia muunganisho wako kisha ujaribu tena.",
+    "startTrial": "Anza {{trial}}",
+    "continue": "Endelea",
+    "restore": "Rejesha ununuzi",
+    "trialThen": "Bure wakati wa jaribio, kisha {{price}}. ",
+    "disclosure": "Malipo yatatozwa kwenye akaunti yako ya duka la programu. Usajili hujisasisha wenyewe isipokuwa ukighairi angalau saa 24 kabla ya mwisho wa kipindi cha sasa."
+  },
+  "profile": {
+    "title": "Wasifu na Mipangilio",
+    "changePhoto": "Badilisha picha ya wasifu",
+    "namePlaceholder": "Jina lako",
+    "handlePlaceholder": "akaunti_yako",
+    "theme": {
+      "system": "Mfumo",
+      "auto": "Otomatiki",
+      "cashmere": "Cashmere",
+      "light": "Nyeupe",
+      "espresso": "Espresso",
+      "dark": "Nyeusi"
+    },
+    "reindex": {
+      "title": "Fahirisi tena maktaba yako?",
+      "body": "PicDump itasoma kila picha tena. Hii inachukua dakika chache na betri kiasi. Dumps zako katika Maktaba zitahifadhiwa.",
+      "action": "Fahirisi tena"
+    },
+    "dumpPicks": {
+      "title": "Chaguo za dump",
+      "photosPerDump": "Picha kwa kila dump",
+      "photosPerDumpSub": "Gundua inachagua idadi katika masafa haya, hasa katikati.",
+      "fewest": "Picha chache zaidi",
+      "to": "hadi",
+      "most": "Picha nyingi zaidi",
+      "hideSensitive": "Ficha picha nyeti",
+      "hideSensitiveSub": "Vitambulisho, kadi za benki na hati za matibabu hazitaonekana kamwe kwenye dumps.",
+      "screenshots": "Jumuisha picha za skrini",
+      "screenshotsSub": "Picha za skrini zinaweza kuonekana kwenye dumps.",
+      "recap": "Muhtasari",
+      "recapSub": "Dump ya leo saa 2 usiku, juma lako Jumapili mchana"
+    },
+    "export": {
+      "title": "Kusafirisha na kuchapisha",
+      "note": "Dumps mpya zitaanza na ukubwa na ubora uliowekwa hapa.",
+      "postSize": "Ukubwa Chaguomsingi wa Chapisho",
+      "quality": "Ubora Chaguomsingi wa Kusafirisha",
+      "hd": "HD (pikseli 2160)",
+      "standard": "Kawaida (pikseli 1080)",
+      "saveOnPost": "Kuchapisha pia huhifadhi kwenye ghala",
+      "saveOnPostSub": "Huhifadhi nakala ya slaidi kwenye albamu ya PicDump"
+    },
+    "appearance": {
+      "title": "Muonekano na mandhari"
+    },
+    "library": {
+      "title": "Maktaba ya picha na utafutaji",
+      "access": "Ufikiaji",
+      "openSettings": "Fungua mipangilio"
+    },
+    "about": {
+      "title": "Faragha na kuhusu programu",
+      "onDevice": "Kila kitu hufanyika kwenye simu yako",
+      "onDeviceSub": "Jinsi PicDump inavyochagua picha bila kuzipakia",
+      "contact": "Wasiliana",
+      "noMail": "Hakuna programu ya barua pepe iliyopatikana. Andika kwa info@horizonzeta.com",
+      "version": "Toleo"
+    }
+  }
+}

@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Tanca",
+    "back": "Enrere",
+    "termsOfService": "Condicions del servei",
+    "privacyPolicy": "Política de privadesa"
+  },
+  "tabs": {
+    "discover": "Descobreix",
+    "create": "Crea",
+    "tidy": "Ordena",
+    "library": "Biblioteca"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dumps de fotos sense esforç",
+      "title": "Converteix el caos del rodet en dumps",
+      "description": "Oblida't de fer lliscaments infinits entre milers de fotos. PicDump tria les millors fotos dels teus dies i viatges, amb un ritme fluid.",
+      "point1": "Estils analògics, marcs i mides per a IG i TikTok",
+      "point2": "Dissenys de collage, amb un sol gest"
+    },
+    "privacy": {
+      "badge": "Selecció al teu dispositiu",
+      "title": "Triades al teu telèfon, no al núvol",
+      "description": "La selecció de fotos, la cerca i els dumps s'executen al teu telèfon. PicDump no puja les teves fotos per organitzar-les.",
+      "point1": "L'accés a les fotos li permet trobar els teus millors moments"
+    },
+    "allowContinue": "Permet les fotos i continua",
+    "continue": "Continua",
+    "page": "Pàgina {{n}} de {{total}}",
+    "notifPreview": "Previsualització de la notificació",
+    "notifNow": "· ara",
+    "notifTitle": "El teu PicDump està a punt 🎞️",
+    "notifBody": "Les fotos d'avui, reunides en un dump. Fes-hi una ullada abans d'anar a dormir.",
+    "notifyHeading": "El teu dia a les 20:00, la teva setmana diumenge",
+    "notifyBody": "Un avís a les 20:00 quan el dump d'avui estigui a punt, i diumenge al migdia amb la teva setmana.",
+    "turnOn": "Activa",
+    "notNow": "Ara no"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Tots els dumps del teu rodet.",
+      "sub": "La versió gratuïta inclou els teus resums i un dump a la setmana. Pro els desbloqueja tots."
+    },
+    "tidy": {
+      "heading": "Fes neteja del desordre.",
+      "sub": "La versió gratuïta troba les fotos repetides i borroses. Pro les envia a la Paperera d'un sol cop."
+    },
+    "finish": {
+      "heading": "Conserva l'estil analògic.",
+      "sub": "Original, Warm 35mm i Ajustar són gratuïts. Pro exporta tots els estils i textures."
+    },
+    "search": {
+      "heading": "Cerca al teu rodet de fotos.",
+      "sub": "Troba un lloc, un mes o un objecte amb paraules. La cerca s'inclou amb Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Hem trobat {{count}} dump al teu rodet.",
+        "other": "Hem trobat {{count}} dumps al teu rodet."
+      },
+      "sub": "{{titles}}. Pro els desbloqueja tots.",
+      "subMore": "{{titles}} i més. Pro els desbloqueja tots."
+    },
+    "welcome": "Benvingut/da a PicDump Pro!",
+    "purchaseNotActive": "La compra s'ha realitzat però Pro encara no s'ha activat. Toca Restaura les compres.",
+    "restored": "Compres restaurades. Benvingut/da de nou a Pro!",
+    "noSubscription": "No s'ha trobat cap subscripció activa a PicDump Pro.",
+    "close": "Tanca la pantalla de pagament",
+    "feature": {
+      "dumps": {
+        "title": "Tots els dumps, desbloquejats",
+        "sub": "Tots els viatges i històries que troba Descobreix, no només un a la setmana."
+      },
+      "search": {
+        "title": "Cerca al teu rodet",
+        "sub": "Troba un lloc, un mes o un detall amb paraules."
+      },
+      "looks": {
+        "title": "Tots els estils de pel·lícula",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, a més de gra, esvaïment i vinyeta."
+      },
+      "tidy": {
+        "title": "Elimina repeticions i desordre",
+        "sub": "Mou duplicats, fotos borroses i captures de pantalla a la Paperera alhora."
+      },
+      "yours": {
+        "title": "El teu dump, a la teva manera",
+        "sub": "Sense diapositiva final de PicDump i de 4 a 20 fotos per dump."
+      }
+    },
+    "plansFailed": "No s'han pogut carregar els plans. Comprova la teva connexió i torna-ho a provar.",
+    "startTrial": "Comença {{trial}}",
+    "continue": "Continua",
+    "restore": "Restaura les compres",
+    "trialThen": "Gratis durant la prova, després {{price}}. ",
+    "disclosure": "El pagament es carrega al compte de la teva botiga d'aplicacions. Les subscripcions es renoven automàticament tret que es cancel·lin almenys 24 hores abans de finalitzar el període actual."
+  },
+  "profile": {
+    "title": "Perfil i configuració",
+    "changePhoto": "Canvia la foto de perfil",
+    "namePlaceholder": "El teu nom",
+    "handlePlaceholder": "el_teu_compte",
+    "theme": {
+      "system": "Sistema",
+      "auto": "Automàtic",
+      "cashmere": "Cashmere",
+      "light": "Clar",
+      "espresso": "Espresso",
+      "dark": "Fosc"
+    },
+    "reindex": {
+      "title": "Vols reindexar la biblioteca?",
+      "body": "PicDump tornarà a llegir totes les fotos. Això trigarà uns minuts i consumirà una mica de bateria. Els dumps de la Biblioteca es mantindran.",
+      "action": "Reindexa"
+    },
+    "dumpPicks": {
+      "title": "Tria de dumps",
+      "photosPerDump": "Fotos per dump",
+      "photosPerDumpSub": "Descobreix tria un nombre dins d'aquest interval, principalment cap al centre.",
+      "fewest": "Mínim de fotos",
+      "to": "a",
+      "most": "Màxim de fotos",
+      "hideSensitive": "Amaga fotos sensibles",
+      "hideSensitiveSub": "DNI, targetes bancàries i documents mèdics mai apareixen als dumps.",
+      "screenshots": "Inclou captures de pantalla",
+      "screenshotsSub": "Les captures de pantalla poden aparèixer als dumps.",
+      "recap": "Resum",
+      "recapSub": "El dump d'avui a les 20:00, la teva setmana diumenge al migdia"
+    },
+    "export": {
+      "title": "Exportació i publicació",
+      "note": "Els nous dumps s'iniciaran amb la mida i qualitat definides aquí.",
+      "postSize": "Mida de publicació per defecte",
+      "quality": "Qualitat d'exportació per defecte",
+      "hd": "HD (2160 px)",
+      "standard": "Estàndard (1080 px)",
+      "saveOnPost": "Publicar també desa a la galeria",
+      "saveOnPostSub": "Guarda una còpia de les diapositives a l'àlbum de PicDump"
+    },
+    "appearance": {
+      "title": "Aparença i tema"
+    },
+    "library": {
+      "title": "Biblioteca de fotos i cerca",
+      "access": "Accés",
+      "openSettings": "Obre la configuració"
+    },
+    "about": {
+      "title": "Privadesa i informació",
+      "onDevice": "Tot es fa al teu telèfon",
+      "onDeviceSub": "Com selecciona PicDump les fotos sense pujar-les enlloc",
+      "contact": "Contacte",
+      "noMail": "No s'ha trobat cap app de correu. Escriu a info@horizonzeta.com",
+      "version": "Versió"
+    }
+  }
+}

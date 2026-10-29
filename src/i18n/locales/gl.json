@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Pechar",
+    "back": "Atrás",
+    "termsOfService": "Condicións do servizo",
+    "privacyPolicy": "Política de privacidade"
+  },
+  "tabs": {
+    "discover": "Descubrir",
+    "create": "Crear",
+    "tidy": "Organizar",
+    "library": "Biblioteca"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dumps sen esforzo",
+      "title": "Converte o caos da túa galería en dumps",
+      "description": "Esquece desprazarte por milleiros de fotos. PicDump elixe as mellores fotos dos teus días e viaxes, cun ritmo fluído.",
+      "point1": "Estilos de película, bordos e tamaños para IG / TikTok",
+      "point2": "Deseños de collage, deslizando paso a paso"
+    },
+    "privacy": {
+      "badge": "Curación no dispositivo",
+      "title": "Elixidas no teu teléfono, non na nube",
+      "description": "A selección de fotos, a busca e os dumps funcionan no teu teléfono. PicDump non sube as túas fotos para curalas.",
+      "point1": "O acceso ás fotos permítelle atopar os teus momentos destacados"
+    },
+    "allowContinue": "Permitir fotos e continuar",
+    "continue": "Continuar",
+    "page": "Páxina {{n}} de {{total}}",
+    "notifPreview": "Vista previa da notificación",
+    "notifNow": "· agora",
+    "notifTitle": "O teu PicDump está listo 🎞️",
+    "notifBody": "As fotos de hoxe, reunidas nun só dump. Bótalle un ollo antes de durmir.",
+    "notifyHeading": "O teu día ás 20:00, a túa semana o domingo",
+    "notifyBody": "Un aviso ás 20:00 cando o dump de hoxe estea listo, e o domingo ao mediodía coa túa semana.",
+    "turnOn": "Activar",
+    "notNow": "Agora non"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Cada dump da túa galería.",
+      "sub": "A versión de balde inclúe os teus resumos e un dump á semana. Pro desbloquéaos todos."
+    },
+    "tidy": {
+      "heading": "Elimina o desorde.",
+      "sub": "A versión de balde atopa fotos repetidas e borrosas. Pro móveas ao Lixo dunha soa vez."
+    },
+    "finish": {
+      "heading": "Mantén o estilo de película.",
+      "sub": "Original, Warm 35mm e Adjust son de balde. Pro exporta todos os estilos e texturas."
+    },
+    "search": {
+      "heading": "Busca na túa galería.",
+      "sub": "Atopa un lugar, un mes ou un obxecto con palabras. A busca vén con Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Atopamos {{count}} dump na túa galería.",
+        "other": "Atopamos {{count}} dumps na túa galería."
+      },
+      "sub": "{{titles}}. Pro desbloquéaos todos.",
+      "subMore": "{{titles}} e máis. Pro desbloquéaos todos."
+    },
+    "welcome": "Benvido a PicDump Pro!",
+    "purchaseNotActive": "A compra realizouse pero Pro aínda non se activou. Toca Restaurar compras.",
+    "restored": "Compras restauradas. Benvido de volta a Pro!",
+    "noSubscription": "Non se atopou ningunha subscrición activa a PicDump Pro.",
+    "close": "Pechar pantalla de pago",
+    "feature": {
+      "dumps": {
+        "title": "Todos os dumps desbloqueados",
+        "sub": "Cada viaxe e historia que Descubrir atope, non só un por semana."
+      },
+      "search": {
+        "title": "Busca na túa galería",
+        "sub": "Atopa un lugar, un mes ou unha cousa con palabras."
+      },
+      "looks": {
+        "title": "Todos os estilos de película",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, ademais de gran, esvaecemento e viñeta."
+      },
+      "tidy": {
+        "title": "Limpa fotos repetidas e desorde",
+        "sub": "Move duplicados, fotos borrosas e capturas ao Lixo dunha soa vez."
+      },
+      "yours": {
+        "title": "O teu dump, ao teu xeito",
+        "sub": "Sen diapositiva final de PicDump, e de 4 a 20 fotos por dump."
+      }
+    },
+    "plansFailed": "Non se puideron cargar os plans. Comproba a túa conexión e téntao de novo.",
+    "startTrial": "Comezar {{trial}}",
+    "continue": "Continuar",
+    "restore": "Restaurar compras",
+    "trialThen": "De balde durante o período de proba, despois {{price}}. ",
+    "disclosure": "O pago cárgase na túa conta da tenda. As subscricións renóvanse automaticamente a non ser que se cancelen polo menos 24 horas antes do remate do período actual."
+  },
+  "profile": {
+    "title": "Perfil e axustes",
+    "changePhoto": "Cambiar foto de perfil",
+    "namePlaceholder": "O teu nome",
+    "handlePlaceholder": "a_tua_conta",
+    "theme": {
+      "system": "Sistema",
+      "auto": "Automático",
+      "cashmere": "Cashmere",
+      "light": "Claro",
+      "espresso": "Espresso",
+      "dark": "Escuro"
+    },
+    "reindex": {
+      "title": "Reindexar a túa biblioteca?",
+      "body": "PicDump lerá todas as fotos de novo. Isto levará uns minutos e algo de batería. Os teus dumps na Biblioteca conservaranse.",
+      "action": "Reindexar"
+    },
+    "dumpPicks": {
+      "title": "Selección de dumps",
+      "photosPerDump": "Fotos por dump",
+      "photosPerDumpSub": "Descubrir escolle unha cantidade neste rango, case sempre do medio.",
+      "fewest": "Mínimo de fotos",
+      "to": "a",
+      "most": "Máximo de fotos",
+      "hideSensitive": "Agochar fotos confidenciais",
+      "hideSensitiveSub": "DNI, tarxetas bancarias e papeis médicos nunca aparecen nos dumps.",
+      "screenshots": "Incluír capturas de pantalla",
+      "screenshotsSub": "As capturas de pantalla poden aparecer nos dumps.",
+      "recap": "Resumo",
+      "recapSub": "O dump de hoxe ás 20:00, a túa semana o domingo ao mediodía"
+    },
+    "export": {
+      "title": "Exportación e publicación",
+      "note": "Os novos dumps créanse co tamaño e a calidade definidos aquí.",
+      "postSize": "Tamaño de publicación predeterminado",
+      "quality": "Calidade de exportación predeterminada",
+      "hd": "HD (2160 px)",
+      "standard": "Estándar (1080 px)",
+      "saveOnPost": "Publicar tamén garda na galería",
+      "saveOnPostSub": "Garda unha copia das diapositivas no álbum de PicDump"
+    },
+    "appearance": {
+      "title": "Aparencia e tema"
+    },
+    "library": {
+      "title": "Fototeca e busca",
+      "access": "Acceso",
+      "openSettings": "Abrir axustes"
+    },
+    "about": {
+      "title": "Privacidade e información",
+      "onDevice": "Todo acontece no teu teléfono",
+      "onDeviceSub": "Como PicDump elixe fotos sen subilas á rede",
+      "contact": "Contacto",
+      "noMail": "Non se atopou ningunha app de correo. Escribe a info@horizonzeta.com",
+      "version": "Versión"
+    }
+  }
+}

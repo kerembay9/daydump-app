@@ -1,1 +1,158 @@
-{}
+{
+  "common": {
+    "close": "Mbyll",
+    "back": "Kthehu",
+    "termsOfService": "Kushtet e shërbimit",
+    "privacyPolicy": "Politika e privatësisë"
+  },
+  "tabs": {
+    "discover": "Zbulo",
+    "create": "Krijo",
+    "tidy": "Pastro",
+    "library": "Biblioteka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dump-e fotosh pa mundim",
+      "title": "Kthejeni kaosin e fotove në dump-e",
+      "description": "Harroni lëvizjen pafund mes mijëra fotove. PicDump përzgjedh fotot më të mira të ditëve dhe udhëtimeve tuaja, të organizuara me ritëm.",
+      "point1": "Pamje filmi, korniza dhe përmasa për IG dhe TikTok",
+      "point2": "Modele kolazhesh, një lëvizje në çdo hap"
+    },
+    "privacy": {
+      "badge": "Përzgjedhje në pajisje",
+      "title": "Të zgjedhura në telefonin tuaj, jo në cloud",
+      "description": "Përzgjedhja e fotove, kërkimi dhe dump-et funksionojnë në telefonin tuaj. PicDump nuk ngarkon fotot tuaja për t'i përzgjedhur.",
+      "point1": "Qasja në foto e ndihmon të gjejë momentet tuaja më të veçanta"
+    },
+    "allowContinue": "Lejo fotot dhe vazhdo",
+    "continue": "Vazhdo",
+    "page": "Faqja {{n}} nga {{total}}",
+    "notifPreview": "Pamja paraprake e njoftimit",
+    "notifNow": "· tani",
+    "notifTitle": "PicDump-i juaj është gati 🎞️",
+    "notifBody": "Fotot e sotme, të përzgjedhura në një dump. Hidhini një sy para gjumit.",
+    "notifyHeading": "Dita juaj në orën 20:00, java juaj të dielën",
+    "notifyBody": "Një njoftim në orën 20:00 kur dump-i i sotëm të jetë gati, dhe të dielën në mesditë me javën tuaj.",
+    "turnOn": "Aktivizo",
+    "notNow": "Jo tani"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Çdo dump në galerinë tuaj.",
+      "sub": "Falas merrni përmbledhjet dhe një dump në javë. Pro i hap të gjitha."
+    },
+    "tidy": {
+      "heading": "Hiqni rrëmujën.",
+      "sub": "Falas gjen çdo foto të përsëritur apo të turbullt. Pro i zhvendos në Kosh me një hap."
+    },
+    "finish": {
+      "heading": "Ruani pamjen e filmit.",
+      "sub": "Original, Warm 35mm dhe Adjust janë falas. Pro eksporton çdo stil dhe teksturë."
+    },
+    "search": {
+      "heading": "Kërkoni në galerinë tuaj.",
+      "sub": "Gjeni një vend, një muaj ose një send me fjalë. Kërkimi vjen me Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Gjetëm {{count}} dump në galerinë tuaj.",
+        "other": "Gjetëm {{count}} dump-e në galerinë tuaj."
+      },
+      "sub": "{{titles}}. Pro i hap të gjitha.",
+      "subMore": "{{titles}} dhe më shumë. Pro i hap të gjitha."
+    },
+    "welcome": "Mirë se vini në PicDump Pro!",
+    "purchaseNotActive": "Blerja u krye me sukses, por Pro nuk u aktivizua ende. Prekni Rivendos blerjet.",
+    "restored": "Blerjet u rivendosën. Mirë se u kthyet në Pro!",
+    "noSubscription": "Nuk u gjet asnjë pajtim aktiv i PicDump Pro.",
+    "close": "Mbyll dritaren e pagesës",
+    "feature": {
+      "dumps": {
+        "title": "Çdo dump, i zhbllokuar",
+        "sub": "Çdo udhëtim dhe histori që gjen Zbulo, jo vetëm një në javë."
+      },
+      "search": {
+        "title": "Kërkoni në galerinë tuaj",
+        "sub": "Gjeni një vend, një muaj ose një send me fjalë."
+      },
+      "looks": {
+        "title": "Të gjitha pamjet e filmit",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, si dhe kokrriza, zbehje dhe vinetim."
+      },
+      "tidy": {
+        "title": "Hiqni fotot e përsëritura dhe rrëmujën",
+        "sub": "Zhvendosni kopjet, fotot e turbullta dhe screenshots në Kosh menjëherë."
+      },
+      "yours": {
+        "title": "Dump-i juaj, sipas dëshirës tuaj",
+        "sub": "Pa sllajdin përmbyllës të PicDump, dhe 4 deri në 20 foto për çdo dump."
+      }
+    },
+    "plansFailed": "Planet nuk mund të ngarkoheshin. Kontrolloni lidhjen tuaj dhe provoni përsëri.",
+    "startTrial": "Fillo {{trial}}",
+    "continue": "Vazhdo",
+    "restore": "Rivendos blerjet",
+    "trialThen": "Falas gjatë provës, më pas {{price}}. ",
+    "disclosure": "Pagesa tarifohet në llogarinë tuaj të dyqanit të aplikacioneve. Pajtimet rinovohen automatikisht përveçse nëse anulohen të paktën 24 orë para përfundimit të periudhës aktuale."
+  },
+  "profile": {
+    "title": "Profili & Cilësimet",
+    "changePhoto": "Ndrysho foton e profilit",
+    "namePlaceholder": "Emri juaj",
+    "handlePlaceholder": "llogaria_juaj",
+    "theme": {
+      "system": "Sistemi",
+      "auto": "Automatik",
+      "cashmere": "Cashmere",
+      "light": "E çelët",
+      "espresso": "Espresso",
+      "dark": "E errët"
+    },
+    "reindex": {
+      "title": "Dëshironi të ri-indeksoni bibliotekën tuaj?",
+      "body": "PicDump do të lexojë përsëri çdo foto. Kjo zgjat disa minuta dhe kërkon pak bateri. Dump-et tuaja në Bibliotekë ruhen.",
+      "action": "Ri-indekso"
+    },
+    "dumpPicks": {
+      "title": "Përzgjedhjet e dump-eve",
+      "photosPerDump": "Foto për çdo dump",
+      "photosPerDumpSub": "Zbulo zgjedh një numër në këtë interval, kryesisht nga mesi.",
+      "fewest": "Më pak foto",
+      "to": "deri në",
+      "most": "Më shumë foto",
+      "hideSensitive": "Fshih fotot delikate",
+      "hideSensitiveSub": "Mjetet e identifikimit, kartat bankare dhe dokumentet mjekësore nuk shfaqen kurrë në dump-e.",
+      "screenshots": "Përfshi screenshots",
+      "screenshotsSub": "Screenshots mund të shfaqen në dump-e.",
+      "recap": "Përmbledhje",
+      "recapSub": "Dump-i i sotëm në 20:00, java juaj të dielën në mesditë"
+    },
+    "export": {
+      "title": "Eksporti dhe postimi",
+      "note": "Dump-et e reja fillojnë me përmasën dhe cilësinë e vendosur këtu.",
+      "postSize": "Përmasa e parazgjedhur e postimit",
+      "quality": "Cilësia e parazgjedhur e eksportit",
+      "hd": "HD (2160 px)",
+      "standard": "Standarde (1080 px)",
+      "saveOnPost": "Postimi ruan gjithashtu në galeri",
+      "saveOnPostSub": "Ruan një kopje të sllajdeve në albumin PicDump"
+    },
+    "appearance": {
+      "title": "Pamja dhe tema"
+    },
+    "library": {
+      "title": "Biblioteka e fotove dhe kërkimi",
+      "access": "Qasja",
+      "openSettings": "Hap cilësimet"
+    },
+    "about": {
+      "title": "Privatësia & rreth nesh",
+      "onDevice": "Çdo gjë ndodh në telefonin tuaj",
+      "onDeviceSub": "Si i përzgjedh PicDump fotot pa i ngarkuar në internet",
+      "contact": "Kontakt",
+      "noMail": "Nuk u gjet asnjë aplikacion emaili. Shkruani në info@horizonzeta.com",
+      "version": "Versioni"
+    }
+  }
+}
