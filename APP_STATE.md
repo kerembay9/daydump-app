@@ -105,7 +105,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 8 · Store prep & release
 
-- [ ] **P8.1** Listing copy for each language: title, subtitle, description, keywords _(agent)_
+- [x] **P8.1** Listing copy for each language: title, subtitle, description, keywords _(agent)_ — store/listing/ has en-US + 12 core launch languages (ar, de, es, fr, it, ja, ko, nl, pt, ru, tr, zh). All fields conform to App Store & Google Play limits (Title/Sub <= 30, Play short <= 80, Keywords <= 100, Promo <= 170, Desc <= 4000), verified by __tests__/store-listing.test.ts. Machine-translated drafts; remaining app languages not listed (owner scope, 2026-10-30).
 - [ ] **P8.2** Screenshots in every required size; Play feature graphic _(agent)_
 - [x] **P8.3** No legal or release placeholders left _(auto)_ — auto: pass (2026-10-29)
 - [x] **P8.4** Identity and versions consistent across app.json, package.json and APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
@@ -172,3 +172,4 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P4.3 → done (Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/)
 - 2026-10-29 P4.5 → done (Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.)
 - 2026-10-29 P4.6 → done (Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)) [person]
+- 2026-10-29 P8.1 → done (store/listing/ has en-US + 12 core launch languages (ar, de, es, fr, it, ja, ko, nl, pt, ru, tr, zh). All fields conform to App Store & Google Play limits (Title/Sub <= 30, Play short <= 80, Keywords <= 100, Promo <= 170, Desc <= 4000), verified by __tests__/store-listing.test.ts. Machine-translated drafts; remaining app languages not listed (owner scope, 2026-10-30).)
