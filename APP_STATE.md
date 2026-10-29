@@ -5,7 +5,7 @@ platforms: [android, ios]
 stack: expo
 bundle_ios: com.horizonzeta.picdump
 package_android: com.horizonzeta.picdump
-current_phase: 2
+current_phase: 3
 framework_version: 0.2.1
 ---
 
@@ -47,7 +47,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [x] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_ — auto: pass (2026-10-29)
 - [x] **P2.5** Required store features listed: Apple sign-in (if any third-party login), in-app account deletion (if accounts), privacy manifest, ATT (if tracking) _(agent)_ — PRD.md Required store features + PRIVACY.md: no login/accounts/tracking; privacy manifest to build in phase 5
 - [x] **P2.6** Privacy policy, terms and a support page exist as pages on the company site (reference/legal-pages.md), committed on a branch; wording is platform-neutral and matches the in-app text _(agent)_ — Hosted pages live (200) and committed on landing repo; app and hosted text identical (29 sections); model-download edit local on picdump-legal-downloads, unpushed
-- [ ] **P2.7** Store agreements, tax and banking done (needed for paid apps and subscriptions) _(human)_
+- [x] **P2.7** Store agreements, tax and banking done (needed for paid apps and subscriptions) _(human)_ — Checked in both consoles 2026-10-29: Apple Paid Apps Agreement, bank, tax Active; Play account earning revenue
 - [x] **P2.8** EAS project linked under the company account (app.json extra.eas.projectId and owner) _(agent)_ — app.json extra.eas.projectId 1a04cc3f-af2d-442f-b911-e82e495c81e4, owner horizonzeta
 
 ## Phase 3 · Architecture
@@ -153,3 +153,5 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P2.8 → done (app.json extra.eas.projectId 1a04cc3f-af2d-442f-b911-e82e495c81e4, owner horizonzeta)
 - 2026-10-29 P2.6 → done (Hosted pages live (200) and committed on landing repo; app and hosted text identical (29 sections); model-download edit local on picdump-legal-downloads, unpushed)
 - 2026-10-29 P2.1 → done (Name PicDump final (Kerem, 2026-10-29); daydump identifiers kept on purpose, mapping in README) [person]
+- 2026-10-29 P2.7 → done (Checked in both consoles 2026-10-29: Apple Paid Apps Agreement, bank, tax Active; Play account earning revenue) [person]
+- 2026-10-29 phase 2 complete → phase 3 · Architecture
