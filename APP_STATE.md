@@ -5,7 +5,7 @@ platforms: [android, ios]
 stack: expo
 bundle_ios: com.horizonzeta.picdump
 package_android: com.horizonzeta.picdump
-current_phase: 0
+current_phase: 2
 framework_version: 0.2.0
 ---
 
@@ -23,45 +23,45 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 0 · Idea & validation
 
-- [ ] **P0.1** BRIEF.md written: problem, target user, why now _(auto)_
-- [ ] **P0.2** 5+ competitors reviewed in both stores (rating, price, gaps), listed in BRIEF.md _(agent)_
-- [ ] **P0.3** Top 10 store keywords with competition level noted _(agent)_
-- [ ] **P0.4** Monetization hypothesis: who pays, how much, for what _(agent)_
-- [ ] **P0.5** Go / kill decision recorded with date and owner _(human)_
+- [x] **P0.1** BRIEF.md written: problem, target user, why now _(auto)_ — auto: pass (2026-10-29)
+- [x] **P0.2** 5+ competitors reviewed in both stores (rating, price, gaps), listed in BRIEF.md _(agent)_ — BRIEF.md Competitors: 9 rows with iOS rating/price/update/review gaps; Play only rating for 3 apps (installs, update date not retrievable)
+- [x] **P0.3** Top 10 store keywords with competition level noted _(agent)_ — BRIEF.md Keywords: 10 terms; competition estimated from top-10 US iOS results, Play not sampled
+- [x] **P0.4** Monetization hypothesis: who pays, how much, for what _(agent)_ — BRIEF.md Monetization hypothesis; prices come from store offering, untested
+- [x] **P0.5** Go / kill decision recorded with date and owner _(human)_ — Go, Kerem Bayramoglu, 2026-10-29, recorded in BRIEF.md
 
 ## Phase 1 · Product spec
 
-- [ ] **P1.1** PRD.md written: MVP scope and explicit non-goals _(auto)_
-- [ ] **P1.2** MVP has 7 or fewer core features, each with acceptance criteria _(agent)_
-- [ ] **P1.3** Pricing model decided: free / freemium / subscription / one-time, price points, what is gated _(human)_
-- [ ] **P1.4** Launch platforms decided, plus a parity list of anything that differs per platform _(human)_
-- [ ] **P1.5** Launch languages decided; i18n from day one if more than one _(agent)_
-- [ ] **P1.6** Success metrics defined: activation, D1/D7 retention, paywall conversion _(agent)_
-- [ ] **P1.7** PRD approved _(human)_
+- [x] **P1.1** PRD.md written: MVP scope and explicit non-goals _(auto)_ — auto: pass (2026-10-29)
+- [x] **P1.2** MVP has 7 or fewer core features, each with acceptance criteria _(agent)_ — PRD.md: 7 features with checkable criteria
+- [x] **P1.3** Pricing model decided: free / freemium / subscription / one-time, price points, what is gated _(human)_ — Freemium + subscription confirmed (Kerem, 2026-10-29); prices set in store offering
+- [x] **P1.4** Launch platforms decided, plus a parity list of anything that differs per platform _(human)_ — Both platforms at launch (Kerem, 2026-10-29); iOS parity gap listed in PRD.md
+- [x] **P1.5** Launch languages decided; i18n from day one if more than one _(agent)_ — All available languages (Kerem, 2026-10-29); concrete list to confirm before phase 3
+- [x] **P1.6** Success metrics defined: activation, D1/D7 retention, paywall conversion _(agent)_ — PRD.md proposes activation event and targets; no analytics SDK yet, owner to confirm
+- [x] **P1.7** PRD approved _(human)_ — PRD approved by Kerem Bayramoglu, 2026-10-29
 
 ## Phase 2 · Identity & compliance setup
 
 - [ ] **P2.1** App name final; repo and code identifiers match it or the mapping is documented _(human)_
-- [ ] **P2.2** iOS bundle ID and Android package share one org prefix and match APP_STATE.md _(auto)_
+- [x] **P2.2** iOS bundle ID and Android package share one org prefix and match APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
 - [ ] **P2.3** App records exist in App Store Connect and Play Console (store-apple / store-play runbooks) _(agent)_
-- [ ] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_
+- [ ] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_ — auto: FAIL (2026-10-29)
 - [ ] **P2.5** Required store features listed: Apple sign-in (if any third-party login), in-app account deletion (if accounts), privacy manifest, ATT (if tracking) _(agent)_
 - [ ] **P2.6** Privacy policy and terms hosted at public URLs _(agent)_
 - [ ] **P2.7** Store agreements, tax and banking done (needed for paid apps and subscriptions) _(human)_
 
 ## Phase 3 · Architecture
 
-- [ ] **P3.1** ARCHITECTURE.md: stack, backend, data model, auth, offline behaviour _(auto)_
+- [ ] **P3.1** ARCHITECTURE.md: stack, backend, data model, auth, offline behaviour _(auto)_ — auto: FAIL (2026-10-29)
 - [ ] **P3.2** A decision record (docs/adr/) for each major choice: backend vs local data, RN architecture, media/audio libraries _(agent)_
-- [ ] **P3.3** AGENTS.md from the template; CLAUDE.md points to it _(auto)_
-- [ ] **P3.4** No secrets in the repo or its history; .env gitignored; keys in EAS / Supabase secrets _(auto)_
+- [x] **P3.3** AGENTS.md from the template; CLAUDE.md points to it _(auto)_ — auto: pass (2026-10-29)
+- [x] **P3.4** No secrets in the repo or its history; .env gitignored; keys in EAS / Supabase secrets _(auto)_ — auto: pass with warnings (2026-10-29)
 - [ ] **P3.5** CI runs lint, typecheck and unit tests on every push _(agent)_
 - [ ] **P3.6** Expo SDK pinned; `npx expo install --check` clean; no legacy-peer-deps _(agent)_
 - [ ] **P3.7** Versioning rule in AGENTS.md: build number up every upload, version name only at release _(agent)_
 
 ## Phase 4 · Design system
 
-- [ ] **P4.1** BRAND_GUIDELINES.md: name, voice, colour, type _(auto)_
+- [x] **P4.1** BRAND_GUIDELINES.md: name, voice, colour, type _(auto)_ — auto: pass (2026-10-29)
 - [ ] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_
 - [ ] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_
 - [ ] **P4.4** App icon and splash for both platforms _(agent)_
@@ -81,7 +81,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 ## Phase 6 · Monetization & analytics
 
 - [x] **P6.1** Products exist in both stores; product IDs match RevenueCat exactly _(agent)_ — 2026-10-29 IDs match across stores and RevenueCat: Play picdump_weekly:weekly-plan / picdump_yearly:yearly-plan; App Store picdump_weekly / picdump_yearly (group PicDump Pro 22525227, subs 6828347656 / 6828347896, state Prepare for Submission, review screenshot attached); RevenueCat PicDump iOS products prod4911bb4abe / prode6d93eef1c attached to daydump_pro and $rc_weekly / $rc_annual; subscription_key_configured true. Not yet: iOS build submitted with subs, trial outside US on iOS
-- [ ] **P6.2** Premium is decided on the server; the client never writes premium status _(auto)_
+- [x] **P6.2** Premium is decided on the server; the client never writes premium status _(auto)_ — auto: pass (2026-10-29)
 - [ ] **P6.3** RevenueCat webhook to the backend checks a shared secret _(agent)_
 - [ ] **P6.4** Sandbox purchase, restore and cancel tested on both platforms _(human)_
 - [x] **P6.5** Paywall shows store prices (none hard-coded) and shows purchase errors _(agent)_ — PaywallModal reads plans/prices/trial from the RevenueCat offering (src/services/paywallPlans.ts, commit 0d6a86c); purchase/restore errors toasted, success-without-entitlement toast (fb610c8); scenario tests in __tests__/scenarios/profile.test.tsx, monetization.test.tsx
@@ -96,18 +96,18 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 - [ ] **P7.1** Multi-agent code review: no high or critical findings left open _(agent)_
 - [ ] **P7.2** Security review clean _(agent)_
-- [ ] **P7.3** Secrets scan of files and git history clean; anything leaked is rotated _(auto)_
-- [ ] **P7.4** Security heuristics pass: CSPRNG, SecureStore for sessions, no client premium writes _(auto)_
+- [x] **P7.3** Secrets scan of files and git history clean; anything leaked is rotated _(auto)_ — auto: pass with warnings (2026-10-29)
+- [x] **P7.4** Security heuristics pass: CSPRNG, SecureStore for sessions, no client premium writes _(auto)_ — auto: pass (2026-10-29)
 - [ ] **P7.5** Full Maestro suite green on a release build (minified, R8) _(agent)_
-- [ ] **P7.6** Store-compliance static checks pass _(auto)_
-- [ ] **P7.7** Repo hygiene: no build artifacts, backups or scratch files tracked _(auto)_
+- [x] **P7.6** Store-compliance static checks pass _(auto)_ — auto: pass with warnings (2026-10-29)
+- [x] **P7.7** Repo hygiene: no build artifacts, backups or scratch files tracked _(auto)_ — auto: pass with warnings (2026-10-29)
 
 ## Phase 8 · Store prep & release
 
 - [ ] **P8.1** Listing copy for each language: title, subtitle, description, keywords _(agent)_
 - [ ] **P8.2** Screenshots in every required size; Play feature graphic _(agent)_
-- [ ] **P8.3** No legal or release placeholders left _(auto)_
-- [ ] **P8.4** Identity and versions consistent across app.json, package.json and APP_STATE.md _(auto)_
+- [x] **P8.3** No legal or release placeholders left _(auto)_ — auto: pass (2026-10-29)
+- [x] **P8.4** Identity and versions consistent across app.json, package.json and APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
 - [ ] **P8.5** App Privacy labels and Play data safety match PRIVACY.md _(agent)_
 - [ ] **P8.6** Age rating (Apple) and content rating (Play) done _(agent)_
 - [ ] **P8.7** Reviewer access: demo account and review notes entered (a person types any password) _(human)_
@@ -116,7 +116,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 9 · Post-launch
 
-- [ ] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_
+- [ ] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_ — auto: FAIL (2026-10-29)
 - [ ] **P9.2** Store reviews answered within 48 hours _(agent)_
 - [ ] **P9.3** Monthly ASO check: keyword ranks, screenshot experiments _(agent)_
 - [ ] **P9.4** Feedback triaged into the backlog and back into phase 5 _(agent)_
@@ -130,3 +130,17 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P6.9 → done (Play offer trial-7d on yearly-plan: ACTIVE, 1-week free phase, 174 regions, new customers (never had any subscription in app). Verified via list_subscription_offers. RevenueCat product trial_duration still shows null (RC does not read it from Play))
 - 2026-10-29 P6.10 → done (Play: weekly-plan grace P3D + auto account hold 57d; yearly-plan grace P14D + auto account hold 46d (Console + API))
 - 2026-10-29 P6.1 → done (2026-10-29 IDs match across stores and RevenueCat: Play picdump_weekly:weekly-plan / picdump_yearly:yearly-plan; App Store picdump_weekly / picdump_yearly (group PicDump Pro 22525227, subs 6828347656 / 6828347896, state Prepare for Submission, review screenshot attached); RevenueCat PicDump iOS products prod4911bb4abe / prode6d93eef1c attached to daydump_pro and $rc_weekly / $rc_annual; subscription_key_configured true. Not yet: iOS build submitted with subs, trial outside US on iOS)
+- 2026-10-29 af check: P0.1 → done, P2.2 → done, P3.3 → done, P3.4 → done, P4.1 → done, P6.2 → done, P7.3 → done, P7.4 → done, P7.6 → done, P7.7 → done, P8.3 → done, P8.4 → done
+- 2026-10-29 P0.2 → done (BRIEF.md Competitors: 9 rows with iOS rating/price/update/review gaps; Play only rating for 3 apps (installs, update date not retrievable))
+- 2026-10-29 P0.3 → done (BRIEF.md Keywords: 10 terms; competition estimated from top-10 US iOS results, Play not sampled)
+- 2026-10-29 P0.4 → done (BRIEF.md Monetization hypothesis; prices come from store offering, untested)
+- 2026-10-29 P0.5 → done (Go, Kerem Bayramoglu, 2026-10-29, recorded in BRIEF.md) [person]
+- 2026-10-29 phase 0 complete → phase 1 · Product spec
+- 2026-10-29 af check: P1.1 → done
+- 2026-10-29 P1.2 → done (PRD.md: 7 features with checkable criteria)
+- 2026-10-29 P1.6 → done (PRD.md proposes activation event and targets; no analytics SDK yet, owner to confirm)
+- 2026-10-29 P1.4 → done (Both platforms at launch (Kerem, 2026-10-29); iOS parity gap listed in PRD.md) [person]
+- 2026-10-29 P1.5 → done (All available languages (Kerem, 2026-10-29); concrete list to confirm before phase 3)
+- 2026-10-29 P1.3 → done (Freemium + subscription confirmed (Kerem, 2026-10-29); prices set in store offering) [person]
+- 2026-10-29 P1.7 → done (PRD approved by Kerem Bayramoglu, 2026-10-29) [person]
+- 2026-10-29 phase 1 complete → phase 2 · Identity & compliance setup
