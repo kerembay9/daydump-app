@@ -13,7 +13,7 @@ Photos, GPS tags from photos, the photo index, face data, profile, dumps and sea
 | Photos or Videos | No | | | | On-device only |
 | Location (including photo GPS tags) | No | | | | Read from photo metadata on the device only |
 | Contact Info, Health, Financial Info, Sensitive Info, Contacts, User Content, Browsing, Search History | No | | | | Search text and typed text stay on the device |
-| Usage Data, Diagnostics | No | | | | No analytics or crash SDK today. Revisit when P6.6 and P6.7 add them. |
+| Usage Data, Diagnostics | No | | | | No analytics or crash SDK today. Planned answers: "If P6.6 and P6.7 ship" below. |
 
 Note on "linked": RevenueCat's own guidance says Purchase History can be declared "not linked" when only anonymous IDs are used. The anonymous ID is stable per install and is attached to the purchase history, so I propose the conservative answer (linked, with User ID declared). Over-declaring is safe; under-declaring risks a mismatch with what the SDK sends. Tracking is "No" for everything: no advertising SDK, no data brokers, no IDFA.
 
@@ -52,6 +52,26 @@ PicDump's own terms say 16 and over; Apple's rating is separate and does not nee
 | Target audience | 16 and over (age groups 16-17 and 18+). Not for children, so Families policy does not apply. |
 | Contains ads | No |
 | App access | No login needed; all features reachable without credentials |
+
+## If P6.6 and P6.7 ship: label changes (plan, 2026-10-30)
+Not entered anywhere. Today's answers above are correct for the current build (no analytics or crash SDK). When either SDK ships, change the labels **in the same release** and re-open P8.5. Guardrails and checklist: `PRIVACY.md`, section "If analytics or crash reporting is added".
+
+**Apple App Privacy**
+| Data type | Collected | Linked to identity | Used for tracking | Purposes |
+|---|---|---|---|---|
+| Usage Data > Product Interaction (P6.6) | Yes | No | No | Analytics |
+| Diagnostics > Crash Data (P6.7) | Yes | No | No | App Functionality |
+| Diagnostics > Performance Data (P6.7, if the SDK sends traces) | Yes | No | No | App Functionality |
+
+**Google Play Data safety**
+| Section > type | Collected | Shared | Optional | Purposes |
+|---|---|---|---|---|
+| App activity > App interactions (P6.6) | Yes | No (vendor is a processor) | Yes if the Profile switch ships | Analytics |
+| App info and performance > Crash logs (P6.7) | Yes | No | Yes if the switch ships | App functionality, Analytics |
+| App info and performance > Diagnostics (P6.7) | Yes | No | Yes if the switch ships | App functionality |
+| Device or other IDs | Already declared for RevenueCat; add the SDK's random install ID purpose (Analytics) | No | — | — |
+
+Also on Play: data is encrypted in transit; users cannot request deletion because nothing is linked to them (say so in the form).
 
 ## Entry log and corrections (2026-10-29)
 

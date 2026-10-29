@@ -5,7 +5,7 @@ platforms: [android, ios]
 stack: expo
 bundle_ios: com.horizonzeta.picdump
 package_android: com.horizonzeta.picdump
-current_phase: 4
+current_phase: 5
 framework_version: 0.2.1
 ---
 
@@ -20,6 +20,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - iOS sandbox purchase test: skipped for now (no iPhone; storefront switch failed on the Mac). Do it before 1.0.0 if possible.
 - iOS feature gap (found 2026-10-29): the native CLIP module (`modules/*/android` only) has no iOS side, so on iOS Tidy shows "Needs Android 11 or newer", Bingo squares never fill, and text search and the selfie finder have no engine. The Pro paywall lists search and "Clear repeats and clutter". Decide before 1.0.0: build an iOS engine, hide or reword these on iOS, or ship iOS without them and fix the paywall copy (App Review 2.3.1 / 3.1.2 risk).
 - Android purchase test: blocked. `daydump-release.keystore` (upload key) and the `PICDUMP_UPLOAD_*` passwords in `~/.gradle/gradle.properties` are not on this machine; Play internal build 9 predates the paywall. `versionCode` is already 10. Find the keystore, or request an upload key reset in Play Console, then build, upload to internal, test with a license tester.
+- Analytics (P6.6) and crash reporting (P6.7) are open on purpose: the app ships with none today and the privacy answers say so. When one is added, follow the release checklist in `PRIVACY.md` ("If analytics or crash reporting is added") and the label tables in `store/PRIVACY_AND_RATING_ANSWERS.md`, in the same release.
 
 ## Phase 0 · Idea & validation
 
@@ -83,7 +84,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 - [x] **P6.1** Products exist in both stores; product IDs match RevenueCat exactly _(agent)_ — 2026-10-29 IDs match across stores and RevenueCat: Play picdump_weekly:weekly-plan / picdump_yearly:yearly-plan; App Store picdump_weekly / picdump_yearly (group PicDump Pro 22525227, subs 6828347656 / 6828347896, state Prepare for Submission, review screenshot attached); RevenueCat PicDump iOS products prod4911bb4abe / prode6d93eef1c attached to daydump_pro and $rc_weekly / $rc_annual; subscription_key_configured true. Not yet: iOS build submitted with subs, trial outside US on iOS
 - [x] **P6.2** Premium is decided on the server; the client never writes premium status _(auto)_ — auto: pass (2026-10-29)
-- [ ] **P6.3** RevenueCat webhook to the backend checks a shared secret _(agent)_
+- [~] **P6.3** RevenueCat webhook to the backend checks a shared secret _(agent)_ — No backend (ADR 0001: local data, no server), so no RevenueCat webhook endpoint exists to protect. Revisit if a backend is added (owner, 2026-10-30).
 - [ ] **P6.4** Sandbox purchase, restore and cancel tested on both platforms _(human)_
 - [x] **P6.5** Paywall shows store prices (none hard-coded) and shows purchase errors _(agent)_ — PaywallModal reads plans/prices/trial from the RevenueCat offering (src/services/paywallPlans.ts, commit 0d6a86c); purchase/restore errors toasted, success-without-entitlement toast (fb610c8); scenario tests in __tests__/scenarios/profile.test.tsx, monetization.test.tsx
 - [ ] **P6.6** Analytics funnel implemented: install, onboarding, activation, paywall view, purchase _(agent)_
@@ -173,3 +174,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P4.5 → done (Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.)
 - 2026-10-29 P4.6 → done (Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)) [person]
 - 2026-10-29 P8.1 → done (store/listing/ has en-US + 12 core launch languages (ar, de, es, fr, it, ja, ko, nl, pt, ru, tr, zh). All fields conform to App Store & Google Play limits (Title/Sub <= 30, Play short <= 80, Keywords <= 100, Promo <= 170, Desc <= 4000), verified by __tests__/store-listing.test.ts. Machine-translated drafts; remaining app languages not listed (owner scope, 2026-10-30).)
+- 2026-10-29 phase 4 complete → phase 5 · Build loop
+- 2026-10-29 P6.3 → done [person]
+- 2026-10-29 P6.3 → open [person]
+- 2026-10-29 P6.3 → waived (No backend (ADR 0001: local data, no server), so no RevenueCat webhook endpoint exists to protect. Revisit if a backend is added (owner, 2026-10-30).)

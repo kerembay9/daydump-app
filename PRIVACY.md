@@ -59,6 +59,31 @@ No account, no analytics, no crash reporting, no ads and no advertising ID. Stor
 
 Debug-only, not in release builds: Model bench downloads a Gemma model from `huggingface.co` (gated by `__DEV__` in Profile). It does not run in a store build.
 
+## If analytics or crash reporting is added (P6.6, P6.7)
+Plan only: nothing here is true of the app today. The sections above stay as written until an SDK ships. Owner decided 2026-10-30 to keep this open so both can be added later.
+
+**Guardrails for any SDK we pick**
+- Counts and timings only. Never photos, file names or paths, GPS or place names, face data, search text, or the user's name or handle. Strip file paths from crash breadcrumbs.
+- Random install ID created by the SDK. No advertising ID, no cross-app tracking, no ATT prompt, no link to other companies' data.
+- Collected under the vendor acting as our processor; the vendor may not use it for its own purposes or ads.
+- Events to start with (from PRD.md): `first_open`, `onboarding_complete`, `activation` (first dump exported or posted), `paywall_view`, `purchase`.
+- In-app control: a Profile switch to turn analytics and crash reports off. Open question: default on or off in the EU, UK and Turkey (consent rules for SDK identifiers). Decide before shipping.
+
+**Rows to add to the data inventory when it ships**
+| Data | Purpose | Where stored | Leaves the device? | Who gets it | Linked to the user? | Required? |
+|---|---|---|---|---|---|---|
+| Anonymous usage events (the list above) with app version, OS version and device model | Understand activation and the paywall funnel | The analytics vendor | Yes | Vendor (processor) | No: random install ID only | No |
+| Crash reports and performance traces (stack, app and OS version, device model; no file paths) | Fix crashes | The crash vendor | Yes | Vendor (processor) | No | No |
+
+**Release checklist for P6.6 or P6.7 (all of it, in one change)**
+1. Add the SDK to the table in "SDKs and services" with its policy URL; change the sentence "No account, no analytics, no crash reporting…" to say exactly what is now collected.
+2. Update the hosted privacy policy (`horizonzeta.com/privacy-policy/PicDump`, landing repo) and bump its effective date. It must go live before the build does.
+3. Apple App Privacy: add the types in `store/PRIVACY_AND_RATING_ANSWERS.md` (section "If P6.6 and P6.7 ship") and publish.
+4. Play Data safety: same section; resubmit the form.
+5. Tracking stays **No** (no ATT) unless an attribution or ad SDK is added. Re-check "Tracking" above.
+6. Add the Profile switch and make the SDK start only after the choice is known, if the default is off.
+7. Re-run `af check`, tick P6.6 or P6.7 with the SDK name, and re-open P8.5 if the labels changed.
+
 ## Public URLs
 - Privacy policy: `https://www.horizonzeta.com/privacy-policy/PicDump` (returns 200 on 2026-10-29; effective 29 October 2026). Not yet entered in the stores (P8.10).
 - Terms: `https://www.horizonzeta.com/terms-of-service/PicDump` (200).
