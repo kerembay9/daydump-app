@@ -6,7 +6,7 @@ stack: expo
 bundle_ios: com.horizonzeta.picdump
 package_android: com.horizonzeta.picdump
 current_phase: 2
-framework_version: 0.2.0
+framework_version: 0.2.1
 ---
 
 # PicDump — App state
@@ -43,11 +43,12 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 - [ ] **P2.1** App name final; repo and code identifiers match it or the mapping is documented _(human)_
 - [x] **P2.2** iOS bundle ID and Android package share one org prefix and match APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
-- [ ] **P2.3** App records exist in App Store Connect and Play Console (store-apple / store-play runbooks) _(agent)_
-- [ ] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_ — auto: FAIL (2026-10-29)
-- [ ] **P2.5** Required store features listed: Apple sign-in (if any third-party login), in-app account deletion (if accounts), privacy manifest, ATT (if tracking) _(agent)_
-- [ ] **P2.6** Privacy policy and terms hosted at public URLs _(agent)_
+- [x] **P2.3** App records exist in App Store Connect and Play Console (store-apple / store-play runbooks) _(agent)_ — ASC app 6825956219 (com.horizonzeta.picdump, SKU Pic_Dump_01) exists; Play app com.horizonzeta.picdump exists (title PicDump, listing text empty)
+- [x] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_ — auto: pass (2026-10-29)
+- [x] **P2.5** Required store features listed: Apple sign-in (if any third-party login), in-app account deletion (if accounts), privacy manifest, ATT (if tracking) _(agent)_ — PRD.md Required store features + PRIVACY.md: no login/accounts/tracking; privacy manifest to build in phase 5
+- [x] **P2.6** Privacy policy, terms and a support page exist as pages on the company site (reference/legal-pages.md), committed on a branch; wording is platform-neutral and matches the in-app text _(agent)_ — Hosted pages live (200) and committed on landing repo; app and hosted text identical (29 sections); model-download edit local on picdump-legal-downloads, unpushed
 - [ ] **P2.7** Store agreements, tax and banking done (needed for paid apps and subscriptions) _(human)_
+- [x] **P2.8** EAS project linked under the company account (app.json extra.eas.projectId and owner) _(agent)_ — app.json extra.eas.projectId 1a04cc3f-af2d-442f-b911-e82e495c81e4, owner horizonzeta
 
 ## Phase 3 · Architecture
 
@@ -113,6 +114,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [ ] **P8.7** Reviewer access: demo account and review notes entered (a person types any password) _(human)_
 - [ ] **P8.8** Tested on TestFlight and a Play testing track (closed testing rules met for new Play accounts) _(agent)_
 - [ ] **P8.9** Release approved: submit for review, staged / phased rollout plan chosen _(human)_
+- [ ] **P8.10** Privacy, terms and support URLs are deployed (HTTP 200) and entered in App Store Connect (privacy, support, marketing) and Play (privacy policy, deletion URL if accounts) _(agent)_
 
 ## Phase 9 · Post-launch
 
@@ -144,3 +146,9 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P1.3 → done (Freemium + subscription confirmed (Kerem, 2026-10-29); prices set in store offering) [person]
 - 2026-10-29 P1.7 → done (PRD approved by Kerem Bayramoglu, 2026-10-29) [person]
 - 2026-10-29 phase 1 complete → phase 2 · Identity & compliance setup
+- 2026-10-29 af check: P2.4 → done
+- 2026-10-29 P2.3 → done (ASC app 6825956219 (com.horizonzeta.picdump, SKU Pic_Dump_01) exists; Play app com.horizonzeta.picdump exists (title PicDump, listing text empty))
+- 2026-10-29 P2.5 → done (PRD.md Required store features + PRIVACY.md: no login/accounts/tracking; privacy manifest to build in phase 5)
+- 2026-10-29 sync: added P2.8, P8.10
+- 2026-10-29 P2.8 → done (app.json extra.eas.projectId 1a04cc3f-af2d-442f-b911-e82e495c81e4, owner horizonzeta)
+- 2026-10-29 P2.6 → done (Hosted pages live (200) and committed on landing repo; app and hosted text identical (29 sections); model-download edit local on picdump-legal-downloads, unpushed)
