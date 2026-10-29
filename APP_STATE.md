@@ -41,7 +41,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 2 · Identity & compliance setup
 
-- [ ] **P2.1** App name final; repo and code identifiers match it or the mapping is documented _(human)_
+- [x] **P2.1** App name final; repo and code identifiers match it or the mapping is documented _(human)_ — Name PicDump final (Kerem, 2026-10-29); daydump identifiers kept on purpose, mapping in README
 - [x] **P2.2** iOS bundle ID and Android package share one org prefix and match APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
 - [x] **P2.3** App records exist in App Store Connect and Play Console (store-apple / store-play runbooks) _(agent)_ — ASC app 6825956219 (com.horizonzeta.picdump, SKU Pic_Dump_01) exists; Play app com.horizonzeta.picdump exists (title PicDump, listing text empty)
 - [x] **P2.4** PRIVACY.md data inventory: every data type, where it goes, which third parties _(auto)_ — auto: pass (2026-10-29)
@@ -152,3 +152,4 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 sync: added P2.8, P8.10
 - 2026-10-29 P2.8 → done (app.json extra.eas.projectId 1a04cc3f-af2d-442f-b911-e82e495c81e4, owner horizonzeta)
 - 2026-10-29 P2.6 → done (Hosted pages live (200) and committed on landing repo; app and hosted text identical (29 sections); model-download edit local on picdump-legal-downloads, unpushed)
+- 2026-10-29 P2.1 → done (Name PicDump final (Kerem, 2026-10-29); daydump identifiers kept on purpose, mapping in README) [person]
