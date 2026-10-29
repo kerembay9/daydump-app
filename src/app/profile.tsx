@@ -434,14 +434,14 @@ function Stepper({ label: l, value, lo, hi, onChange }: { label: string; value: 
     return (
       <Tap onPress={off ? undefined : () => onChange(value + d)} accessibilityRole="button" accessibilityLabel={`${name} ${l.toLowerCase()}`} accessibilityState={{ disabled: off }} hitSlop={6}
         style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
-        <Text style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
+        <Text maxFontSizeMultiplier={1} style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
       </Tap>
     );
   };
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessible={false}>
       {step(-1, 'Lower')}
-      <Text accessibilityLabel={`${l}, ${value}`} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
+      <Text accessibilityLabel={`${l}, ${value}`} maxFontSizeMultiplier={1.3} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
       {step(1, 'Raise')}
     </View>
   );

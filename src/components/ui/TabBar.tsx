@@ -56,7 +56,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             <View style={{ height: 22, justifyContent: 'center' }}>
               <tab.Icon size={tab.size} color={color} />
             </View>
-            <Text style={{ fontFamily: sans[on ? 700 : 600], fontSize: 10.5, lineHeight: 12, letterSpacing: em(10.5, -0.025), color }}>{tab.label}</Text>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontFamily: sans[on ? 700 : 600], fontSize: 10.5, lineHeight: 12, letterSpacing: em(10.5, -0.025), color }}>{tab.label}</Text>
           </Tap>
         );
       })}
