@@ -94,3 +94,13 @@ Still open in Play App content:
 - **Content ratings**: starting the IARC questionnaire means agreeing to IARC's Terms of Service. Answers are ready (all No, digital purchases Yes).
 - **Foreground service permissions** (`dataSync`, background indexing): needs a description and a demonstration.
 - **Photo and video permissions** (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`): Google asks whether photo access is core functionality and may steer the app to the system photo picker. Needs a deliberate answer.
+
+## Content rating and the two declarations left (2026-10-29)
+
+Content rating saved (staged): category All Other App Types, contact info@horizonzeta.com, IARC terms accepted by the owner. Results: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+, 3+ elsewhere, "In-App Purchases" noted. Answers: downloaded content No, user interaction No, online content No, age-restricted products No, location sharing No, digital purchases Yes (loot boxes No), rewards No, browser No, news or education No.
+
+Left in Play App content:
+- **Foreground service permissions** (`FOREGROUND_SERVICE_DATA_SYNC`). The form asks which task needs it (proposed: Local processing > Other), a **video link** demonstrating the feature, and a description. A short screen recording is needed (indexing keeps running with the screen off, visible through the notification); it must be hosted at a link (for example an unlisted YouTube video). Not something I can produce.
+- **Photo and video permissions.** Two 250-character boxes, one per permission.
+  - `READ_MEDIA_IMAGES` draft (about 235 characters): "PicDump suggests photo dumps by indexing the whole camera roll on the device (dates, places, similar shots). A one-time picker cannot give this library-wide access, and nothing is uploaded. Without it Discover, Tidy and Bingo cannot work."
+  - `READ_MEDIA_VIDEO`: the PRD says photos only, so there is no honest reason for this permission. Better to remove `READ_MEDIA_VIDEO` (and the unused `READ_MEDIA_AUDIO`) from `app.json` and from the duplicate Android permission list, then rebuild, instead of justifying them. Then this form only covers images.
