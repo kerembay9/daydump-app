@@ -96,9 +96,9 @@ function Thumb({ p, i, n, drag, active, selected, image, matrix, own, onTap, onH
         {/* has edits of its own (Photos tab: a look of its own, or Adjust) */}
         {own ? <View style={{ position: 'absolute', right: 3, top: 3, width: 7, height: 7, borderRadius: 4, backgroundColor: fixed.printBorder, borderWidth: 1, borderColor: 'rgba(0,0,0,0.35)' }} /> : null}
         <View style={{ position: 'absolute', left: 2, bottom: 2, paddingHorizontal: 4, borderRadius: 7, backgroundColor: cover ? fixed.printBorder : 'rgba(0,0,0,0.65)', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Text style={[ui(8.5, 700), { color: cover ? '#261F1B' : '#fff' }]}>{cover ? '★ 1' : `#${i + 1}`}</Text>
+          <Text style={[ui(8.5, 700), { color: cover ? '#2B1810' : '#fff' }]}>{cover ? '★ 1' : `#${i + 1}`}</Text>
           {/* ✧ icon, not the ✨ emoji (decision #10), as in Create */}
-          {p.suggested ? <Icons.sparkle size={8} color={cover ? '#261F1B' : '#fff'} /> : null}
+          {p.suggested ? <Icons.sparkle size={8} color={cover ? '#2B1810' : '#fff'} /> : null}
         </View>
       </Animated.View>
     </GestureDetector>

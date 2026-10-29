@@ -23,3 +23,27 @@ describe.each([['Cashmere', cashmere, {}], ['Espresso', espresso, {}], ['Cashmer
     expect(ratio(t[fg] as string, t[bg] as string)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+// The themes are built from the brand palette: change one place, not two.
+import { brand } from '../src/theme/tokens';
+
+test('Cashmere is parchment, paper and espresso; Espresso is the ristretto colourway', () => {
+  expect(cashmere.bgScreen).toBe(brand.parchment);
+  expect(cashmere.bgCard).toBe(brand.paper);
+  expect(cashmere.ink).toBe(brand.espresso);
+  expect(espresso.bgScreen).toBe(brand.ristretto.tile);
+  expect(espresso.ink).toBe(brand.ristretto.ink);
+});
+
+test('the accent is caramel with espresso text in both themes', () => {
+  for (const t of [cashmere, espresso]) {
+    expect(t.accentFab).toBe(brand.caramel);
+    expect(t.accentFabText).toBe(brand.espresso);
+  }
+});
+
+test('the deep accent (rust) reads as text on the light surfaces and carries paper text as a fill', () => {
+  expect(ratio(brand.rust, cashmere.bgScreen)).toBeGreaterThanOrEqual(4.5);
+  expect(ratio(brand.rust, cashmere.bgCard)).toBeGreaterThanOrEqual(4.5);
+  expect(ratio(brand.paper, brand.rust)).toBeGreaterThanOrEqual(4.5);
+});

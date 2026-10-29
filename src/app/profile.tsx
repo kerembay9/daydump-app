@@ -31,13 +31,14 @@ import { AppIcon, ClipEmbedder, QueryTranslate } from '../../modules/clip-embedd
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
 import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
 import { daysLeft, NO_UNLOCKS, UNLOCK_EVERY } from '../services/unlocks';
+import { brand } from '../theme/tokens';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
 const THEMES: { mode: ThemeMode; name: string; sub: string; swatch: string[] }[] = [
-  { mode: 'system', name: 'System', sub: 'Auto', swatch: ['#EFE6DA', '#241D14'] },
-  { mode: 'light', name: 'Cashmere', sub: 'Light', swatch: ['#EFE6DA'] },
-  { mode: 'dark', name: 'Espresso', sub: 'Dark', swatch: ['#241D14'] },
+  { mode: 'system', name: 'System', sub: 'Auto', swatch: [brand.paper, brand.ristretto.tile] },
+  { mode: 'light', name: 'Cashmere', sub: 'Light', swatch: [brand.paper] },
+  { mode: 'dark', name: 'Espresso', sub: 'Dark', swatch: [brand.ristretto.tile] },
 ];
 const DEV_TAPS = 5;
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[profile]', m));
