@@ -52,13 +52,13 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 3 · Architecture
 
-- [ ] **P3.1** ARCHITECTURE.md: stack, backend, data model, auth, offline behaviour _(auto)_ — auto: FAIL (2026-10-29)
-- [ ] **P3.2** A decision record (docs/adr/) for each major choice: backend vs local data, RN architecture, media/audio libraries _(agent)_
+- [x] **P3.1** ARCHITECTURE.md: stack, backend, data model, auth, offline behaviour _(auto)_ — auto: pass (2026-10-29)
+- [x] **P3.2** A decision record (docs/adr/) for each major choice: backend vs local data, RN architecture, media/audio libraries _(agent)_ — docs/adr/0001-0006 accepted
 - [x] **P3.3** AGENTS.md from the template; CLAUDE.md points to it _(auto)_ — auto: pass (2026-10-29)
 - [x] **P3.4** No secrets in the repo or its history; .env gitignored; keys in EAS / Supabase secrets _(auto)_ — auto: pass with warnings (2026-10-29)
 - [ ] **P3.5** CI runs lint, typecheck and unit tests on every push _(agent)_
-- [ ] **P3.6** Expo SDK pinned; `npx expo install --check` clean; no legacy-peer-deps _(agent)_
-- [ ] **P3.7** Versioning rule in AGENTS.md: build number up every upload, version name only at release _(agent)_
+- [x] **P3.6** Expo SDK pinned; `npx expo install --check` clean; no legacy-peer-deps _(agent)_ — expo install --check clean after patch bumps (expo 57.0.31 etc.); no .npmrc, no legacy-peer-deps; tsc, lint, 196 tests pass
+- [x] **P3.7** Versioning rule in AGENTS.md: build number up every upload, version name only at release _(agent)_ — AGENTS.md Versioning (Google Play) section: versionCode per upload, version name only at release
 
 ## Phase 4 · Design system
 
@@ -155,3 +155,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P2.1 → done (Name PicDump final (Kerem, 2026-10-29); daydump identifiers kept on purpose, mapping in README) [person]
 - 2026-10-29 P2.7 → done (Checked in both consoles 2026-10-29: Apple Paid Apps Agreement, bank, tax Active; Play account earning revenue) [person]
 - 2026-10-29 phase 2 complete → phase 3 · Architecture
+- 2026-10-29 af check: P3.1 → done
+- 2026-10-29 P3.2 → done (docs/adr/0001-0006 accepted)
+- 2026-10-29 P3.6 → done (expo install --check clean after patch bumps (expo 57.0.31 etc.); no .npmrc, no legacy-peer-deps; tsc, lint, 196 tests pass)
+- 2026-10-29 P3.7 → done (AGENTS.md Versioning (Google Play) section: versionCode per upload, version name only at release)
