@@ -52,3 +52,22 @@ PicDump's own terms say 16 and over; Apple's rating is separate and does not nee
 | Target audience | 16 and over (age groups 16-17 and 18+). Not for children, so Families policy does not apply. |
 | Contains ads | No |
 | App access | No login needed; all features reachable without credentials |
+
+## Entry log and corrections (2026-10-29)
+
+Entered:
+- Play en-US listing (title, short and full description) via the API, from `store/listing/en-US.md`.
+- Play Privacy policy URL and "Contains ads: No" in App content, staged in Publishing overview (not sent for review).
+
+Found already done, left alone:
+- Apple age rating: every answer was already None / No and the computed rating is 4+, as proposed above.
+- Apple en-US listing, support URL, marketing URL and privacy URL: already entered, with iOS-specific copy (it does not promise Tidy, search or Bingo, which iOS lacks, and it mentions a 7-day trial on the yearly plan). `store/listing/en-US.md` is the **Play** copy. Do not paste it over the App Store listing.
+
+Corrections to the answers above:
+- **Play "Sign in details" (formerly App access) must be "Yes", not "No".** The form says an app with payments, subscriptions or access tiers counts as restricted, and Google reviewers cannot buy anything. It needs instructions for the reviewer (P8.7, human). Target audience stays blocked until this is done.
+
+Not yet covered by the answers above (Play App content also asks):
+- Advertising ID, government app, financial features, health features: expected No / None / None / None. Confirm the advertising ID answer against the merged manifest first (an SDK can add `AD_ID`).
+- Foreground service permission declaration (`dataSync`, used for background indexing) needs a description and a short video or explanation.
+- Photo and video permissions declaration (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`) asks for the app's core functionality. Google may push an app like this toward the system photo picker, so this one can fail review; it needs a deliberate answer.
+- Apple App Privacy and Play Data safety forms are not entered yet.
