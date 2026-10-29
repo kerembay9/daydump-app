@@ -63,7 +63,7 @@
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#DCE7DC",
+        "backgroundColor": "#F3E7D3",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -130,7 +130,7 @@
         {
           "dark": {
             "foreground": "./assets/icon-dark.png",
-            "background": "#0A0A0C"
+            "background": "#2A170F"
           },
           "cards": {
             "foreground": "./assets/icon-cards-foreground.png",
@@ -175,6 +175,18 @@
           "android": {
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#F3E7D3",
+          "imageWidth": 200,
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#2A170F"
           }
         }
       ]

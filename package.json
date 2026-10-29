@@ -22,6 +22,7 @@
     "expo-notifications": "~57.0.23",
     "expo-router": "~57.0.28",
     "expo-sharing": "~57.0.23",
+    "expo-splash-screen": "~57.0.10",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
@@ -57,7 +58,8 @@
     "lint": "expo lint",
     "test": "jest",
     "eas-build-pre-install": "node scripts/release-check.js",
-    "test:tz": "for z in UTC Europe/Istanbul America/New_York Pacific/Kiritimati Pacific/Pago_Pago; do echo \"TZ=$z\"; TZ=$z jest --ci __tests__/date-labels.test.ts || exit 1; done"
+    "test:tz": "for z in UTC Europe/Istanbul America/New_York Pacific/Kiritimati Pacific/Pago_Pago; do echo \"TZ=$z\"; TZ=$z jest --ci __tests__/date-labels.test.ts || exit 1; done",
+    "brand:assets": "node scripts/brand/make-assets.cjs"
   },
   "private": true,
   "expo": {

@@ -30,7 +30,7 @@ export const cashmere: Theme = {
   borderSubtle: 'rgba(74,52,40,0.08)',
   borderStrong: 'rgba(74,52,40,0.15)',
   ink: '#261F1B',
-  inkMuted: '#766860',
+  inkMuted: '#726459', // 4.6:1 on bgCard, 4.7 on the parchment card (was #766860, 4.3 on bgCard)
   accentFab: '#DFD1C4',
   accentFabText: '#261F1B',
   tapeBg: 'rgba(212,196,182,0.58)',
@@ -77,3 +77,16 @@ export const fixed = {
   tiktokBg: '#181411',
   tapeShadow: '0 2px 5px rgba(0,0,0,0.12)',
 };
+
+/**
+ * The logo's palette (design/brand/picdump-logo.svg, colorway 01 espresso, and 09 ristretto for dark surfaces). Not a theme: screens read
+ * useTheme(); these are for the launcher icon, the splash and anywhere the logo itself is drawn. app.json repeats parchment and
+ * ristretto.tile (adaptive icon and splash backgrounds); __tests__/brand-assets.test.ts fails if they drift apart.
+ */
+export const brand = {
+  parchment: '#F3E7D3', // logo tile
+  espresso: '#2B1810', // logo ink: the animal and the print interiors
+  paper: '#FFF8EC', // logo print borders
+  knockout: '#DFD2C0', // outline where the animal overlaps the prints
+  ristretto: { tile: '#2A170F', ink: '#F2DFC0', paper: '#4A2D1E' }, // dark-surface colourway
+} as const;
