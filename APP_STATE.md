@@ -64,13 +64,8 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 - [x] **P4.1** BRAND_GUIDELINES.md: name, voice, colour, type _(auto)_ — auto: pass (2026-10-29)
 - [x] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_ — Tokens in src/theme/tokens.ts (light Cashmere, dark Espresso, brand palette), read through useTheme in 55 of 64 screens/components; 84 hardcoded hex literals remain outside the theme folder (dev tools, photo-matte and filter data); contrast test added. Branch design/brand-p4
-- [ ] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_
-- [x] **P4.4** App icon and splash for both platforms _(agent)_ — Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4
-- [ ] **P4.5** Accessibility baseline: labels on icon-only buttons, dynamic type, contrast _(agent)_
-- [ ] **P4.6** Design approved _(human)_
-- [ ] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_
 - [x] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_ — Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/
-- [ ] **P4.4** App icon and splash for both platforms _(agent)_
+- [x] **P4.4** App icon and splash for both platforms _(agent)_ — Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4
 - [x] **P4.5** Accessibility baseline: labels on icon-only buttons, dynamic type, contrast _(agent)_ — Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.
 - [x] **P4.6** Design approved _(human)_ — Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)
 
