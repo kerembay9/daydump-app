@@ -63,9 +63,9 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 ## Phase 4 · Design system
 
 - [x] **P4.1** BRAND_GUIDELINES.md: name, voice, colour, type _(auto)_ — auto: pass (2026-10-29)
-- [ ] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_
+- [x] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_ — Tokens in src/theme/tokens.ts (light Cashmere, dark Espresso, brand palette), read through useTheme in 55 of 64 screens/components; 84 hardcoded hex literals remain outside the theme folder (dev tools, photo-matte and filter data); contrast test added. Branch design/brand-p4
 - [ ] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_
-- [ ] **P4.4** App icon and splash for both platforms _(agent)_
+- [x] **P4.4** App icon and splash for both platforms _(agent)_ — Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4
 - [ ] **P4.5** Accessibility baseline: labels on icon-only buttons, dynamic type, contrast _(agent)_
 - [ ] **P4.6** Design approved _(human)_
 
@@ -167,3 +167,5 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 af check: P9.1 → done
 - 2026-10-29 P6.11 → done (Verified 2026-10-30 via RevenueCat: offering default current, weekly then annual, each with iOS, Android and Test Store products, prices match; see docs/reviews/2026-10-30-audits.md)
 - 2026-10-29 P5.6 → done (docs/PARITY.md checked against the code 2026-10-30; iOS gap and its decision recorded)
+- 2026-10-29 P4.2 → done (Tokens in src/theme/tokens.ts (light Cashmere, dark Espresso, brand palette), read through useTheme in 55 of 64 screens/components; 84 hardcoded hex literals remain outside the theme folder (dev tools, photo-matte and filter data); contrast test added. Branch design/brand-p4)
+- 2026-10-29 P4.4 → done (Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4)
