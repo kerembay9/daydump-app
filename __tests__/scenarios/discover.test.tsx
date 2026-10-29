@@ -151,7 +151,7 @@ describe('Discover picks and topics', () => {
   test('people words and obscure tags make no topic; "latte art" is no topic of its own but named in a bigger one', () => {
     const { noTopic } = require('../../src/services/stories/curate');
     const { findTopics } = require('../../src/services/stories/topics');
-    const vocab = require('../../modules/clip-embedder/android/src/main/assets/clip/vocab.json').names as string[];
+    const vocab = require('../../jest/fixtures/vocab.json').names as string[];
     for (const t of ['woman', 'man', 'person', 'adult', 'ford e-series', 'body man']) expect([t, noTopic(vocab.indexOf(t))]).toEqual([t, true]);
     for (const t of ['latte art', 'museum', 'sunset', 'beach', 'dog', 'birthday']) expect([t, noTopic(vocab.indexOf(t))]).toEqual([t, false]);
 
@@ -204,7 +204,7 @@ describe('Discover picks and topics', () => {
   test('statements and worksheets stay out of dumps, vague tags make no topic, and "October" ranks near the top', async () => {
     const { buildStories } = require('../../src/services/stories');
     const { noTopic } = require('../../src/services/stories/curate');
-    const vocab = require('../../modules/clip-embedder/android/src/main/assets/clip/vocab.json').names as string[];
+    const vocab = require('../../jest/fixtures/vocab.json').names as string[];
     const id = (n: string) => vocab.indexOf(n);
     for (const t of ['happy', 'event', 'daughter', 'red']) expect([t, noTopic(id(t), t)]).toEqual([t, true]);
     expect(noTopic(id('drinking establishment'), 'drinking establishment')).toBe(false);
