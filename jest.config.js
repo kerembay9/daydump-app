@@ -5,6 +5,7 @@ const expoIgnore = require('jest-expo/android/jest-preset').transformIgnorePatte
 
 module.exports = {
   preset: 'jest-expo/android',
+  globalSetup: '<rootDir>/jest/global-setup.js',
   setupFiles: ['<rootDir>/jest/setup.ts'],
   testMatch: ['<rootDir>/__tests__/**/*.test.ts?(x)'],
   modulePathIgnorePatterns: ['<rootDir>/.claude/'],
