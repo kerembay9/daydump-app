@@ -398,7 +398,7 @@ export default function Create() {
       const v = vs[0] ?? null;
       if (!live) return;
       const r = searchLibrary(lib, q, vs.filter((y): y is Float32Array => !!y));
-      if (query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip ${JSON.stringify(x?.texts ?? [])}: ${r.length} in ${Date.now() - t0} ms`);
+      if (__DEV__ && query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip ${JSON.stringify(x?.texts ?? [])}: ${r.length} in ${Date.now() - t0} ms`);
       setRows(r.map((i) => lib.photos[i]));
       setQvec(v);
       setExpanded(x);
