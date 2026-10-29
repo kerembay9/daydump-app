@@ -49,3 +49,4 @@ modules/clip-embedder/android/*pack/src/
 modules/clip-embedder/android/*/build/
 modules/*/android/build/
 __pycache__/
+*.ipa
