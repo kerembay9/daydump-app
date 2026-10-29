@@ -20,8 +20,7 @@ android/app/build/outputs/bundle/release/app-release.aab
 * **Keystore File Location:** `daydump-release.keystore` at the repo root (gitignored). `plugins/withReleaseSigning.js` points the release build at it, so `expo prebuild` keeps signing
 * **Keystore Type:** PKCS12 (2048-bit RSA)
 * **Key Alias:** `daydump-key-alias`
-* **Store Password:** `daydump2026`
-* **Key Password:** `daydump2026`
+* **Passwords:** not stored in the repo. Put them in `~/.gradle/gradle.properties` as `PICDUMP_UPLOAD_STORE_PASSWORD` and `PICDUMP_UPLOAD_KEY_PASSWORD` (the names `plugins/withReleaseSigning.js` reads), and keep a copy in the password manager. An earlier version of this file listed them in plain text and that version is in the public git history, so treat the old passwords as burned: the next upload key (for example after an upload key reset in Play Console) gets new ones.
 * **Validity:** 10,000 days (~27 years)
 
 > [!CAUTION]

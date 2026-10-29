@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.horizonzeta.picdump",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",

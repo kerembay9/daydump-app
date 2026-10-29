@@ -14,6 +14,13 @@ framework_version: 0.2.0
 Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 `[x]` done · `[ ]` open · `[~]` waived (reason after —). Human gates are ticked by a person.
 
+## Hold / todo (2026-10-29)
+
+- Release is on hold until 1.0.0: nothing is submitted to App Review before then. At that point set `expo.version` to 1.0.0, rebuild iOS (build 5), rename the ASC version record, attach the build.
+- iOS sandbox purchase test: skipped for now (no iPhone; storefront switch failed on the Mac). Do it before 1.0.0 if possible.
+- iOS feature gap (found 2026-10-29): the native CLIP module (`modules/*/android` only) has no iOS side, so on iOS Tidy shows "Needs Android 11 or newer", Bingo squares never fill, and text search and the selfie finder have no engine. The Pro paywall lists search and "Clear repeats and clutter". Decide before 1.0.0: build an iOS engine, hide or reword these on iOS, or ship iOS without them and fix the paywall copy (App Review 2.3.1 / 3.1.2 risk).
+- Android purchase test: blocked. `daydump-release.keystore` (upload key) and the `PICDUMP_UPLOAD_*` passwords in `~/.gradle/gradle.properties` are not on this machine; Play internal build 9 predates the paywall. `versionCode` is already 10. Find the keystore, or request an upload key reset in Play Console, then build, upload to internal, test with a license tester.
+
 ## Phase 0 · Idea & validation
 
 - [ ] **P0.1** BRIEF.md written: problem, target user, why now _(auto)_
