@@ -144,7 +144,8 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "scheme": "picdump",
     "extra": {
