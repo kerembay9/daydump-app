@@ -32,13 +32,14 @@ import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from 
 import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
 import { daysLeft, NO_UNLOCKS, UNLOCK_EVERY } from '../services/unlocks';
 import { brand } from '../theme/tokens';
+import { tr } from '../i18n';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
 const THEMES: { mode: ThemeMode; name: string; sub: string; swatch: string[] }[] = [
-  { mode: 'system', name: 'System', sub: 'Auto', swatch: [brand.paper, brand.ristretto.tile] },
-  { mode: 'light', name: 'Cashmere', sub: 'Light', swatch: [brand.paper] },
-  { mode: 'dark', name: 'Espresso', sub: 'Dark', swatch: [brand.ristretto.tile] },
+  { mode: 'system', name: 'profile.theme.system', sub: 'profile.theme.auto', swatch: [brand.paper, brand.ristretto.tile] },
+  { mode: 'light', name: 'profile.theme.cashmere', sub: 'profile.theme.light', swatch: [brand.paper] },
+  { mode: 'dark', name: 'profile.theme.espresso', sub: 'profile.theme.dark', swatch: [brand.ristretto.tile] },
 ];
 const DEV_TAPS = 5;
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[profile]', m));
@@ -130,9 +131,9 @@ function ProfileBody() {
 
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
-    title: 'Reindex your library?',
-    body: 'PicDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.',
-    action: 'Reindex',
+    title: tr('profile.reindex.title'),
+    body: tr('profile.reindex.body'),
+    action: tr('profile.reindex.action'),
     onConfirm: () => { resetIndex().then(app.refreshStories, (e) => console.warn('[profile] reindex failed:', e)); },
   });
 
@@ -153,14 +154,14 @@ function ProfileBody() {
   return (
     <Screen keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
-        <Text style={[display(20), { color: t.ink }]}>Profile &amp; Settings</Text>
+        <IconButton label={tr('common.back')} onPress={back}><Icons.back size={16} /></IconButton>
+        <Text style={[display(20), { color: t.ink }]}>{tr('profile.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <FrameCard radius={20} padding={12} style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Tap onPress={() => setAvatarSheet(true)} accessibilityRole="button" accessibilityLabel="Change profile photo">
+          <Tap onPress={() => setAvatarSheet(true)} accessibilityRole="button" accessibilityLabel={tr('profile.changePhoto')}>
             <FrameCard radius={27} style={{ width: 54, height: 54, padding: 2 }}>
               <View style={{ flex: 1, borderRadius: 25, overflow: 'hidden', backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
                 {p.avatar ? <Image source={{ uri: p.avatar }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -174,12 +175,12 @@ function ProfileBody() {
           </Tap>
           <View style={{ flex: 1, minWidth: 0 }}>
             <TextInput value={p.name} onChangeText={(name) => setP((x) => ({ ...x, name }))} onEndEditing={() => save({ name: p.name.trim() })}
-              placeholder="Your name" placeholderTextColor={t.inkMuted} returnKeyType="done" maxLength={40}
+              placeholder={tr('profile.namePlaceholder')} placeholderTextColor={t.inkMuted} returnKeyType="done" maxLength={40}
               style={[display(20), { color: t.ink, padding: 0 }]} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
               <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>@</Text>
               <TextInput value={p.handle} onChangeText={(h) => setP((x) => ({ ...x, handle: h.replace(/[@\s]/g, '') }))} onEndEditing={() => save({ handle: p.handle })}
-                placeholder="your_account" placeholderTextColor={t.inkMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="done" maxLength={30}
+                placeholder={tr('profile.handlePlaceholder')} placeholderTextColor={t.inkMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="done" maxLength={30}
                 style={[ui(11.5, 500), { color: t.inkMuted, padding: 0, flex: 1 }]} />
             </View>
           </View>
@@ -188,27 +189,27 @@ function ProfileBody() {
 
       <SubCard sub={sub} onGoPro={() => pro.openPaywall('profile')} />
 
-      <Section title="Dump picks">
-        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
+      <Section title={tr('profile.dumpPicks.title')}>
+        <Row label={tr('profile.dumpPicks.photosPerDump')} sub={tr('profile.dumpPicks.photosPerDumpSub')} right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
-            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
-            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
+            <Stepper label={tr('profile.dumpPicks.fewest')} value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
+            <Text style={[ui(11), { color: t.inkMuted }]}>{tr('profile.dumpPicks.to')}</Text>
+            <Stepper label={tr('profile.dumpPicks.most')} value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
           </View>} />
-        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
-        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
-        <Row label="Recap" sub="Today’s dump at 8 PM, your week on Sunday at noon" onPress={toggleRecap} toggle={recap} last />
+        <Row label={tr('profile.dumpPicks.hideSensitive')} sub={tr('profile.dumpPicks.hideSensitiveSub')} onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
+        <Row label={tr('profile.dumpPicks.screenshots')} sub={tr('profile.dumpPicks.screenshotsSub')} onPress={toggleStories('screenshots')} toggle={p.screenshots} />
+        <Row label={tr('profile.dumpPicks.recap')} sub={tr('profile.dumpPicks.recapSub')} onPress={toggleRecap} toggle={recap} last />
       </Section>
 
-      <Section title="Export & posting" note="New dumps start with the size and quality set here.">
-        <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
+      <Section title={tr('profile.export.title')} note={tr('profile.export.note')}>
+        <Row label={tr('profile.export.postSize')} onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
-        <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
-          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? 'HD (2160 px)' : 'Standard (1080 px)'}</Text>} />
-        <Row label="Posting also saves to gallery" sub="Keeps a copy of the slides in the PicDump album" onPress={() => save({ saveOnPost: !p.saveOnPost })} toggle={p.saveOnPost} last />
+        <Row label={tr('profile.export.quality')} onPress={() => save({ exportHD: !p.exportHD })}
+          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? tr('profile.export.hd') : tr('profile.export.standard')}</Text>} />
+        <Row label={tr('profile.export.saveOnPost')} sub={tr('profile.export.saveOnPostSub')} onPress={() => save({ saveOnPost: !p.saveOnPost })} toggle={p.saveOnPost} last />
       </Section>
 
-      <Section title="Appearance & theme" pad>
+      <Section title={tr('profile.appearance.title')} pad>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {THEMES.map((th) => {
             const on = mode === th.mode;
@@ -218,17 +219,17 @@ function ProfileBody() {
                 <View style={{ width: 14, height: 14, borderRadius: 7, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }}>
                   {th.swatch.map((c) => <View key={c} style={{ flex: 1, backgroundColor: c }} />)}
                 </View>
-                <Text style={[ui(10.5, 600), { color: on ? t.bgScreen : t.ink }]}>{th.name}</Text>
-                <Text style={[ui(9), { color: on ? t.bgScreen : t.inkMuted, opacity: on ? 0.75 : 1 }]}>{th.sub}</Text>
+                <Text style={[ui(10.5, 600), { color: on ? t.bgScreen : t.ink }]}>{tr(th.name)}</Text>
+                <Text style={[ui(9), { color: on ? t.bgScreen : t.inkMuted, opacity: on ? 0.75 : 1 }]}>{tr(th.sub)}</Text>
               </Tap>
             );
           })}
         </View>
       </Section>
 
-      <Section title="Photo library & search">
-        <Row label="Access" right={access && access !== 'all'
-          ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
+      <Section title={tr('profile.library.title')}>
+        <Row label={tr('profile.library.access')} right={access && access !== 'all'
+          ? <SmallBtn label={tr('profile.library.openSettings')} onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
         <IndexRow onReindex={reindex} last={!QueryTranslate} />
@@ -238,12 +239,12 @@ function ProfileBody() {
         }} />}
       </Section>
 
-      <Section title="Privacy & about">
-        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Contact" onPress={() => Linking.openURL('mailto:info@horizonzeta.com?subject=PicDump').catch(() => toast('No mail app found. Write to info@horizonzeta.com'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>info@horizonzeta.com</Text>} />
-        <Row label="Version" sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
+      <Section title={tr('profile.about.title')}>
+        <Row label={tr('profile.about.onDevice')} sub={tr('profile.about.onDeviceSub')} onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('common.privacyPolicy')} onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('common.termsOfService')} onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('profile.about.contact')} onPress={() => Linking.openURL('mailto:info@horizonzeta.com?subject=PicDump').catch(() => toast(tr('profile.about.noMail')))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>info@horizonzeta.com</Text>} />
+        <Row label={tr('profile.about.version')} sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
 
       {__DEV__ && p.dev && (

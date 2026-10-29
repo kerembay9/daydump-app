@@ -10,15 +10,16 @@ import { RevenueCatService } from '../services/revenuecat';
 import { paywallPlans, PlanRow } from '../services/paywallPlans';
 import { LegalModal, type LegalDocType } from './LegalModal';
 import type { PaywallSource } from '../state/Pro';
+import { tr } from '../i18n';
 
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[paywall]', m));
 
 /** The heading for what was tapped; everything else (a locked dump, Profile, photos per dump) gets the dumps one. */
-const DUMPS = { heading: 'Every dump in your roll.', sub: 'Free gets your recaps and one dump a week. Pro opens all of them.' };
+const DUMPS = { heading: 'paywall.dumps.heading', sub: 'paywall.dumps.sub' };
 const COPY: Partial<Record<PaywallSource, { heading: string; sub: string }>> = {
-  tidy: { heading: 'Clear the clutter.', sub: 'Free finds every repeat and blurry shot. Pro moves them to Trash in one go.' },
-  finish: { heading: 'Keep the film look.', sub: 'Original, Warm 35mm and Adjust are free. Pro exports every look and texture.' },
-  search: { heading: 'Search your camera roll.', sub: 'Find a place, a month or a thing in words. Search comes with Pro.' },
+  tidy: { heading: 'paywall.tidy.heading', sub: 'paywall.tidy.sub' },
+  finish: { heading: 'paywall.finish.heading', sub: 'paywall.finish.sub' },
+  search: { heading: 'paywall.search.heading', sub: 'paywall.search.sub' },
 };
 
 /**
@@ -59,12 +60,12 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
     try {
       const res = await RevenueCatService.purchasePackage(plan.pkg);
       if (res.success) {
-        toast('Welcome to PicDump Pro!');
+        toast(tr('paywall.welcome'));
         onPurchased?.();
         onClose();
       } else if (!res.error) {
         // paid, but the entitlement isn't on the customer info yet (store delay, a product not mapped in RevenueCat)
-        toast('Purchase went through but Pro didn’t switch on yet. Tap Restore purchases.');
+        toast(tr('paywall.purchaseNotActive'));
         onPurchased?.();
       } else if (res.error !== 'User cancelled') toast(res.error);
     } finally {
@@ -77,10 +78,10 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
     try {
       const res = await RevenueCatService.restorePurchases();
       if (res.isPro) {
-        toast('Purchases restored. Welcome back to Pro!');
+        toast(tr('paywall.restored'));
         onPurchased?.();
         onClose();
-      } else toast(res.error ?? 'No active PicDump Pro subscription found.');
+      } else toast(res.error ?? tr('paywall.noSubscription'));
     } finally {
       setPurchasing(false);
     }
@@ -88,8 +89,8 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
 
   const n = found?.length ?? 0;
   const copy = (source && COPY[source]) || DUMPS;
-  const heading = n ? `We found ${n} dump${n === 1 ? '' : 's'} in your roll.` : copy.heading;
-  const sub = n ? `${found!.slice(0, 3).join(', ')}${n > 3 ? ' and more' : ''}. Pro opens all of them.` : copy.sub;
+  const heading = n ? tr('paywall.found.heading', { count: n }) : tr(copy.heading);
+  const sub = n ? tr(n > 3 ? 'paywall.found.subMore' : 'paywall.found.sub', { titles: found!.slice(0, 3).join(', ') }) : tr(copy.sub);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
@@ -101,7 +102,7 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
             </View>
             <Text style={[display(18), { color: t.ink }]}>PicDump Pro</Text>
           </View>
-          <Tap onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close paywall"
+          <Tap onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel={tr('paywall.close')}
             style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
             <Icons.close size={16} color={t.ink} />
           </Tap>
@@ -114,16 +115,16 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
           </View>
 
           <FrameCard radius={18} padding={14} style={{ gap: 12 }}>
-            <FeatureRow icon={Icons.carousel} title="Every dump, unlocked" sub="Every trip and story Discover finds, not one a week." />
-            <FeatureRow icon={Icons.search} title="Search your camera roll" sub="Find a place, a month or a thing in words." />
-            <FeatureRow icon={Icons.sparkle} title="All film looks" sub="Cashmere, Soft Film, Sunfade, B&W Roll, plus grain, fade and vignette." />
-            <FeatureRow icon={Icons.trash} title="Clear repeats and clutter" sub="Move duplicates, blurry shots and screenshots to Trash in one go." />
-            <FeatureRow icon={Icons.crop} title="Your dump, your way" sub="No PicDump end slide, and 4 to 20 photos per dump." />
+            <FeatureRow icon={Icons.carousel} title={tr('paywall.feature.dumps.title')} sub={tr('paywall.feature.dumps.sub')} />
+            <FeatureRow icon={Icons.search} title={tr('paywall.feature.search.title')} sub={tr('paywall.feature.search.sub')} />
+            <FeatureRow icon={Icons.sparkle} title={tr('paywall.feature.looks.title')} sub={tr('paywall.feature.looks.sub')} />
+            <FeatureRow icon={Icons.trash} title={tr('paywall.feature.tidy.title')} sub={tr('paywall.feature.tidy.sub')} />
+            <FeatureRow icon={Icons.crop} title={tr('paywall.feature.yours.title')} sub={tr('paywall.feature.yours.sub')} />
           </FrameCard>
 
           <View style={{ gap: 10, marginTop: 4 }}>
             {plans == null ? <ActivityIndicator color={t.ink} /> : plans.length === 0 ? (
-              <Text style={[ui(12), { color: t.inkMuted, textAlign: 'center' }]}>Plans couldn’t load. Check your connection and try again.</Text>
+              <Text style={[ui(12), { color: t.inkMuted, textAlign: 'center' }]}>{tr('paywall.plansFailed')}</Text>
             ) : plans.map((p) => {
               const on = p.id === selected;
               return (
@@ -151,20 +152,20 @@ export function PaywallModal({ visible, onClose, onPurchased, source, found }: {
           <Tap onPress={subscribe} disabled={purchasing || !plan} accessibilityRole="button"
             style={{ height: 48, borderRadius: 24, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4, opacity: plan ? 1 : 0.5 }}>
             {purchasing ? <ActivityIndicator color={t.bgScreen} size="small" />
-              : <Text style={[ui(14, 600), { color: t.bgScreen }]}>{plan?.trial ? `Start ${plan.trial}` : 'Continue'}</Text>}
+              : <Text style={[ui(14, 600), { color: t.bgScreen }]}>{plan?.trial ? tr('paywall.startTrial', { trial: plan.trial }) : tr('paywall.continue')}</Text>}
           </Tap>
 
           <View style={{ alignItems: 'center', gap: 10, marginTop: 8 }}>
             <Tap onPress={restore} disabled={purchasing} hitSlop={8}>
-              <Text style={[ui(12, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Restore purchases</Text>
+              <Text style={[ui(12, 500), { color: t.inkMuted, textDecorationLine: 'underline' }]}>{tr('paywall.restore')}</Text>
             </Tap>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Tap onPress={() => setLegal('terms')} hitSlop={6}><Text style={[ui(10.5), { color: t.inkMuted }]}>Terms of Service</Text></Tap>
+              <Tap onPress={() => setLegal('terms')} hitSlop={6}><Text style={[ui(10.5), { color: t.inkMuted }]}>{tr('common.termsOfService')}</Text></Tap>
               <Text style={[ui(10.5), { color: t.inkMuted }]}>·</Text>
-              <Tap onPress={() => setLegal('privacy')} hitSlop={6}><Text style={[ui(10.5), { color: t.inkMuted }]}>Privacy Policy</Text></Tap>
+              <Tap onPress={() => setLegal('privacy')} hitSlop={6}><Text style={[ui(10.5), { color: t.inkMuted }]}>{tr('common.privacyPolicy')}</Text></Tap>
             </View>
             <Text style={[ui(10), { color: t.inkMuted, textAlign: 'center', lineHeight: 14 }]}>
-              {plan?.trial ? `Free for the trial, then ${plan.price}. ` : ''}Payment is charged to your store account. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period.
+              {plan?.trial ? tr('paywall.trialThen', { price: plan.price }) : ''}{tr('paywall.disclosure')}
             </Text>
           </View>
         </ScrollView>

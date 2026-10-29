@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Close",
+    "back": "Back",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "tabs": {
+    "discover": "Discover",
+    "create": "Create",
+    "tidy": "Tidy",
+    "library": "Library"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Effortless photo dumps",
+      "title": "Turn camera roll chaos into dumps",
+      "description": "Say goodbye to scrolling through thousands of shots. PicDump picks the best photos of your days and trips, paced with flow.",
+      "point1": "Film looks, borders and IG / TikTok sizes",
+      "point2": "Collage layouts, one swipe at a time"
+    },
+    "privacy": {
+      "badge": "On-device curation",
+      "title": "Picked on your phone, not in the cloud",
+      "description": "Photo picks, search and dumps run on your phone. PicDump does not upload your photos to curate them.",
+      "point1": "Photo access lets it find your standout moments"
+    },
+    "allowContinue": "Allow photos & continue",
+    "continue": "Continue",
+    "page": "Page {{n}} of {{total}}",
+    "notifPreview": "Notification preview",
+    "notifNow": "· now",
+    "notifTitle": "Your PicDump is ready 🎞️",
+    "notifBody": "Today's photos, curated into one dump. Take a look before bed.",
+    "notifyHeading": "Your day at 8 PM, your week on Sunday",
+    "notifyBody": "A heads-up at 8 PM when today's dump is ready, and on Sunday at noon with your week.",
+    "turnOn": "Turn on",
+    "notNow": "Not now"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Every dump in your roll.",
+      "sub": "Free gets your recaps and one dump a week. Pro opens all of them."
+    },
+    "tidy": {
+      "heading": "Clear the clutter.",
+      "sub": "Free finds every repeat and blurry shot. Pro moves them to Trash in one go."
+    },
+    "finish": {
+      "heading": "Keep the film look.",
+      "sub": "Original, Warm 35mm and Adjust are free. Pro exports every look and texture."
+    },
+    "search": {
+      "heading": "Search your camera roll.",
+      "sub": "Find a place, a month or a thing in words. Search comes with Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "We found {{count}} dump in your roll.",
+        "other": "We found {{count}} dumps in your roll."
+      },
+      "sub": "{{titles}}. Pro opens all of them.",
+      "subMore": "{{titles}} and more. Pro opens all of them."
+    },
+    "welcome": "Welcome to PicDump Pro!",
+    "purchaseNotActive": "Purchase went through but Pro didn’t switch on yet. Tap Restore purchases.",
+    "restored": "Purchases restored. Welcome back to Pro!",
+    "noSubscription": "No active PicDump Pro subscription found.",
+    "close": "Close paywall",
+    "feature": {
+      "dumps": {
+        "title": "Every dump, unlocked",
+        "sub": "Every trip and story Discover finds, not one a week."
+      },
+      "search": {
+        "title": "Search your camera roll",
+        "sub": "Find a place, a month or a thing in words."
+      },
+      "looks": {
+        "title": "All film looks",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus grain, fade and vignette."
+      },
+      "tidy": {
+        "title": "Clear repeats and clutter",
+        "sub": "Move duplicates, blurry shots and screenshots to Trash in one go."
+      },
+      "yours": {
+        "title": "Your dump, your way",
+        "sub": "No PicDump end slide, and 4 to 20 photos per dump."
+      }
+    },
+    "plansFailed": "Plans couldn’t load. Check your connection and try again.",
+    "startTrial": "Start {{trial}}",
+    "continue": "Continue",
+    "restore": "Restore purchases",
+    "trialThen": "Free for the trial, then {{price}}. ",
+    "disclosure": "Payment is charged to your store account. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period."
+  },
+  "profile": {
+    "title": "Profile & Settings",
+    "changePhoto": "Change profile photo",
+    "namePlaceholder": "Your name",
+    "handlePlaceholder": "your_account",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Light",
+      "espresso": "Espresso",
+      "dark": "Dark"
+    },
+    "reindex": {
+      "title": "Reindex your library?",
+      "body": "PicDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.",
+      "action": "Reindex"
+    },
+    "dumpPicks": {
+      "title": "Dump picks",
+      "photosPerDump": "Photos per dump",
+      "photosPerDumpSub": "Discover picks a count in this range, mostly from the middle.",
+      "fewest": "Fewest photos",
+      "to": "to",
+      "most": "Most photos",
+      "hideSensitive": "Hide sensitive photos",
+      "hideSensitiveSub": "IDs, bank cards and medical papers never show up in dumps.",
+      "screenshots": "Include screenshots",
+      "screenshotsSub": "Screenshots can show up in dumps.",
+      "recap": "Recap",
+      "recapSub": "Today’s dump at 8 PM, your week on Sunday at noon"
+    },
+    "export": {
+      "title": "Export & posting",
+      "note": "New dumps start with the size and quality set here.",
+      "postSize": "Default Post Size",
+      "quality": "Default Export Quality",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Posting also saves to gallery",
+      "saveOnPostSub": "Keeps a copy of the slides in the PicDump album"
+    },
+    "appearance": {
+      "title": "Appearance & theme"
+    },
+    "library": {
+      "title": "Photo library & search",
+      "access": "Access",
+      "openSettings": "Open settings"
+    },
+    "about": {
+      "title": "Privacy & about",
+      "onDevice": "Everything happens on your phone",
+      "onDeviceSub": "How PicDump picks photos without uploading them",
+      "contact": "Contact",
+      "noMail": "No mail app found. Write to info@horizonzeta.com",
+      "version": "Version"
+    }
+  }
+}
