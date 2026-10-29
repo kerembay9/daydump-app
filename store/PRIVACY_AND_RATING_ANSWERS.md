@@ -79,3 +79,18 @@ Not yet covered by the answers above (Play App content also asks):
 - Promotion "App review access" (ID 131615938): 5 one-time codes, 30-day free trial on `picdump_yearly`, Nov 3, 2026 to Feb 3, 2027. A custom code was not used because Play requires at least 2,000 redemptions for those.
 - The five codes are in the Play Console promotion (Download codes) and in the saved Sign in details text. They are not stored in this repo.
 - Google's form says reviewers cannot use free trials. These codes grant a free trial, so Google may still ask for another way to see Pro features. If so, reply with a walkthrough or give a code for a full-price entitlement.
+
+## Play App content entries (2026-10-29), all staged in Publishing overview, none sent for review
+
+Saved: Privacy policy URL, Ads (No), Sign in details (Yes, with promo codes), Target audience (16-17 and 18 and over), Data safety, Advertising ID (No), Government apps (No), Financial features (none), Health apps (none).
+
+Data safety as entered:
+- Collects or shares required data types: Yes. Encrypted in transit: Yes. Account creation: "My app does not allow users to create an account"; login with outside accounts: No.
+- Data types: Financial info > Purchase history; Device or other IDs. Both collected, not shared, not ephemeral, required, purposes App functionality and Analytics. Preview shows "No data shared with third parties".
+- Deviation from the proposal above: the "users can request deletion" question is left unanswered. Answering Yes requires a web "Delete account URL" or "Delete data URL", and PicDump has only an email contact. Add a deletion page to the support site if you want to answer it.
+- Advertising ID answered No on the strength of the source manifest and dependency list; the release AAB's merged manifest was not inspected.
+
+Still open in Play App content:
+- **Content ratings**: starting the IARC questionnaire means agreeing to IARC's Terms of Service. Answers are ready (all No, digital purchases Yes).
+- **Foreground service permissions** (`dataSync`, background indexing): needs a description and a demonstration.
+- **Photo and video permissions** (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`): Google asks whether photo access is core functionality and may steer the app to the system photo picker. Needs a deliberate answer.
