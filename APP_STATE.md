@@ -5,7 +5,7 @@ platforms: [android, ios]
 stack: expo
 bundle_ios: com.horizonzeta.picdump
 package_android: com.horizonzeta.picdump
-current_phase: 3
+current_phase: 4
 framework_version: 0.2.1
 ---
 
@@ -56,7 +56,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [x] **P3.2** A decision record (docs/adr/) for each major choice: backend vs local data, RN architecture, media/audio libraries _(agent)_ — docs/adr/0001-0006 accepted
 - [x] **P3.3** AGENTS.md from the template; CLAUDE.md points to it _(auto)_ — auto: pass (2026-10-29)
 - [x] **P3.4** No secrets in the repo or its history; .env gitignored; keys in EAS / Supabase secrets _(auto)_ — auto: pass with warnings (2026-10-29)
-- [ ] **P3.5** CI runs lint, typecheck and unit tests on every push _(agent)_
+- [x] **P3.5** CI runs lint, typecheck and unit tests on every push _(agent)_ — CI green on PR #4 at 3defee2: npm ci, expo lint, tsc, jest (196 tests) on push and pull_request
 - [x] **P3.6** Expo SDK pinned; `npx expo install --check` clean; no legacy-peer-deps _(agent)_ — expo install --check clean after patch bumps (expo 57.0.31 etc.); no .npmrc, no legacy-peer-deps; tsc, lint, 196 tests pass
 - [x] **P3.7** Versioning rule in AGENTS.md: build number up every upload, version name only at release _(agent)_ — AGENTS.md Versioning (Google Play) section: versionCode per upload, version name only at release
 
@@ -159,3 +159,5 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P3.2 → done (docs/adr/0001-0006 accepted)
 - 2026-10-29 P3.6 → done (expo install --check clean after patch bumps (expo 57.0.31 etc.); no .npmrc, no legacy-peer-deps; tsc, lint, 196 tests pass)
 - 2026-10-29 P3.7 → done (AGENTS.md Versioning (Google Play) section: versionCode per upload, version name only at release)
+- 2026-10-29 P3.5 → done (CI green on PR #4 at 3defee2: npm ci, expo lint, tsc, jest (196 tests) on push and pull_request)
+- 2026-10-29 phase 3 complete → phase 4 · Design system
