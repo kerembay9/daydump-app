@@ -50,3 +50,5 @@ modules/clip-embedder/android/*/build/
 modules/*/android/build/
 __pycache__/
 *.ipa
+*.apk
+*.aab
