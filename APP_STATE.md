@@ -109,7 +109,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [ ] **P8.2** Screenshots in every required size; Play feature graphic _(agent)_
 - [x] **P8.3** No legal or release placeholders left _(auto)_ — auto: pass (2026-10-29)
 - [x] **P8.4** Identity and versions consistent across app.json, package.json and APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
-- [ ] **P8.5** App Privacy labels and Play data safety match PRIVACY.md _(agent)_
+- [x] **P8.5** App Privacy labels and Play data safety match PRIVACY.md _(agent)_ — Apple App Privacy published 2026-10-29 (User ID, Purchase History; linked, no tracking); Play Data safety saved (purchase history, device IDs; no data shared). Matches PRIVACY.md
 - [x] **P8.6** Age rating (Apple) and content rating (Play) done _(agent)_ — Apple age rating 4+ (all None/No, verified via API); Play IARC rating saved 2026-10-29: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+ (staged, not sent for review)
 - [ ] **P8.7** Reviewer access: demo account and review notes entered (a person types any password) _(human)_
 - [ ] **P8.8** Tested on TestFlight and a Play testing track (closed testing rules met for new Play accounts) _(agent)_
@@ -163,3 +163,4 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 phase 3 complete → phase 4 · Design system
 - 2026-10-29 P8.6 → done (Apple age rating 4+ (all None/No, verified via API); Play IARC rating saved 2026-10-29: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+ (staged, not sent for review))
 - 2026-10-29 P8.10 → done (Privacy/terms/support pages return 200; ASC has privacy, support, marketing URLs; Play privacy policy URL saved (staged); no accounts so no deletion URL. Landing-repo privacy edit still local)
+- 2026-10-29 P8.5 → done (Apple App Privacy published 2026-10-29 (User ID, Purchase History; linked, no tracking); Play Data safety saved (purchase history, device IDs; no data shared). Matches PRIVACY.md)
