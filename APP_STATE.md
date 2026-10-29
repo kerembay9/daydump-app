@@ -66,7 +66,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [x] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_ — Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/
 - [ ] **P4.4** App icon and splash for both platforms _(agent)_
 - [x] **P4.5** Accessibility baseline: labels on icon-only buttons, dynamic type, contrast _(agent)_ — Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.
-- [ ] **P4.6** Design approved _(human)_
+- [x] **P4.6** Design approved _(human)_ — Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)
 
 ## Phase 5 · Build loop
 
@@ -132,3 +132,4 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P6.1 → done (2026-10-29 IDs match across stores and RevenueCat: Play picdump_weekly:weekly-plan / picdump_yearly:yearly-plan; App Store picdump_weekly / picdump_yearly (group PicDump Pro 22525227, subs 6828347656 / 6828347896, state Prepare for Submission, review screenshot attached); RevenueCat PicDump iOS products prod4911bb4abe / prode6d93eef1c attached to daydump_pro and $rc_weekly / $rc_annual; subscription_key_configured true. Not yet: iOS build submitted with subs, trial outside US on iOS)
 - 2026-10-29 P4.3 → done (Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/)
 - 2026-10-29 P4.5 → done (Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.)
+- 2026-10-29 P4.6 → done (Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)) [person]
