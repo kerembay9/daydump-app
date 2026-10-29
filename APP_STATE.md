@@ -63,6 +63,11 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 ## Phase 4 · Design system
 
 - [x] **P4.1** BRAND_GUIDELINES.md: name, voice, colour, type _(auto)_ — auto: pass (2026-10-29)
+- [x] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_ — Tokens in src/theme/tokens.ts (light Cashmere, dark Espresso, brand palette), read through useTheme in 55 of 64 screens/components; 84 hardcoded hex literals remain outside the theme folder (dev tools, photo-matte and filter data); contrast test added. Branch design/brand-p4
+- [ ] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_
+- [x] **P4.4** App icon and splash for both platforms _(agent)_ — Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4
+- [ ] **P4.5** Accessibility baseline: labels on icon-only buttons, dynamic type, contrast _(agent)_
+- [ ] **P4.6** Design approved _(human)_
 - [ ] **P4.2** Theme tokens in code, light and dark, read through one hook _(agent)_
 - [x] **P4.3** Key screens designed: onboarding, home, core flow, paywall, settings _(agent)_ — Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/
 - [ ] **P4.4** App icon and splash for both platforms _(agent)_
@@ -76,7 +81,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [ ] **P5.3** A Maestro flow for each main user flow, with screenshot baselines _(agent)_
 - [ ] **P5.4** Device pass: every feature tried on a real iPhone and a real Android phone _(human)_
 - [ ] **P5.5** All strings translated in every launch language _(agent)_
-- [ ] **P5.6** Platform parity list checked; anything off on one platform is documented _(agent)_
+- [x] **P5.6** Platform parity list checked; anything off on one platform is documented _(agent)_ — docs/PARITY.md checked against the code 2026-10-30; iOS gap and its decision recorded
 - [ ] **P5.7** Performance: long lists virtualized, cold start measured on a mid-range Android _(agent)_
 
 ## Phase 6 · Monetization & analytics
@@ -91,7 +96,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [x] **P6.8** Every subscription is priced in every launch country, not only the store's default region (Play regional configs or price template; App Store price schedule) _(agent)_ — Play Console + API (2026-10-29): picdump_weekly/weekly-plan and picdump_yearly/yearly-plan priced in 174 regions (USD 3.99 / 29.99 base, converted); 32 lower-income countries discounted ~50% / ~65% (verified via playstore get_subscription, 0 mismatches)
 - [x] **P6.9** Trials and intro offers exist in the stores as the pricing decision says (Play offer on the base plan, new customers only; Apple introductory offer), and RevenueCat shows the trial on the product _(agent)_ — Play offer trial-7d on yearly-plan: ACTIVE, 1-week free phase, 174 regions, new customers (never had any subscription in app). Verified via list_subscription_offers. RevenueCat product trial_duration still shows null (RC does not read it from Play)
 - [x] **P6.10** Billing recovery on: grace period and account hold on every auto-renewing Play plan, billing grace period on in App Store Connect _(agent)_ — Play: weekly-plan grace P3D + auto account hold 57d; yearly-plan grace P14D + auto account hold 46d (Console + API)
-- [ ] **P6.11** The current RevenueCat offering serves the launch plans in paywall order on each platform; a package with no product on a platform is removed or intended _(agent)_
+- [x] **P6.11** The current RevenueCat offering serves the launch plans in paywall order on each platform; a package with no product on a platform is removed or intended _(agent)_ — Verified 2026-10-30 via RevenueCat: offering default current, weekly then annual, each with iOS, Android and Test Store products, prices match; see docs/reviews/2026-10-30-audits.md
 
 ## Phase 7 · Hardening
 
@@ -109,16 +114,16 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [ ] **P8.2** Screenshots in every required size; Play feature graphic _(agent)_
 - [x] **P8.3** No legal or release placeholders left _(auto)_ — auto: pass (2026-10-29)
 - [x] **P8.4** Identity and versions consistent across app.json, package.json and APP_STATE.md _(auto)_ — auto: pass with warnings (2026-10-29)
-- [ ] **P8.5** App Privacy labels and Play data safety match PRIVACY.md _(agent)_
-- [ ] **P8.6** Age rating (Apple) and content rating (Play) done _(agent)_
+- [x] **P8.5** App Privacy labels and Play data safety match PRIVACY.md _(agent)_ — Apple App Privacy published 2026-10-29 (User ID, Purchase History; linked, no tracking); Play Data safety saved (purchase history, device IDs; no data shared). Matches PRIVACY.md
+- [x] **P8.6** Age rating (Apple) and content rating (Play) done _(agent)_ — Apple age rating 4+ (all None/No, verified via API); Play IARC rating saved 2026-10-29: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+ (staged, not sent for review)
 - [ ] **P8.7** Reviewer access: demo account and review notes entered (a person types any password) _(human)_
 - [ ] **P8.8** Tested on TestFlight and a Play testing track (closed testing rules met for new Play accounts) _(agent)_
 - [ ] **P8.9** Release approved: submit for review, staged / phased rollout plan chosen _(human)_
-- [ ] **P8.10** Privacy, terms and support URLs are deployed (HTTP 200) and entered in App Store Connect (privacy, support, marketing) and Play (privacy policy, deletion URL if accounts) _(agent)_
+- [x] **P8.10** Privacy, terms and support URLs are deployed (HTTP 200) and entered in App Store Connect (privacy, support, marketing) and Play (privacy policy, deletion URL if accounts) _(agent)_ — Privacy/terms/support pages return 200; ASC has privacy, support, marketing URLs; Play privacy policy URL saved (staged); no accounts so no deletion URL. Landing-repo privacy edit still local
 
 ## Phase 9 · Post-launch
 
-- [ ] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_ — auto: FAIL (2026-10-29)
+- [x] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_ — auto: pass (2026-10-29)
 - [ ] **P9.2** Store reviews answered within 48 hours _(agent)_
 - [ ] **P9.3** Monthly ASO check: keyword ranks, screenshot experiments _(agent)_
 - [ ] **P9.4** Feedback triaged into the backlog and back into phase 5 _(agent)_
@@ -161,6 +166,14 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P3.7 → done (AGENTS.md Versioning (Google Play) section: versionCode per upload, version name only at release)
 - 2026-10-29 P3.5 → done (CI green on PR #4 at 3defee2: npm ci, expo lint, tsc, jest (196 tests) on push and pull_request)
 - 2026-10-29 phase 3 complete → phase 4 · Design system
+- 2026-10-29 P8.6 → done (Apple age rating 4+ (all None/No, verified via API); Play IARC rating saved 2026-10-29: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+ (staged, not sent for review))
+- 2026-10-29 P8.10 → done (Privacy/terms/support pages return 200; ASC has privacy, support, marketing URLs; Play privacy policy URL saved (staged); no accounts so no deletion URL. Landing-repo privacy edit still local)
+- 2026-10-29 P8.5 → done (Apple App Privacy published 2026-10-29 (User ID, Purchase History; linked, no tracking); Play Data safety saved (purchase history, device IDs; no data shared). Matches PRIVACY.md)
+- 2026-10-29 af check: P9.1 → done
+- 2026-10-29 P6.11 → done (Verified 2026-10-30 via RevenueCat: offering default current, weekly then annual, each with iOS, Android and Test Store products, prices match; see docs/reviews/2026-10-30-audits.md)
+- 2026-10-29 P5.6 → done (docs/PARITY.md checked against the code 2026-10-30; iOS gap and its decision recorded)
+- 2026-10-29 P4.2 → done (Tokens in src/theme/tokens.ts (light Cashmere, dark Espresso, brand palette), read through useTheme in 55 of 64 screens/components; 84 hardcoded hex literals remain outside the theme folder (dev tools, photo-matte and filter data); contrast test added. Branch design/brand-p4)
+- 2026-10-29 P4.4 → done (Icon, adaptive foreground, splash (light and dark), favicon and dark alternate icon generated from the logo SVG by npm run brand:assets; iOS icon opaque RGB; expo-splash-screen configured. Not yet seen on a device: needs a new development build. Branch design/brand-p4)
 - 2026-10-29 P4.3 → done (Screens are built and shipped; no separate mocks needed (owner decision, 2026-10-30). Real captures in store/screenshots/android/)
 - 2026-10-29 P4.5 → done (Labels and 4.5:1 contrast audited and test-guarded; large text checked on Android at 2.0x font scale: tab label, quest stamp and stepper capped (maxFontSizeMultiplier); captures in store/screenshots/android/large-text/. Not checked: iOS Dynamic Type, real device.)
 - 2026-10-29 P4.6 → done (Design approved by owner 2026-10-30: brand palette, logo, Cashmere/Espresso themes, caramel accent + rust deep accent (PR #9, #10)) [person]
