@@ -164,6 +164,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   /** granted, as of the last ask (the foreground check reads it before a re-render) */
   const granted = useRef(false);
   const asking = useRef<Promise<void> | null>(null);
+  /** "Onboarding every launch" over a completed onboarding: finishing it is a normal launch, whatever the slides did */
+  const replaying = useRef(false);
   // one at a time: Home's ask and the foreground check can both land as the dialog closes
   const start = useCallback(() => asking.current ??= (async () => {
     const perm = await GalleryService.requestPermissions();
@@ -175,9 +177,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      getProfile().catch(() => {}); // warm profileNow() (new-dump size / frame defaults) before anything reads it
-      // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks
-      if (await OnboardingService.hasCompletedOnboarding()) { await NotificationService.init(); start(); }
+      // also warms profileNow() (new-dump size / frame defaults) before anything reads it
+      const prof = await getProfile().catch(() => null);
+      // first run: init waits for the end of onboarding (finishOnboarding); onboarding's notifications step asks.
+      // Developer tools' "Onboarding every launch" takes the first-run path every time.
+      const replay = __DEV__ && !!prof?.onboardingEveryLaunch;
+      const completed = await OnboardingService.hasCompletedOnboarding();
+      replaying.current = replay && completed;
+      if (!replay && completed) { await NotificationService.init(); start(); }
       else setOnboarding(true);
     })();
   }, [start]);
@@ -229,13 +236,19 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       await resumeIndexing();
       refreshStories();
     },
-    // The onboarding paywall hook is gone (PAYWALLS_ENABLED = false).
     start,
     askPhotos: async () => { if ((await GalleryService.checkPermissions()).canAskAgain) await start(); else Linking.openSettings(); },
     // done only here, at the real end: killed mid-way (recap ask, profile), onboarding shows again
     finishOnboarding: async (started) => {
       await OnboardingService.setOnboardingCompleted();
       setOnboarding(false);
+      if (replaying.current) {
+        // as the completed path at launch does: start() reads the real permission (no flip to false over granted access)
+        replaying.current = false;
+        await NotificationService.init();
+        if (!started) start();
+        return;
+      }
       if (!started) setPermission(false); // Android just said no: Home offers it again (askPhotos), not a second dialog now
       await NotificationService.init();
     },

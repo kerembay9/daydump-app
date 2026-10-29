@@ -5,12 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../state/AppState';
 import { Story, storyById } from '../../services/stories';
 import { Dump, get, isDumpId, list, storyAsDump, storyDraft } from '../../services/dumps';
-import { filterOf } from '../../services/filters';
+import { filterOf, usesProLook, withoutProLooks } from '../../services/filters';
 import { chunk, frameOf, layoutOf, ratioOf } from '../../services/layouts';
 import { getProfile, profileNow, setProfile } from '../../services/profile';
 import { postDump, saveOnly } from '../../services/post';
 import { postDeps } from '../../services/shareService';
-import { exportSlides } from '../../services/slides';
+import { endSlideFits, exportSlides } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -20,11 +20,14 @@ import { FrameCard } from '../../components/ui/FrameCard';
 import { IconButton } from '../../components/ui/TopHeader';
 import { Icons } from '../../components/ui/Icons';
 import { Tap } from '../../components/ui/Tap';
+import { Sheet } from '../../components/ui/Sheet';
 import { usePreviewImages } from '../../components/edit/SlidePager';
 import { IgGrid, IgPost, PostView, TikTok } from '../../components/preview/PostMocks';
 import { Done, DoneSheet } from '../../components/preview/DoneSheet';
 import { APPS, PostSheet } from '../../components/preview/PostSheet';
 import { shareTargets, ShareTarget } from '../../../modules/clip-embedder';
+import { usePro } from '../../state/Pro';
+import { LockedStub } from '../../components/LockedDump';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.LONG) : console.log('[preview]', m));
@@ -37,22 +40,33 @@ export default function Preview() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { stories, library, loaded } = useApp();
   const story = isDumpId(id) ? undefined : storyById(stories, id);
+  const { accessOf, unlockedIdOf } = usePro();
+  // booleans, not accessOf itself: that changes with every unlocks / subscription update
+  const open = !!story && accessOf(story) === 'open';
+  // a story re-id'd since its unlock: the draft made then (under the old id) is its snapshot
+  const unlockedAs = story ? unlockedIdOf(story) : null;
   // undefined = still loading; null = gone (deleted dump, unknown story id)
   const [found, setDump] = useState<Dump | null | undefined>(undefined);
   useEffect(() => {
+    // loaded once: a reload would swap a story's picks for the draft "Save only" just made, and remount PostedPreview
+    if (found !== undefined) return;
     if (isDumpId(id)) get(id).then(setDump, () => setDump(null));
     // warm the profile first: storyAsDump reads its size / frame defaults synchronously (cold start from the 8 PM recap)
-    else if (story) getProfile().then(() => storyDraft(story.id)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
-  }, [id, story]);
+    else if (story && open) getProfile().then(() => storyDraft(story.id, unlockedAs)).then((d) => setDump(d ?? storyAsDump(story)), () => setDump(storyAsDump(story)));
+  }, [id, story, open, unlockedAs, found]);
   // a dump already up stays: a rebuild while indexing can drop or re-id its story (topic ids carry their start date)
   const dump = found ?? (!isDumpId(id) && !story && loaded ? null : found);
 
+  // a locked story's picks never load (deep link, or back here after Pro lapsed)
+  if (story && !open) return <LockedStub story={story} />;
   if (dump === undefined) return null;
   // the 8 PM recap opens /preview/today even on a day with too few camera photos for a Today dump
   if (dump === null && id === 'today') return <Stub back title="Today" note="Nothing taken today yet. Take a few photos and your Today dump shows up here." />;
   if (dump === null) return <Stub back title="Preview" note="This dump is no longer available." />;
   if (!dump.photos.length) return <Stub back title="Preview" note="The photos in this dump are no longer on your phone." />;
-  return <PostedPreview key={dump.id} dump={dump} story={stories.find((s) => s.id === dump.storyId)} stories={stories} library={library} />;
+  // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
+  const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
+  return <PostedPreview key={dump.id} dump={dump} story={own} stories={stories} library={library} />;
 }
 
 /**
@@ -61,13 +75,13 @@ export default function Preview() {
  */
 function exporter() {
   let cur: { key: string; p: Promise<string[]> } | null = null;
-  return (d: Dump, highRes?: boolean) => {
-    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri, p.crop]), d.layout, d.ratio, d.fit, d.filter, !!highRes]);
+  return (d: Dump, highRes?: boolean, endCard?: boolean) => {
+    const key = JSON.stringify([d.photos.map((p) => [p.id, p.uri, p.crop]), d.layout, d.ratio, d.fit, d.filter, !!highRes, !!endCard]);
     if (cur?.key === key) return cur.p;
     const prev = cur?.p.catch(() => {});
     const p: Promise<string[]> = Promise.resolve(prev).then(() => {
       if (cur?.p !== p) throw new Error('superseded');
-      return exportSlides(d, { highRes });
+      return exportSlides(d, { highRes, endCard });
     });
     p.catch(() => { if (cur?.p === p) cur = null; });
     cur = { key, p };
@@ -98,19 +112,21 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [hd, setHd] = useState(profileNow().exportHD);
   useEffect(() => { getProfile().then((p) => { setProf(p); setHd(p.exportHD); }); }, []);
 
-  // grid: your Posted dumps' covers, then your top Discover dumps' covers; never raw recent photos (often
-  // screenshots and documents) nor this dump's own photos. Fewer than 8 → the rest stay empty tiles.
+  // grid: your Posted dumps' covers, then your top open Discover dumps' covers (a locked one's cover is one of its
+  // picks); never raw recent photos (often screenshots and documents) nor this dump's own photos. Fewer than 8 → the
+  // rest stay empty tiles.
   const [postedCovers, setPostedCovers] = useState<string[]>([]);
   useEffect(() => { list('posted').then((ds) => setPostedCovers(ds.filter((d) => d.id !== dump.id).map((d) => d.photos[0]?.uri).filter(Boolean))); }, [dump.id]);
+  const { isPro, openPaywall, accessOf } = usePro();
   const others = useMemo(() => {
     const mine = new Set(dump.photos.map((p) => p.uri));
     const out = new Set<string>();
-    for (const u of [...postedCovers, ...stories.map((s) => s.picks[0]?.uri)]) {
+    for (const u of [...postedCovers, ...stories.filter((s) => accessOf(s) === 'open').map((s) => s.picks[0]?.uri)]) {
       if (out.size >= 8) break;
       if (u && !mine.has(u)) out.add(u);
     }
     return [...out];
-  }, [postedCovers, stories, dump.photos]);
+  }, [postedCovers, stories, dump.photos, accessOf]);
 
   const onHandle = (raw: string) => {
     const handle = raw.replace(/[^A-Za-z0-9._]/g, '').toLowerCase().slice(0, 30);
@@ -129,18 +145,31 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
   const [picking, setPicking] = useState(false);
+  /** set while the "Pro look" sheet is up: what to do once the user picks */
+  const [finishAsk, setFinishAsk] = useState<((strip: boolean) => void) | null>(null);
+  /** the PostSheet path: whether the pending post drops the Pro looks */
+  const strip = useRef(false);
+  const gated = (go: (strip: boolean) => void) => (!isPro && usesProLook(filter, dump.photos.map((p) => p.id)) ? setFinishAsk(() => go) : go(false));
+  const plain = (d: Dump) => ({ ...d, filter: withoutProLooks(filterOf(d.filter)) as unknown as Dump['filter'] });
   // installed once per Preview: back from installing an app re-opens Preview anyway
   const [targets] = useState(shareTargets);
   // The slides render in the background from the moment Preview opens (and again on a Quality change), so Post /
   // Save only just wait for what's left.
   const [exportFor] = useState(exporter);
-  useEffect(() => { exportFor(dump, hd).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor]);
-  const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: exportFor }), [stories, exportFor]);
-  const n = slides.length;
+  useEffect(() => { exportFor(dump, hd, !isPro).catch((e) => e.message === 'superseded' || console.warn('[preview] export failed:', e)); }, [dump, hd, exportFor, isPro]);
+  const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: (d: Dump, h?: boolean) => exportFor(d, h, !isPro) }), [stories, exportFor, isPro]);
+  // what gets saved: the end slide counts too (free exports, when it fits)
+  const n = slides.length + (!isPro && endSlideFits(slides.length) ? 1 : 0);
   const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
   // no Instagram / TikTok on the phone: the system share sheet (target ignored)
-  const post = () => (targets.length ? setPicking(true) : run('post', platform === 'tiktok' ? 'tiktok' : 'instagram'));
+  const post = () => gated((s) => {
+    strip.current = s;
+    if (targets.length) setPicking(true);
+    else run('post', platform === 'tiktok' ? 'tiktok' : 'instagram');
+  });
   const run = async (what: 'post' | 'save', target: ShareTarget = 'instagram') => {
+    const out = strip.current ? plain(dump) : dump;
+    strip.current = false;
     setPicking(false);
     if (running.current) return;
     running.current = true;
@@ -148,7 +177,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
     try {
       if (what === 'post') {
-        const r = await postDump(deps, dump, target, hd, (await getProfile()).saveOnPost);
+        const r = await postDump(deps, out, target, hd, (await getProfile()).saveOnPost);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted' }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
@@ -157,7 +186,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           note: `${r.saved ? `${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the PicDump album.` : ''}${r.marked ? '' : " Couldn't mark it posted in your Library."}`.trim(),
         });
       } else {
-        const { slides: k, id } = await saveOnly(deps, dump, hd);
+        const { slides: k, id } = await saveOnly(deps, out, hd);
         setDump((d) => ({ ...d, id }));
         setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the PicDump album.` });
       }
@@ -175,7 +204,8 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const toEdit = () => {
     const st = nav.getState();
     if (st && st.routes[st.index - 1]?.name === 'edit/[id]') return router.back();
-    router.replace({ pathname: '/edit/[id]', params: { id: dump.storyId ?? dump.id } });
+    // a saved dump opens itself (a Library draft stays editable after Pro lapses, old recap drafts too); a story's picks, the story
+    router.replace({ pathname: '/edit/[id]', params: { id: isDumpId(dump.id) ? dump.id : (dump.storyId ?? dump.id) } });
   };
   const cardW = win.width - 32;
   // TikTok frame: 9:16, short enough that header + frame + Post button fit on one screen
@@ -218,7 +248,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
 
       <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: insets.bottom + 6, alignItems: 'center' }}>
         <View style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 8 }}>
-          <Tap onPress={() => run('save')} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Save to phone"
+          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Save to phone"
             style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: t.ink, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
             <Icons.download size={16} />
           </Tap>
@@ -229,7 +259,17 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
           </Tap>
         </View>
       </View>
-      <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => setPicking(false)} />
+      <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => { strip.current = false; setPicking(false); }} />
+      <Sheet visible={!!finishAsk} onClose={() => setFinishAsk(null)}>
+        <Text style={[display(20, 1.15), { color: t.ink }]}>This film look is Pro</Text>
+        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>Get Pro to export it, or export these slides with the free looks and no texture instead.</Text>
+        <Tap onPress={() => { setFinishAsk(null); openPaywall('finish'); }} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.bgScreen }]}>Get Pro</Text>
+        </Tap>
+        <FrameCard radius={22} onPress={() => { const go = finishAsk; setFinishAsk(null); go?.(true); }} label="Export without finish" style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.ink }]}>Export without finish</Text>
+        </FrameCard>
+      </Sheet>
       <DoneSheet done={done} onClose={() => setDone(null)} />
     </View>
   );

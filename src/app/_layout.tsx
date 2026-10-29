@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme, useThemeNow } from '../theme/ThemeProvider';
 import { AppStateProvider, onTouch, useApp } from '../state/AppState';
+import { ProProvider } from '../state/Pro';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { NotificationService } from '../services/notificationService';
 import { currentCreateDraft, discardShared, DumpPhoto, receiveShared, sharedPhotos } from '../services/dumps';
@@ -24,7 +25,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AppStateProvider>
-            <Root />
+            <ProProvider>
+              <Root />
+            </ProProvider>
           </AppStateProvider>
         </ThemeProvider>
       </SafeAreaProvider>

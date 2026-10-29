@@ -13,11 +13,13 @@ type Props = {
   height?: number;
   size?: number;
   left?: React.ReactNode;
+  /** after the label (a Pro tag) */
+  right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
 /** Rounded pill toggle; on = ink fill with screen-coloured text. */
-export function Pill({ label, on, onPress, variant = 'card', height = 24, size = 10, left, style }: Props) {
+export function Pill({ label, on, onPress, variant = 'card', height = 24, size = 10, left, right, style }: Props) {
   const { t } = useTheme();
   const base: ViewStyle = { height, paddingHorizontal: 9, borderRadius: height / 2, flexDirection: 'row', alignItems: 'center', gap: 5 };
   const off: ViewStyle =
@@ -29,6 +31,7 @@ export function Pill({ label, on, onPress, variant = 'card', height = 24, size =
       style={[base, on ? { backgroundColor: t.ink, borderWidth: variant === 'plain' ? 0 : 1, borderColor: t.ink } : off, style]}>
       {left}
       <Text style={[ui(size, 600), { color: on ? t.bgScreen : t.ink }]}>{label}</Text>
+      {right}
     </Tap>
   );
 }

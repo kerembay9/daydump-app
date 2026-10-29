@@ -11,6 +11,7 @@ import { Tap } from '../../components/ui/Tap';
 import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
 import { monthOf, Pile, PILES, shotCheck } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
+import { usePro } from '../../state/Pro';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
 
@@ -23,6 +24,7 @@ export default function PileScreen() {
   const { pile: param, month } = useLocalSearchParams<{ pile: string; month?: string }>();
   const pile = REVIEW.includes(param as Pile) ? (param as Pile) : null;
   const { result } = useTidy();
+  const { isPro, openPaywall } = usePro();
   const items = useMemo(() => ((pile && result?.piles[pile]) || []).filter((x) => !month || monthOf(x.p.created) === month), [pile, result, month]);
   const [sel, setSel] = useState(() => new Set(items.filter((x) => x.pre).map((x) => x.p.id)));
   const [ask, setAsk] = useState<ConfirmSpec | null>(null);
@@ -43,7 +45,8 @@ export default function PileScreen() {
   }, [lockOf]);
   const onPress = useCallback((id: string) => mark(id, !sel.has(id)), [mark, sel]);
 
-  const move = () => setAsk(moveConfirm(picked.length, bytes, async () => {
+  // Pro: a free user sees and reviews every pile; moving to Trash opens the paywall (undo and restore stay free)
+  const move = () => (!isPro ? openPaywall('tidy') : setAsk(moveConfirm(picked.length, bytes, async () => {
     setBusy(true); setMsg(null);
     try {
       const done = await moveToTrash(picked.map((x) => ({ p: x.p, pile: pile! })));
@@ -54,7 +57,7 @@ export default function PileScreen() {
       setMsg('Nothing was moved.');
     }
     setBusy(false);
-  }));
+  })));
 
   if (!pile) return null;
   const header = (
@@ -82,7 +85,7 @@ export default function PileScreen() {
       <TidyGrid items={grid} selected={sel} onPress={onPress} onLongPress={setView} header={header} />
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, gap: 6 }}>
         {msg ? <Text style={[ui(12, 500), { color: t.inkMuted, textAlign: 'center' }]}>{msg}</Text> : null}
-        <Primary label={`Move ${picked.length} to Trash`} onPress={move} disabled={!picked.length || busy} />
+        <Primary label={`Move ${picked.length} to Trash`} onPress={move} disabled={!picked.length || busy} pro={!isPro} />
       </View>
       <StatusScrim />
       <PhotoViewer photos={photos} index={view} onClose={() => setView(null)} footer={(p) => (

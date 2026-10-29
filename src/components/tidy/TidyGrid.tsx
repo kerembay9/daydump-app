@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Check, NOT_CHECKED, TPhoto } from '../../services/tidy/rules';
 import { PER_DIALOG } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
+import { ProBadge } from '../ui/ProBadge';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ui } from '../../theme/type';
 import { Icons } from '../ui/Icons';
@@ -47,12 +48,14 @@ export const moveConfirm = (n: number, bytes: number, onConfirm: () => void): Co
 });
 
 /** Full-width ink button. */
-export function Primary({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+/** pro: a free user's tap opens the paywall (moving to Trash is Pro); the button says so with a small tag. */
+export function Primary({ label, onPress, disabled, pro }: { label: string; onPress: () => void; disabled?: boolean; pro?: boolean }) {
   const { t } = useTheme();
   return (
-    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }}
-      style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={pro ? 'PicDump Pro' : undefined} accessibilityState={{ disabled: !!disabled }}
+      style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 }}>
       <Text style={[ui(13.5, 600), { color: t.bgScreen }]} numberOfLines={1}>{label}</Text>
+      {pro ? <ProBadge inverse /> : null}
     </Tap>
   );
 }

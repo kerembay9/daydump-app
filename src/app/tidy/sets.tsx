@@ -10,6 +10,7 @@ import { IconButton } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
 import { Icons } from '../../components/ui/Icons';
 import { Pill } from '../../components/ui/Pill';
+import { ProBadge } from '../../components/ui/ProBadge';
 import { Print } from '../../components/ui/Print';
 import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
@@ -17,6 +18,7 @@ import { Tap } from '../../components/ui/Tap';
 import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
 import { monthOf, outtake, shotCheck, ShotSet, TPhoto } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
+import { usePro } from '../../state/Pro';
 import { dateRange } from '../../services/stories/titles';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -31,6 +33,7 @@ export default function SetsScreen() {
   const insets = useSafeAreaInsets();
   const W = useWindowDimensions().width - 32;
   const { result } = useTidy();
+  const { isPro, openPaywall } = usePro();
   const month = useLocalSearchParams<{ month?: string }>().month;
   // a snapshot: decisions are by set index, so a rescan mid-review mustn't reshuffle them
   const [sets] = useState<ShotSet[]>(() => (result?.sets ?? []).filter((st) => !month || monthOf(st.photos[st.keeper].created) === month));
@@ -96,7 +99,8 @@ export default function SetsScreen() {
   const lift = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }, { rotate: `${dx.value / 40}deg` }], opacity: 1 - Math.min(0.5, Math.abs(dx.value) / W2) }));
   const openTake = useCallback((i: number) => set && setView(set.photos.findIndex((p) => p.id === others[i].id)), [set, others]);
 
-  const move = () => setAsk(moveConfirm(total, totalBytes, async () => {
+  // Pro: deciding takes is free; moving them to Trash opens the paywall for a free user (undo and restore stay free)
+  const move = () => (!isPro ? openPaywall('tidy') : setAsk(moveConfirm(total, totalBytes, async () => {
     setBusy(true); setMsg(null);
     try {
       const done = await moveToTrash(marked.flatMap((m) => m.remove.map((p) => ({ p, pile: 'same' as const }))), marked.map((m) => m.keeper));
@@ -107,7 +111,7 @@ export default function SetsScreen() {
       setMsg('Nothing was moved.');
     }
     setBusy(false);
-  }));
+  })));
   const moveLabel = `Move ${total} to Trash`;
 
   const top = (
@@ -117,7 +121,7 @@ export default function SetsScreen() {
         <Text style={[display(20), { color: t.ink }]} numberOfLines={1}>{set ? `Same shot · set ${at + 1} of ${sets.length}` : 'Same shot'}</Text>
         {keeper ? <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>{when(keeper.created)}</Text> : null}
       </View>
-      {set && total ? <Pill label={moveLabel} onPress={move} height={30} size={11} /> : null}
+      {set && total ? <Pill label={moveLabel} onPress={move} height={30} size={11} right={!isPro ? <ProBadge /> : null} /> : null}
     </View>
   );
 
@@ -132,7 +136,7 @@ export default function SetsScreen() {
           </Text>
           {msg ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>{msg}</Text> : null}
           <View style={{ marginTop: 4 }}>
-            {total ? <Primary label={moveLabel} onPress={move} disabled={busy} /> : <Primary label="Done" onPress={() => router.back()} />}
+            {total ? <Primary label={moveLabel} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label="Done" onPress={() => router.back()} />}
           </View>
         </FrameCard>
         <StatusScrim />

@@ -7,7 +7,7 @@ import { markSeen, Story, storyById } from '../../services/stories';
 import { suggestSwaps } from '../../services/stories/swaps';
 import { Dump, DumpPhoto, draftForStory, get, isDumpId, update } from '../../services/dumps';
 import { Crop, Frame, frameOf, frameText, LayoutKey, layoutOf, RATIOS, ratioOf, chunk } from '../../services/layouts';
-import { Adjust, editedOwn, filterOf, FilterState, Look, lookFor, lookOf } from '../../services/filters';
+import { Adjust, editedOwn, filterOf, FilterState, keepLooksFor, Look, lookFor, lookOf } from '../../services/filters';
 import { toneOf } from '../../services/slides';
 import type { Library } from '../../services/index/photoIndex';
 import type { PhotoAsset } from '../../types';
@@ -23,6 +23,8 @@ import { SlidePager, usePreviewImages } from '../../components/edit/SlidePager';
 import { FilterCard } from '../../components/edit/FilterCard';
 import { Filmstrip } from '../../components/edit/Filmstrip';
 import { FramePanel } from '../../components/edit/FramePanel';
+import { usePro } from '../../state/Pro';
+import { LockedStub } from '../../components/LockedDump';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -40,21 +42,28 @@ export default function Edit() {
   // A story id needs the stories built (cold deep link); a dump id doesn't. Resolve once per id.
   const story = isDumpId(id) ? undefined : storyById(stories, id);
   const ready = isDumpId(id) || loaded;
+  const { accessOf, unlockedIdOf } = usePro();
+  const locked = !!story && accessOf(story) === 'locked';
+  // a story re-id'd since its unlock opens the draft made then, not a second one
+  const unlockedAs = story ? unlockedIdOf(story) : null;
   useEffect(() => {
-    if (!id || !ready || dump !== undefined) return;
+    if (!id || !ready || dump !== undefined || locked) return;
     (async () => {
-      const d = story ? await draftForStory(story) : await get(id);
+      const d = story ? await draftForStory(story, unlockedAs) : await get(id);
       if (story) markSeen([story.id]);
       // A posted dump is a record of what went out: never auto-save into it. Reuse makes the editable copy.
       if (d?.status === 'posted') return router.replace({ pathname: '/preview/[id]', params: { id: d.id } });
       setDump(d);
     })().catch((e) => { console.warn('[edit] open failed:', e); setDump(null); });
-  }, [id, ready, story, dump]);
+  }, [id, ready, story, dump, locked, unlockedAs]);
 
+  if (locked) return <LockedStub story={story!} />;
   if (dump === null) return <Stub back title="Edit" note="This dump is no longer available." />;
   if (dump && !dump.photos.length) return <Stub back title="Edit" note="The photos in this dump are no longer on your phone." />;
   if (!dump) return null;
-  return <Studio dump={dump} story={stories.find((s) => s.id === dump.storyId)} library={library} />;
+  // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
+  const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
+  return <Studio dump={dump} story={own} library={library} />;
 }
 
 type Saved = Pick<Dump, 'title' | 'photos' | 'ratio' | 'fit' | 'layout' | 'filter'>;
@@ -84,6 +93,7 @@ const fromAsset = (a: PhotoAsset): DumpPhoto => ({ id: a.id, uri: a.uri, created
 
 function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: Library | null }) {
   const { t } = useTheme();
+  const { isPro } = usePro();
   const bottom = useSafeAreaInsets().bottom;
   const [title, setTitle] = useState(dump.title);
   const [photos, setPhotos] = useState(dump.photos);
@@ -157,15 +167,22 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       .finally(() => setTimeout(() => { opening.current = false; }, 600));
   };
 
-  const swapsFor = (i: number) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, photos[i]), 16).map(fromAsset) : []);
+  // swaps and "Similar photos" rank the whole library, free or Pro (as Create's Similar strip: building a dump by hand)
+  const similar = (target: DumpPhoto) => (library ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, target), 16).map(fromAsset) : []);
+  const swapsFor = (i: number) => similar(photos[i]);
   const addable = () => {
     const have = new Set(photos.map((p) => p.id));
     const fromStory = (story?.photos ?? []).filter((p) => !have.has(p.id)).slice(0, 24).map(fromAsset);
     const ids = new Set(fromStory.map((p) => p.id));
-    const similar = library && photos[0] ? suggestSwaps(library, photos.map((p) => toAsset(library, p)), toAsset(library, photos[0]), 16).map(fromAsset).filter((p) => !ids.has(p.id)) : [];
-    return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: similar }];
+    const more = photos[0] ? similar(photos[0]).filter((p) => !ids.has(p.id)) : [];
+    return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: more }];
   };
 
+  // a removed or replaced photo's own look and Adjust go with it: a stale Pro look would still ask at export
+  const changePhotos = (next: DumpPhoto[]) => {
+    setPhotos(next);
+    setFilter((f) => keepLooksFor(f, next.map((p) => p.id)));
+  };
   const onCrop = useCallback((id: string, crop: Crop) => setPhotos((ps) => ps.map((p) => (p.id === id ? { ...p, crop } : p))), []);
   // Memoised on what it shows and what its handlers read: a Frame slider step re-renders only the slides, not every
   // thumbnail (each with its own Skia canvas and gestures).
@@ -178,13 +195,13 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       filter={filter}
       onTap={tap}
       onMove={move}
-      onRemove={(i) => setPhotos(photos.filter((_, k) => k !== i))}
-      onReplace={(i, p) => setPhotos(photos.map((x, k) => (k === i ? p : x)))}
+      onRemove={(i) => changePhotos(photos.filter((_, k) => k !== i))}
+      onReplace={(i, p) => changePhotos(photos.map((x, k) => (k === i ? p : x)))}
       onAdd={(p) => setPhotos((ps) => (ps.some((x) => x.id === p.id) ? ps : [...ps, p]))}
       swapsFor={swapsFor}
       addable={addable}
     />
-  ), [photos, active, sel, images, filter, tab, layout, library, story]); // eslint-disable-line react-hooks/exhaustive-deps
+  ), [photos, active, sel, images, filter, tab, layout, library, story, isPro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Screen contentContainerStyle={{ paddingBottom: bottom + 16 }}>
@@ -237,7 +254,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       {tab === 'photos' ? (
         <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
           onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
-          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} />
+          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} proLocked={!isPro} />
       ) : (
         <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} layout={layout} />
       )}

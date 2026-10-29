@@ -146,25 +146,20 @@ jest.mock('react-native-purchases', () => ({
     setLogLevel: jest.fn(),
     configure: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(),
-    getCustomerInfo: jest.fn(async () => ({ entitlements: { active: {} } })),
+    getCustomerInfo: jest.fn(async () => ({
+      entitlements: { active: require('./world').world.pro ? { daydump_pro: { productIdentifier: 'picdump_yearly', willRenew: true, expirationDateMillis: Date.now() + 365 * 86400000 } } : {} },
+    })),
     getOfferings: jest.fn(async () => ({
       current: {
         availablePackages: [
-          {
-            identifier: '$rc_annual',
-            packageType: 'ANNUAL',
-            product: { identifier: 'picdump_yearly', priceString: '$29.99/year' },
-          },
-          {
-            identifier: '$rc_weekly',
-            packageType: 'WEEKLY',
-            product: { identifier: 'picdump_weekly', priceString: '$2.99/week' },
-          },
+          { identifier: '$rc_weekly', packageType: 'WEEKLY', product: { identifier: 'picdump_weekly', title: 'Weekly', priceString: '$3.99', introPrice: null, defaultOption: null } },
+          { identifier: '$rc_annual', packageType: 'ANNUAL', product: { identifier: 'picdump_yearly', title: 'Annual', priceString: '$29.99', introPrice: null, defaultOption: { freePhase: { billingPeriod: { iso8601: 'P1W' } } } } },
         ],
       },
     })),
     purchasePackage: jest.fn(async () => ({ customerInfo: { entitlements: { active: { daydump_pro: { productIdentifier: 'picdump_yearly', willRenew: true, expirationDateMillis: Date.now() + 365 * 86400000 } } } } })),
     restorePurchases: jest.fn(async () => ({ entitlements: { active: {} } })),
+    setAttributes: jest.fn(async () => {}),
   },
   LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
   PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: '1' },
@@ -233,7 +228,7 @@ jest.mock('@shopify/react-native-skia', () => {
   const img = () => ({ width: () => 1080, height: () => 1350, encodeToBytes: () => new Uint8Array([0xff, 0xd8]), dispose: () => {} });
   const rect = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
   return {
-    Canvas: jest.fn(Null), Group: Null, Image: Null, Rect: Null, RoundedRect: Null, Shadow: Null, ColorMatrix: Null, Path: Null, Fill: Null, FractalNoise: Null, Turbulence: Null, RadialGradient: Null, BlurMask: Null, Blur: Null, ImageFilter: Null,
+    Canvas: jest.fn(Null), Group: Null, Image: Null, Rect: Null, RoundedRect: Null, Shadow: Null, ColorMatrix: Null, Path: Null, Fill: Null, Text: Null, FractalNoise: Null, Turbulence: Null, RadialGradient: Null, BlurMask: Null, Blur: Null, ImageFilter: Null,
     rect, rrect: (r: object, rx: number, ry: number) => ({ rect: r, rx, ry }), vec: (x: number, y: number) => ({ x, y }),
     Skia: { Color: () => [0, 0, 0, 1], PathBuilder: { Make: () => { const b = { moveTo: () => b, lineTo: () => b, close: () => b, build: () => ({}) }; return b; } }, Image: { MakeImageFromEncoded: img }, Data: { fromURI: async () => ({}) },
       // Auto / Brighten read a 24 x 24 copy: every test photo reads as a dark one (luminance ~0.06)
@@ -241,6 +236,7 @@ jest.mock('@shopify/react-native-skia', () => {
       Paint: () => ({}), RuntimeEffect: { Make: () => ({}) }, RuntimeShaderBuilder: () => ({ setUniform: () => {} }),
       ImageFilter: { MakeRuntimeShader: () => ({}), MakeBlur: () => ({}), MakeArithmetic: () => ({}) } },
     TileMode: { Clamp: 0 },
+    matchFont: () => ({ getTextWidth: (s: string) => s.length * 10 }),
     drawAsImage: jest.fn(async () => img()),
     makeImageFromView: jest.fn(async () => img()),
     ImageFormat: { JPEG: 3, PNG: 4, WEBP: 6 },

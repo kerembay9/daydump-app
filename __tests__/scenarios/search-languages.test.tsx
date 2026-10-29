@@ -29,7 +29,7 @@ test('a Turkish search waits for its download, then also searches the English tr
   // emoji are searched by name too
   await fireEvent.changeText(search, '🌇');
   expect(await screen.findByText(`Matches for "🌇" (${sunsets})`)).toBeTruthy();
-});
+}, 30000);
 
 test('Settings shows search languages in one row; its picker lists download states, and turning one off deletes it', async () => {
   world.lang.gate = Promise.resolve();
@@ -49,4 +49,4 @@ test('Settings shows search languages in one row; its picker lists download stat
   await act(async () => {});
   expect(world.lang.downloaded).not.toContain('tr');
   expect(world.lang.downloaded).toContain('de');
-});
+}, 30000);

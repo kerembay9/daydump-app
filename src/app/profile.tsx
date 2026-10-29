@@ -18,7 +18,7 @@ import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
 import { PrivacyModal } from '../components/OnboardingModal';
-import { PaywallModal } from '../components/PaywallModal';
+import { usePro } from '../state/Pro';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
@@ -29,7 +29,8 @@ import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { AppIcon, ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
-import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { daysLeft, NO_UNLOCKS, UNLOCK_EVERY } from '../services/unlocks';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
@@ -51,6 +52,10 @@ export default function Profile() {
 function ProfileBody() {
   const { t, mode, setMode } = useTheme();
   const app = useApp();
+  const pro = usePro();
+  const sub = pro.sub;
+  // when this screen opened: the dev unlock row's day count can't call Date.now() in render
+  const [openedAt] = useState(Date.now);
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
   const [access, setAccess] = useState<'all' | 'limited' | 'none' | null>(null);
@@ -60,9 +65,7 @@ function ProfileBody() {
   const [bench, setBench] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
-  const [sub, setSub] = useState<Sub | null>(null);
   const [icon, setIcon] = useState(() => AppIcon?.get());
-  const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
   // Leaving while a field is still focused: Android may not fire onEndEditing, so save typed text on the way out.
@@ -76,7 +79,6 @@ function ProfileBody() {
     };
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
-    getSubscription().then(setSub);
     return flushTyped;
   }, []));
 
@@ -110,7 +112,7 @@ function ProfileBody() {
     const want = !recap;
     setRecap(want);
     const ok = await NotificationService.setEnabled(want);
-    if (!ok) { setRecap(false); toast('Notifications are off for PicDump in Android settings'); }
+    if (!ok) { setRecap(false); toast(`Notifications are off for PicDump in ${Platform.OS === 'ios' ? 'Settings' : 'Android settings'}`); }
   };
 
   const toggleStories = (k: 'hideSensitive' | 'screenshots') => () => {
@@ -118,8 +120,9 @@ function ProfileBody() {
     setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
-  // Discover's photos per dump: min 4..max, max min..20
+  // Discover's photos per dump: min 4..max, max min..20. Pro; a lapsed user keeps the range they set.
   const setSlides = (k: 'slidesMin' | 'slidesMax', v: number) => {
+    if (!pro.isPro) return pro.openPaywall('slides-per-dump');
     setP((x) => ({ ...x, [k]: v }));
     setProfile({ [k]: v }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
@@ -182,7 +185,7 @@ function ProfileBody() {
         </View>
       </FrameCard>
 
-      <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
+      <SubCard sub={sub} onGoPro={() => pro.openPaywall('profile')} />
 
       <Section title="Dump picks">
         <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
@@ -238,7 +241,7 @@ function ProfileBody() {
         <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
         <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Contact" onPress={() => Linking.openURL('mailto:support@picdump.app?subject=PicDump').catch(() => toast('No mail app found. Write to support@picdump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@picdump.app</Text>} />
+        <Row label="Contact" onPress={() => Linking.openURL('mailto:info@horizonzeta.com?subject=PicDump').catch(() => toast('No mail app found. Write to info@horizonzeta.com'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>info@horizonzeta.com</Text>} />
         <Row label="Version" sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
 
@@ -251,7 +254,10 @@ function ProfileBody() {
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="Today tags" sub="The Today card's checklist on one day's photos, with every score" onPress={() => router.push('/today-tags')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
+          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(pro.refresh)} />}
+          <Row label="Free unlock" sub={`${pro.unlocks.ids.length} unlocked · ${daysLeft(pro.unlocks, openedAt) ? `next in ${daysLeft(pro.unlocks, openedAt)} days` : 'one free now'}. Tap to reset`}
+            onPress={() => pro.setUnlocks(NO_UNLOCKS)} />
+          <Row label="Pretend 7 days passed" sub="Moves the last free unlock a week back." onPress={() => pro.setUnlocks({ ...pro.unlocks, lastAt: pro.unlocks.lastAt == null ? null : pro.unlocks.lastAt - UNLOCK_EVERY })} />
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
@@ -263,6 +269,7 @@ function ProfileBody() {
             NotificationService.sendTestNotification(true).catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Onboarding every launch" sub="Opens onboarding on every app start, as on a first run." onPress={() => save({ onboardingEveryLaunch: !p.onboardingEveryLaunch })} toggle={p.onboardingEveryLaunch} />
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
@@ -278,7 +285,6 @@ function ProfileBody() {
       <PrivacyModal visible={privacy} onClose={() => setPrivacy(false)} />
       <AvatarSheet visible={avatarSheet} onClose={() => setAvatarSheet(false)} hasAvatar={!!p.avatar} onUse={setAvatarFrom} onGallery={pickAvatar}
         onRemove={() => { dropAvatarFile(p.avatar); save({ avatar: '' }); }} />
-      <PaywallModal visible={paywall} onClose={() => setPaywall(false)} onPurchased={() => { getSubscription().then(setSub); }} />
       <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       <DebugStoriesModal visible={debug} onClose={() => setDebug(false)} onResetIndex={app.refreshStories} />
       <BenchModal visible={bench} onClose={() => setBench(false)} />
@@ -318,7 +324,7 @@ function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[display(17), { color: t.ink }]}>PicDump Pro</Text>
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
-          {!sub ? 'Unlimited dumps, Ultra HD 2160 px exports & more.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+          {!sub ? 'Every dump, search, all looks and texture, Tidy and no end slide.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
         </Text>
       </View>
       {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />

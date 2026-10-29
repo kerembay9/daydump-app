@@ -221,7 +221,7 @@ export function IgGrid({ v, w, others }: { v: PostView; w: number; others: strin
         </View>
         {Array.from({ length: 8 }, (_, i) => (
           <View key={i} style={{ width: tile, height: tile, backgroundColor: t.borderSubtle }}>
-            {others[i] ? <Image source={{ uri: others[i] }} style={{ flex: 1 }} contentFit="cover" recyclingKey={others[i]} transition={120} /> : null}
+            {others[i] ? <Image testID="grid-cover" source={{ uri: others[i] }} style={{ flex: 1 }} contentFit="cover" recyclingKey={others[i]} transition={120} /> : null}
           </View>
         ))}
       </View>
