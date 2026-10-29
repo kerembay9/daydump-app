@@ -71,3 +71,11 @@ Not yet covered by the answers above (Play App content also asks):
 - Foreground service permission declaration (`dataSync`, used for background indexing) needs a description and a short video or explanation.
 - Photo and video permissions declaration (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`) asks for the app's core functionality. Google may push an app like this toward the system photo picker, so this one can fail review; it needs a deliberate answer.
 - Apple App Privacy and Play Data safety forms are not entered yet.
+
+## Play reviewer access (2026-10-29)
+
+- Sign in details answered **Yes** (the form counts subscriptions as restricted content) and saved in App content, staged and not sent for review. Instructions: no login needed, free features work, Pro can be reviewed by redeeming a promo code. Ticked "provides full access including premium content".
+- To make that possible, `picdump_yearly`'s base plan `yearly-plan` was marked backwards compatible ("Use for deprecated billing methods"). Verified through the Play API: `legacyCompatible: true`. Nothing else on the plan changed. Play promo codes only work for a backwards-compatible subscription.
+- Promotion "App review access" (ID 131615938): 5 one-time codes, 30-day free trial on `picdump_yearly`, Nov 3, 2026 to Feb 3, 2027. A custom code was not used because Play requires at least 2,000 redemptions for those.
+- The five codes are in the Play Console promotion (Download codes) and in the saved Sign in details text. They are not stored in this repo.
+- Google's form says reviewers cannot use free trials. These codes grant a free trial, so Google may still ask for another way to see Pro features. If so, reply with a walkthrough or give a code for a full-price entitlement.
