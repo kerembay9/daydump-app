@@ -76,7 +76,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [ ] **P5.3** A Maestro flow for each main user flow, with screenshot baselines _(agent)_
 - [ ] **P5.4** Device pass: every feature tried on a real iPhone and a real Android phone _(human)_
 - [ ] **P5.5** All strings translated in every launch language _(agent)_
-- [ ] **P5.6** Platform parity list checked; anything off on one platform is documented _(agent)_
+- [x] **P5.6** Platform parity list checked; anything off on one platform is documented _(agent)_ — docs/PARITY.md checked against the code 2026-10-30; iOS gap and its decision recorded
 - [ ] **P5.7** Performance: long lists virtualized, cold start measured on a mid-range Android _(agent)_
 
 ## Phase 6 · Monetization & analytics
@@ -91,7 +91,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - [x] **P6.8** Every subscription is priced in every launch country, not only the store's default region (Play regional configs or price template; App Store price schedule) _(agent)_ — Play Console + API (2026-10-29): picdump_weekly/weekly-plan and picdump_yearly/yearly-plan priced in 174 regions (USD 3.99 / 29.99 base, converted); 32 lower-income countries discounted ~50% / ~65% (verified via playstore get_subscription, 0 mismatches)
 - [x] **P6.9** Trials and intro offers exist in the stores as the pricing decision says (Play offer on the base plan, new customers only; Apple introductory offer), and RevenueCat shows the trial on the product _(agent)_ — Play offer trial-7d on yearly-plan: ACTIVE, 1-week free phase, 174 regions, new customers (never had any subscription in app). Verified via list_subscription_offers. RevenueCat product trial_duration still shows null (RC does not read it from Play)
 - [x] **P6.10** Billing recovery on: grace period and account hold on every auto-renewing Play plan, billing grace period on in App Store Connect _(agent)_ — Play: weekly-plan grace P3D + auto account hold 57d; yearly-plan grace P14D + auto account hold 46d (Console + API)
-- [ ] **P6.11** The current RevenueCat offering serves the launch plans in paywall order on each platform; a package with no product on a platform is removed or intended _(agent)_
+- [x] **P6.11** The current RevenueCat offering serves the launch plans in paywall order on each platform; a package with no product on a platform is removed or intended _(agent)_ — Verified 2026-10-30 via RevenueCat: offering default current, weekly then annual, each with iOS, Android and Test Store products, prices match; see docs/reviews/2026-10-30-audits.md
 
 ## Phase 7 · Hardening
 
@@ -118,7 +118,7 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 
 ## Phase 9 · Post-launch
 
-- [ ] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_ — auto: FAIL (2026-10-29)
+- [x] **P9.1** METRICS.md updated weekly: crash-free %, D1/D7, conversion, rating _(auto)_ — auto: pass (2026-10-29)
 - [ ] **P9.2** Store reviews answered within 48 hours _(agent)_
 - [ ] **P9.3** Monthly ASO check: keyword ranks, screenshot experiments _(agent)_
 - [ ] **P9.4** Feedback triaged into the backlog and back into phase 5 _(agent)_
@@ -164,3 +164,6 @@ Managed by app-factory. Tick gates with `af set` or the dashboard (`af ui`).
 - 2026-10-29 P8.6 → done (Apple age rating 4+ (all None/No, verified via API); Play IARC rating saved 2026-10-29: ESRB Everyone, PEGI 3, USK all ages, Brazil 14+ (staged, not sent for review))
 - 2026-10-29 P8.10 → done (Privacy/terms/support pages return 200; ASC has privacy, support, marketing URLs; Play privacy policy URL saved (staged); no accounts so no deletion URL. Landing-repo privacy edit still local)
 - 2026-10-29 P8.5 → done (Apple App Privacy published 2026-10-29 (User ID, Purchase History; linked, no tracking); Play Data safety saved (purchase history, device IDs; no data shared). Matches PRIVACY.md)
+- 2026-10-29 af check: P9.1 → done
+- 2026-10-29 P6.11 → done (Verified 2026-10-30 via RevenueCat: offering default current, weekly then annual, each with iOS, Android and Test Store products, prices match; see docs/reviews/2026-10-30-audits.md)
+- 2026-10-29 P5.6 → done (docs/PARITY.md checked against the code 2026-10-30; iOS gap and its decision recorded)
