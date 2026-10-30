@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "닫기",
+    "back": "뒤로",
+    "termsOfService": "이용약관",
+    "privacyPolicy": "개인정보 처리방침"
+  },
+  "tabs": {
+    "discover": "탐색",
+    "create": "만들기",
+    "tidy": "정리",
+    "library": "보관함"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "간편한 포토 덤프",
+      "title": "뒤죽박죽 사진첩을 감성 덤프로",
+      "description": "수천 장의 사진을 일일이 넘겨볼 필요가 없습니다. PicDump가 하루와 여행의 베스트 컷을 골라 감각적인 흐름으로 완성해 드려요.",
+      "point1": "필름 감성 룩, 프레임 및 IG / TikTok 맞춤 비율",
+      "point2": "스와이프 한 번으로 완성되는 콜라주 레이아웃"
+    },
+    "privacy": {
+      "badge": "기기 내 자체 큐레이션",
+      "title": "클라우드가 아닌 내 휴대폰에서 직접 선별",
+      "description": "사진 선별, 검색 및 덤프 생성은 모두 휴대폰 내에서만 이루어집니다. PicDump는 사진을 외부 서버에 업로드하지 않습니다.",
+      "point1": "사진 접근 권한을 통해 나만의 특별한 순간을 찾습니다"
+    },
+    "allowContinue": "사진 접근 허용 및 계속하기",
+    "continue": "계속하기",
+    "page": "{{total}}페이지 중 {{n}}페이지",
+    "notifPreview": "알림 미리보기",
+    "notifNow": "· 방금",
+    "notifTitle": "PicDump가 완성되었습니다 🎞️",
+    "notifBody": "오늘의 베스트 컷이 하나의 덤프로 정리되었어요. 자기 전에 확인해 보세요.",
+    "notifyHeading": "오늘의 하루는 저녁 8시에, 한 주는 일요일에",
+    "notifyBody": "오늘의 덤프가 준비되는 저녁 8시와 한 주를 돌아보는 일요일 정오에 알림을 보내드립니다.",
+    "turnOn": "켜기",
+    "notNow": "나중에"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "사진첩 속 모든 덤프를 한눈에.",
+      "sub": "무료 버전에서는 일일 요약과 주 1회의 덤프를 제공합니다. Pro에서는 모든 덤프를 무제한으로 즐길 수 있습니다."
+    },
+    "tidy": {
+      "heading": "불필요한 사진 깔끔 정리.",
+      "sub": "무료 버전에서는 중복 사진과 흔들린 사진을 찾아줍니다. Pro에서는 한 번에 휴지통으로 이동할 수 있습니다."
+    },
+    "finish": {
+      "heading": "필름 감성을 그대로.",
+      "sub": "Original, Warm 35mm, Adjust는 무료입니다. Pro에서는 모든 필름 룩과 질감을 내보낼 수 있습니다."
+    },
+    "search": {
+      "heading": "사진첩 속 사진 검색.",
+      "sub": "장소, 월, 사물을 단어로 손쉽게 찾아보세요. 검색 기능은 Pro에 포함되어 있습니다."
+    },
+    "found": {
+      "heading": {
+        "one": "사진첩에서 {{count}}개의 덤프를 찾았습니다.",
+        "other": "사진첩에서 {{count}}개의 덤프를 찾았습니다."
+      },
+      "sub": "{{titles}}. Pro에서는 모두 열어볼 수 있습니다.",
+      "subMore": "{{titles}} 외 다수. Pro에서는 모두 열어볼 수 있습니다."
+    },
+    "welcome": "PicDump Pro에 오신 것을 환영합니다!",
+    "purchaseNotActive": "구매는 완료되었으나 Pro가 아직 활성화되지 않았습니다. 구매 복원을 탭해 주세요.",
+    "restored": "구매 내역이 복원되었습니다. Pro에 오신 것을 다시 환영합니다!",
+    "noSubscription": "활성화된 PicDump Pro 구독을 찾을 수 없습니다.",
+    "close": "닫기",
+    "feature": {
+      "dumps": {
+        "title": "모든 덤프 잠금 해제",
+        "sub": "주 1회가 아닌, '탐색'에서 찾아낸 모든 여행과 일상의 스토리를 즐기세요."
+      },
+      "search": {
+        "title": "사진첩 똑똑한 검색",
+        "sub": "원하는 장소, 날짜, 사물을 단어 검색으로 빠르게 찾으세요."
+      },
+      "looks": {
+        "title": "모든 필름 룩 제공",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll 및 그레인, 페이드, 비네팅 효과 지원."
+      },
+      "tidy": {
+        "title": "중복 및 불필요한 사진 정리",
+        "sub": "중복 사진, 흔들린 컷, 스크린샷을 한 번에 휴지통으로 정리하세요."
+      },
+      "yours": {
+        "title": "나만의 스타일로 만드는 덤프",
+        "sub": "PicDump 엔딩 슬라이드 제거 및 덤프당 4~20장의 사진 설정 지원."
+      }
+    },
+    "plansFailed": "요금제를 불러올 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.",
+    "startTrial": "{{trial}} 시작하기",
+    "continue": "계속하기",
+    "restore": "구매 복원",
+    "trialThen": "무료 체험 후 {{price}}. ",
+    "disclosure": "결제는 스토어 계정으로 청구됩니다. 현재 구독 기간 종료 최소 24시간 전에 취소하지 않으면 구독이 자동으로 갱신됩니다."
+  },
+  "profile": {
+    "title": "프로필 및 설정",
+    "changePhoto": "프로필 사진 변경",
+    "namePlaceholder": "이름",
+    "handlePlaceholder": "사용자_계정",
+    "theme": {
+      "system": "시스템",
+      "auto": "자동",
+      "cashmere": "Cashmere",
+      "light": "라이트",
+      "espresso": "Espresso",
+      "dark": "다크"
+    },
+    "reindex": {
+      "title": "보관함을 다시 색인할까요?",
+      "body": "PicDump가 모든 사진을 다시 스캔합니다. 몇 분 정도 소요되며 배터리가 소모될 수 있습니다. 보관함의 기존 덤프는 유지됩니다.",
+      "action": "다시 색인"
+    },
+    "dumpPicks": {
+      "title": "덤프 추천 설정",
+      "photosPerDump": "덤프당 사진 수",
+      "photosPerDumpSub": "'탐색'에서 이 범위 내에서 주로 중간값을 기준으로 사진 수를 선정합니다.",
+      "fewest": "최소 사진 수",
+      "to": "~",
+      "most": "최대 사진 수",
+      "hideSensitive": "민감한 사진 숨기기",
+      "hideSensitiveSub": "신분증, 신용카드, 의료 서류 등은 덤프에 표시되지 않습니다.",
+      "screenshots": "스크린샷 포함",
+      "screenshotsSub": "스크린샷이 덤프에 포함될 수 있습니다.",
+      "recap": "요약",
+      "recapSub": "오늘의 덤프는 저녁 8시, 주간 요약은 일요일 정오"
+    },
+    "export": {
+      "title": "내보내기 및 게시",
+      "note": "새로운 덤프는 여기에 설정된 크기와 해상도로 제작됩니다.",
+      "postSize": "기본 게시 크기",
+      "quality": "기본 내보내기 화질",
+      "hd": "HD (2160 px)",
+      "standard": "표준 (1080 px)",
+      "saveOnPost": "게시 시 갤러리에도 저장",
+      "saveOnPostSub": "PicDump 앨범에 슬라이드 사본을 저장합니다"
+    },
+    "appearance": {
+      "title": "화면 테마"
+    },
+    "library": {
+      "title": "사진 보관함 및 검색",
+      "access": "접근 권한",
+      "openSettings": "설정 열기"
+    },
+    "about": {
+      "title": "개인정보 및 정보",
+      "onDevice": "모든 과정은 휴대폰 내에서 안전하게 처리됩니다",
+      "onDeviceSub": "PicDump가 사진을 업로드하지 않고 큐레이션하는 방법",
+      "contact": "문의하기",
+      "noMail": "메일 앱을 찾을 수 없습니다. info@horizonzeta.com 으로 문의해 주세요",
+      "version": "버전"
+    }
+  }
+}

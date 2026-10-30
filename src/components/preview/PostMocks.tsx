@@ -215,7 +215,7 @@ export function IgGrid({ v, w, others }: { v: PostView; w: number; others: strin
         <View style={{ width: tile, height: tile, backgroundColor: t.borderSubtle }}>
           <SlideCanvas v={v} i={0} w={tile} h={tile} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: t.ink }} />
-          <View pointerEvents="none" style={{ position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: '#261F1B' }}>
+          <View pointerEvents="none" style={{ position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: '#2B1810' }}>
             <Text style={[ui(9, 700), { color: fixed.printBorder }]}>NEW</Text>
           </View>
         </View>

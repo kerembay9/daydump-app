@@ -3,7 +3,7 @@ import { densestCluster } from '../src/services/stories/topics';
 import type { IndexedPhoto } from '../src/services/index/photoIndex';
 
 const worth = require('../src/services/stories/worth.json') as { n: number; groups: string[]; w: number[]; g: number[] };
-const vocab = require('../modules/clip-embedder/android/src/main/assets/clip/vocab.json') as { names: string[] };
+const vocab = require('../jest/fixtures/vocab.json') as { names: string[] };
 const tag = (group: string) => worth.g.findIndex((g) => worth.groups[g] === group);
 const photo = (concepts: number[], scores: number[]) => ({ id: 'x', concepts, conceptScores: scores }) as unknown as IndexedPhoto;
 

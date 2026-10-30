@@ -63,7 +63,7 @@ export function TodayCard({ more, paper }: { more: boolean; paper?: boolean }) {
         </View>
         <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: ACCENT, borderStyle: found ? 'solid' : 'dashed',
           backgroundColor: found ? ACCENT : HL, alignItems: 'center', justifyContent: 'center', padding: 3 }}>
-          <Text style={[ui(7.5, 700), { color: found ? ACCENT_INK : ACCENT, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 8.5 }]}>
+          <Text maxFontSizeMultiplier={1} style={[ui(7.5, 700), { color: found ? ACCENT_INK : ACCENT, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 8.5 }]}>
             {found ? `✓\n${hub.quest.label.split(' ').pop()}` : 'Side\nquest'}
           </Text>
         </View>

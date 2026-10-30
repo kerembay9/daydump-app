@@ -189,7 +189,8 @@
             "backgroundColor": "#2A170F"
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "scheme": "picdump",
     "extra": {

@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "閉じる",
+    "back": "戻る",
+    "termsOfService": "利用規約",
+    "privacyPolicy": "プライバシーポリシー"
+  },
+  "tabs": {
+    "discover": "見つける",
+    "create": "作成",
+    "tidy": "整理",
+    "library": "ライブラリ"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "手間いらずのフォトダンプ",
+      "title": "散らかった写真を素敵なダンプに",
+      "description": "何千枚もの写真を延々とスクロールするのはもう終わり。PicDumpがあなたの一日や旅のベストショットを、心地よいリズムで選び出します。",
+      "point1": "フィルム調のエフェクト、フレーム、IG / TikTokサイズ",
+      "point2": "スワイプするだけで決まるコラージュレイアウト"
+    },
+    "privacy": {
+      "badge": "端末内でキュレーション",
+      "title": "クラウドではなく、お使いの端末で処理",
+      "description": "写真の選定、検索、ダンプの作成はすべてスマートフォン上で行われます。PicDumpが選定のために写真をアップロードすることはありません。",
+      "point1": "写真へのアクセス許可により、輝く瞬間を見つけ出せます"
+    },
+    "allowContinue": "写真へのアクセスを許可して続ける",
+    "continue": "続ける",
+    "page": "{{total}}ページ中{{n}}ページ",
+    "notifPreview": "通知プレビュー",
+    "notifNow": "· たった今",
+    "notifTitle": "PicDumpが完成しました 🎞️",
+    "notifBody": "今日の写真をひとつのダンプにまとめました。寝る前にチェックしてみましょう。",
+    "notifyHeading": "今日の一枚は夜8時に、今週のまとめは日曜日に",
+    "notifyBody": "今日のダンプが完成する夜8時と、1週間のまとめが届く日曜の正午にお知らせします。",
+    "turnOn": "オンにする",
+    "notNow": "後で"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "カメラロールのすべてのダンプを。",
+      "sub": "無料プランでは毎日のまとめと週に1つのダンプを楽しめます。Proならすべてアンロックされます。"
+    },
+    "tidy": {
+      "heading": "不要な写真をすっきり整理。",
+      "sub": "無料プランでは重複やブレた写真を検出。Proならワンタップですべてゴミ箱に移動できます。"
+    },
+    "finish": {
+      "heading": "フィルムの質感をそのままに。",
+      "sub": "Original、Warm 35mm、Adjustは無料です。Proはすべてのエフェクトと質感を書き出せます。"
+    },
+    "search": {
+      "heading": "カメラロールを検索。",
+      "sub": "場所や月、モノの名前で写真を検索。検索機能はProに含まれます。"
+    },
+    "found": {
+      "heading": {
+        "one": "カメラロールに{{count}}件のダンプが見つかりました。",
+        "other": "カメラロールに{{count}}件のダンプが見つかりました。"
+      },
+      "sub": "{{titles}}。Proならすべてアンロックできます。",
+      "subMore": "{{titles}}など。Proならすべてアンロックできます。"
+    },
+    "welcome": "PicDump Proへようこそ！",
+    "purchaseNotActive": "購入は完了しましたが、まだProが有効になっていません。「購入を復元」をタップしてください。",
+    "restored": "購入を復元しました。Proへお帰りなさい！",
+    "noSubscription": "有効なPicDump Proのサブスクリプションが見つかりません。",
+    "close": "閉じる",
+    "feature": {
+      "dumps": {
+        "title": "すべてのダンプをアンロック",
+        "sub": "「見つける」で発見したすべての旅やストーリーを。週1回に制限されません。"
+      },
+      "search": {
+        "title": "カメラロールを検索",
+        "sub": "キーワード入力で場所や年月、写っているものを素早く検索。"
+      },
+      "looks": {
+        "title": "すべてのフィルムルック",
+        "sub": "Cashmere、Soft Film、Sunfade、B&W Roll、さらに粒状感、フェード、周辺減光。"
+      },
+      "tidy": {
+        "title": "重複や不要な写真を一括整理",
+        "sub": "重複したショット、ブレた写真、スクリーンショットを一度にゴミ箱へ移動。"
+      },
+      "yours": {
+        "title": "あなた好みのダンプに",
+        "sub": "PicDumpのエンドスライドなし、1つのダンプに4〜20枚の写真を収録可能。"
+      }
+    },
+    "plansFailed": "プランを読み込めませんでした。通信環境を確認してもう一度お試しください。",
+    "startTrial": "{{trial}}を開始",
+    "continue": "続ける",
+    "restore": "購入を復元",
+    "trialThen": "無料トライアル後、{{price}}。 ",
+    "disclosure": "お支払いはストアアカウントに請求されます。現在の有効期間終了の24時間前までに解約されない限り、サブスクリプションは自動更新されます。"
+  },
+  "profile": {
+    "title": "プロフィール & 設定",
+    "changePhoto": "プロフィール写真を変更",
+    "namePlaceholder": "お名前",
+    "handlePlaceholder": "アカウント名",
+    "theme": {
+      "system": "システム",
+      "auto": "自動",
+      "cashmere": "Cashmere",
+      "light": "ライト",
+      "espresso": "Espresso",
+      "dark": "ダーク"
+    },
+    "reindex": {
+      "title": "ライブラリを再インデックスしますか？",
+      "body": "PicDumpがすべての写真を再度読み込みます。これには数分かかり、バッテリーを消費します。「ライブラリ」内のダンプは保持されます。",
+      "action": "再インデックス"
+    },
+    "dumpPicks": {
+      "title": "ダンプの設定",
+      "photosPerDump": "ダンプあたりの写真数",
+      "photosPerDumpSub": "「見つける」はこの範囲から（主に中間値で）枚数を選定します。",
+      "fewest": "最少枚数",
+      "to": "〜",
+      "most": "最多枚数",
+      "hideSensitive": "センシティブな写真を非表示",
+      "hideSensitiveSub": "身分証、銀行カード、医療書類などはダンプに含まれません。",
+      "screenshots": "スクリーンショットを含める",
+      "screenshotsSub": "スクリーンショットもダンプに含めることができます。",
+      "recap": "振り返り",
+      "recapSub": "今日のダンプは夜8時、今週のまとめは日曜の正午"
+    },
+    "export": {
+      "title": "書き出し & 投稿",
+      "note": "新しいダンプはここで設定したサイズと画質で作成されます。",
+      "postSize": "デフォルトの投稿サイズ",
+      "quality": "デフォルトの書き出し品質",
+      "hd": "HD (2160 px)",
+      "standard": "標準 (1080 px)",
+      "saveOnPost": "投稿時に端末のアルバムにも保存",
+      "saveOnPostSub": "スライドのコピーをPicDumpアルバムに保存します"
+    },
+    "appearance": {
+      "title": "外観 & テーマ"
+    },
+    "library": {
+      "title": "フォトライブラリ & 検索",
+      "access": "アクセス権",
+      "openSettings": "設定を開く"
+    },
+    "about": {
+      "title": "プライバシー & アプリについて",
+      "onDevice": "すべて端末内で完結",
+      "onDeviceSub": "写真をアップロードせずにPicDumpが選定する仕組み",
+      "contact": "お問い合わせ",
+      "noMail": "メールアプリが見つかりません。info@horizonzeta.com までご連絡ください",
+      "version": "バージョン"
+    }
+  }
+}

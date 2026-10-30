@@ -1,6 +1,6 @@
 # PicDump — Brand Guidelines
 
-**Version:** 3.0 (logo and brand palette added, 30 October 2026; before that 2.0, the October 2026 redesign)
+**Version:** 3.1 (primary, secondary and accent roles; themes rebuilt from the brand palette, 30 October 2026; 3.0 added the logo; before that 2.0, the October 2026 redesign)
 **Source of truth in code:** `src/theme/tokens.ts` (colours, shadows), `src/theme/type.ts` (fonts), `src/components/ui/` (shared pieces). If this file and the code disagree, the code wins; update this file.
 
 ---
@@ -53,37 +53,43 @@ PicDump turns a cluttered camera roll into ready-to-post photo dumps. It reads t
 
 ## 3. Colour
 
-### Brand palette (the logo)
+### Roles
 
-| Name | Hex | Where |
-| :--- | :--- | :--- |
-| Parchment | `#F3E7D3` | Logo tile, light splash, adaptive icon background (`brand.parchment`) |
-| Espresso | `#2B1810` | Logo ink (`brand.espresso`) |
-| Paper | `#FFF8EC` | Logo print borders (`brand.paper`) |
-| Knockout | `#DFD2C0` | Outline around the animal (`brand.knockout`) |
-| Ristretto | tile `#2A170F`, ink `#F2DFC0`, paper `#4A2D1E` | Dark splash and dark icon (`brand.ristretto`) |
+| Role | Colour | Hex | Used for |
+| :--- | :--- | :--- | :--- |
+| **Primary** | Espresso | `#2B1810` | Text and icons on light, primary buttons and active pills, the logo ink |
+| **Secondary** | Parchment | `#F3E7D3` | The light screen background, the logo tile, the adaptive icon and light splash |
+| Secondary, lighter | Paper | `#FFF8EC` | Cards, sheets, inputs on light; print borders |
+| Secondary, quiet | Knockout | `#DFD2C0` | Tape, hairlines, quiet fills (the outline in the logo) |
+| **Accent** | Caramel | `#E8A94F` | Accent buttons and highlights, with espresso text (8.2:1); as text or icon on the dark theme (7+:1) |
+| Accent, deep | Rust | `#A84A2F` | Accent text on light surfaces (4.7:1 on parchment), fill with paper text (5.4:1), the Draft pill on dark |
+| Dark surface | Ristretto | tile `#2A170F`, ink `#F2DFC0`, paper `#4A2D1E` | The dark theme, dark splash, dark alternate icon |
 
-Espresso on parchment is 13.9:1, paper on espresso 16.0:1, ristretto ink on its tile 13.1:1. The brand palette is not a theme: screens read `useTheme()`. The UI themes below are the existing warm paper and espresso look and sit in the same family (cream paper, near-black brown ink); they were not re-derived from the logo.
+Espresso, parchment, paper, knockout and ristretto come from the logo (colourways 01 and 09). **The accent is not in the logo**: the logo is only espresso, parchment, paper and a knockout. Caramel is colourway 11's tile; rust is the colour the app already used as its dark accent. They are a proposal and live in one place (`brand.caramel`, `brand.rust` in `src/theme/tokens.ts`). Caramel is bright, so never use it as text on a light background (1.7:1); use rust there.
+
+Espresso on parchment is 13.9:1, paper on espresso 16.0:1, ristretto ink on its tile 13.1:1. All of it is in `brand` in `src/theme/tokens.ts`, and the two UI themes below are built from it (`__tests__/theme-contrast.test.ts` fails if they drift).
 
 ### UI themes
 
-Two themes. The app follows the system setting; Profile → Appearance overrides it (System / Cashmere / Espresso). Always read colours through `useTheme()`; never call `useColorScheme()` directly.
+Two themes. The app follows the system setting; Profile → Appearance overrides it (System / Cashmere / Espresso). Always read colours through `useTheme()`; never call `useColorScheme()` directly. Cashmere is parchment with paper cards and espresso ink; Espresso is the ristretto colourway.
 
 | Token | Cashmere (light) | Espresso (dark) | Use |
 | :--- | :--- | :--- | :--- |
-| `bgScreen` | `#F6EFE6` (+ vertical gradient `#F9F4E8 → #F5F2E7 → #F7EDE6`) | `#241D14` | Screen background |
-| `bgCard` | `#EFE6DA` | `#2E2418` | Cards, sheets, inputs |
-| `borderSubtle` | `rgba(74,52,40,0.08)` | `rgba(255,232,200,0.09)` | Card edges, dividers |
-| `borderStrong` | `rgba(74,52,40,0.15)` | `rgba(255,232,200,0.17)` | Inactive chips, empty photo wells |
-| `ink` | `#261F1B` | `#F3ECE3` | Titles, primary text, active pills |
-| `inkMuted` | `#726459` | `#9E9080` | Meta lines, section labels, hints (4.6:1 on cards; was `#766860`, which was 4.3:1) |
-| `accentFab` | `#DFD1C4` | `#A84A2F` (rust) | Accent buttons |
-| `tapeBg` / `tapeBorder` | `rgba(212,196,182,0.58)` / `rgba(140,115,95,0.22)` | `rgba(212,169,106,0.36)` / `rgba(235,195,130,0.25)` | Masking tape on hero cards |
-| `draftPill` | `rgba(0,0,0,0.05)` | `#A84A2F` | Library "Draft" pill |
+| `bgScreen` | `#F3E7D3` parchment (+ gentle gradient `#F6ECDB → #F3E7D3 → #F1E2CB`) | `#2A170F` | Screen background |
+| `bgCard` | `#FFF8EC` paper | `#3A2316` | Cards, sheets, inputs |
+| `borderSubtle` | `rgba(43,24,16,0.08)` | `rgba(242,223,192,0.09)` | Card edges, dividers |
+| `borderStrong` | `rgba(43,24,16,0.16)` | `rgba(242,223,192,0.17)` | Inactive chips, empty photo wells |
+| `ink` | `#2B1810` espresso | `#F2DFC0` | Titles, primary text, active pills |
+| `inkMuted` | `#6B5848` | `#B9A184` | Meta lines, section labels, hints (5.5:1 on parchment, 6.4 on paper; dark 6.9 and 5.9) |
+| `accentFab` / `accentFabText` | `#E8A94F` caramel / `#2B1810` | `#E8A94F` / `#2B1810` | Accent buttons |
+| `tapeBg` / `tapeBorder` | `rgba(223,210,192,0.72)` / `rgba(140,115,95,0.25)` | `rgba(232,169,79,0.34)` / `rgba(240,190,110,0.25)` | Masking tape on hero cards |
+| `draftPill` | `rgba(43,24,16,0.06)` | `#A84A2F` | Library "Draft" pill |
+
+The Today hub keeps its own rust accent (`accent(t)` in `SlotPop.tsx`: `#A84A2F` light, `#C25C3C` dark) because it is used both as text and as a fill under light text; in practice it is the deep accent.
 
 Contrast: every text/background pair in both themes, and Cashmere over the parchment cards, is held to 4.5:1 by `__tests__/theme-contrast.test.ts`.
 
-Theme-independent (`fixed`): print border `#FAF6F0`, photo chips `rgba(0,0,0,0.6)` with `#F3ECE3` text, like red `#E0393E`, IG blue `#3897F0`.
+Theme-independent (`fixed`): print border `#FFF8EC` (paper), photo chips `rgba(0,0,0,0.6)` with `#F2DFC0` text, like red `#E0393E`, IG blue `#3897F0`.
 
 Shadows are CSS `boxShadow` strings per theme: `shadowCard` (cards), `shadowDeck` (pinned bottom areas), `shadowPrint` (photo prints).
 
