@@ -8,6 +8,8 @@ export type FakePhoto = { id: string; uri: string; created: number; w: number; h
   size?: number; fav?: boolean;
   /** id of another photo whose own axis this one shares: the same shot (cosine ~1) */
   twin?: string;
+  /** the people in it (ClipEmbedder.faces): each number is one person; 100+ is a toy or a burger that only looks like a face; an array is the face's vector */
+  faces?: (number | number[])[];
 };
 
 /** Concept c lives on axis C0 + c; every photo also gets its own axis (so no two photos are near-duplicates), a twin its twin's. */

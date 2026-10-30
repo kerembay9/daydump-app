@@ -6,6 +6,7 @@ import { GalleryService } from '../services/galleryService';
 import { NotificationService } from '../services/notificationService';
 import { OnboardingService } from '../services/onboardingService';
 import { getProfile } from '../services/profile';
+import { scanPeople } from '../services/people';
 import { list as listDumps } from '../services/dumps';
 import { addShareIntentListener, ClipEmbedder, getInitialShareIntent, ShareIntent } from '../../modules/clip-embedder';
 import { whenReady } from './models';
@@ -208,6 +209,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   // photos sort by created, so the first dated one is the oldest; progress.since is fresher than the 30 s rebuilds
   const oldest = useMemo(() => library?.photos.find((p) => p.creationTime >= DATED)?.creationTime ?? Infinity, [library]);
   const edge = Math.min(oldest, progress && progress.since >= DATED ? progress.since : Infinity);
+
+  // People: scans what's indexed once nothing has priority (a finger down, indexing, a paused index, the app in the back)
+  const holdPeople = useRef(false);
+  useEffect(() => { holdPeople.current = !!progress || !!paused; });
+  useEffect(() => {
+    if (library?.photos.length) scanPeople(library.photos, () => holdPeople.current || touching() || RNAppState.currentState === 'background');
+  }, [library]);
 
   const value = useMemo<AppStateValue>(() => ({
     library, stories, loaded, moreStories: Math.max(0, available - stories.length),

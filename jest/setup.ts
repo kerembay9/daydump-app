@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { AppState, Platform } from 'react-native';
 import { byUri, embed, photoVec, textVec, topConcepts, world, NAMES, bgRow } from './world';
-import { DIM } from '../src/services/index/vectors';
+import { DIM, floatsToB64 } from '../src/services/index/vectors';
 
 const MODEL = (require('../src/services/index/clipGolden.json') as { model: string }).model;
 
@@ -35,7 +35,13 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   // onboarding: models on the phone, a selfie scan that finds none, the 8 PM recap job
   modelState: async () => ({ vision: { state: 'ready', progress: 1 }, faces: { state: 'ready', progress: 1 }, text: { state: 'ready', progress: 1 } }),
   wantModel: () => {}, askToDownload: jest.fn(async () => true), holdIndexing: jest.fn(), warmSelfie: async () => {},
-  faces: async () => [], selfieCheck: async () => ({ scans: [], vecs: '', reject: [], gateVecs: '', sharp: [] }),
+  // one person = one axis of the 128-d face vector; an array is the vector itself, for faces that look alike
+  faces: async (uris: string[]) => uris.map((u) => ({ aspect: 1, faces: (byUri(u)?.faces ?? []).map((who, i) => {
+    const v = new Float32Array(128);
+    if (Array.isArray(who)) v.set(who); else v[who] = 1;
+    return { score: typeof who === 'number' && who >= 100 ? 0.7 : 0.9, x: 0.1 + 0.3 * i, y: 0.1, w: 0.2, h: 0.2, vec: floatsToB64(v) };
+  }) })),
+  selfieCheck: async () => ({ scans: [], vecs: '', reject: [], gateVecs: '', sharp: [] }),
   scheduleDailyRecap: jest.fn(async () => {}), cancelDailyRecap: jest.fn(async () => {}), setRecapCover: () => {},
   // Tidy (Tidy.kt) over world.photos; Trash moves photos out of world.photos into world.tidy.binned and back
   tidyList: async () => {
@@ -262,7 +268,7 @@ jest.mock('expo-file-system', () => {
     const write = () => { w.files.written.add(to.uri); done(); };
     if (w.files.held) w.files.held.push(write); else setTimeout(write, 0);
   });
-  class File { uri: string; exists = true; constructor(...p: unknown[]) { this.uri = join(...p); } write() {} delete() {} copy(to: File) { return relocate(to); } move(to: File) { return relocate(to); } }
+  class File { uri: string; exists = true; constructor(...p: unknown[]) { this.uri = join(...p); } write() {} async text() { return '{}'; } delete() {} copy(to: File) { return relocate(to); } move(to: File) { return relocate(to); } }
   return { File, Directory, Paths: { cache: 'file:///cache', document: 'file:///doc' } };
 });
 

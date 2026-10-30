@@ -6,26 +6,52 @@ export const SAME_PERSON = 0.363;
 
 export const faceVec = (f: Face) => (f.vec ? b64ToFloats(f.vec) : null);
 
-const dot = (a: Float32Array, b: Float32Array) => { let s = 0; for (let j = 0; j < a.length; j++) s += a[j] * b[j]; return s; };
+export const dot = (a: Float32Array, b: Float32Array) => { let s = 0; for (let j = 0; j < a.length; j++) s += a[j] * b[j]; return s; };
 
 /**
- * Greedy grouping of L2-normalized face vectors into people: each face joins the closest group whose mean is above
- * SAME_PERSON, else starts one. Returns the group of every face; groups are numbered by first appearance.
- * ponytail: one pass, order-dependent, O(faces × groups); agglomerative clustering if groups split or merge badly.
+ * Greedy grouping of L2-normalized face vectors into people, one face at a time: each joins the closest group whose mean is
+ * above thr, else starts one. known: the group it already has (add those first, so new groups don't take a number). not: groups
+ * it can't join (another face of its photo is in them). means and merge: for a second pass over the groups.
  */
-export function groupFaces(vecs: Float32Array[], thr = SAME_PERSON): number[] {
+export function grouper(thr = SAME_PERSON) {
   const sums: Float32Array[] = [];
   const means: Float32Array[] = [];
-  return vecs.map((v) => {
-    let best = -1, bestS = thr;
-    means.forEach((m, g) => { const s = dot(v, m); if (s > bestS) { best = g; bestS = s; } });
-    if (best < 0) { sums.push(new Float32Array(v)); means.push(new Float32Array(v)); return means.length - 1; }
+  const renorm = (g: number) => {
+    const n = Math.sqrt(dot(sums[g], sums[g])) || 1;
+    for (let j = 0; j < sums[g].length; j++) means[g][j] = sums[g][j] / n;
+  };
+  const add = (v: Float32Array, known?: number, not?: Set<number | undefined>) => {
+    let best = known ?? -1, bestS = thr;
+    if (known === undefined) means.forEach((m, g) => { const s = dot(v, m); if (s > bestS && !not?.has(g)) { best = g; bestS = s; } });
+    if (best < 0) best = means.length;
+    if (!means[best]) { sums[best] = new Float32Array(v); means[best] = new Float32Array(v); return best; }
     const sum = sums[best];
     for (let j = 0; j < v.length; j++) sum[j] += v[j];
-    const n = Math.sqrt(dot(sum, sum));
-    for (let j = 0; j < v.length; j++) means[best][j] = sum[j] / n;
+    renorm(best);
     return best;
-  });
+  };
+  /** from's faces join into; from's number isn't used again. */
+  const merge = (into: number, from: number) => {
+    for (let j = 0; j < sums[into].length; j++) sums[into][j] += sums[from][j];
+    renorm(into);
+    delete sums[from];
+    delete means[from];
+  };
+  return Object.assign(add, { means, merge });
+}
+
+/** Returns the group of every face; groups are numbered by first appearance. */
+export function groupFaces(vecs: Float32Array[], thr = SAME_PERSON): number[] {
+  const add = grouper(thr);
+  return vecs.map((v) => add(v));
+}
+
+/** The L2-normalized mean of these vectors. */
+export function meanOf(vs: Float32Array[]) {
+  const sum = new Float32Array(vs[0].length);
+  vs.forEach((v) => v.forEach((x, j) => (sum[j] += x)));
+  const n = Math.sqrt(dot(sum, sum)) || 1;
+  return sum.map((x) => x / n);
 }
 
 /** Whether f is one of these people (SFace vectors); false without a vector (face model not downloaded). */

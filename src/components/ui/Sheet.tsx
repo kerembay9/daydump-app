@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
@@ -9,14 +9,16 @@ import { Tap } from './Tap';
 /** Bottom sheet card over a dimmed backdrop; tap outside or Back closes it. */
 export function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) {
   const { t } = useTheme();
-  const bottom = useSafeAreaInsets().bottom;
+  const { top, bottom } = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} onPress={onClose} accessibilityLabel="Close">
-        <Pressable onPress={() => {}} style={{ backgroundColor: t.bgScreen, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: bottom + 16, gap: 8, boxShadow: t.shadowDeck }}>
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={-bottom} style={{ flex: 1, justifyContent: 'flex-end', paddingTop: top }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} onPress={onClose} accessibilityLabel="Close" />
+        {/* beside the backdrop, not in it: a Pressable around a list takes slow swipes from it */}
+        <View style={{ maxHeight: '100%', backgroundColor: t.bgScreen, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: bottom + 16, gap: 8, boxShadow: t.shadowDeck }}>
           {children}
-        </Pressable>
-      </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

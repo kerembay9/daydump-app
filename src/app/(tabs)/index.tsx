@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
 import { useProfile } from '../../services/profile';
+import { MergeSheet } from '../../components/create/PeopleFilter';
+import { peopleIn, usePeople, type Person } from '../../services/people';
 import { ThemePatch, useTheme } from '../../theme/ThemeProvider';
-import { parchment } from '../../theme/tokens';
+import { fixed, parchment } from '../../theme/tokens';
 import { display, ui } from '../../theme/type';
 import { AvatarButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
@@ -19,6 +21,7 @@ import { type PaperStyle, ScrapTapes } from '../../components/ui/ScrapPaper';
 import { coverageLine, IndexStrip } from '../../components/IndexStrip';
 import { ModelLoading } from '../../components/ModelLoading';
 import { TodayCard } from '../../components/TodayCard';
+import { FaceThumb } from '../../components/FaceCircle';
 import { FirstDumpStrip, useFirstDump } from '../../components/FirstDumpStrip';
 import { useModels } from '../../state/models';
 
@@ -91,12 +94,35 @@ function TileTape({ id }: { id: string }) {
   </>;
 }
 
+/** Who's in the dump: a few small faces on the corner of the prints, adding no height. Tap one: Create, with that person's photos. */
+function TileFaces({ s }: { s: Story }) {
+  const { shown } = usePeople();
+  const who = useMemo(() => peopleIn(s.picks, shown), [s.picks, shown]);
+  const [merging, setMerging] = useState<Person | null>(null);
+  if (!who.length) return null;
+  return (
+    <View style={{ position: 'absolute', right: 2, bottom: 2, flexDirection: 'row' }}>
+      {who.map((p, i) => (
+        <Tap key={p.id} hitSlop={4} onPress={() => router.navigate({ pathname: '/create', params: { person: String(p.id), at: String(Date.now()) } })} onLongPress={() => setMerging(p)}
+          accessibilityRole="button" accessibilityLabel={`Photos with ${p.name || 'this person'}`} accessibilityHint="Hold to merge"
+          style={{ marginLeft: i ? -5 : 0, borderRadius: 12, borderWidth: 1.5, borderColor: fixed.printBorder, boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+          <FaceThumb uri={p.shots[0].uri} box={p.shots[0].f} size={20} />
+        </Tap>
+      ))}
+      <MergeSheet from={merging} people={shown} onClose={() => setMerging(null)} />
+    </View>
+  );
+}
+
 /** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). paper: a paper sheet with its own tape. */
 function Tile({ s, kind, rotate, onPress, style, more, paper }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; paper?: PaperStyle }) {
   const wide = kind === 'wide';
   return (
     <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}`} style={style}>
-      <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
+      <View style={{ marginBottom: kind === 'tall' ? 8 : 6 }}>
+        <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} />
+        <TileFaces s={s} />
+      </View>
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
           <View style={{ flex: 1 }}><Title text={s.title} style={display(16)} /></View>

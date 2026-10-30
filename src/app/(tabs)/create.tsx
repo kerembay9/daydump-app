@@ -15,6 +15,7 @@ import { capitalize, dateRange } from '../../services/stories/titles';
 import { createDraft, currentCreateDraft, DumpPhoto, get, remove, setCurrentCreateDraft, update } from '../../services/dumps';
 import { photoRange } from '../../services/dumpLabels';
 import { getProfile } from '../../services/profile';
+import { filterLabel, filterPhotos, NO_FILTER, usePeople, type Person } from '../../services/people';
 import { useTheme } from '../../theme/ThemeProvider';
 import { caps, display, label, ui } from '../../theme/type';
 import { AvatarButton } from '../../components/ui/TopHeader';
@@ -28,6 +29,7 @@ import { StatusScrim } from '../../components/ui/Screen';
 import { SetsSheet, SetsTile } from '../../components/create/SetsSheet';
 import { useBasketThrow } from '../../components/create/BasketThrow';
 import { PickRow } from '../../components/create/PickRow';
+import { MergeSheet, PeopleRow, PeopleSheet } from '../../components/create/PeopleFilter';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
 
@@ -263,11 +265,23 @@ export default function Create() {
   const win = useWindowDimensions();
   // indexing rebuilds the library every 15 s; a hidden Create is frozen (freezeOnBlur), so it re-searches only once shown
   const { library: lib, permission, askPhotos } = useApp();
-  const { shared } = useLocalSearchParams<{ shared?: string }>();
+  // person + at: a face tapped on a Discover tile (at: the same face again, after clearing it here)
+  const { shared, person, at } = useLocalSearchParams<{ shared?: string; person?: string; at?: string }>();
 
   const [query, setQuery] = useState('');
   // photos, not library rows: indexing rebuilds the library under a running search
-  const [rows, setRows] = useState<IndexedPhoto[] | null>(null);
+  const [found, setRows] = useState<IndexedPhoto[] | null>(null);
+  const { shown: people } = usePeople();
+  const [filter, setFilter] = useState(NO_FILTER);
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const [mergeFrom, setMergeFrom] = useState<Person | null>(null);
+  const [faceTap, setFaceTap] = useState<string>();
+  if (at !== faceTap) {
+    setFaceTap(at);
+    if (person) { setQuery(''); setFilter({ ...NO_FILTER, with: [Number(person)] }); }
+  }
+  const rows = useMemo(() => found && filterPhotos(found, filter, people), [found, filter, people]);
+  const who = filterLabel(filter, people);
   const [qvec, setQvec] = useState<Float32Array | null>(null);
   const [wordsSkipped, setWordsSkipped] = useState(false); // the search had words but no text vector
   const [expanded, setExpanded] = useState<Expanded | null>(null); // translations searched too (index/queryLang.ts)
@@ -485,15 +499,18 @@ export default function Create() {
     <Text style={[ui(10.5), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 2 }]}>{pending}</Text>
   ) : null;
 
+  const similarKept = useMemo(() => filterPhotos(similar, filter, people), [similar, filter, people]);
+
   const header = (
     <View>
       {langNote}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
         <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
-          {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : <GalleryCount n={rows?.length ?? 0} />}
+          {query.trim() ? `Matches for "${query.trim()}"${who && ` ${who}`} (${rows?.length ?? 0})` : who ? `Your gallery ${who} (${rows?.length ?? 0})` : <GalleryCount n={rows?.length ?? 0} />}
         </Text>
-        <Text style={[ui(9.5), { color: t.inkMuted }]}>Hold to enlarge</Text>
+        {!who && <Text style={[ui(9.5), { color: t.inkMuted }]}>Hold to enlarge</Text>}
       </View>
+      <PeopleRow people={people} filter={filter} onChange={setFilter} onMore={() => setPeopleOpen(true)} onMerge={setMergeFrom} />
     </View>
   );
 
@@ -514,7 +531,9 @@ export default function Create() {
   ) : (
     <FrameCard padding={16} style={{ gap: 6 }}>
       {(() => {
-        const [title, body] = query.trim()
+        const [title, body] = who
+            ? ['No photos', `Nothing here ${who}. Tap a face to change that.`]
+            : query.trim()
             ? ['No matches', `Nothing in your library matches “${query.trim()}”. Try a place, a month or a simpler word.`]
             : ['No photos yet', 'Photos appear here as PicDump reads your library.'];
         return (
@@ -542,7 +561,7 @@ export default function Create() {
         keyExtractor={(r) => r[0].id}
         renderItem={renderRow}
         extraData={order}
-        ListHeaderComponent={rows?.length ? header : null}
+        ListHeaderComponent={found?.length ? header : null}
         ListEmptyComponent={empty}
         getItemLayout={(_, i) => ({ length: cellH + GAP, offset: (cellH + GAP) * i, index: i })}
         initialNumToRender={8}
@@ -556,13 +575,13 @@ export default function Create() {
 
       {keyboard ? null : (
         <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10, opacity: loaded ? 1 : 0 }}>
-          {basket.length && (similar.length || sets.length) ? (
+          {basket.length && (similarKept.length || sets.length) ? (
             <View style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 20, paddingHorizontal: 2 }}>
                 <Icons.sparkle size={12} color={t.ink} />
                 <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{caps('Similar to your picks')}</Text>
               </View>
-              <View style={{ marginTop: 4 }}><SimilarStrip photos={similar} sets={sets} onSets={onSets} onAdd={onToggle} onOpen={onOpenSimilar} /></View>
+              <View style={{ marginTop: 4 }}><SimilarStrip photos={similarKept} sets={sets} onSets={onSets} onAdd={onToggle} onOpen={onOpenSimilar} /></View>
             </View>
           ) : null}
 
@@ -598,6 +617,8 @@ export default function Create() {
       )}
 
       {throwLayer}
+      <PeopleSheet visible={peopleOpen} people={people} filter={filter} count={rows?.length ?? 0} onChange={setFilter} onClose={() => setPeopleOpen(false)} />
+      <MergeSheet from={mergeFrom} people={people} onClose={() => setMergeFrom(null)} />
       <PicksSheet ref={picks} basket={basket} onChange={change} onMove={move} onGo={go} onStartNew={startNew} onView={view} />
       <SetsSheet sets={setsOpen} picks={basket.length} inBasket={new Set(order.keys())} onClose={() => setSetsOpen(null)} onView={onOpenSimilar}
         onAdd={(ps) => change([...basket, ...ps.filter((p) => !order.has(p.id)).map((p) => toPhoto(p, true))])} />
