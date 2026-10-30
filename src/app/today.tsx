@@ -23,6 +23,7 @@ import { AlbumDay, Cell, dayKey, Hub, monday, photosOn, setPrint, setSquare, swa
 import { useTheme } from '../theme/ThemeProvider';
 import { fixed, type Theme } from '../theme/tokens';
 import { display, sans, ui } from '../theme/type';
+import { tr } from '../i18n';
 
 const TILT = [-4, 5, -3, 6, -5, 4, -2];
 const shade = { textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 };
@@ -32,12 +33,19 @@ const weekday = (k: string) => new Date(k + 'T12:00').toLocaleDateString('en-US'
 /** Two or more views of one thing: Today | Album, Week | Month. */
 function Pill<T extends string>({ items, on, onPick, big }: { items: readonly T[]; on: T; onPick: (x: T) => void; big?: boolean }) {
   const { t } = useTheme();
+  const labelOf = (x: T) => {
+    if (x === 'Bingo') return tr('today.tabBingo');
+    if (x === 'Album') return tr('today.tabAlbum');
+    if (x === 'Week') return tr('today.tabWeek');
+    if (x === 'Month') return tr('today.tabMonth');
+    return x;
+  };
   return (
     <View style={{ flexDirection: 'row', backgroundColor: t.borderSubtle, borderRadius: 14, padding: 2 }}>
       {items.map((x) => (
-        <Tap key={x} onPress={() => onPick(x)} accessibilityRole="tab" accessibilityLabel={x} accessibilityState={{ selected: x === on }}
+        <Tap key={x} onPress={() => onPick(x)} accessibilityRole="tab" accessibilityLabel={labelOf(x)} accessibilityState={{ selected: x === on }}
           style={[{ paddingHorizontal: big ? 20 : 13, paddingVertical: big ? 6 : 4, borderRadius: 12 }, x === on ? { backgroundColor: t.dark ? t.borderStrong : fixed.printBorder } : null]}>
-          <Text style={[ui(big ? 13 : 11.5, 600), { color: x === on ? t.ink : t.inkMuted }]}>{x}</Text>
+          <Text style={[ui(big ? 13 : 11.5, 600), { color: x === on ? t.ink : t.inkMuted }]}>{labelOf(x)}</Text>
         </Tap>
       ))}
     </View>
@@ -56,9 +64,9 @@ function Corners({ t }: { t: Theme }) {
 function Square({ c, swaps, flip, onFix, onView }: { c: Cell; swaps: number; flip: ReturnType<typeof useSlotPop>['flip']; onFix: (c: Cell) => void; onView: (c: Cell) => void }) {
   const { t } = useTheme();
   const box = { width: '100%' as const, aspectRatio: 1, borderRadius: 9, overflow: 'hidden' as const, alignItems: 'center' as const, justifyContent: 'center' as const, padding: 6 };
-  if (!c.key) return <View style={[box, { backgroundColor: accentTint(t) }]}><Text style={[display(15), { color: accent(t) }]}>Free</Text></View>;
+  if (!c.key) return <View style={[box, { backgroundColor: accentTint(t) }]}><Text style={[display(15), { color: accent(t) }]}>{tr('today.freeSquare')}</Text></View>;
   if (c.on) return (
-    <Tap onPress={() => onFix(c)} onLongPress={() => onView(c)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={`${c.label}, done`} accessibilityHint="Hold to enlarge" style={{ width: '100%', aspectRatio: 1 }}>
+    <Tap onPress={() => onFix(c)} onLongPress={() => onView(c)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={tr('today.squareDoneA11y', { label: c.label })} accessibilityHint={tr('tidy.holdToEnlarge')} style={{ width: '100%', aspectRatio: 1 }}>
     <Animated.View style={[box, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, flip(c.key)]}>
       {c.uri ? <Photo testID="square-photo" source={{ uri: c.uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 9 }} resizeMode="cover" /> : null}
       <Text style={[ui(11, 600), shade, { color: fixed.printBorder, textAlign: 'center' }]}>{c.label}</Text>
@@ -68,7 +76,7 @@ function Square({ c, swaps, flip, onFix, onView }: { c: Cell; swaps: number; fli
     </Tap>
   );
   return (
-    <Tap onPress={() => swapCell(c.i)} disabled={!swaps} accessibilityRole="button" accessibilityLabel={`${c.label}, empty${swaps ? '. Tap to swap' : ''}`}
+    <Tap onPress={() => swapCell(c.i)} disabled={!swaps} accessibilityRole="button" accessibilityLabel={swaps ? tr('today.squareEmptySwapA11y', { label: c.label }) : tr('today.squareEmptyA11y', { label: c.label })}
       style={[box, { borderWidth: 1.5, borderStyle: 'dashed', borderColor: t.borderStrong }]}>
       <Text style={[ui(11, 600), { color: t.inkMuted, textAlign: 'center' }]}>{c.label}</Text>
       {swaps ? <Text style={[ui(11, 600), { color: t.inkMuted, opacity: 0.55, position: 'absolute', right: 5, bottom: 4 }]}>↻</Text> : null}
@@ -83,17 +91,17 @@ function FixSheet({ c, shots, onClose }: { c: Cell | null; shots: string[]; onCl
   return (
     <Sheet visible={!!c} onClose={onClose}>
       <Text style={[display(19), { color: t.ink }]}>{c?.label}</Text>
-      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>Wrong photo? Pick the right one from today, or take it out.</Text>
+      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{tr('today.fixSheetHint')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
         {shots.map((uri, n) => (
-          <Tap key={uri} onPress={() => fix(uri)} accessibilityRole="button" accessibilityLabel={`Photo ${n + 1} of today`} accessibilityState={{ selected: uri === c?.uri }}
+          <Tap key={uri} onPress={() => fix(uri)} accessibilityRole="button" accessibilityLabel={tr('today.photoOfTodayA11y', { index: n + 1 })} accessibilityState={{ selected: uri === c?.uri }}
             style={{ width: 76, height: 76, borderRadius: 10, overflow: 'hidden', borderWidth: uri === c?.uri ? 3 : 0, borderColor: accent(t), backgroundColor: t.borderStrong }}>
             <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={uri} />
           </Tap>
         ))}
       </ScrollView>
-      <FrameCard radius={14} onPress={() => fix(null)} label="Take this photo out" style={{ paddingVertical: 12, paddingHorizontal: 14 }}>
-        <Text style={[ui(13, 600), { color: '#B4412A' }]}>Take this photo out</Text>
+      <FrameCard radius={14} onPress={() => fix(null)} label={tr('today.takePhotoOut')} style={{ paddingVertical: 12, paddingHorizontal: 14 }}>
+        <Text style={[ui(13, 600), { color: '#B4412A' }]}>{tr('today.takePhotoOut')}</Text>
       </FrameCard>
     </Sheet>
   );
@@ -108,10 +116,10 @@ function PrintSheet({ k, print, onClose }: { k: string | null; print?: string; o
   return (
     <Sheet visible={!!k} onClose={onClose}>
       <Text style={[display(19), { color: t.ink }]}>{at?.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>Pick the photo for this day’s print.</Text>
+      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{tr('today.pickPrintHint')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
         {shots.map((uri, n) => (
-          <Tap key={uri} onPress={() => { onClose(); if (k) void setPrint(k, uri); }} accessibilityRole="button" accessibilityLabel={`Photo ${n + 1} of the day`} accessibilityState={{ selected: uri === print }}
+          <Tap key={uri} onPress={() => { onClose(); if (k) void setPrint(k, uri); }} accessibilityRole="button" accessibilityLabel={tr('today.photoOfDayA11y', { index: n + 1 })} accessibilityState={{ selected: uri === print }}
             style={{ width: 76, height: 76, borderRadius: 10, overflow: 'hidden', borderWidth: uri === print ? 3 : 0, borderColor: accent(t), backgroundColor: t.borderStrong }}>
             <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={uri} />
           </Tap>
@@ -136,8 +144,8 @@ function useShare(card: React.RefObject<View | null>, name: string, caption: str
       const file = new File(Paths.cache, `${name}-${Date.now().toString(36)}.png`);
       file.write(img.encodeToBytes(ImageFormat.PNG));
       img.dispose();
-      if (what === 'save') { await saveToAlbum([file.uri]); say('Saved to PicDump ✓'); } else await shareImages([file.uri], caption, null);
-    } catch (e) { console.warn(`[today] ${what} failed:`, e); say(what === 'save' ? 'Couldn’t save' : 'Couldn’t share'); }
+      if (what === 'save') { await saveToAlbum([file.uri]); say(tr('today.savedToPicDump')); } else await shareImages([file.uri], caption, null);
+    } catch (e) { console.warn(`[today] ${what} failed:`, e); say(what === 'save' ? tr('today.couldntSave') : tr('today.couldntShare')); }
   };
   return { run, said };
 }
@@ -146,11 +154,12 @@ function useShare(card: React.RefObject<View | null>, name: string, caption: str
 function ShareButtons({ name, run, ghost, shareLabel = 'Share' }: { name: string; run?: (w: 'save' | 'share') => void; ghost?: boolean; shareLabel?: string }) {
   const { t } = useTheme();
   const pill = { height: 28, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center' as const, justifyContent: 'center' as const };
+  const label = shareLabel === 'Share' ? tr('today.share') : shareLabel;
   return (
     <View style={{ flexDirection: 'row', gap: 6, opacity: ghost ? 0 : 1 }} pointerEvents={ghost ? 'none' : 'auto'} accessibilityElementsHidden={ghost} importantForAccessibility={ghost ? 'no-hide-descendants' : 'auto'}>
-      <Tap onPress={() => { run?.('save'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : `Save ${name}`} style={pill}><Text style={[ui(11.5, 600), { color: t.ink }]}>Save</Text></Tap>
-      <Tap onPress={() => { run?.('share'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : `Share ${name}`} style={[pill, shareLabel !== 'Share' ? { backgroundColor: t.ink, borderColor: t.ink } : null]}>
-        <Text style={[ui(11.5, 600), { color: shareLabel !== 'Share' ? t.bgScreen : t.ink }]}>{shareLabel}</Text>
+      <Tap onPress={() => { run?.('save'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : tr('today.saveNameA11y', { name })} style={pill}><Text style={[ui(11.5, 600), { color: t.ink }]}>{tr('today.save')}</Text></Tap>
+      <Tap onPress={() => { run?.('share'); }} accessibilityRole="button" accessibilityLabel={ghost ? undefined : tr('today.shareNameA11y', { name })} style={[pill, shareLabel !== 'Share' ? { backgroundColor: t.ink, borderColor: t.ink } : null]}>
+        <Text style={[ui(11.5, 600), { color: shareLabel !== 'Share' ? t.bgScreen : t.ink }]}>{label}</Text>
       </Tap>
     </View>
   );
@@ -203,7 +212,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
       <View ref={board} collapsable={false}>
         <FrameCard radius={14} padding={12}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9, minHeight: 34 }}>
-            <Text style={[display(17), { color: t.ink }]}>Today’s bingo</Text>
+            <Text style={[display(17), { color: t.ink }]}>{tr('today.todaysBingo')}</Text>
             <ShareButtons name="bingo card" ghost />
           </View>
           <View style={{ gap: 6 }}>
@@ -216,7 +225,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
           </View>
           {hub.bingo ? (
             <View style={{ marginTop: 9, paddingVertical: 9, paddingHorizontal: 11, borderRadius: 10, backgroundColor: accent(t) }}>
-              <Text style={[ui(12.5, 600), { color: fixed.printBorder, lineHeight: 17 }]}>Bingo! Today’s print is in. Every square you fill now makes the dump better.</Text>
+              <Text style={[ui(12.5, 600), { color: fixed.printBorder, lineHeight: 17 }]}>{tr('today.bingoBanner')}</Text>
             </View>
           ) : null}
         </FrameCard>
@@ -228,7 +237,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
               ponytail: Android only (iOS can't open its Camera app); expo-image-picker's camera + a save if iOS ships */}
           {Platform.OS === 'android' ? (
             <Tap onPress={() => Linking.sendIntent('android.media.action.STILL_IMAGE_CAMERA').catch((e) => console.warn('[today] camera:', e))}
-              accessibilityRole="button" accessibilityLabel="Open camera"
+              accessibilityRole="button" accessibilityLabel={tr('today.openCamera')}
               style={{ position: 'absolute', left: '50%', marginLeft: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
               <Icons.camera size={17} color={t.bgScreen} />
             </Tap>
@@ -237,7 +246,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
         </View>
       </View>
       <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginBottom: 14 }]} numberOfLines={1}>
-        {checking ?? bingo.said ?? (hub.swapsLeft ? 'Tap an empty square to swap it, once a day' : '')}
+        {checking ?? bingo.said ?? (hub.swapsLeft ? tr('today.swapHelp') : '')}
       </Text>
 
       <View style={{ marginBottom: 14 }}>
@@ -245,19 +254,19 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
         <FrameCard radius={14} padding={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Stamp t={t} uri={q.uri} text={q.found ? `FOUND · ${q.label.toUpperCase()} ·${q.label.length < 11 ? ' FOUND ·' : ''}` : `WEEKLY QUEST · ${fmt(new Date(q.from))} – ${fmt(end)} ·`} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[ui(9.5, 700), { color: accent(t), letterSpacing: 1, textTransform: 'uppercase' }]}>{q.found ? `Found ${on}` : 'This week’s side quest'}</Text>
+            <Text style={[ui(9.5, 700), { color: accent(t), letterSpacing: 1, textTransform: 'uppercase' }]}>{q.found ? tr('today.foundOn', { on }) : tr('today.thisWeeksQuest')}</Text>
             <Text style={[display(19), { color: t.ink }]}>{q.label}</Text>
             <Text style={[ui(11.5), { color: t.inkMuted, lineHeight: 16 }]}>
-              {q.found ? `Stuck on ${on === 'today' ? 'today' : weekday(q.day!)}’s polaroid. Next quest on Monday.` : 'Find it any day this week.'}
+              {q.found ? tr('today.questFoundSub', { day: on === 'today' ? tr('today.today') : weekday(q.day!) }) : tr('today.questFindSub')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
               {q.found ? <ShareButtons name="side quest" ghost />
-                : <><Chip t={t} hot text={q.left === 1 ? 'Last day' : `${q.left} days left`} /><Chip t={t} text="New on Monday" /></>}
+                : <><Chip t={t} hot text={q.left === 1 ? tr('today.lastDay') : tr('today.daysLeft', { count: q.left })} /><Chip t={t} text={tr('today.newOnMonday')} /></>}
             </View>
           </View>
           {q.found ? (
             <View pointerEvents="none" style={{ position: 'absolute', right: 10, top: 10, borderWidth: 2, borderColor: accent(t), borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, transform: [{ rotate: '12deg' }], opacity: 0.85 }}>
-              <Text style={[ui(11, 700), { color: accent(t), letterSpacing: 1.5 }]}>FOUND</Text>
+              <Text style={[ui(11, 700), { color: accent(t), letterSpacing: 1.5 }]}>{tr('today.found')}</Text>
             </View>
           ) : null}
         </FrameCard>
@@ -272,7 +281,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
       {story ? (
         <Tap onPress={() => router.push({ pathname: '/preview/[id]', params: { id: 'today' } })} accessibilityRole="button"
           style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(13, 600), { color: t.bgScreen }]}>Make a dump from today · {hub.photos} photos</Text>
+          <Text style={[ui(13, 600), { color: t.bgScreen }]}>{tr('today.makeDumpFromToday', { count: hub.photos })}</Text>
         </Tap>
       ) : null}
       <FixSheet c={fixing} shots={hub.shots} onClose={() => setFixing(null)} />
@@ -285,7 +294,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
 function Polaroid({ day, w, tilt, label, peg, onPress, onLongPress, t }: { day: AlbumDay; w: number; tilt: number; label: string; peg?: boolean; onPress: () => void; onLongPress: () => void; t: Theme }) {
   const st = Math.round(w * 0.42);
   return (
-    <Tap onPress={onPress} onLongPress={onLongPress} delayLongPress={350} accessibilityRole="button" accessibilityHint="Hold to enlarge" accessibilityLabel={`${label}: bingo${day.quest ? `, ${day.quest.label}` : ''}`} style={{ width: w, padding: 3, paddingBottom: 0, backgroundColor: fixed.printBorder, borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(55,38,28,0.25)', transform: [{ rotate: `${tilt}deg` }] }}>
+    <Tap onPress={onPress} onLongPress={onLongPress} delayLongPress={350} accessibilityRole="button" accessibilityHint={tr('tidy.holdToEnlarge')} accessibilityLabel={tr('today.polaroidA11y', { label, quest: day.quest ? `, ${day.quest.label}` : '' })} style={{ width: w, padding: 3, paddingBottom: 0, backgroundColor: fixed.printBorder, borderRadius: 2, borderWidth: 0.5, borderColor: 'rgba(55,38,28,0.25)', transform: [{ rotate: `${tilt}deg` }] }}>
       <Photo testID="album-print" source={{ uri: day.print }} style={{ width: w - 6, height: w - 6, backgroundColor: t.borderStrong }} resizeMode="cover" />
       <Text numberOfLines={1} style={[ui(w < 50 ? 8 : 9.5, 600), { color: '#5a4a3f', textAlign: 'center', paddingVertical: w < 50 ? 1 : 3 }]}>{label}</Text>
       {peg ? <View style={{ position: 'absolute', top: -7, left: w / 2 - 4, width: 8, height: 14, borderRadius: 2, backgroundColor: '#b79b7f' }} /> : null}
@@ -301,7 +310,7 @@ function Polaroid({ day, w, tilt, label, peg, onPress, onLongPress, t }: { day: 
 /** A day with no print: dashed when it's gone by, outlined today, faint when it's still to come or before the first print. */
 function Blank({ w, h, label, state, t }: { w: number; h: number; label: string; state: 'miss' | 'today' | 'later' | 'off'; t: Theme }) {
   return (
-    <View accessibilityLabel={`${label}: ${state === 'miss' ? 'no bingo' : state === 'off' ? 'no card' : 'not yet'}`}
+    <View accessibilityLabel={tr('today.blankA11y', { label, state: state === 'miss' ? tr('today.noBingo') : state === 'off' ? tr('today.noCard') : tr('today.notYet') })}
       style={{ width: w, height: h, borderRadius: 3, alignItems: 'center', justifyContent: 'center', borderWidth: state === 'later' || state === 'off' ? 1 : 1.5, borderStyle: state === 'miss' ? 'dashed' : 'solid', borderColor: state === 'today' ? t.ink : t.borderStrong, backgroundColor: state === 'miss' ? t.borderSubtle : undefined, opacity: state === 'later' || state === 'off' ? 0.45 : 1 }}>
       <Text style={[ui(w < 50 ? 9 : 10.5, 600), { color: state === 'today' ? t.ink : t.inkMuted }]}>{label}</Text>
     </View>
@@ -330,10 +339,10 @@ function AlbumTab({ hub }: { hub: Hub }) {
     from = new Date(monday(now.getTime())); from.setDate(from.getDate() - 7 * off);
     days = Array.from({ length: 7 }, (_, j) => dayKey(new Date(from).setDate(from.getDate() + j)));
     const fmt = (k: string) => new Date(k + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    title = off === 0 ? 'This week' : off === 1 ? 'Last week' : `${fmt(days[0])} – ${fmt(days[6])}`;
+    title = off === 0 ? tr('today.thisWeek') : off === 1 ? tr('today.lastWeek') : `${fmt(days[0])} – ${fmt(days[6])}`;
     const pw = Math.min(84, Math.floor(W / 4) - 14);
     const item = (k: string, j: number) => {
-      const label = k === today ? 'Today' : new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short' });
+      const label = k === today ? tr('today.today') : new Date(k + 'T12:00').toLocaleDateString('en-US', { weekday: 'short' });
       const d = hub.album[k];
       return d?.print ? <Polaroid key={k} day={d} w={pw} tilt={TILT[j]} label={label} peg onPress={() => setPicking(k)} onLongPress={() => setBig(shown.findIndex((p) => p.id === k))} t={t} />
         : <Blank key={k} w={pw} h={pw + 12} label={label} state={k === today ? 'today' : k > today ? 'later' : !first || k < first ? 'off' : 'miss'} t={t} />;
@@ -368,12 +377,12 @@ function AlbumTab({ hub }: { hub: Hub }) {
   }
   const shown = days.filter((k) => hub.album[k]?.print).map((k) => ({ id: k, uri: hub.album[k].print! }));
   const prints = shown.length, quests = days.filter((k) => hub.album[k]?.quest).length;
-  const sum = view === 'Week' ? `${s(prints, 'bingo')} · quest ${quests ? 'found' : off ? 'missed' : 'open'}` : `${title}: ${s(prints, 'bingo')}, ${s(quests, 'side quest')}`;
+  const sum = view === 'Week' ? tr('today.weekSum', { bingo: s(prints, 'bingo'), quest: quests ? tr('today.questFound') : off ? tr('today.questMissed') : tr('today.questOpen') }) : tr('today.monthSum', { title, bingo: s(prints, 'bingo'), quest: s(quests, 'side quest') });
   const name = view === 'Week' ? 'week' : 'month';
   const share = useShare(card, name, `${view === 'Week' ? 'My week' : title} in photo bingo #picdumpbingo`);
   const canBack = !!first && first < days[0];
   const arrow = (dir: -1 | 1, on: boolean) => (
-    <Tap onPress={() => setOff((x) => x - dir)} disabled={!on} accessibilityRole="button" accessibilityLabel={dir < 0 ? `Previous ${name}` : `Next ${name}`} style={{ padding: 6, opacity: on ? 1 : 0.3 }}>
+    <Tap onPress={() => setOff((x) => x - dir)} disabled={!on} accessibilityRole="button" accessibilityLabel={dir < 0 ? tr('today.prevName', { name }) : tr('today.nextName', { name })} style={{ padding: 6, opacity: on ? 1 : 0.3 }}>
       <Text style={[ui(16, 600), { color: t.ink }]}>{dir < 0 ? '‹' : '›'}</Text>
     </Tap>
   );
@@ -390,12 +399,12 @@ function AlbumTab({ hub }: { hub: Hub }) {
           {body}
           <Text style={[ui(12, 600), { color: t.inkMuted, textAlign: 'center', marginTop: 2 }]}>{sum}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-            <ShareButtons name={name} ghost shareLabel={`Share ${name}`} />
+            <ShareButtons name={name} ghost shareLabel={tr('today.shareName', { name })} />
           </View>
         </FrameCard>
       </View>
         {/* over the ghost, outside the capture: border + padding */}
-        <View style={{ position: 'absolute', right: 13, bottom: Platform.OS === 'android' ? 14 : 13 }}><ShareButtons name={name} run={share.run} shareLabel={`Share ${name}`} /></View>
+        <View style={{ position: 'absolute', right: 13, bottom: Platform.OS === 'android' ? 14 : 13 }}><ShareButtons name={name} run={share.run} shareLabel={tr('today.shareName', { name })} /></View>
       </View>
       {share.said ? <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: 8 }]}>{share.said}</Text> : null}
       <PhotoViewer photos={shown} index={big} onClose={() => setBig(null)} />
@@ -417,7 +426,7 @@ export default function Today() {
     <View style={{ flex: 1 }}>
       <Screen>
         <View style={{ paddingTop: 2, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
-          <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}><Icons.back size={16} /></IconButton>
+          <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}><Icons.back size={16} /></IconButton>
           <View style={{ flex: 1, alignItems: 'center' }}><Pill big items={['Bingo', 'Album'] as const} on={tab} onPick={setTab} /></View>
           <View style={{ width: 36 }} />
         </View>

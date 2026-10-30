@@ -144,6 +144,7 @@ jest.mock('react-native-purchases', () => ({
   __esModule: true,
   default: {
     setLogLevel: jest.fn(),
+    setLogHandler: jest.fn(),
     configure: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(),
     getCustomerInfo: jest.fn(async () => ({

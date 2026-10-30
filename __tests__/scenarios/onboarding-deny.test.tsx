@@ -1,7 +1,7 @@
-import path from 'path';
-import { AppState, Dimensions } from 'react-native';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { firstRunToAsk, goToStep, pressLast } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 
 const ML = jest.requireMock('expo-media-library/legacy');
@@ -17,14 +17,7 @@ beforeEach(async () => {
   ML.getPermissionsAsync.mockImplementation(async () => granted);
 });
 
-/** First run, swiped to the privacy slide. */
-async function toAsk() {
-  await renderRouter(path.resolve(__dirname, '../../src/app'), { initialUrl: '/' });
-  let pager = await screen.findByText('Turn camera roll chaos into dumps', {}, { timeout: 10000 });
-  while (!pager.props.onScroll) pager = pager.parent!;
-  await fireEvent.scroll(pager, { nativeEvent: { contentOffset: { x: Dimensions.get('window').width } } });
-  return screen.findByText('Allow photos & continue');
-}
+const toAsk = firstRunToAsk;
 
 test('onboarding: a "no" to photos is asked once (even double-tapped), Home offers it again, and a grant in Settings is picked up on return', async () => {
   ML.requestPermissionsAsync.mockImplementation(async () => denied);
@@ -32,6 +25,9 @@ test('onboarding: a "no" to photos is asked once (even double-tapped), Home offe
   const allow = await toAsk();
   fireEvent.press(allow);
   await fireEvent.press(allow);
+  await pressLast('Continue without photos');
+  await goToStep('30'); // the questions in between need no photos
+  await pressLast('Open Discover');
 
   expect(await screen.findByText('Let PicDump see your photos', {}, { timeout: 10000 })).toBeTruthy();
   expect(ML.requestPermissionsAsync).toHaveBeenCalledTimes(1); // no second system dialog on the way to Home

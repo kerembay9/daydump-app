@@ -7,6 +7,7 @@ import { Icons } from '../components/ui/Icons';
 import { SelfieFinder } from '../components/SelfieFinder';
 import { useTheme } from '../theme/ThemeProvider';
 import { display } from '../theme/type';
+import { tr } from '../i18n';
 
 /** Dev tools experiment (onboarding uses its pick, useSelfiePick): the selfie finder on its own screen. */
 export default function Selfie() {
@@ -14,7 +15,7 @@ export default function Selfie() {
   return (
     <Screen keyboardShouldPersistTaps="handled">
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
         <Text style={[display(20), { color: t.ink }]}>Selfie experiment</Text>
       </View>
       <SelfieFinder />

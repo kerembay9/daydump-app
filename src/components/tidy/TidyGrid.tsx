@@ -11,6 +11,7 @@ import { Icons } from '../ui/Icons';
 import { Pill } from '../ui/Pill';
 import type { ConfirmSpec } from '../ui/Sheet';
 import { Tap } from '../ui/Tap';
+import { tr } from '../../i18n';
 
 /** 2.4 MB, 37 MB, 1.2 GB (decimal units, as Android's Files app shows them). */
 export function formatBytes(b: number) {
@@ -23,27 +24,30 @@ export function formatBytes(b: number) {
 export const missChip = (c: Check[]) => c.find((x) => !x.ok)?.text;
 
 const LOCK_ASK: Record<string, string> = {
-  Favorite: 'This one’s a favorite.',
-  'In a dump': 'This one’s in a dump.',
-  'Taken in the last 2 days': 'This one’s from the last 2 days.',
-  'Looks like a moment': 'This one looks like a moment.',
-  'In a Discover story': 'This one’s in a Discover story.',
-  'You’re in it': 'You’re in this one.',
+  Favorite: 'tidy.lockFavorite',
+  'In a dump': 'tidy.lockInDump',
+  'Taken in the last 2 days': 'tidy.lockRecent',
+  'Looks like a moment': 'tidy.lockMoment',
+  'In a Discover story': 'tidy.lockStory',
+  'You’re in it': 'tidy.lockYou',
 };
 /** "Trash anyway?" for a locked photo (lockOf's reasons). */
-export const lockConfirm = (lock: string, onConfirm: () => void): ConfirmSpec => ({
-  title: `${LOCK_ASK[lock] ?? `This one is marked “${lock}”.`} Trash anyway?`,
-  body: 'You can restore it from Tidy while it’s in Trash.',
-  action: 'Trash anyway',
-  onConfirm,
-});
+export const lockConfirm = (lock: string, onConfirm: () => void): ConfirmSpec => {
+  const reason = LOCK_ASK[lock] ? tr(LOCK_ASK[lock] as any) : tr('tidy.lockGeneric', { lock });
+  return {
+    title: tr('tidy.trashAnywayTitle', { reason }),
+    body: tr('tidy.trashAnywayBody'),
+    action: tr('tidy.trashAnyway'),
+    onConfirm,
+  };
+};
 
 /** Our sheet before Android's own dialog(s). */
 export const moveConfirm = (n: number, bytes: number, onConfirm: () => void): ConfirmSpec => ({
-  title: `Move ${n} photo${n === 1 ? '' : 's'} to Trash?`,
-  body: `${formatBytes(bytes)} · You can restore them from Tidy until they leave Trash (usually 30 days).`
-    + (n > PER_DIALOG ? ` Android will ask ${Math.ceil(n / PER_DIALOG)} times.` : ''),
-  action: 'Move to Trash',
+  title: tr('tidy.moveConfirmTitle', { count: n }),
+  body: tr('tidy.moveConfirmBody', { bytes: formatBytes(bytes) })
+    + (n > PER_DIALOG ? tr('tidy.moveConfirmAsk', { count: Math.ceil(n / PER_DIALOG) }) : ''),
+  action: tr('tidy.moveToTrash'),
   onConfirm,
 });
 
@@ -52,7 +56,7 @@ export const moveConfirm = (n: number, bytes: number, onConfirm: () => void): Co
 export function Primary({ label, onPress, disabled, pro }: { label: string; onPress: () => void; disabled?: boolean; pro?: boolean }) {
   const { t } = useTheme();
   return (
-    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={pro ? 'PicDump Pro' : undefined} accessibilityState={{ disabled: !!disabled }}
+    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityHint={pro ? tr('tidy.proHint') : undefined} accessibilityState={{ disabled: !!disabled }}
       style={{ height: 46, borderRadius: 23, backgroundColor: t.ink, opacity: disabled ? 0.4 : 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 }}>
       <Text style={[ui(13.5, 600), { color: t.bgScreen }]} numberOfLines={1}>{label}</Text>
       {pro ? <ProBadge inverse /> : null}
@@ -64,8 +68,8 @@ export function Primary({ label, onPress, disabled, pro }: { label: string; onPr
 export function KeepToggle({ removing, onChange }: { removing: boolean; onChange: (remove: boolean) => void }) {
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-      <Pill label="Keep" on={!removing} onPress={() => onChange(false)} height={32} size={12} />
-      <Pill label="Remove" on={removing} onPress={() => onChange(true)} height={32} size={12} />
+      <Pill label={tr('tidy.keep')} on={!removing} onPress={() => onChange(false)} height={32} size={12} />
+      <Pill label={tr('tidy.remove')} on={removing} onPress={() => onChange(true)} height={32} size={12} />
     </View>
   );
 }
@@ -96,8 +100,8 @@ const Cell = React.memo(function Cell({ it, on, size, index, onPress, onLongPres
   const { p, badge, chip } = it;
   return (
     <Tap onPress={() => onPress(p.id)} onLongPress={() => onLongPress(index)} delayLongPress={350} accessibilityRole="button"
-      accessibilityState={{ selected: on }} accessibilityHint="Hold to enlarge"
-      accessibilityLabel={`Photo from ${dateRange(p.created, p.created)}${badge ? `, ${badge}` : ''}, ${on ? 'Trash' : 'Keep'}`}
+      accessibilityState={{ selected: on }} accessibilityHint={tr('tidy.holdToEnlarge')}
+      accessibilityLabel={tr('tidy.photoFromA11y', { date: dateRange(p.created, p.created), badge: badge ? `, ${badge}` : '', status: on ? tr('tidy.trash') : tr('tidy.keep') })}
       style={{ width: size, height: size, borderRadius: 10 }}>
       <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
         <Image source={{ uri: p.uri }} style={{ flex: 1, opacity: on ? 0.4 : 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
@@ -118,7 +122,7 @@ const Cell = React.memo(function Cell({ it, on, size, index, onPress, onLongPres
       <View style={[{ position: 'absolute', right: 5, bottom: badge ? 22 : 5, height: 22, paddingHorizontal: 8, borderRadius: 11, flexDirection: 'row', alignItems: 'center', gap: 3 },
         on ? { backgroundColor: t.ink } : { backgroundColor: 'rgba(255,255,255,0.92)' }]}>
         {on ? <Icons.trash size={11} color={t.bgScreen} /> : null}
-        <Text style={[ui(10, 600), { color: on ? t.bgScreen : '#1a1a1a' }]}>{on ? 'Trash' : 'Keep'}</Text>
+        <Text style={[ui(10, 600), { color: on ? t.bgScreen : '#1a1a1a' }]}>{on ? tr('tidy.trash') : tr('tidy.keep')}</Text>
       </View>
     </Tap>
   );

@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 import { IconButton } from './ui/TopHeader';
 import { Icons } from './ui/Icons';
+import { tr } from '../i18n';
 
 export type LegalDocType = 'terms' | 'privacy';
 
@@ -56,10 +57,10 @@ export function LegalModal({ visible, type, onClose }: { visible: boolean; type:
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 8 }}>
         <View style={{ paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={[display(24, 1.1), { color: t.ink }]}>{type === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}</Text>
-          <IconButton label="Close" onPress={onClose}><Icons.close size={16} /></IconButton>
+          <Text style={[display(24, 1.1), { color: t.ink }]}>{type === 'privacy' ? tr('common.privacyPolicy') : tr('common.termsOfService')}</Text>
+          <IconButton label={tr('common.close')} onPress={onClose}><Icons.close size={16} /></IconButton>
         </View>
-        <Text style={[ui(12), { color: t.inkMuted, paddingHorizontal: 16, paddingBottom: 12 }]}>{`Effective ${EFFECTIVE_DATE}`}</Text>
+        <Text style={[ui(12), { color: t.inkMuted, paddingHorizontal: 16, paddingBottom: 12 }]}>{tr('common.effectiveDate', { date: EFFECTIVE_DATE })}</Text>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24, gap: 14 }} showsVerticalScrollIndicator={false}>
           {doc.map(([h, body], i) => (
             <View key={h}>

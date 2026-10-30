@@ -1,8 +1,6 @@
-import path from 'path';
-import { Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { bootApp, settle } from '../../jest/app';
+import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
+import { bootApp, firstRunToAsk, goToStep, settle } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 
 const ML = jest.requireMock('expo-media-library/legacy');
@@ -17,22 +15,15 @@ beforeEach(async () => {
   ML.getPermissionsAsync.mockImplementation(async () => granted);
 });
 
-test('first run: both slides show their pictures, and once onboarding closes the first dump prints as a booth strip, once', async () => {
-  await renderRouter(path.resolve(__dirname, '../../src/app'), { initialUrl: '/' });
-  let pager = await screen.findByText('Turn camera roll chaos into dumps', {}, { timeout: 10000 });
-  expect(screen.getByLabelText(/Photos sorting themselves/)).toBeTruthy();
-  expect(screen.getByLabelText('Page 1 of 4')).toBeTruthy();
+test('first run: once onboarding closes the first dump prints as a booth strip, once', async () => {
+  const allow = await firstRunToAsk();
+  expect(screen.getByText('Let PicDump read your photos')).toBeTruthy();
   expect(screen.queryByText('Kept')).toBeNull(); // no counter pill
   expect(screen.queryByText(/Android settings/)).toBeNull(); // no footer line
-  while (!pager.props.onScroll) pager = pager.parent!;
-  await fireEvent.scroll(pager, { nativeEvent: { contentOffset: { x: Dimensions.get('window').width } } });
-  expect(screen.getByLabelText(/inside a lock; none reach the cloud/)).toBeTruthy();
-  expect(screen.getByLabelText('Page 2 of 4')).toBeTruthy();
-  expect(screen.queryByText(/Allow all/)).toBeNull();
-  await fireEvent.press(await screen.findByText('Allow photos & continue'));
-  await fireEvent.press(await screen.findByText('Not now'));
+  await fireEvent.press(allow);
+  await goToStep('30');
   expect(screen.queryByLabelText(/^Your first dump/)).toBeNull(); // not under the onboarding
-  await fireEvent.press(await screen.findByText(/^Skip/));
+  await fireEvent.press(await screen.findByText('Open Discover'));
 
   const strip = await screen.findByLabelText(/^Your first dump: /, {}, { timeout: 10000 });
   expect(await AsyncStorage.getItem(SHOWN)).toBe('true');

@@ -1,8 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { act, renderHook } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import { LANGUAGES } from '../src/i18n/languages';
 import { translations } from '../src/i18n/translations';
-import { i18n, isRtl, tr } from '../src/i18n';
+import { getLocale, i18n, isRtl, setLocale, subscribeLocale, tr, useLocale, useTranslation } from '../src/i18n';
+import { langName } from '../src/services/index/queryLang';
 import en from '../src/i18n/locales/en.json';
 
 const LOCALES = path.join(__dirname, '../src/i18n/locales');
@@ -59,9 +62,82 @@ test('every translation key used in the source exists in en.json', () => {
     const src = fs.readFileSync(f, 'utf8');
     for (const m of src.matchAll(/\btr\(\s*'([A-Za-z0-9_.]+)'/g)) used.add(m[1]);
     // keys held in data (tab labels, slides, paywall copy) and passed to tr() later
-    for (const m of src.matchAll(/'((?:common|tabs|onboarding|paywall|profile)\.[A-Za-z0-9_.]+)'/g)) used.add(m[1]);
+    for (const m of src.matchAll(/'((?:common|tabs|onboarding|paywall|profile|discover|create|tidy|library|edit|preview|today|dialogs|models)\.[A-Za-z0-9_.]+)'/g)) used.add(m[1]);
   }
   expect(used.size).toBeGreaterThan(50);
   const missing = [...used].filter((k) => !english.has(k));
   expect(missing).toEqual([]);
+});
+
+test('setLocale updates locale, notifies subscribers, and getLocale returns active locale', () => {
+  const listener = jest.fn();
+  const unsubscribe = subscribeLocale(listener);
+
+  expect(getLocale()).toBe('en');
+  setLocale('es');
+  expect(getLocale()).toBe('es');
+  expect(i18n.locale).toBe('es');
+  expect(listener).toHaveBeenCalledTimes(1);
+
+  unsubscribe();
+  setLocale('en');
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
+test('useLocale hook reactively updates when locale changes', async () => {
+  const { result } = await renderHook(() => useLocale());
+  expect(result.current).toBe('en');
+
+  await act(async () => {
+    setLocale('tr');
+  });
+
+  expect(result.current).toBe('tr');
+});
+
+test('useTranslation hook provides reactive tr, t, locale, and isRtl', async () => {
+  const { result } = await renderHook(() => useTranslation());
+
+  expect(result.current.locale).toBe('en');
+  expect(result.current.isRtl).toBe(false);
+  expect(result.current('tabs.discover')).toBe('Discover');
+  expect(result.current.tr('tabs.discover')).toBe('Discover');
+  expect(result.current.t('tabs.discover')).toBe('Discover');
+
+  await act(async () => {
+    setLocale('ar');
+  });
+
+  expect(result.current.locale).toBe('ar');
+  expect(result.current.isRtl).toBe(true);
+});
+
+test('isRtl supports defaults and language aliases', () => {
+  setLocale('en');
+  expect(isRtl()).toBe(false);
+
+  setLocale('ar');
+  expect(isRtl()).toBe(true);
+
+  expect(isRtl('iw')).toBe(true); // Hebrew alias
+  expect(isRtl('ar-EG')).toBe(true);
+  expect(isRtl('en-US')).toBe(false);
+});
+
+test('langName resolves language names from LANGUAGES fallback across platforms', () => {
+  expect(langName('es')).toBe('Spanish');
+  expect(langName('ja')).toBe('Japanese');
+  expect(langName('tr')).toBe('Turkish');
+  expect(langName('unknown_code')).toBe('unknown_code');
+});
+
+test('AppState becoming active synchronizes deviceLanguage when different', () => {
+  const handler = (AppState.addEventListener as jest.Mock).mock.calls.find((c) => c[0] === 'change')?.[1];
+  expect(typeof handler).toBe('function');
+
+  setLocale('fr');
+  expect(getLocale()).toBe('fr');
+
+  handler('active');
+  expect(getLocale()).toBe('en');
 });

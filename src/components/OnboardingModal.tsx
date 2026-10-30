@@ -52,13 +52,14 @@ const SLIDES: Slide[] = [
  * First-run slides in the app's theme. The last one (privacy) asks for photo access; with it, indexing starts (onStart) and the
  * recap notification's ask shows (NotifyStep), then the profile step (ProfileStep): pages 3 and 4 of the same dots, slid in (they
  * read the photos, so the pager can't reach them before the grant). There is no paywall step. onFinish(started): whether onStart already ran.
+ * from 'notify': the new onboarding screens (app/onboarding) came first and asked for photos; this carries on from the recap ask until their later phases land.
  */
-export function OnboardingModal({ visible, onStart, onFinish }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void }) {
+export function OnboardingModal({ visible, onStart, onFinish, from = 'slides' }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void; from?: 'slides' | 'notify' }) {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
-  const [step, setStep] = useState<'slides' | 'notify' | 'profile'>('slides'); // notify + profile: after the photo grant
+  const [step, setStep] = useState<'slides' | 'notify' | 'profile'>(from); // notify + profile: after the photo grant (from: the route-group screens already asked)
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
   // the selfie finder's models load while the slides are read

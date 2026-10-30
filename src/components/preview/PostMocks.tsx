@@ -13,6 +13,7 @@ import type { Images, Slide } from '../edit/SlidePager';
 import { developFor, FilterState } from '../../services/filters';
 import { Frame, ratioOf } from '../../services/layouts';
 import { SlideDrawing } from '../../services/slides';
+import { tr } from '../../i18n';
 
 /** What every mock-up draws from. */
 export type PostView = {
@@ -84,7 +85,7 @@ function Pager({ v, w, h }: { v: PostView; w: number; h: number }) {
       onMomentumScrollEnd={(e) => { if (swiped.current) v.onIndex(Math.round(e.nativeEvent.contentOffset.x / w)); }}
       style={{ width: w, height: h }}
       renderItem={({ item }) => (
-        <Pressable onPress={() => v.onIndex((v.index + 1) % n)} accessibilityLabel={v.index === n - 1 ? 'First slide' : 'Next slide'}>
+        <Pressable onPress={() => v.onIndex((v.index + 1) % n)} accessibilityLabel={v.index === n - 1 ? tr('preview.firstSlideA11y') : tr('preview.nextSlideA11y')}>
           <SlideCanvas v={v} i={item} w={w} h={h} />
         </Pressable>
       )}
@@ -97,7 +98,7 @@ function Avatar({ v, size, ringed = true, border = 1 }: { v: PostView; size: num
   const { t } = useTheme();
   const initial = (v.name.trim()[0] || v.handle[0] || '').toUpperCase();
   return (
-    <Tap onPress={v.onAvatar} accessibilityRole="button" accessibilityLabel="Profile"
+    <Tap onPress={v.onAvatar} accessibilityRole="button" accessibilityLabel={tr('preview.profileA11y')}
       style={[{ width: size, height: size, borderRadius: size / 2, padding: ringed ? 1.5 : 0 }, ringed ? ring : null]}>
       <View style={{ flex: 1, borderRadius: size, overflow: 'hidden', borderWidth: border, borderColor: WHITE, backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
         {v.avatar ? <Image source={{ uri: v.avatar }} style={{ width: '100%', height: '100%', borderRadius: size }} contentFit="cover" />
@@ -132,12 +133,12 @@ export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (
               autoCorrect={false}
               maxLength={30}
               onEndEditing={(e) => onHandle(e.nativeEvent.text)}
-              accessibilityLabel="Your handle"
+              accessibilityLabel={tr('preview.yourHandleA11y')}
               style={[ui(12.5, 700), { color: t.ink, padding: 0, minWidth: 40, maxWidth: 170, includeFontPadding: false }]}
             />
-            <Tap onPress={() => input.current?.focus()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Edit handle"
+            <Tap onPress={() => input.current?.focus()} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('preview.editHandleA11y')}
               style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: t.dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }}>
-              <Text style={[ui(9.5, 500), { color: t.inkMuted }]}>edit @</Text>
+              <Text style={[ui(9.5, 500), { color: t.inkMuted }]}>{tr('preview.editHandle')}</Text>
             </Tap>
           </View>
           {v.place ? <Text style={[ui(10.5), { color: t.inkMuted }]} numberOfLines={1}>{v.place}</Text> : null}
@@ -154,12 +155,12 @@ export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (
           <>
             {/* like IG: no Previous on the first slide, no Next on the last */}
             {v.index > 0 ? (
-              <Tap onPress={() => v.onIndex(v.index - 1)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Previous slide" style={[arrow, { left: 8 }]}>
+              <Tap onPress={() => v.onIndex(v.index - 1)} hitSlop={6} accessibilityRole="button" accessibilityLabel={tr('preview.prevSlideA11y')} style={[arrow, { left: 8 }]}>
                 <Icons.back size={14} color={WHITE} />
               </Tap>
             ) : null}
             {v.index < n - 1 ? (
-              <Tap onPress={() => v.onIndex(v.index + 1)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Next slide" style={[arrow, { right: 8 }]}>
+              <Tap onPress={() => v.onIndex(v.index + 1)} hitSlop={6} accessibilityRole="button" accessibilityLabel={tr('preview.nextSlideA11y')} style={[arrow, { right: 8 }]}>
                 <Icons.chevron size={14} color={WHITE} />
               </Tap>
             ) : null}
@@ -170,24 +171,24 @@ export function IgPost({ v, w, onHandle }: { v: PostView; w: number; onHandle: (
       <View style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Tap onPress={v.onLike} hitSlop={6} accessibilityRole="button" accessibilityLabel={v.liked ? 'Unlike' : 'Like'}>
+            <Tap onPress={v.onLike} hitSlop={6} accessibilityRole="button" accessibilityLabel={v.liked ? tr('preview.unlike') : tr('preview.like')}>
               <Icons.heart size={21} color={v.liked ? fixed.like : t.ink} fill={v.liked ? fixed.like : undefined} />
             </Tap>
-            <Tap onPress={() => v.onIndex((v.index + 1) % n)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Comments"><Icons.comment size={20} /></Tap>
+            <Tap onPress={() => v.onIndex((v.index + 1) % n)} hitSlop={6} accessibilityRole="button" accessibilityLabel={tr('preview.comments')}><Icons.comment size={20} /></Tap>
             <Icons.send size={19} />
           </View>
           <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
             {n > 1 ? v.slides.map((_, i) => (
-              <Pressable key={i} onPress={() => v.onIndex(i)} hitSlop={3} accessibilityLabel={`Slide ${i + 1}`}
+              <Pressable key={i} onPress={() => v.onIndex(i)} hitSlop={3} accessibilityLabel={tr('preview.slideIndexA11y', { index: i + 1 })}
                 style={{ width: i === v.index ? 7 : 5, height: i === v.index ? 7 : 5, borderRadius: 4, backgroundColor: i === v.index ? fixed.igBlue : t.ink, opacity: i === v.index ? 1 : 0.25 }} />
             )) : null}
           </View>
-          <Tap onPress={v.onSave} hitSlop={6} accessibilityRole="button" accessibilityLabel={v.saved ? 'Unsave' : 'Save'}>
+          <Tap onPress={v.onSave} hitSlop={6} accessibilityRole="button" accessibilityLabel={v.saved ? tr('preview.unsave') : tr('preview.save')}>
             <Icons.bookmark size={20} color={v.saved ? t.accentFab : t.ink} fill={v.saved ? t.accentFab : undefined} />
           </Tap>
         </View>
-        <Text style={[ui(12, 600), { color: t.ink, marginTop: 6 }]}>Liked by {(LIKES + (v.liked ? 1 : 0)).toLocaleString('en-US')} others</Text>
-        <Text style={[ui(11), { color: t.inkMuted, marginTop: 4 }]}>View all 38 comments</Text>
+        <Text style={[ui(12, 600), { color: t.ink, marginTop: 6 }]}>{tr('preview.likedByOthers', { count: (LIKES + (v.liked ? 1 : 0)).toLocaleString('en-US') })}</Text>
+        <Text style={[ui(11), { color: t.inkMuted, marginTop: 4 }]}>{tr('preview.viewAllComments', { count: 38 })}</Text>
       </View>
     </FrameCard>
   );
@@ -216,7 +217,7 @@ export function IgGrid({ v, w, others }: { v: PostView; w: number; others: strin
           <SlideCanvas v={v} i={0} w={tile} h={tile} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: t.ink }} />
           <View pointerEvents="none" style={{ position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: '#2B1810' }}>
-            <Text style={[ui(9, 700), { color: fixed.printBorder }]}>NEW</Text>
+            <Text style={[ui(9, 700), { color: fixed.printBorder }]}>{tr('preview.badgeNew')}</Text>
           </View>
         </View>
         {Array.from({ length: 8 }, (_, i) => (
@@ -248,32 +249,32 @@ export function TikTok({ v, w, h }: { v: PostView; w: number; h: number }) {
     <View style={{ width: w, height: h, alignSelf: 'center', borderRadius: 22, overflow: 'hidden', backgroundColor: fixed.tiktokBg, marginBottom: 10, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)' }}>
       <Pager v={v} w={w} h={h} />
       <View pointerEvents="none" style={{ position: 'absolute', top: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 16 }}>
-        <Text style={[ui(12.5, 600), { color: WHITE, opacity: 0.7 }, shadowText]}>Following</Text>
-        <Text style={[ui(12.5, 600), { color: WHITE, borderBottomWidth: 2, borderColor: WHITE, paddingBottom: 2 }, shadowText]}>For You</Text>
+        <Text style={[ui(12.5, 600), { color: WHITE, opacity: 0.7 }, shadowText]}>{tr('preview.following')}</Text>
+        <Text style={[ui(12.5, 600), { color: WHITE, borderBottomWidth: 2, borderColor: WHITE, paddingBottom: 2 }, shadowText]}>{tr('preview.forYou')}</Text>
       </View>
       <View style={{ position: 'absolute', right: 10, bottom: 92, alignItems: 'center', gap: 14 }}>
         <Avatar v={v} size={36} ringed={false} border={2} />
-        <RailItem name={v.liked ? 'Unlike' : 'Like'} onPress={v.onLike} label={(LIKES + (v.liked ? 1 : 0)).toLocaleString('en-US')}
+        <RailItem name={v.liked ? tr('preview.unlike') : tr('preview.like')} onPress={v.onLike} label={(LIKES + (v.liked ? 1 : 0)).toLocaleString('en-US')}
           icon={<Icons.heart size={24} color={v.liked ? fixed.like : WHITE} fill={v.liked ? fixed.like : undefined} />} />
-        <RailItem name="Comments" label="64" icon={<Icons.comment size={24} color={WHITE} />} />
-        <RailItem name={v.saved ? 'Unsave' : 'Save'} onPress={v.onSave} label={v.saved ? '193' : '192'}
+        <RailItem name={tr('preview.comments')} label="64" icon={<Icons.comment size={24} color={WHITE} />} />
+        <RailItem name={v.saved ? tr('preview.unsave') : tr('preview.save')} onPress={v.onSave} label={v.saved ? '193' : '192'}
           icon={<Icons.bookmark size={24} color={WHITE} fill={v.saved ? WHITE : undefined} />} />
-        <RailItem name="Share" label="28" icon={<Icons.send size={20} color={WHITE} />} />
+        <RailItem name={tr('preview.share')} label="28" icon={<Icons.send size={20} color={WHITE} />} />
       </View>
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 14, paddingRight: 56, experimental_backgroundImage: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.38) 65%, rgba(0,0,0,0) 100%)' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[ui(13.5, 700), { color: WHITE }]}>@{shown(v.handle)}</Text>
           <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Text style={[ui(10), { color: WHITE }]}>Photo Mode · {v.index + 1}/{n}</Text>
+            <Text style={[ui(10), { color: WHITE }]}>{tr('preview.photoModeIndex', { current: v.index + 1, total: n })}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
           <Icons.music size={14} color="rgba(255,255,255,0.8)" />
-          <Text style={[ui(11), { color: 'rgba(255,255,255,0.8)' }]}>original sound · {shown(v.handle)}</Text>
+          <Text style={[ui(11), { color: 'rgba(255,255,255,0.8)' }]}>{tr('preview.originalSound', { handle: shown(v.handle) })}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 4, marginTop: 8 }}>
           {v.slides.map((_, i) => (
-            <Pressable key={i} onPress={() => v.onIndex(i)} hitSlop={{ top: 8, bottom: 8 }} accessibilityLabel={`Slide ${i + 1}`}
+            <Pressable key={i} onPress={() => v.onIndex(i)} hitSlop={{ top: 8, bottom: 8 }} accessibilityLabel={tr('preview.slideIndexA11y', { index: i + 1 })}
               style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i === v.index ? WHITE : 'rgba(255,255,255,0.35)' }} />
           ))}
         </View>

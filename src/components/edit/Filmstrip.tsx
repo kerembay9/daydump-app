@@ -15,6 +15,7 @@ import { Icons } from '../ui/Icons';
 import { Sheet } from '../ui/Sheet';
 import type { DumpPhoto } from '../../services/dumps';
 import { developFor, editedOwn, FilterState } from '../../services/filters';
+import { tr } from '../../i18n';
 
 const W = 46, H = 50, GAP = 6, SLOT = W + GAP;
 /** The tapped photo's size, and the held one's while it's dragged (it also rises by RISE). */
@@ -80,7 +81,7 @@ function Thumb({ p, i, n, drag, active, selected, image, matrix, own, onTap, onH
   const cover = i === 0;
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
-      <Animated.View accessible accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}${cover ? ', cover' : ''}${own ? ', edited' : ''}. Hold for options or to move.`}
+      <Animated.View accessible accessibilityRole="button" accessibilityLabel={tr('edit.filmstripPhotoA11y', { index: i + 1, cover: cover ? tr('edit.coverSuffix') : '', edited: own ? tr('edit.editedSuffix') : '' })}
         style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H, borderRadius: 10, marginTop: 3 },
           selected ? { boxShadow: `0 0 0 2.5px ${t.ink}`, marginTop: 1 } : active ? { boxShadow: `0 0 0 1.5px ${t.inkMuted}`, marginTop: 2 } : { opacity: 0.82 }, style]}>
         <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
@@ -122,13 +123,13 @@ function PickGrid({ sections, onPick }: { sections: { title: string; photos: Dum
   const any = sections.some((s) => s.photos.length);
   return (
     <RNScrollView style={{ maxHeight: win.height * 0.55 }} contentContainerStyle={{ gap: 12 }}>
-      {!any ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>No other photos to suggest yet. They show up once your library is indexed.</Text> : null}
+      {!any ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>{tr('edit.noSuggestedPhotos')}</Text> : null}
       {sections.filter((s) => s.photos.length).map((s) => (
         <View key={s.title} style={{ gap: 6 }}>
           <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{caps(s.title)}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {s.photos.map((p) => (
-              <Tap key={p.id} onPress={() => onPick(p)} accessibilityRole="button" accessibilityLabel="Use this photo" style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
+              <Tap key={p.id} onPress={() => onPick(p)} accessibilityRole="button" accessibilityLabel={tr('edit.useThisPhoto')} style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
                 <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.uri} />
               </Tap>
             ))}
@@ -170,8 +171,8 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
   return (
     <View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingHorizontal: 2 }}>
-        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{caps('Dump order')}</Text>
-        <Text style={[ui(10, 400), { color: t.inkMuted }]}>Hold to edit</Text>
+        <Text style={[label(9.5, 0.11), { color: t.inkMuted }]}>{caps(tr('edit.dumpOrder'))}</Text>
+        <Text style={[ui(10, 400), { color: t.inkMuted }]}>{tr('edit.holdToEdit')}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: -ROOM_TOP, marginHorizontal: -ROOM_X }}
         contentContainerStyle={{ gap: GAP, paddingTop: ROOM_TOP, paddingBottom: 6, paddingHorizontal: 2 + ROOM_X }}>
@@ -181,33 +182,33 @@ export function Filmstrip({ photos, active, selected, images, filter, onTap, onM
               image={images[p.uri]} matrix={developFor(filter, p.id).matrix} own={editedOwn(filter, p.id)} onTap={onTap} onMove={onMove} onHold={(j) => setOpen({ kind: 'menu', i: j })} />
           ))}
         </View>
-        <Tap onPress={() => setOpen({ kind: 'add' })} accessibilityRole="button" accessibilityLabel="Add photos"
+        <Tap onPress={() => setOpen({ kind: 'add' })} accessibilityRole="button" accessibilityLabel={tr('edit.addPhotos')}
           style={{ width: W, height: H, marginTop: 3, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={[ui(20, 400), { color: t.inkMuted, marginTop: -2 }]}>+</Text>
         </Tap>
       </ScrollView>
 
       <Sheet visible={open?.kind === 'menu'} onClose={close}>
-        <Text style={[display(19), { color: t.ink, marginBottom: 4 }]}>Photo {i + 1}{i === 0 ? ' · cover' : ''}</Text>
-        <Action text="Make cover" disabled={i === 0} onPress={() => { onMove(i, 0); close(); }} />
-        <Action text="Swap for a similar photo" onPress={() => setOpen({ kind: 'swap', i })} />
+        <Text style={[display(19), { color: t.ink, marginBottom: 4 }]}>{tr('edit.photoMenuTitle', { index: i + 1, cover: i === 0 ? tr('edit.coverSuffixDot') : '' })}</Text>
+        <Action text={tr('edit.makeCover')} disabled={i === 0} onPress={() => { onMove(i, 0); close(); }} />
+        <Action text={tr('edit.swapSimilar')} onPress={() => setOpen({ kind: 'swap', i })} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}><Action text="← Move left" disabled={i <= 0} onPress={() => { onMove(i, i - 1); setOpen({ kind: 'menu', i: i - 1 }); }} /></View>
-          <View style={{ flex: 1 }}><Action text="Move right →" disabled={i >= n - 1} onPress={() => { onMove(i, i + 1); setOpen({ kind: 'menu', i: i + 1 }); }} /></View>
+          <View style={{ flex: 1 }}><Action text={tr('edit.moveLeft')} disabled={i <= 0} onPress={() => { onMove(i, i - 1); setOpen({ kind: 'menu', i: i - 1 }); }} /></View>
+          <View style={{ flex: 1 }}><Action text={tr('edit.moveRight')} disabled={i >= n - 1} onPress={() => { onMove(i, i + 1); setOpen({ kind: 'menu', i: i + 1 }); }} /></View>
         </View>
-        <Action text={n <= 1 ? 'Remove (a dump needs one photo)' : 'Remove from dump'} danger disabled={n <= 1} onPress={() => { onRemove(i); close(); }} />
+        <Action text={n <= 1 ? tr('edit.removeNeedsOne') : tr('edit.removeFromDump')} danger disabled={n <= 1} onPress={() => { onRemove(i); close(); }} />
       </Sheet>
 
       <Sheet visible={open?.kind === 'swap'} onClose={close}>
-        <Text style={[display(19), { color: t.ink }]}>Swap photo {i + 1}</Text>
-        {open?.kind === 'swap' ? <PickGrid sections={[{ title: 'Similar photos', photos: swapsFor(open.i) }]} onPick={(p) => { onReplace(open.i, p); close(); }} /> : null}
+        <Text style={[display(19), { color: t.ink }]}>{tr('edit.swapPhotoTitle', { index: i + 1 })}</Text>
+        {open?.kind === 'swap' ? <PickGrid sections={[{ title: tr('edit.similarPhotos'), photos: swapsFor(open.i) }]} onPick={(p) => { onReplace(open.i, p); close(); }} /> : null}
       </Sheet>
 
       <Sheet visible={open?.kind === 'add'} onClose={close}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[display(19), { color: t.ink }]}>Add photos</Text>
+          <Text style={[display(19), { color: t.ink }]}>{tr('edit.addPhotos')}</Text>
           <Tap onPress={close} accessibilityRole="button" style={{ height: 30, paddingHorizontal: 14, borderRadius: 15, backgroundColor: t.ink, justifyContent: 'center' }}>
-            <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Done</Text>
+            <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>{tr('common.done')}</Text>
           </Tap>
         </View>
         {open?.kind === 'add' ? <AddGrid addable={addable} onAdd={onAdd} /> : null}

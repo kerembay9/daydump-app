@@ -9,24 +9,27 @@ import { fixed } from '../theme/tokens';
 import { FrameCard } from './ui/FrameCard';
 import { Tape } from './ui/Tape';
 import { Tap } from './ui/Tap';
+import { tr } from '../i18n';
 
 // size: the pack's download (MODELS.md)
-const WHAT: Record<ModelPack, { title: string; after: string; size: string }> = {
-  vision: { title: 'Getting your dumps ready', after: 'Your dumps start right after, all on your phone.', size: '11 MB' },
-  faces: { title: 'Fetching the face finder', after: 'It spots you in your photos, on your phone.', size: '12 MB' },
-  text: { title: 'Word search is on its way', after: 'Places and months work now.', size: '28 MB' },
+const WHAT: Record<ModelPack, { size: string }> = {
+  vision: { size: '11 MB' },
+  faces: { size: '12 MB' },
+  text: { size: '28 MB' },
 };
 
 /** [title, body, progress 0..1 or null = unknown] for a pack that isn't on the phone yet. */
 export function packCopy(pack: ModelPack, s: PackState): [string, string, number | null] {
-  const { title, after, size } = WHAT[pack];
+  const title = tr(`models.${pack}.title` as any);
+  const after = tr(`models.${pack}.after` as any);
+  const { size } = WHAT[pack];
   const pct = Math.round(s.progress * 100);
   switch (s.state) {
-    case 'downloading': return [title, `Downloading ${size}, once${pct ? ` (${pct}%)` : ''}. ${after}`, pct ? s.progress : null];
-    case 'queued': return [title, `Next in line after the other downloads. ${after}`, null];
-    case 'waiting': return [title, `Waiting for Wi-Fi to download ${size}, once. ${after}`, null];
-    case 'failed': return [title, `The ${size} download stopped. Check your connection, then try again.`, 0];
-    default: return [title, `This copy of PicDump can’t download it. Install it from Google Play.${s.error ? ` (Play error ${s.error})` : ''}`, 0];
+    case 'downloading': return [title, tr('models.downloading', { size, pct: pct ? ` (${pct}%)` : '', after }), pct ? s.progress : null];
+    case 'queued': return [title, tr('models.queued', { after }), null];
+    case 'waiting': return [title, tr('models.waiting', { size, after }), null];
+    case 'failed': return [title, tr('models.failed', { size }), 0];
+    default: return [title, tr('models.playError', { error: s.error ? ` (Play error ${s.error})` : '' }), 0];
   }
 }
 
@@ -89,7 +92,7 @@ export function ModelLoading({ pack, s }: { pack: ModelPack; s: PackState }) {
         <Bar progress={progress} />
         {(s.state === 'failed' || s.state === 'waiting') && (
           <Tap onPress={s.state === 'failed' ? retryModels : askToDownload} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center', marginTop: 4 }}>
-            <Text style={[ui(12, 600), { color: t.bgScreen }]}>{s.state === 'failed' ? 'Try again' : 'Download now with mobile data'}</Text>
+            <Text style={[ui(12, 600), { color: t.bgScreen }]}>{s.state === 'failed' ? tr('common.tryAgain') : tr('models.downloadMobileData')}</Text>
           </Tap>
         )}
       </FrameCard>

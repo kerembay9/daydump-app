@@ -9,6 +9,7 @@ import { display, ui } from '../theme/type';
 import { accent, accentTint, PopToast, useSlotPop } from './SlotPop';
 import { FrameCard } from './ui/FrameCard';
 import { Tape } from './ui/Tape';
+import { tr } from '../i18n';
 
 const ACCENT_INK = '#FAF4EE';
 
@@ -42,16 +43,16 @@ export function TodayCard({ more, paper }: { more: boolean; paper?: boolean }) {
   if (!hub) return null;
   const ACCENT = accent(t), HL = accentTint(t);
 
-  const sub = hub.bingo ? 'Bingo! Today’s print is in' : hub.near ? `1 away from bingo: ${hub.near.toLowerCase()}` : `${hub.got} of 8 squares`;
+  const sub = hub.bingo ? tr('discover.bingoDone') : hub.near ? tr('discover.bingoNear', { target: hub.near.toLowerCase() }) : tr('discover.bingoProgress', { got: hub.got, total: 8 });
   const found = hub.quest.found;
 
   return (
     <View style={{ paddingTop: 8, paddingBottom: more ? 10 : 4 }}>
-      <FrameCard radius={16} padding={10} rotate={more ? -1.2 : -0.6} paper={paper ? 'today' : undefined} onPress={() => router.push('/today')} label={`Bingo: ${sub}`}
+      <FrameCard radius={16} padding={10} rotate={more ? -1.2 : -0.6} paper={paper ? 'today' : undefined} onPress={() => router.push('/today')} label={tr('discover.bingoLabel', { sub })}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
         <Mini hub={hub} flip={pop.flip} />
         <View style={{ flex: 1 }}>
-          <Text style={[display(17.5), { color: t.ink }]}>Bingo</Text>
+          <Text style={[display(17.5), { color: t.ink }]}>{tr('discover.bingo')}</Text>
           <Text style={[ui(11, 500), { color: hub.bingo ? ACCENT : t.inkMuted, marginTop: 2 }]} numberOfLines={2}>{sub}</Text>
           <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
             {hub.week.map((d) => (
@@ -64,7 +65,7 @@ export function TodayCard({ more, paper }: { more: boolean; paper?: boolean }) {
         <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: ACCENT, borderStyle: found ? 'solid' : 'dashed',
           backgroundColor: found ? ACCENT : HL, alignItems: 'center', justifyContent: 'center', padding: 3 }}>
           <Text maxFontSizeMultiplier={1} style={[ui(7.5, 700), { color: found ? ACCENT_INK : ACCENT, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 8.5 }]}>
-            {found ? `✓\n${hub.quest.label.split(' ').pop()}` : 'Side\nquest'}
+            {found ? `✓\n${hub.quest.label.split(' ').pop()}` : tr('discover.sideQuest')}
           </Text>
         </View>
       </FrameCard>
