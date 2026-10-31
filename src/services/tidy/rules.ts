@@ -44,6 +44,7 @@ export type ShotSet = { photos: TPhoto[]; keeper: number; reason: string };
 export type TidyResult = { photos: TPhoto[]; piles: Record<Pile, Item[]>; sets: ShotSet[]; vecs: Float32Array };
 
 const DAY = 86400000;
+export const COPY_STAYS = 'The copy that stays';
 // ponytail: cutoffs picked by eye, not calibrated; Blurry is review-only until ~50 labelled photos tune them
 const BLACK_B = 20, BLACK_SD = 12;
 /** Laplacian variance of the 256 px thumbnail under which a photo gets the 720 px blur check */
@@ -73,7 +74,7 @@ export const isStrict = (p: TPhoto) => top3(p).some((g) => g === 'paper' || g ==
 function claim(p: TPhoto, shotTag: number, copyKeeper: Set<string>, setKeeper: Set<string>): { pile: Pile; pre: boolean; note?: string } | null {
   if (p.concepts.length && isSensitive(asIndexed(p))) return { pile: 'private', pre: false };
   if (p.set >= 0) return { pile: 'same', pre: !setKeeper.has(p.id) };
-  if (p.copy) return { pile: 'copies', pre: !copyKeeper.has(p.id), note: copyKeeper.has(p.id) ? 'The copy that stays' : undefined };
+  if (p.copy) return { pile: 'copies', pre: !copyKeeper.has(p.id), note: copyKeeper.has(p.id) ? COPY_STAYS : undefined };
   if (isScreenshot(p.uri)) return { pile: 'screens', pre: Date.now() - p.created > 30 * DAY };
   if (p.concepts[0] === shotTag) return { pile: 'screens', pre: false, note: 'Tag only · check it' };
   if (isBlack(p.stats)) return { pile: 'blurry', pre: true, note: 'Black frame' };
@@ -110,9 +111,6 @@ export function buildResult(photos: TPhoto[], vecs: Float32Array, keep: Map<stri
 }
 
 export type Check = { ok: boolean; text: string };
-/** What Shot check can't see: there's no face-expression model on the phone. */
-export const NOT_CHECKED = 'Not checked: eyes, smile (needs a face-expression model)';
-
 /** Degrees off level that read as a tilted horizon. ponytail: by eye */
 const TILT = 1.5;
 
@@ -186,6 +184,71 @@ export function outtake(set: ShotSet, keep: number, vecs: Float32Array): TPhoto 
     if (d < lo) { lo = d; best = p; }
   }
   return best;
+}
+
+/** A photo to decide on in a swipe round: a take of the round's set number `set`, or a repeat of the copy that stays. */
+export type Card = { p: TPhoto; set?: number; copyOf?: TPhoto };
+
+/** A pile as swipe cards: every take but the keeper; elsewhere everything but the copy that stays, Tidy's picks first. */
+export function buildDeck(pile: Pile, items: Item[], sets: ShotSet[]): Card[] {
+  if (pile === 'same') return sets.flatMap((s, i) => s.photos.filter((_, j) => j !== s.keeper).map((p) => ({ p, set: i })));
+  const stays = new Map(items.filter((x) => x.note === COPY_STAYS).map((x) => [x.p.copy, x.p]));
+  return items.filter((x) => x.note !== COPY_STAYS).sort((a, b) => Number(b.pre) - Number(a.pre)).map((x) => ({ p: x.p, copyOf: stays.get(x.p.copy) }));
+}
+
+/** "Keep this one instead": the card's take becomes its set's keeper and the old keeper takes its place in the deck. */
+export function swapKeeper(cards: Card[], keepers: TPhoto[], at: number) {
+  const c = cards[at], old = keepers[c.set!];
+  return { cards: cards.map((x, i) => (i === at ? { ...x, p: old } : x)), keepers: keepers.map((k, i) => (i === c.set ? c.p : k)) };
+}
+
+const BETTER: Record<string, string> = {
+  'Less sharp': 'Sharper', 'Lower resolution': 'Higher resolution', 'You’re not in it': 'You’re in it', Tilted: 'Level', 'Too bright': 'Better lit', 'Too dark': 'Better lit',
+  'Finger in the corner': 'Nothing in the way', 'Face cut off': 'Faces in frame', 'Looking away': 'Facing the camera', 'Face in shadow': 'Face lit',
+};
+/** Only what differs from the keeper: the checks this take fails and it passes, and the other way round. */
+export function diffChecks(p: TPhoto, keeper: TPhoto, photos: TPhoto[]) {
+  const miss = (x: TPhoto) => shotCheck(x, photos).filter((c) => !c.ok).map((c) => c.text);
+  const a = miss(p), b = miss(keeper);
+  return { worse: a.filter((x) => !b.includes(x)), better: [...new Set(b.filter((x) => !a.includes(x)).map((x) => BETTER[x] ?? x))] };
+}
+
+const ROUND = 16;
+/** ponytail: looks this many groups ahead for look-alikes, so a 5,000-photo pile doesn't stall opening it; widen it if rounds feel unrelated. */
+const ROUND_WINDOW = 200;
+/** A deck in rounds of up to 16 that look alike: a take set stays together, and each round grows around the oldest photo left, keeping deck order inside. */
+export function buildRounds(cards: Card[], vecs: Float32Array): Card[][] {
+  const groups: { cards: Card[]; at: number }[] = [];
+  cards.forEach((c, at) => {
+    const g = groups[groups.length - 1];
+    if (c.set != null && g?.cards[0].set === c.set && g.cards.length < ROUND) g.cards.push(c);
+    else groups.push({ cards: [c], at });
+  });
+  const near = (a: TPhoto, b: TPhoto) => {
+    let d = 0;
+    for (let i = 0; i < DIM; i++) d += vecs[a.vi * DIM + i] * vecs[b.vi * DIM + i];
+    return d;
+  };
+  const rounds: Card[][] = [];
+  let left = groups;
+  while (left.length) {
+    const seed = left[0], taken = new Set([seed]);
+    let n = seed.cards.length;
+    const close = left.slice(1, ROUND_WINDOW).map((g) => ({ g, d: near(seed.cards[0].p, g.cards[0].p) })).sort((x, y) => y.d - x.d);
+    for (const { g } of close) if (n + g.cards.length <= ROUND) { taken.add(g); n += g.cards.length; }
+    rounds.push([...taken].sort((x, y) => x.at - y.at).flatMap((g) => g.cards));
+    left = left.filter((g) => !taken.has(g));
+  }
+  return rounds;
+}
+
+/** What the swipe card draws for a take's misses, as fractions of the photo: rings around the finger and the main face, the tilt to show. */
+export function faultMarks(p: TPhoto, worse: string[]) {
+  const s = p.fs ?? p.stats, face = mainFace(s?.faces);
+  const rings: { x: number; y: number; w: number; h: number; round: boolean }[] = [];
+  if (worse.includes('Finger in the corner') && s?.corner != null) rings.push({ x: s.corner % 2 ? 0.7 : 0, y: s.corner > 1 ? 0.7 : 0, w: 0.3, h: 0.3, round: true });
+  if (face && worse.some((x) => ['Less sharp', 'Looking away', 'Face in shadow', 'Face cut off'].includes(x))) rings.push({ x: face.x, y: face.y, w: face.w, h: face.h, round: false });
+  return { rings, tilt: worse.includes('Tilted') ? s?.tilt ?? null : null };
 }
 
 /** "2025-03": the month strip's key. */

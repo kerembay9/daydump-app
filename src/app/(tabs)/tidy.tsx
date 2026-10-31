@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, ScrollView, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
 import { Screen } from '../../components/ui/Screen';
 import { IconButton, TopHeader } from '../../components/ui/TopHeader';
 import { FrameCard } from '../../components/ui/FrameCard';
-import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Tape } from '../../components/ui/Tape';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
@@ -51,6 +51,17 @@ function Note({ title, body, children }: { title: string; body?: string; childre
       {body ? <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{body}</Text> : null}
       {children}
     </FrameCard>
+  );
+}
+
+/** A category's photos: the first big, the others beside it (in a row when wide, stacked when not). */
+function Mosaic({ uris, wide }: { uris: string[]; wide: boolean }) {
+  const pic = (uri: string) => <Image key={uri} source={{ uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={uri} />;
+  return (
+    <View style={{ height: wide ? 96 : 72, flexDirection: 'row', gap: 2, borderRadius: 9, overflow: 'hidden' }}>
+      <View style={{ flex: 2 }}>{uris[0] ? pic(uris[0]) : null}</View>
+      {uris.length > 1 ? (wide ? uris.slice(1).map((u) => <View key={u} style={{ flex: 1 }}>{pic(u)}</View>) : <View style={{ flex: 1, gap: 2 }}>{uris.slice(1).map(pic)}</View>) : null}
+    </View>
   );
 }
 
@@ -168,16 +179,9 @@ export default function Tidy() {
 
       {r && s.phase === 'done' ? (
         <>
-          <FrameCard radius={18} padding={16} style={{ marginTop: 12, gap: 2 }}>
-            <Tape seed="tidy-hero" rotate={2} style={{ position: 'absolute', top: -9, right: 24 }} />
-            <Text style={[display(34, 1), { color: t.ink }]}>{n(picked.length)}</Text>
-            <Text style={[ui(13, 600), { color: t.ink }]}>{picked.length ? 'duplicates and photos you don’t use' : 'Nothing picked to clear right now'}</Text>
-            {picked.length ? (
-              <Text style={[ui(11), { color: t.inkMuted, marginTop: 4 }]}>
-                About {bytes(picked.reduce((a, x) => a + x.p.size, 0))} back · Space comes back when Trash empties.
-              </Text>
-            ) : null}
-          </FrameCard>
+          <Text style={[ui(12), { color: t.inkMuted, marginTop: 2 }]}>
+            {picked.length ? `${n(picked.length)} photos could go · about ${bytes(picked.reduce((a, x) => a + x.p.size, 0))}` : 'Nothing picked to clear right now'}
+          </Text>
           {months.length > 1 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}>
               <Pill label="All months" on={!month} onPress={() => setMonth(null)} height={30} size={11.5} />
@@ -187,30 +191,28 @@ export default function Tidy() {
               ))}
             </ScrollView>
           ) : null}
-          <View style={{ gap: 8, marginTop: 12 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
             {SHOWN.map((k) => {
               const items = r.piles[k].filter((x) => inMonth(x.p.created));
               if (!items.length) return null;
-              const sets = r.sets.filter((st) => inMonth(st.photos[st.keeper].created)).length;
+              const inSets = r.sets.filter((st) => inMonth(st.photos[st.keeper].created));
+              const sets = inSets.length;
               const mb = bytes(items.filter((x) => k === 'same' ? x.pre : true).reduce((a, x) => a + x.p.size, 0));
               const line = k === 'same' ? `${n(sets)} set${sets === 1 ? '' : 's'} · ${n(items.length)} photos · ${mb}`
                 : k === 'private' ? `${n(items.length)} · Check these yourself.`
                 : `${n(items.length)} · ${mb}${REVIEW_ONLY.has(k) ? ' · review only' : ''}`;
+              const wide = k === 'same';
               return (
                 <Tap key={k} accessibilityRole="button" accessibilityLabel={`${PILES[k].title}, ${line}`}
-                  onPress={() => (k === 'same' ? router.push({ pathname: '/tidy/sets', params: month ? { month } : {} }) : router.push({ pathname: '/tidy/[pile]', params: { pile: k, ...(month ? { month } : {}) } }))}
-                  style={{ backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, borderRadius: 16, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <PhotoStack kind="row" uris={items.slice(0, 3).map((x) => x.p.uri)} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[display(16.5), { color: t.ink }]}>{PILES[k].title}</Text>
-                    <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 2 }]}>{line}</Text>
-                  </View>
-                  <Icons.chevron size={16} color={t.inkMuted} />
+                  onPress={() => router.push({ pathname: '/tidy/swipe', params: { pile: k, ...(month ? { month } : {}) } })}
+                  style={{ flexBasis: wide ? '100%' : '47%', flexGrow: 1, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, borderRadius: 14, padding: 6 }}>
+                  <Mosaic wide={wide} uris={(wide ? inSets.map((st) => st.photos[st.keeper]) : items.map((x) => x.p)).slice(0, 3).map((p) => p.uri)} />
+                  <Text style={[display(15.5), { color: t.ink, marginTop: 6, paddingHorizontal: 3 }]} numberOfLines={1}>{PILES[k].title}</Text>
+                  <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1, paddingHorizontal: 3, paddingBottom: 3 }]} numberOfLines={1}>{line}</Text>
                 </Tap>
               );
             })}
           </View>
-          <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: 10 }]}>Videos: coming later</Text>
           <Tap onPress={startScan} accessibilityRole="button" style={{ alignSelf: 'center', padding: 10 }}>
             <Text style={[ui(11, 600), { color: t.inkMuted }]}>Scan again</Text>
           </Tap>
