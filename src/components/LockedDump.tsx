@@ -7,6 +7,7 @@ import { ui } from '../theme/type';
 import { Icons } from './ui/Icons';
 import { Stub } from './ui/Stub';
 import { Tap } from './ui/Tap';
+import { tr } from '../i18n';
 
 /**
  * How hard a locked dump's photos blur: the scene's colours show, which photos were picked doesn't. 25 is expo-image's
@@ -29,9 +30,9 @@ export function LockedStub({ story }: { story: Story }) {
   const { t } = useTheme();
   const { askUnlock } = usePro();
   return (
-    <Stub back title={story.title} note={`${story.subtitle}. This dump is locked.`}>
-      <Tap onPress={() => askUnlock(story, { replace: true })} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={[ui(13, 600), { color: t.bgScreen }]}>Unlock</Text>
+    <Stub back title={story.title} note={`${story.subtitle}. ${tr('discover.dumpLocked')}`}>
+      <Tap onPress={() => askUnlock(story, { replace: true })} accessibilityRole="button" accessibilityLabel={tr('discover.unlock')} style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={[ui(13, 600), { color: t.bgScreen }]}>{tr('discover.unlock')}</Text>
       </Tap>
     </Stub>
   );

@@ -28,6 +28,7 @@ import { APPS, PostSheet } from '../../components/preview/PostSheet';
 import { shareTargets, ShareTarget } from '../../../modules/clip-embedder';
 import { usePro } from '../../state/Pro';
 import { LockedStub } from '../../components/LockedDump';
+import { tr } from '../../i18n';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.LONG) : console.log('[preview]', m));
@@ -61,9 +62,9 @@ export default function Preview() {
   if (story && !open) return <LockedStub story={story} />;
   if (dump === undefined) return null;
   // the 8 PM recap opens /preview/today even on a day with too few camera photos for a Today dump
-  if (dump === null && id === 'today') return <Stub back title="Today" note="Nothing taken today yet. Take a few photos and your Today dump shows up here." />;
-  if (dump === null) return <Stub back title="Preview" note="This dump is no longer available." />;
-  if (!dump.photos.length) return <Stub back title="Preview" note="The photos in this dump are no longer on your phone." />;
+  if (dump === null && id === 'today') return <Stub back title={tr('today.title')} note={tr('preview.nothingToday')} />;
+  if (dump === null) return <Stub back title={tr('preview.preview')} note={tr('edit.dumpUnavailable')} />;
+  if (!dump.photos.length) return <Stub back title={tr('preview.preview')} note={tr('edit.photosMissing')} />;
   // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
   const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
   return <PostedPreview key={dump.id} dump={dump} story={own} stories={stories} library={library} />;
@@ -90,7 +91,7 @@ function exporter() {
 }
 
 type Platform3 = 'ig' | 'grid' | 'tiktok';
-const TABS: [Platform3, string][] = [['ig', 'IG Post'], ['grid', 'IG Profile Grid'], ['tiktok', 'TikTok 9:16']];
+const TABS: [Platform3, string][] = [['ig', 'tabIgPost'], ['grid', 'tabIgGrid'], ['tiktok', 'tabTikTok']];
 
 function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump; story?: Story; stories: Story[]; library: Library | null }) {
   const { t } = useTheme();
@@ -160,7 +161,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
   const deps = useMemo(() => ({ ...postDeps(stories), exportSlides: (d: Dump, h?: boolean) => exportFor(d, h, !isPro) }), [stories, exportFor, isPro]);
   // what gets saved: the end slide counts too (free exports, when it fits)
   const n = slides.length + (!isPro && endSlideFits(slides.length) ? 1 : 0);
-  const slidesWord = `${n} slide${n === 1 ? '' : 's'}`;
+  const slidesWord = tr('preview.slidesWord', { count: n });
   // no Instagram / TikTok on the phone: the system share sheet (target ignored)
   const post = () => gated((s) => {
     strip.current = s;
@@ -174,25 +175,25 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     if (running.current) return;
     running.current = true;
     const app = APPS[target].name;
-    setBusy(what === 'post' ? `Opening ${app} (${slidesWord})…` : `Saving ${slidesWord}…`);
+    setBusy(what === 'post' ? tr('preview.openingApp', { app, count: slidesWord }) : tr('preview.savingSlides', { count: slidesWord }));
     try {
       if (what === 'post') {
         const r = await postDump(deps, out, target, hd, (await getProfile()).saveOnPost);
         if (r.marked) setDump((d) => ({ ...d, id: r.id, status: 'posted' }));
         // ponytail: set right away, not on AppState 'active': the share opened another app, so the sheet is what you see on return
         setDone({
-          title: r.to === 'chooser' ? 'Shared' : `${target === 'whatsapp' ? 'Sent' : 'Posted'} to ${app}`,
+          title: r.to === 'chooser' ? tr('preview.shared') : (target === 'whatsapp' ? tr('preview.sentToApp', { app }) : tr('preview.postedToApp', { app })),
           tab: r.marked ? 'posted' : 'draft',
-          note: `${r.saved ? `${r.slides} slide${r.slides === 1 ? '' : 's'} saved to the PicDump album.` : ''}${r.marked ? '' : " Couldn't mark it posted in your Library."}`.trim(),
+          note: `${r.saved ? tr('preview.savedToAlbumNote', { count: r.slides }) : ''}${r.marked ? '' : tr('preview.couldntMarkPosted')}`.trim(),
         });
       } else {
         const { slides: k, id } = await saveOnly(deps, out, hd);
         setDump((d) => ({ ...d, id }));
-        setDone({ title: 'Saved to your phone', tab: 'draft', note: `${k} slide${k === 1 ? '' : 's'} saved to the PicDump album.` });
+        setDone({ title: tr('preview.savedToPhoneTitle'), tab: 'draft', note: tr('preview.savedToAlbumNote', { count: k }) });
       }
     } catch (e) {
       console.warn(`[preview] ${what} failed:`, e);
-      toast(what === 'post' ? `Couldn't open ${app}. Try again.` : "Couldn't save the slides. Try again.");
+      toast(what === 'post' ? tr('preview.couldntOpenApp', { app }) : tr('preview.couldntSaveSlides'));
     } finally {
       running.current = false;
       setBusy(null);
@@ -215,18 +216,18 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
     <View style={{ flex: 1 }}>
       <Screen contentContainerStyle={{ paddingBottom: 8 }}>
         <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
+          <IconButton label={tr('common.back')} onPress={back}><Icons.back size={16} /></IconButton>
           <View style={{ alignItems: 'center' }}>
-            <Text style={[display(19, 1.15), { color: t.ink }]}>{dump.status === 'posted' ? 'Posted Preview' : 'Preview'}</Text>
+            <Text style={[display(19, 1.15), { color: t.ink }]}>{dump.status === 'posted' ? tr('preview.postedPreview') : tr('preview.preview')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={[ui(10), { color: t.inkMuted }]}>{ratio.key} · {layout.label} layout</Text>
-              <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel="HD export for this dump"
+              <Text style={[ui(10), { color: t.inkMuted }]}>{ratio.key} · {tr('preview.layoutTag', { layout: layout.label })}</Text>
+              <Tap onPress={() => setHd((x) => !x)} disabled={!!busy} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: hd }} accessibilityLabel={tr('preview.hdExportA11y')}
                 style={{ paddingHorizontal: 6, height: 16, borderRadius: 8, borderWidth: 1, borderColor: t.borderStrong, backgroundColor: t.bgCard, justifyContent: 'center' }}>
-                <Text style={[ui(9.5, 600), { color: t.ink }]}>{hd ? 'HD' : 'Standard'}</Text>
+                <Text style={[ui(9.5, 600), { color: t.ink }]}>{hd ? tr('preview.hd') : tr('preview.standard')}</Text>
               </Tap>
             </View>
           </View>
-          {dump.status === 'posted' ? <View style={{ width: 36 }} /> : <IconButton label="Edit" onPress={toEdit}><Icons.edit size={16} /></IconButton>}
+          {dump.status === 'posted' ? <View style={{ width: 36 }} /> : <IconButton label={tr('common.edit')} onPress={toEdit}><Icons.edit size={16} /></IconButton>}
         </View>
 
         <FrameCard radius={20} padding={4} style={{ flexDirection: 'row', marginBottom: 10 }}>
@@ -235,7 +236,7 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
             return (
               <Tap key={k} onPress={() => setPlatform(k)} accessibilityRole="tab" accessibilityState={{ selected: on }}
                 style={{ flex: 1, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.ink : undefined }}>
-                <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]}>{label}</Text>
+                <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]}>{tr(`preview.${label}` as any)}</Text>
               </Tap>
             );
           })}
@@ -248,26 +249,26 @@ function PostedPreview({ dump: initial, story, stories, library }: { dump: Dump;
 
       <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: insets.bottom + 6, alignItems: 'center' }}>
         <View style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 8 }}>
-          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Save to phone"
+          <Tap onPress={() => gated((s) => { strip.current = s; run('save'); })} disabled={!!busy} accessibilityRole="button" accessibilityLabel={tr('preview.saveToPhoneA11y')}
             style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: t.ink, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
             <Icons.download size={16} />
           </Tap>
-          <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel="Post"
+          <Tap onPress={post} disabled={!!busy} accessibilityRole="button" accessibilityLabel={tr('preview.postA11y')}
             style={{ flex: 1, height: 40, borderRadius: 20, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', opacity: busy ? 0.85 : 1 }}>
             {busy ? <Icons.check size={16} color={t.bgScreen} /> : <Icons.send size={16} color={t.bgScreen} />}
-            <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? 'Post'}</Text>
+            <Text style={[ui(12.5, 600), { color: t.bgScreen }]}>{busy ?? tr('preview.post')}</Text>
           </Tap>
         </View>
       </View>
       <PostSheet visible={picking} targets={targets} slides={n} onPick={(k) => run('post', k)} onClose={() => { strip.current = false; setPicking(false); }} />
       <Sheet visible={!!finishAsk} onClose={() => setFinishAsk(null)}>
-        <Text style={[display(20, 1.15), { color: t.ink }]}>This film look is Pro</Text>
-        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>Get Pro to export it, or export these slides with the free looks and no texture instead.</Text>
+        <Text style={[display(20, 1.15), { color: t.ink }]}>{tr('preview.proLookTitle')}</Text>
+        <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginBottom: 4 }]}>{tr('preview.proLookBody')}</Text>
         <Tap onPress={() => { setFinishAsk(null); openPaywall('finish'); }} accessibilityRole="button" style={{ height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(13, 600), { color: t.bgScreen }]}>Get Pro</Text>
+          <Text style={[ui(13, 600), { color: t.bgScreen }]}>{tr('preview.getPro')}</Text>
         </Tap>
-        <FrameCard radius={22} onPress={() => { const go = finishAsk; setFinishAsk(null); go?.(true); }} label="Export without finish" style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(13, 600), { color: t.ink }]}>Export without finish</Text>
+        <FrameCard radius={22} onPress={() => { const go = finishAsk; setFinishAsk(null); go?.(true); }} label={tr('preview.exportWithoutFinish')} style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.ink }]}>{tr('preview.exportWithoutFinish')}</Text>
         </FrameCard>
       </Sheet>
       <DoneSheet done={done} onClose={() => setDone(null)} />

@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Sule",
+    "back": "Tagasi",
+    "termsOfService": "Kasutustingimused",
+    "privacyPolicy": "Privaatsuspoliitika"
+  },
+  "tabs": {
+    "discover": "Avasta",
+    "create": "Loo",
+    "tidy": "Korrasta",
+    "library": "Kogu"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Vaevata foto-dumpid",
+      "title": "Muuda kaamerarulli kaos dumpideks",
+      "description": "Unusta tuhandete piltide vahel kerimine. PicDump valib su päevade ja reiside parimad fotod sujuva vooluga.",
+      "point1": "Filmistiilid, raamid ja IG / TikToki mõõdud",
+      "point2": "Kollaažipaigutused, üks viibe korraga"
+    },
+    "privacy": {
+      "badge": "Valik seadmes kohapeal",
+      "title": "Valitud sinu telefonis, mitte pilves",
+      "description": "Fotode valimine, otsing ja dumpid töötavad sinu telefonis. PicDump ei laadi sinu fotosid kureerimiseks üles.",
+      "point1": "Fotodele juurdepääs aitab leida sinu silmapaistvamad hetked"
+    },
+    "allowContinue": "Luba juurdepääs fotodele ja jätka",
+    "continue": "Jätka",
+    "page": "Leht {{n}} / {{total}}",
+    "notifPreview": "Teatise eelvaade",
+    "notifNow": "· praegu",
+    "notifTitle": "Sinu PicDump on valmis 🎞️",
+    "notifBody": "Tänased fotod koondatud ühte dumpi. Vaata enne magamaminekut.",
+    "notifyHeading": "Sinu päev kell 20.00, nädal pühapäeval",
+    "notifyBody": "Märguanne kell 20.00, kui tänane dump on valmis, ja pühapäeval keskpäeval su nädala ülevaade.",
+    "turnOn": "Lülita sisse",
+    "notNow": "Mitte praegu"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Iga dump sinu kaamerarullist.",
+      "sub": "Tasuta versioon annab ülevaated ja ühe dumpi nädalas. Pro avab need kõik."
+    },
+    "tidy": {
+      "heading": "Tee ruumi puhtaks.",
+      "sub": "Tasuta versioon leiab kordused ja udused pildid. Pro viib need prügikasti ühe korraga."
+    },
+    "finish": {
+      "heading": "Säilita filmilik stiil.",
+      "sub": "Original, Warm 35mm ja Adjust on tasuta. Pro ekspordib kõik stiilid ja tekstuurid."
+    },
+    "search": {
+      "heading": "Otsi oma kaamerarullist.",
+      "sub": "Leia koht, kuu või ese sõnade järgi. Otsing kuulub Pro juurde."
+    },
+    "found": {
+      "heading": {
+        "one": "Leidsime sinu kaamerarullist {{count}} dumpi.",
+        "other": "Leidsime sinu kaamerarullist {{count}} dumpi."
+      },
+      "sub": "{{titles}}. Pro avab need kõik.",
+      "subMore": "{{titles}} ja rohkemgi. Pro avab need kõik."
+    },
+    "welcome": "Tere tulemast PicDump Prosse!",
+    "purchaseNotActive": "Ost õnnestus, kuid Pro pole veel aktiveerunud. Puuduta nuppu Taasta ostud.",
+    "restored": "Ostud taastatud. Tere tulemast tagasi Prosse!",
+    "noSubscription": "Aktiivset PicDump Pro tellimust ei leitud.",
+    "close": "Sule maksemüür",
+    "feature": {
+      "dumps": {
+        "title": "Kõik dumpid avatud",
+        "sub": "Iga reis ja lugu, mille Avasta leiab, mitte ainult üks nädalas."
+      },
+      "search": {
+        "title": "Otsi oma kaamerarullist",
+        "sub": "Leia koht, kuu või ese sõnade abil."
+      },
+      "looks": {
+        "title": "Kõik filmistiilid",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, lisaks teralisus, hajumine ja vinjett."
+      },
+      "tidy": {
+        "title": "Eemalda kordused ja segadus",
+        "sub": "Vii duplikaadid, udused kaadrid ja kuvatõmmised korraga prügikasti."
+      },
+      "yours": {
+        "title": "Sinu dump, sinu viisil",
+        "sub": "Ilma PicDumpi lõpukaadrita ja 4 kuni 20 fotot dumpi kohta."
+      }
+    },
+    "plansFailed": "Pakettide laadimine ebaõnnestus. Kontrolli ühendust ja proovi uuesti.",
+    "startTrial": "Alusta prooviperioodi {{trial}}",
+    "continue": "Jätka",
+    "restore": "Taasta ostud",
+    "trialThen": "Prooviperioodil tasuta, seejärel {{price}}. ",
+    "disclosure": "Makse debiteeritakse poekontolt. Tellimus uueneb automaatselt, kui seda ei tühistata vähemalt 24 tundi enne praeguse perioodi lõppu."
+  },
+  "profile": {
+    "title": "Profiil ja seaded",
+    "changePhoto": "Muuda profiilipilti",
+    "namePlaceholder": "Sinu nimi",
+    "handlePlaceholder": "sinu_konto",
+    "theme": {
+      "system": "Süsteem",
+      "auto": "Automaatne",
+      "cashmere": "Cashmere",
+      "light": "Hele",
+      "espresso": "Espresso",
+      "dark": "Tume"
+    },
+    "reindex": {
+      "title": "Indekseerida kogu uuesti?",
+      "body": "PicDump loeb kõik fotod uuesti läbi. See võtab paar minutit ja veidi akut. Sinu salvestatud dumpid Kogus säilivad.",
+      "action": "Indekseeri uuesti"
+    },
+    "dumpPicks": {
+      "title": "Dumpi valikud",
+      "photosPerDump": "Fotosid dumpi kohta",
+      "photosPerDumpSub": "Avasta valib arvu sellest vahemikust, enamasti keskelt.",
+      "fewest": "Vähim fotosid",
+      "to": "kuni",
+      "most": "Enim fotosid",
+      "hideSensitive": "Peida tundlikud fotod",
+      "hideSensitiveSub": "Isikutõendid, pangakaardid ja meditsiinidokumendid ei ilmu kunagi dumpidesse.",
+      "screenshots": "Kaasa kuvatõmmised",
+      "screenshotsSub": "Kuvatõmmised võivad dumpidesse ilmuda.",
+      "recap": "Ülevaade",
+      "recapSub": "Tänane dump kell 20.00, su nädal pühapäeval keskpäeval"
+    },
+    "export": {
+      "title": "Eksport ja postitamine",
+      "note": "Uued dumpid algavad siin määratud suuruse ja kvaliteediga.",
+      "postSize": "Postituse vaikesuurus",
+      "quality": "Ekspordi vaikekvaliteet",
+      "hd": "HD (2160 px)",
+      "standard": "Standardne (1080 px)",
+      "saveOnPost": "Postitamine salvestab ka galeriisse",
+      "saveOnPostSub": "Salvestab slaidide koopia PicDumpi albumisse"
+    },
+    "appearance": {
+      "title": "Välimus ja teema"
+    },
+    "library": {
+      "title": "Fotokogu ja otsing",
+      "access": "Juurdepääs",
+      "openSettings": "Ava seaded"
+    },
+    "about": {
+      "title": "Privaatsus ja teave",
+      "onDevice": "Kõik toimub sinu telefonis",
+      "onDeviceSub": "Kuidas PicDump valib fotosid ilma neid üles laadimata",
+      "contact": "Kontakt",
+      "noMail": "Meilirakendust ei leitud. Kirjuta aadressile info@horizonzeta.com",
+      "version": "Versioon"
+    }
+  }
+}

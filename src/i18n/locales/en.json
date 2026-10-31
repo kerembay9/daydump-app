@@ -1,0 +1,1055 @@
+{
+  "common": {
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "done": "Done",
+    "tryAgain": "Try again",
+    "preview": "Preview",
+    "edit": "Edit",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "effectiveDate": "Effective {{date}}"
+  },
+  "tabs": {
+    "discover": "Discover",
+    "create": "Create",
+    "tidy": "Tidy",
+    "library": "Library"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Effortless photo dumps",
+      "title": "Turn camera roll chaos into dumps",
+      "description": "Say goodbye to scrolling through thousands of shots. PicDump picks the best photos of your days and trips, paced with flow.",
+      "point1": "Film looks, borders and IG / TikTok sizes",
+      "point2": "Collage layouts, one swipe at a time"
+    },
+    "privacy": {
+      "badge": "On-device curation",
+      "title": "Picked on your phone, not in the cloud",
+      "description": "Photo picks, search and dumps run on your phone. PicDump does not upload your photos to curate them.",
+      "point1": "Photo access lets it find your standout moments"
+    },
+    "allowContinue": "Allow photos & continue",
+    "continue": "Continue",
+    "page": "Page {{n}} of {{total}}",
+    "notifPreview": "Notification preview",
+    "notifNow": "· now",
+    "notifTitle": "Your PicDump is ready 🎞️",
+    "notifBody": "Today's photos, curated into one dump. Take a look before bed.",
+    "notifyHeading": "Your day at 8 PM, your week on Sunday",
+    "notifyBody": "A heads-up at 8 PM when today's dump is ready, and on Sunday at noon with your week.",
+    "turnOn": "Turn on",
+    "notNow": "Not now",
+    "stepProfile": {
+      "dumpPreviews": "Your dump previews",
+      "putYourselfInPosts": "Put yourself in your posts",
+      "previewsOnlyNote": "Only on your previews. Stays on your phone.",
+      "todayDump": "Today · photo dump",
+      "yourPhotoA11y": "Your photo {{index}}",
+      "notMe": "Not me",
+      "thatsMe": "That's me",
+      "noSelfieFound": "No selfie found",
+      "lookingForOne": "Looking through your photos for one.",
+      "initialNote": "Your previews show your initial. Add a photo later in Profile.",
+      "pickingSelfie": "Picking your best selfie",
+      "pickingSelfieSub": "Looking through your recent photos. Nothing leaves your phone.",
+      "lookingFurther": "Looking further back",
+      "lookingFurtherSub": "Checking older photos.",
+      "callYou": "What should we call you?",
+      "pickAnother": "Not this one? Pick another",
+      "thatsNotMe": "That's not me",
+      "skipForNow": "Skip for now"
+    },
+    "flow": {
+      "restore": "Restore purchases",
+      "restored": "Purchases restored",
+      "noSubscription": "No subscription found",
+      "getStarted": "Get started",
+      "hook": {
+        "eyebrow": "Effortless photo dumps",
+        "title": "Turn camera roll chaos into dumps"
+      },
+      "promise": {
+        "title": "Your photos, picked for you.",
+        "sub": "About 2 minutes. No account.",
+        "dumpChip": "1 dump"
+      },
+      "privacy": {
+        "title": "Everything happens on your phone.",
+        "leadIn": "Next, PicDump reads your photos to personalise this.",
+        "never": "Never uploaded",
+        "neverSub": "Your photos stay on this phone.",
+        "noAccount": "No account",
+        "noAccountSub": "Nothing to sign up for.",
+        "noTracking": "No tracking",
+        "noTrackingSub": "No ads, no profiles, no analytics on your photos."
+      },
+      "access": {
+        "eyebrow": "Photo access",
+        "title": "Let PicDump read your photos",
+        "sub": "It needs your library to find the dumps worth posting.",
+        "cta": "Allow photos and continue",
+        "primerTitle": "Why PicDump asks",
+        "primer1": "Reads dates and places to group your photos into stories.",
+        "primer2": "Runs on this phone. Nothing is uploaded.",
+        "primer3": "Prefer to pick photos yourself? Limited access works too.",
+        "deniedTitle": "PicDump needs your photos",
+        "deniedSub": "Without them there is nothing to make dumps from. Nothing leaves your phone.",
+        "deniedSubSettings": "Allow photos in Settings → PicDump → Permissions, then come back. Nothing leaves your phone."
+      },
+      "limited": {
+        "title": "Limited access works too.",
+        "titleFew": "Share a few more photos",
+        "subFew": "PicDump needs at least {{min}} photos to build dumps. Pick more, or allow all photos, in Settings.",
+        "subLimited": "PicDump only sees the photos you shared. You can add more anytime.",
+        "subNone": "PicDump can still make dumps. Previews use sample photos until you share some.",
+        "sharedTitle": "{{count}} photos shared",
+        "noneTitle": "No photos shared yet",
+        "settingsHint": "Change it anytime in Settings → PicDump → Photos.",
+        "openSettings": "Open settings",
+        "continueSelected": "Continue with selected photos",
+        "continueWithout": "Continue without photos"
+      },
+      "library": {
+        "counting": "Reading your library…",
+        "scanning": "Looking through your library…",
+        "large": "You have {{count}} photos.",
+        "mid": "You have {{count}} photos.",
+        "few": "You have {{count}} photos.",
+        "empty": "We couldn't find any photos.",
+        "limited": "You shared {{count}} photos with PicDump.",
+        "subLarge": "That's a lot to share. Let's find the ones worth posting.",
+        "subMid": "A good mix to work with. Let's find the ones worth posting.",
+        "subFew": "PicDump works best with 100 or more photos, so your dumps will be small for now. New photos join as you take them.",
+        "subEmpty": "Take a few photos, then open PicDump again. Or check that it can see all your photos in Settings.",
+        "subLimited": "We'll work with these. Add more anytime in Settings.",
+        "dateSpan": "Date span",
+        "shared": "Shared",
+        "sharedValue": "{{count}} photos"
+      },
+      "opt": {
+        "post": {
+          "ig-feed": "Instagram feed",
+          "ig-feedSub": "Posts in 4:5",
+          "ig-stories": "Instagram stories",
+          "ig-storiesSub": "Slides in 9:16",
+          "tiktok": "TikTok",
+          "tiktokSub": "Photo posts in 9:16",
+          "me": "Just for me",
+          "meSub": "Saved to your albums"
+        },
+        "freq": {
+          "daily": "Daily",
+          "few": "A few times a week",
+          "weekly": "Weekly",
+          "rarely": "Rarely"
+        },
+        "topics": {
+          "trips": "Trips and holidays",
+          "daily": "Daily life",
+          "friends": "Friends and events",
+          "food": "Food",
+          "pets": "Pets and family",
+          "all": "Everything"
+        },
+        "last": {
+          "week": "This week",
+          "month": "This month",
+          "months": "Months ago",
+          "never": "Never"
+        },
+        "pains": {
+          "many": "Too many photos",
+          "choose": "Can't choose the best",
+          "edit": "Editing takes ages",
+          "caption": "No caption ideas",
+          "dupes": "Duplicates and screenshots everywhere",
+          "forget": "I forget"
+        },
+        "layout": {
+          "one": "1 Photo",
+          "split": "Split",
+          "bento": "Bento",
+          "grid": "2×2 Grid",
+          "scrap": "Scrapbook"
+        },
+        "look": {
+          "warm": "Warm 35mm",
+          "cashmere": "Cashmere",
+          "soft": "Soft Film",
+          "sunfade": "Sunfade",
+          "bw": "B&W Roll",
+          "orig": "Original"
+        },
+        "fit": {
+          "fill": "Fill",
+          "matte": "Matte",
+          "blur": "Blur fill"
+        },
+        "matte": {
+          "card": "Card",
+          "cream": "Cream",
+          "kraft": "Kraft"
+        },
+        "voice": {
+          "plain": "Short and plain",
+          "plain1": "Lisbon, June.",
+          "plain2": "A slow Sunday.",
+          "plain3": "The week in six.",
+          "playful": "Playful",
+          "playful1": "Camera roll finally earned its keep",
+          "playful2": "Ate everything, regret nothing",
+          "playful3": "Main character, small town",
+          "none": "No caption",
+          "none1": "Just the photos.",
+          "none2": "Write your own when you post."
+        }
+      },
+      "post": {
+        "title": "Where do you post?",
+        "sub": "Pick one. This sets your default size."
+      },
+      "freq": {
+        "title": "How often do you post?"
+      },
+      "topics": {
+        "title": "What do you post about?",
+        "sub": "Pick as many as you like."
+      },
+      "last": {
+        "title": "When did you last post a photo dump?"
+      },
+      "pains": {
+        "title": "What stops you?",
+        "sub": "Pick any that sound familiar."
+      },
+      "mirror": {
+        "title": "That's exactly what PicDump does.",
+        "titleNone": "Here is what PicDump does.",
+        "many": "PicDump sorts the photos you share into stories.",
+        "manyCount": "PicDump reads all {{count}} and sorts them into stories.",
+        "choose": "Each dump starts with the sharpest, most varied picks.",
+        "edit": "Your look, layout and frame apply in one go.",
+        "caption": "A few caption ideas come with every dump.",
+        "dupes": "Tidy finds repeats, blurry shots and screenshots.",
+        "forget": "A quiet reminder at 8 PM when today's dump is ready."
+      },
+      "before": {
+        "large": "From thousands to the few worth posting.",
+        "mid": "From hundreds to the few worth posting.",
+        "any": "From a full roll to the few worth posting.",
+        "photos": "{{count}} photos",
+        "label": "Before",
+        "after": "{{count}} photos"
+      },
+      "style": {
+        "eyebrow": "Your style",
+        "title": "Here is your style.",
+        "yourStyle": "Your dump style",
+        "photos": "{{count}} photos",
+        "note": "Change any of this later in Profile."
+      },
+      "size": {
+        "title": "How many photos per dump?",
+        "sub": "You can change this for any dump.",
+        "label": "{{count}} photos per dump"
+      },
+      "ratio": {
+        "title": "Which shape?",
+        "subPost": "Picked from where you post.",
+        "subDefault": "4:5 fits most feeds."
+      },
+      "layout": {
+        "title": "Pick a layout vibe.",
+        "sub": "Same photos, different flow."
+      },
+      "look": {
+        "title": "Choose a look.",
+        "sub": "Tap a tile to see it large.",
+        "proNote": "{{look}} is a Pro look. Free includes Warm 35mm and Original."
+      },
+      "frame": {
+        "title": "Add a frame.",
+        "matte": "Matte colour"
+      },
+      "voice": {
+        "title": "How should captions sound?"
+      },
+      "finding": {
+        "title": "Finding your dumps.",
+        "titleDone": "Your roll is already read.",
+        "reading": "Reading your library · {{done}} of {{total}}",
+        "paused": "Paused at {{done}} of {{total}}",
+        "read": "Read {{total}} of {{total}}",
+        "background": "Keeps indexing in the background.",
+        "finished": "Done. Your stories are ready.",
+        "tiny": "A small roll reads fast.",
+        "finding": "Finding trips",
+        "grouping": "Grouping places",
+        "spotting": "Spotting blurry shots"
+      },
+      "found": {
+        "title": {
+          "one": "We found 1 dump in your roll.",
+          "other": "We found {{count}} dumps in your roll."
+        },
+        "sub": "The first one is yours to open.",
+        "waiting": "Still reading your library…",
+        "waitingSub": "Your dumps appear as soon as they are ready.",
+        "opensWithPro": "Opens with Pro"
+      },
+      "clutter": {
+        "title": "{{count}} repeats and blurry shots.",
+        "counting": "Counting repeats and blurry shots…",
+        "progress": "Checked {{done}} of {{total}} photos so far",
+        "sub": "Free shows the count. Pro clears them in one go.",
+        "repeats": "Repeats",
+        "blurry": "Blurry shots",
+        "screens": "Screenshots",
+        "clear": "Clear them all in one go with Tidy.",
+        "wait": "This takes a moment. You can carry on."
+      },
+      "search": {
+        "eyebrow": "Pro feature",
+        "title": "Find a place, a month or a thing in words.",
+        "query": "beach in august",
+        "meta": "4 photos · Aug 2025"
+      },
+      "selfie": {
+        "eyebrow": "Optional",
+        "title": "Is this you?",
+        "sub": "PicDump can put you on the first slide of a preview.",
+        "yes": "That's me",
+        "no": "Not me",
+        "skip": "Skip for now",
+        "noneTitle": "No selfie found.",
+        "noneSub": "That's fine. Previews use your photos as they are.",
+        "lookingTitle": "Looking for a selfie…",
+        "lookingSub": "Looking through your recent photos. Nothing leaves your phone.",
+        "note": "Only on your previews. Stays on your phone.",
+        "others": "Other photos of you",
+        "useThis": "Use this photo"
+      },
+      "name": {
+        "title": "What should we call you?",
+        "sub": "It shows on your dumps. Nothing else.",
+        "placeholder": "Your first name",
+        "label": "Your name",
+        "hero": "{{name}}'s Today",
+        "heroNone": "Your Today",
+        "meta": "{{count}} photos · Today"
+      },
+      "reminders": {
+        "title": "Your day at {{time}}, your week on Sunday.",
+        "time": "Daily recap time",
+        "weekly": "Weekly recap",
+        "weeklySub": "Sunday at noon",
+        "fixed": "Recaps arrive at 8 PM, and on Sunday at noon with your week."
+      },
+      "try": {
+        "title": "Try your first dump.",
+        "cta": "Looks good",
+        "coach": "Hold the slide to see the originals.",
+        "slide": "Your first dump"
+      },
+      "recap": {
+        "title": "Here's what you set up.",
+        "style": "Your style",
+        "foundLabel": "Dumps found",
+        "foundNone": "Ready when you share photos",
+        "found": "{{count}} in your roll",
+        "foundFirst": "Your first dump is ready",
+        "reminders": "Reminders",
+        "daily": "Daily at {{time}}",
+        "sunday": "Sunday at noon",
+        "off": "Off · turn on in Profile",
+        "note": "Free gives you the daily recap and one dump a week. Pro opens everything."
+      },
+      "paywall": {
+        "title": "Pro opens every dump in your roll.",
+        "titleFound": {
+          "one": "We found 1 dump in your roll. Pro opens it.",
+          "other": "We found {{count}} dumps in your roll. Pro opens all of them."
+        },
+        "free": "Continue free",
+        "today": "Today",
+        "unlock": "Unlock everything",
+        "day": "Day {{n}}",
+        "reminder": "Reminder before it ends",
+        "billing": "Billing starts, cancel anytime",
+        "failed": "Plans didn't load.",
+        "failedSub": "Check your connection and try again.",
+        "best": "Best value",
+        "billedMonthly": "Billed monthly",
+        "billedWeekly": "Billed weekly",
+        "billedYearly": "Billed yearly"
+      },
+      "done": {
+        "title": "You're in. Your first dump is waiting.",
+        "sub": "Find it at the top of Discover.",
+        "titlePro": "Welcome to PicDump Pro!",
+        "subPro": "Every dump, look and Tidy tool is open.",
+        "cta": "Open Discover",
+        "today": "Today"
+      }
+    }
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Every dump in your roll.",
+      "sub": "Free gets your recaps and one dump a week. Pro opens all of them."
+    },
+    "tidy": {
+      "heading": "Clear the clutter.",
+      "sub": "Free finds every repeat and blurry shot. Pro moves them to Trash in one go."
+    },
+    "finish": {
+      "heading": "Keep the film look.",
+      "sub": "Original, Warm 35mm and Adjust are free. Pro exports every look and texture."
+    },
+    "search": {
+      "heading": "Search your camera roll.",
+      "sub": "Find a place, a month or a thing in words. Search comes with Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "We found {{count}} dump in your roll.",
+        "other": "We found {{count}} dumps in your roll."
+      },
+      "sub": "{{titles}}. Pro opens all of them.",
+      "subMore": "{{titles}} and more. Pro opens all of them."
+    },
+    "welcome": "Welcome to PicDump Pro!",
+    "purchaseNotActive": "Purchase went through but Pro didn’t switch on yet. Tap Restore purchases.",
+    "restored": "Purchases restored. Welcome back to Pro!",
+    "noSubscription": "No active PicDump Pro subscription found.",
+    "close": "Close paywall",
+    "feature": {
+      "dumps": {
+        "title": "Every dump, unlocked",
+        "sub": "Every trip and story Discover finds, not one a week."
+      },
+      "search": {
+        "title": "Search your camera roll",
+        "sub": "Find a place, a month or a thing in words."
+      },
+      "looks": {
+        "title": "All film looks",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus grain, fade and vignette."
+      },
+      "tidy": {
+        "title": "Clear repeats and clutter",
+        "sub": "Move duplicates, blurry shots and screenshots to Trash in one go."
+      },
+      "yours": {
+        "title": "Your dump, your way",
+        "sub": "No PicDump end slide, and 4 to 20 photos per dump."
+      }
+    },
+    "plansFailed": "Plans couldn’t load. Check your connection and try again.",
+    "startTrial": "Start {{trial}}",
+    "continue": "Continue",
+    "restore": "Restore purchases",
+    "trialThen": "Free for the trial, then {{price}}. ",
+    "disclosure": "Payment is charged to your store account. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period."
+  },
+  "profile": {
+    "title": "Profile & Settings",
+    "changePhoto": "Change profile photo",
+    "namePlaceholder": "Your name",
+    "handlePlaceholder": "your_account",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Light",
+      "espresso": "Espresso",
+      "dark": "Dark"
+    },
+    "reindex": {
+      "title": "Reindex your library?",
+      "body": "PicDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.",
+      "action": "Reindex"
+    },
+    "dumpPicks": {
+      "title": "Dump picks",
+      "photosPerDump": "Photos per dump",
+      "photosPerDumpSub": "Discover picks a count in this range, mostly from the middle.",
+      "fewest": "Fewest photos",
+      "to": "to",
+      "most": "Most photos",
+      "hideSensitive": "Hide sensitive photos",
+      "hideSensitiveSub": "IDs, bank cards and medical papers never show up in dumps.",
+      "screenshots": "Include screenshots",
+      "screenshotsSub": "Screenshots can show up in dumps.",
+      "recap": "Recap",
+      "recapSub": "Today’s dump at 8 PM, your week on Sunday at noon"
+    },
+    "export": {
+      "title": "Export & posting",
+      "note": "New dumps start with the size and quality set here.",
+      "postSize": "Default Post Size",
+      "quality": "Default Export Quality",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Posting also saves to gallery",
+      "saveOnPostSub": "Keeps a copy of the slides in the PicDump album"
+    },
+    "appearance": {
+      "title": "Appearance & theme"
+    },
+    "library": {
+      "title": "Photo library & search",
+      "access": "Access",
+      "openSettings": "Open settings"
+    },
+    "about": {
+      "title": "Privacy & about",
+      "onDevice": "Everything happens on your phone",
+      "onDeviceSub": "How PicDump picks photos without uploading them",
+      "contact": "Contact",
+      "noMail": "No mail app found. Write to info@horizonzeta.com",
+      "version": "Version"
+    },
+    "lookingForSelfie": "Looking for a selfie…",
+    "isThisYou": "Is this you?",
+    "foundOnPhone": "Found on your phone. It never left your device.",
+    "showAnotherPhoto": "Show another photo",
+    "anotherPhotoCount": "Another ({{current}}/{{total}})",
+    "yesUseThis": "Yes, use this",
+    "profilePhoto": "Profile photo",
+    "noSelfieFound": "No selfie found on your phone yet.",
+    "readingPhotosWait": "Your photos are still being read.",
+    "chooseFromGallery": "Choose from gallery",
+    "removePhoto": "Remove photo"
+  },
+  "discover": {
+    "greeting": "Hi, {{name}}",
+    "greetingDefault": "Hi there",
+    "indexingAdvice": "Dumps get better once your whole library is read.",
+    "limitedTitle": "PicDump only sees the photos you picked",
+    "limitedBody": "Dumps come from your whole camera roll, so a handful of photos won’t make many.",
+    "limitedAction": "Allow all photos",
+    "permissionTitle": "Let PicDump see your photos",
+    "permissionBody": "Dumps are made on your phone from your camera roll. Nothing leaves your device.",
+    "permissionAction": "Allow photos",
+    "buildingTitle": "Building your dumps…",
+    "buildingBody": "They show up here as your photos are read. Or make one yourself.",
+    "noDumpsTitle": "No dumps yet",
+    "noDumpsBody": "Take a few more photos and they’ll show up here. Or make one yourself.",
+    "createOneNow": "Create one now",
+    "moreDumps": "Discover more dumps",
+    "makingMoreDumps": "Making more dumps…",
+    "locked": "locked",
+    "dumpLocked": "This dump is locked.",
+    "unlock": "Unlock",
+    "firstDumpLabel": "Your first dump: {{title}}",
+    "bingo": "Bingo",
+    "bingoDone": "Bingo! Today’s print is in",
+    "bingoNear": "1 away from bingo: {{target}}",
+    "bingoProgress": "{{got}} of {{total}} squares",
+    "bingoLabel": "Bingo: {{sub}}",
+    "sideQuest": "Side\nquest",
+    "timeSpan": {
+      "day": {
+        "one": "day",
+        "other": "{{count}} days"
+      },
+      "week": {
+        "one": "week",
+        "other": "{{count}} weeks"
+      },
+      "month": {
+        "one": "month",
+        "other": "{{count}} months"
+      },
+      "year": {
+        "one": "year",
+        "other": "{{count}} years"
+      }
+    },
+    "coverageLine": "Dumps from your last {{span}} so far",
+    "batteryCharging": "charging, no battery cost",
+    "batteryPct": "uses ~{{pct}}% battery",
+    "batteryLow": "uses a little battery",
+    "etaCalculating": "Working out time left…",
+    "etaUnderMinute": "Less than a minute left",
+    "etaMinutes": "About {{count}} min left",
+    "etaHours": "About {{h}} h left",
+    "etaHoursMinutes": "About {{h}} h {{m}} min left",
+    "readingProgress": "Reading your library… {{done}}/{{total}}",
+    "reading": "Reading your library…",
+    "pausedAt": "Paused at {{done}} of {{total}}",
+    "lineResumeCharging": "Continues by itself next time you charge.",
+    "lineFastMode": "Keeps going if you leave · {{battery}}",
+    "lineNewest": "Starting with your newest photos",
+    "lineAndroidBackground": "You can leave the app: it keeps going while your phone charges.",
+    "lineFirstDumps": "Newest photos first. Your first dumps appear in a few seconds.",
+    "resume": "Resume",
+    "pause": "Pause"
+  },
+  "create": {
+    "searching": "Searching",
+    "search": "Search",
+    "searchPlaceholder": "Search keyword, place, date...",
+    "searchProHint": "PicDump Pro",
+    "clearSearch": "Clear search",
+    "lastSearches": "Last searches",
+    "trySuggestions": "Try",
+    "searchQuery": "Search {{q}}",
+    "removeQuery": "Remove {{q}}",
+    "holdToEnlarge": "Hold to enlarge",
+    "photoPickedA11y": "Photo from {{date}}, number {{n}} in your picks",
+    "photoUnpickedA11y": "Photo from {{date}}",
+    "addSimilarPhoto": "Add this similar photo",
+    "addBtn": "+ Add",
+    "galleryReadProgress": "Your gallery ({{done}} read so far)",
+    "galleryCount": "Your gallery ({{count}})",
+    "yourPicks": {
+      "one": "Your picks (1 photo)",
+      "other": "Your picks ({{count}} photos)"
+    },
+    "hide": "Hide",
+    "enlargePhoto": "Enlarge photo {{n}}",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later",
+    "picksSelectedHint": "Move it, or tap it big to see it full screen. Tap × to remove.",
+    "picksHint": "Tap a photo to see it bigger and move it. Tap × to remove.",
+    "continueToEditCount": "Continue to Edit ({{count}}) →",
+    "startNewDump": "Start a new dump",
+    "nothingPicked": "Nothing picked yet. Tap photos in the grid to add them.",
+    "seasons": {
+      "winter": "winter",
+      "spring": "spring",
+      "summer": "summer",
+      "autumn": "autumn"
+    },
+    "seasonSunset": "{{season}} sunset",
+    "coffeeWithFriends": "coffee with friends",
+    "langDownloadFailed": "{{names}} didn’t download, so this searches only what you typed. Retry in Settings.",
+    "langDownloading": "{{names}} is still downloading (about 30 MB). Until then this searches only what you typed.",
+    "matchesFor": "Matches for \"{{query}}\" ({{count}})",
+    "permissionTitle": "PicDump needs your photos",
+    "permissionBody": "Allow photo access to search and pick from your library. Nothing leaves your phone.",
+    "allowPhotos": "Allow photos",
+    "loadingPhotos": "Loading your photos…",
+    "noMatchesTitle": "No matches",
+    "noMatchesBody": "Nothing in your library matches “{{query}}”. Try a place, a month or a simpler word.",
+    "noPhotosTitle": "No photos yet",
+    "noPhotosBody": "Photos appear here as PicDump reads your library.",
+    "similarToPicks": "Similar to your picks",
+    "picksReviewLabel": "Picks: {{count}}. Review",
+    "picks": "Picks",
+    "review": "review",
+    "tapToReview": "Tap to review",
+    "continueWithCount": {
+      "one": "Continue with 1 photo",
+      "other": "Continue with {{count}} photos"
+    },
+    "addToPicks": "+ Add to picks",
+    "addToPicksLabel": "Add to picks",
+    "removeFromPicks": "Remove from picks",
+    "pickNumberRemove": "Pick #{{n}} · Remove",
+    "setsCountSimilar": {
+      "one": "1 set of similar photos",
+      "other": "{{count}} sets of similar photos"
+    },
+    "setsCount": {
+      "one": "1 set",
+      "other": "{{count}} sets"
+    },
+    "setsForPicks": {
+      "one": "Sets for your 1 pick",
+      "other": "Sets for your {{count}} picks"
+    },
+    "closeSets": "Close sets",
+    "setsHint": "Tick photos in a set, then Add. Hold one to see it big.",
+    "addFromSetA11y": "Add {{count}} from {{name}}",
+    "addCount": "Add {{count}}",
+    "inYourPicks": "In your picks",
+    "tickThisPhoto": "Tick this photo",
+    "photoIndex": "Photo {{index}}",
+    "removePhotoIndex": "Remove photo {{index}}"
+  },
+  "tidy": {
+    "title": "Tidy",
+    "trashHistory": "Trash history",
+    "unsupportedTitle": "Needs Android 11 or newer",
+    "unsupportedBody": "Older Android has no Trash, so anything Tidy removed would be gone for good.",
+    "permissionTitle": "Tidy needs access to all your photos to count them.",
+    "permissionBody": "With only some photos shared, repeats and sizes would be half the story.",
+    "allowAll": "Allow all photos",
+    "movedToTrash": "Moved {{count}} to Trash",
+    "movedBackInfo": "{{bytes}} back · Space comes back when Trash empties.",
+    "undo": "Undo",
+    "undoLabel": "Undo the move to Trash",
+    "done": "Done",
+    "keptKeepersPrompt": "Kept {{count}} of {{total}}. Start a dump from these keepers?",
+    "startDump": "Start a dump",
+    "addToDraft": "Add to my draft",
+    "scanStoppedTitle": "The scan stopped",
+    "scanStoppedBody": "Something went wrong reading your photos. Nothing was moved.",
+    "findRepeatsTitle": "Find repeats and clutter.",
+    "findRepeatsBody": "Nothing leaves your device. Anything you remove goes to Trash first, and you can undo it.",
+    "tryAgain": "Try again",
+    "start": "Start",
+    "startTidy": "Start Tidy",
+    "waitingIndexing": "Waiting for your photos to finish indexing.",
+    "stillScanning": "Still scanning…",
+    "scanning": "Scanning",
+    "phaseList": "Listing your photos…",
+    "phaseEmbed": "Reading photos Discover skips",
+    "phaseCheck": "Checking",
+    "phaseGroup": "Finding same shots…",
+    "doneOfTotal": "{{done}} of {{total}}",
+    "pickedSummary": "duplicates and photos you don’t use",
+    "nothingPicked": "Nothing picked to clear right now",
+    "aboutBackInfo": "About {{bytes}} back · Space comes back when Trash empties.",
+    "allMonths": "All months",
+    "sameLine": "{{sets}} · {{photos}} photos · {{size}}",
+    "privateLine": "{{count}} · Check these yourself.",
+    "reviewOnly": "review only",
+    "videosComingLater": "Videos: coming later",
+    "scanAgain": "Scan again",
+    "lastTidyInfo": "Last tidy: {{date}} · {{count}} photos cleared",
+    "nothingMoved": "Nothing was moved.",
+    "moveToTrashCount": "Move {{count}} to Trash",
+    "sameShotSetProgress": "Same shot · set {{current}} of {{total}}",
+    "sameShot": "Same shot",
+    "everySetDone": "That’s every set",
+    "noSameShotSets": "No same-shot sets",
+    "markedSummary": "{{count}} photos marked · {{bytes}}. Nothing is moved until you say so.",
+    "nothingMarkedForTrash": "Nothing marked for Trash.",
+    "takesSummary": "{{count}} takes of the same shot. Kept {{kept}}.",
+    "yourPick": "Your pick",
+    "keeper": "Keeper",
+    "takeHintStill": "Tap a take to keep it instead. Hold to look closer.",
+    "takeHintSwipe": "Tap a take to keep it instead. Hold to look closer. Swipe the keeper left when you’re done, right to skip.",
+    "keepOuttakeToo": "Keep the outtake too",
+    "keepRemoveSummary": "Keep {{keep}} · Remove {{remove}} · {{bytes}}",
+    "skipSet": "Skip set",
+    "today": "Today",
+    "photoCount": {
+      "one": "1 photo",
+      "other": "{{count}} photos"
+    },
+    "historySubtitle": "Restore anytime before it leaves Trash",
+    "historyEmpty": "Nothing moved to Trash yet.",
+    "restoreCountA11y": "Restore {{count}}",
+    "restoreAll": "Restore all",
+    "inTrashUntil": "In Trash until {{date}}",
+    "goneFromTrash": "Gone from Trash",
+    "restorePhotoIndex": "Restore photo {{index}}",
+    "tapToRestoreOne": "Tap a photo to restore just that one.",
+    "nothingRestored": "Nothing was restored.",
+    "restoreDialogNote": "Restoring shows Android's own dialog.",
+    "piles": {
+      "same": {
+        "title": "Same shot",
+        "blurb": "Takes of one moment. The best one stays."
+      },
+      "copies": {
+        "title": "Exact copies",
+        "blurb": "The same file saved twice."
+      },
+      "screens": {
+        "title": "Screenshots",
+        "blurb": "Older than a month are picked. The rest are yours to check."
+      },
+      "blurry": {
+        "title": "Blurry & dark",
+        "blurb": "Black frames are picked. Blurry ones are yours to check."
+      },
+      "paper": {
+        "title": "Paper",
+        "blurb": "Receipts, documents, notes. Review only."
+      },
+      "chats": {
+        "title": "Saved from chats",
+        "blurb": "Memes and screens other apps saved. Review only."
+      },
+      "private": {
+        "title": "Private",
+        "blurb": "IDs, cards, medical papers. Check these yourself."
+      }
+    },
+    "removeSummary": "Remove {{count}} · {{bytes}}",
+    "unselectAll": "Unselect all",
+    "nothingHere": "Nothing here.",
+    "lockFavorite": "This one’s a favorite.",
+    "lockInDump": "This one’s in a dump.",
+    "lockRecent": "This one’s from the last 2 days.",
+    "lockMoment": "This one looks like a moment.",
+    "lockStory": "This one’s in a Discover story.",
+    "lockYou": "You’re in this one.",
+    "lockGeneric": "This one is marked “{{lock}}”.",
+    "trashAnywayTitle": "{{reason}} Trash anyway?",
+    "trashAnywayBody": "You can restore it from Tidy while it’s in Trash.",
+    "trashAnyway": "Trash anyway",
+    "moveConfirmTitle": {
+      "one": "Move 1 photo to Trash?",
+      "other": "Move {{count}} photos to Trash?"
+    },
+    "moveConfirmBody": "{{bytes}} · You can restore them from Tidy until they leave Trash (usually 30 days).",
+    "moveConfirmAsk": " Android will ask {{count}} times.",
+    "moveToTrash": "Move to Trash",
+    "proHint": "PicDump Pro",
+    "keep": "Keep",
+    "remove": "Remove",
+    "trash": "Trash",
+    "holdToEnlarge": "Hold to enlarge",
+    "photoFromA11y": "Photo from {{date}}{{badge}}, {{status}}",
+    "checkTheseYourself": "Check these yourself."
+  },
+  "library": {
+    "nounPosted": "posted dumps",
+    "nounDraft": "drafts",
+    "tabPosted": "Posted",
+    "tabDrafts": "Drafts",
+    "dumpA11y": "{{title}}, {{status}}",
+    "draft": "draft",
+    "posted": "posted",
+    "draftHint": "Opens it in Edit. Long-press to delete.",
+    "postedHint": "Opens the preview. Long-press to delete.",
+    "edit": "Edit",
+    "reuse": "Reuse",
+    "preview": "Preview",
+    "delete": "Delete",
+    "remove": "Remove",
+    "deleteDraftTitle": "Delete draft?",
+    "removeFromLibraryTitle": "Remove from Library?",
+    "deleteBody": "“{{title}}” will be removed from Library. Your photos stay on your phone.",
+    "searchIn": "Search in {{noun}}…",
+    "noMatchesTitle": "No matches",
+    "noMatchesBody": "Nothing in your {{tab}} matches “{{query}}”.",
+    "clearSearchAction": "Clear search",
+    "nothingPostedTitle": "Nothing posted yet",
+    "nothingPostedBody": "When you share a dump to Instagram or TikTok, it lands here so you can reuse it.",
+    "findADump": "Find a dump",
+    "noDraftsTitle": "No drafts yet",
+    "noDraftsBody": "Dumps you open in Edit or start in Create are saved here as you go.",
+    "startOne": "Start one"
+  },
+  "edit": {
+    "tabLayout": "Layout",
+    "tabPhotos": "Photos",
+    "dumpUnavailable": "This dump is no longer available.",
+    "photosMissing": "The photos in this dump are no longer on your phone.",
+    "fromThisStory": "From this story",
+    "similarPhotos": "Similar photos",
+    "dumpTitleA11y": "Dump title",
+    "preview": "Preview",
+    "photoIndex": "Photo {{index}}",
+    "filmstripPhotoA11y": "Photo {{index}}{{cover}}{{edited}}. Hold for options or to move.",
+    "coverSuffix": ", cover",
+    "editedSuffix": ", edited",
+    "coverSuffixDot": " · cover",
+    "noSuggestedPhotos": "No other photos to suggest yet. They show up once your library is indexed.",
+    "useThisPhoto": "Use this photo",
+    "dumpOrder": "Dump order",
+    "holdToEdit": "Hold to edit",
+    "addPhotos": "Add photos",
+    "photoMenuTitle": "Photo {{index}}{{cover}}",
+    "makeCover": "Make cover",
+    "swapSimilar": "Swap for a similar photo",
+    "moveLeft": "← Move left",
+    "moveRight": "Move right →",
+    "removeNeedsOne": "Remove (a dump needs one photo)",
+    "removeFromDump": "Remove from dump",
+    "swapPhotoTitle": "Swap photo {{index}}",
+    "fitFill": "Fill",
+    "fitBlurFill": "Blur fill",
+    "frameFit": "Fit",
+    "stepperA11y": "{{direction}} {{name}}",
+    "less": "Less",
+    "more": "More",
+    "frameGap": "Gap",
+    "gapNone": "None",
+    "frameCorners": "Corners",
+    "cornersSquare": "Square",
+    "frameBehind": "Behind",
+    "behindColorA11y": "{{color}} behind",
+    "frameGrid": "Grid",
+    "gridGuideNote": "Show what your profile grid crops",
+    "gridGuideA11y": "Grid guide",
+    "slideIndexA11y": "Slide {{current}} of {{total}}",
+    "holdOriginalA11y": "Hold to see the original photos",
+    "gridCrop": "Grid crop",
+    "showingOriginal": "Showing original",
+    "holdToCompare": "Hold to compare",
+    "wholePhotosOnBlur": "Whole photos on blur",
+    "tapSidesDragToCrop": "Tap sides · drag to crop",
+    "dragOrPinchPhoto": "Drag or pinch a photo",
+    "subLook": "Look",
+    "subAdjust": "Adjust",
+    "subTexture": "Texture",
+    "texGrain": "Grain",
+    "texFade": "Fade",
+    "texVignette": "Vignette",
+    "thisPhotoA11y": "This photo. Tap for all photos",
+    "thisPhoto": "This photo",
+    "allPhotos": "All photos",
+    "strength": "Strength",
+    "filterStrength": "Filter strength",
+    "brightenA11y": "Brighten, this photo looks dark",
+    "brightenLooksDark": "Brighten · looks dark",
+    "auto": "Auto",
+    "autoUndo": "Auto on. Tap to undo",
+    "useOnEveryPhoto": "Use on every photo",
+    "resetPhoto": "Reset photo",
+    "adjustHelp": "Adjust changes one photo. Tap another above.",
+    "lookHelp": "Tap a photo above to give it its own look.",
+    "proPreviewNote": " Pro looks and texture preview here; exporting them is Pro."
+  },
+  "preview": {
+    "nothingToday": "Nothing taken today yet. Take a few photos and your Today dump shows up here.",
+    "tabIgPost": "IG Post",
+    "tabIgGrid": "IG Profile Grid",
+    "tabTikTok": "TikTok 9:16",
+    "slidesWord": {
+      "one": "1 slide",
+      "other": "{{count}} slides"
+    },
+    "openingApp": "Opening {{app}} ({{count}})…",
+    "savingSlides": "Saving {{count}}…",
+    "shared": "Shared",
+    "sentToApp": "Sent to {{app}}",
+    "postedToApp": "Posted to {{app}}",
+    "savedToAlbumNote": {
+      "one": "1 slide saved to the PicDump album.",
+      "other": "{{count}} slides saved to the PicDump album."
+    },
+    "couldntMarkPosted": " Couldn't mark it posted in your Library.",
+    "savedToPhoneTitle": "Saved to your phone",
+    "couldntOpenApp": "Couldn't open {{app}}. Try again.",
+    "couldntSaveSlides": "Couldn't save the slides. Try again.",
+    "postedPreview": "Posted Preview",
+    "preview": "Preview",
+    "layoutTag": "{{layout}} layout",
+    "hdExportA11y": "HD export for this dump",
+    "hd": "HD",
+    "standard": "Standard",
+    "saveToPhoneA11y": "Save to phone",
+    "postA11y": "Post",
+    "post": "Post",
+    "proLookTitle": "This film look is Pro",
+    "proLookBody": "Get Pro to export it, or export these slides with the free looks and no texture instead.",
+    "getPro": "Get Pro",
+    "exportWithoutFinish": "Export without finish",
+    "firstSlideA11y": "First slide",
+    "nextSlideA11y": "Next slide",
+    "prevSlideA11y": "Previous slide",
+    "profileA11y": "Profile",
+    "yourHandleA11y": "Your handle",
+    "editHandleA11y": "Edit handle",
+    "editHandle": "edit @",
+    "unlike": "Unlike",
+    "like": "Like",
+    "comments": "Comments",
+    "slideIndexA11y": "Slide {{index}}",
+    "unsave": "Unsave",
+    "save": "Save",
+    "likedByOthers": "Liked by {{count}} others",
+    "viewAllComments": "View all {{count}} comments",
+    "badgeNew": "NEW",
+    "following": "Following",
+    "forYou": "For You",
+    "share": "Share",
+    "photoModeIndex": "Photo Mode · {{current}}/{{total}}",
+    "originalSound": "original sound · {{handle}}",
+    "shareTo": "Share to",
+    "viewInLibrary": "View in Library",
+    "startNewDump": "Start a new dump",
+    "backToDiscover": "Back to Discover",
+    "apps": {
+      "instagram": "Instagram post",
+      "instagramStory": "Instagram story",
+      "instagramReel": "Instagram reel",
+      "tiktok": "TikTok",
+      "whatsapp": "WhatsApp",
+      "noteInstagramSingle": "A photo post",
+      "noteInstagramMulti": "A carousel of {{count}} slides",
+      "noteStorySingle": "One story",
+      "noteStoryMulti": "{{count}} stories, one per slide",
+      "noteReel": "A slideshow reel",
+      "noteTikTok": "A photo post",
+      "noteWhatsAppSingle": "Send to a chat",
+      "noteWhatsAppMulti": "Send {{count}} slides to a chat"
+    }
+  },
+  "today": {
+    "title": "Today",
+    "freeSquare": "Free",
+    "squareDoneA11y": "{{label}}, done",
+    "squareEmptySwapA11y": "{{label}}, empty. Tap to swap",
+    "squareEmptyA11y": "{{label}}, empty",
+    "fixSheetHint": "Wrong photo? Pick the right one from today, or take it out.",
+    "photoOfTodayA11y": "Photo {{index}} of today",
+    "takePhotoOut": "Take this photo out",
+    "pickPrintHint": "Pick the photo for this day’s print.",
+    "photoOfDayA11y": "Photo {{index}} of the day",
+    "savedToPicDump": "Saved to PicDump ✓",
+    "couldntSave": "Couldn’t save",
+    "couldntShare": "Couldn’t share",
+    "save": "Save",
+    "saveNameA11y": "Save {{name}}",
+    "shareNameA11y": "Share {{name}}",
+    "share": "Share",
+    "todaysBingo": "Today’s bingo",
+    "bingoBanner": "Bingo! Today’s print is in. Every square you fill now makes the dump better.",
+    "openCamera": "Open camera",
+    "swapHelp": "Tap an empty square to swap it, once a day",
+    "foundOn": "Found {{on}}",
+    "thisWeeksQuest": "This week’s side quest",
+    "questFoundSub": "Stuck on {{day}}’s polaroid. Next quest on Monday.",
+    "questFindSub": "Find it any day this week.",
+    "lastDay": "Last day",
+    "daysLeft": "{{count}} days left",
+    "newOnMonday": "New on Monday",
+    "found": "FOUND",
+    "makeDumpFromToday": "Make a dump from today · {{count}} photos",
+    "polaroidA11y": "{{label}}: bingo{{quest}}",
+    "blankA11y": "{{label}}: {{state}}",
+    "noBingo": "no bingo",
+    "noCard": "no card",
+    "notYet": "not yet",
+    "tabWeek": "Week",
+    "tabMonth": "Month",
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "today": "Today",
+    "weekSum": "{{bingo}} · quest {{quest}}",
+    "questFound": "found",
+    "questMissed": "missed",
+    "questOpen": "open",
+    "monthSum": "{{title}}: {{bingo}}, {{quest}}",
+    "prevName": "Previous {{name}}",
+    "nextName": "Next {{name}}",
+    "shareName": "Share {{name}}",
+    "tabBingo": "Bingo",
+    "tabAlbum": "Album"
+  },
+  "models": {
+    "vision": {
+      "title": "Getting your dumps ready",
+      "after": "Your dumps start right after, all on your phone."
+    },
+    "faces": {
+      "title": "Fetching the face finder",
+      "after": "It spots you in your photos, on your phone."
+    },
+    "text": {
+      "title": "Word search is on its way",
+      "after": "Places and months work now."
+    },
+    "downloading": "Downloading {{size}}, once{{pct}}. {{after}}",
+    "queued": "Next in line after the other downloads. {{after}}",
+    "waiting": "Waiting for Wi-Fi to download {{size}}, once. {{after}}",
+    "failed": "The {{size}} download stopped. Check your connection, then try again.",
+    "playError": "This copy of PicDump can’t download it. Install it from Google Play.{{error}}",
+    "downloadMobileData": "Download now with mobile data"
+  }
+}

@@ -8,6 +8,7 @@ import { display, ui } from '../theme/type';
 import { Sheet } from './ui/Sheet';
 import { FrameCard } from './ui/FrameCard';
 import { Tap } from './ui/Tap';
+import { tr } from '../i18n';
 
 /** Profile photo: the best selfie found on the phone ("Is this you?"), else the gallery picker. */
 export function AvatarSheet({ visible, onClose, hasAvatar, onUse, onGallery, onRemove }: {
@@ -35,38 +36,38 @@ export function AvatarSheet({ visible, onClose, hasAvatar, onUse, onGallery, onR
       {!found && canLook ? (
         <View style={{ height: size, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <ActivityIndicator color={t.ink} />
-          <Text style={[ui(12), { color: t.inkMuted }]}>Looking for a selfie…</Text>
+          <Text style={[ui(12), { color: t.inkMuted }]}>{tr('profile.lookingForSelfie')}</Text>
         </View>
       ) : best ? (
         <>
           <Image source={{ uri: best.p.uri }} style={{ width: size, height: size, borderRadius: size / 2, alignSelf: 'center' }} contentFit="cover" />
-          <Text style={[display(20, 1.15), { color: t.ink, textAlign: 'center', marginTop: 4 }]}>Is this you?</Text>
-          <Text style={[ui(12), { color: t.inkMuted, textAlign: 'center' }]}>Found on your phone. It never left your device.</Text>
+          <Text style={[display(20, 1.15), { color: t.ink, textAlign: 'center', marginTop: 4 }]}>{tr('profile.isThisYou')}</Text>
+          <Text style={[ui(12), { color: t.inkMuted, textAlign: 'center' }]}>{tr('profile.foundOnPhone')}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
             {found!.length > 1 && (
-              <FrameCard radius={22} onPress={() => setI((x) => (x + 1) % found!.length)} label="Show another photo" style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={[ui(13, 600), { color: t.ink }]}>Another ({i + 1}/{found!.length})</Text>
+              <FrameCard radius={22} onPress={() => setI((x) => (x + 1) % found!.length)} label={tr('profile.showAnotherPhoto')} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={[ui(13, 600), { color: t.ink }]}>{tr('profile.anotherPhotoCount', { current: i + 1, total: found!.length })}</Text>
               </FrameCard>
             )}
-            <Tap onPress={close(() => onUse(best.p.uri))} accessibilityRole="button" accessibilityLabel="Use this photo"
+            <Tap onPress={close(() => onUse(best.p.uri))} accessibilityRole="button" accessibilityLabel={tr('edit.useThisPhoto')}
               style={{ flex: 1, height: 44, borderRadius: 22, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={[ui(13, 600), { color: t.bgScreen }]}>Yes, use this</Text>
+              <Text style={[ui(13, 600), { color: t.bgScreen }]}>{tr('profile.yesUseThis')}</Text>
             </Tap>
           </View>
         </>
       ) : (
         <>
-          <Text style={[display(20, 1.15), { color: t.ink }]}>Profile photo</Text>
-          <Text style={[ui(12), { color: t.inkMuted }]}>{canLook ? 'No selfie found on your phone yet.' : 'Your photos are still being read.'}</Text>
+          <Text style={[display(20, 1.15), { color: t.ink }]}>{tr('profile.profilePhoto')}</Text>
+          <Text style={[ui(12), { color: t.inkMuted }]}>{canLook ? tr('profile.noSelfieFound') : tr('profile.readingPhotosWait')}</Text>
         </>
       )}
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 22, marginTop: 6 }}>
         <Tap onPress={close(onGallery)} hitSlop={8} accessibilityRole="button">
-          <Text style={[ui(12, 600), { color: t.ink, textDecorationLine: 'underline' }]}>Choose from gallery</Text>
+          <Text style={[ui(12, 600), { color: t.ink, textDecorationLine: 'underline' }]}>{tr('profile.chooseFromGallery')}</Text>
         </Tap>
         {hasAvatar && (
           <Tap onPress={close(onRemove)} hitSlop={8} accessibilityRole="button">
-            <Text style={[ui(12, 600), { color: '#B4412A' }]}>Remove photo</Text>
+            <Text style={[ui(12, 600), { color: '#B4412A' }]}>{tr('profile.removePhoto')}</Text>
           </Tap>
         )}
       </View>

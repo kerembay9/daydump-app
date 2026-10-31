@@ -5,19 +5,20 @@ import { useTheme } from '../theme/ThemeProvider';
 import { ui } from '../theme/type';
 import { FrameCard } from './ui/FrameCard';
 import { Tap } from './ui/Tap';
+import { tr } from '../i18n';
 
 const span = (d: number) => {
-  const [k, unit] = d < 14 ? [Math.round(d), 'day'] : d < 60 ? [Math.round(d / 7), 'week'] : d < 730 ? [Math.round(d / 30), 'month'] : [Math.round(d / 365), 'year'];
-  return k <= 1 ? unit : `${k} ${unit}s`;
+  const [k, unit] = d < 14 ? [Math.max(1, Math.round(d)), 'day'] : d < 60 ? [Math.round(d / 7), 'week'] : d < 730 ? [Math.round(d / 30), 'month'] : [Math.round(d / 365), 'year'];
+  return tr(`discover.timeSpan.${unit}`, { count: k });
 };
 /** How far back the index reaches (AppState coverageSince): "Dumps from your last 3 weeks so far". */
-export const coverageLine = (since: number) => `Dumps from your last ${span((Date.now() - since) / 864e5)} so far`;
+export const coverageLine = (since: number) => tr('discover.coverageLine', { span: span((Date.now() - since) / 864e5) });
 /** batteryPct null = charging, no cost */
-const battery = (pct: number | null) => (pct == null ? 'charging, no battery cost' : pct >= 1 ? `uses ~${pct}% battery` : 'uses a little battery');
+const battery = (pct: number | null) => (pct == null ? tr('discover.batteryCharging') : pct >= 1 ? tr('discover.batteryPct', { pct }) : tr('discover.batteryLow'));
 export const eta = (s: number | null) => {
-  if (s == null) return 'Working out time left…';
+  if (s == null) return tr('discover.etaCalculating');
   const m = Math.round(s / 60);
-  return s < 60 ? 'Less than a minute left' : m < 60 ? `About ${m} min left` : `About ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''} left`;
+  return s < 60 ? tr('discover.etaUnderMinute') : m < 60 ? tr('discover.etaMinutes', { count: m }) : m % 60 ? tr('discover.etaHoursMinutes', { h: Math.floor(m / 60), m: m % 60 }) : tr('discover.etaHours', { h: Math.floor(m / 60) });
 };
 const n = (x: number) => x.toLocaleString();
 
@@ -65,16 +66,16 @@ export function IndexStrip({ progress, paused, hasStories, coverageSince = null,
   const done = progress ? ticking : paused!.done, total = progress?.total ?? paused!.total;
 
   // total 0 = the placeholder before the first listing (first run): no count yet
-  const head = progress ? `Reading your library…${total ? ` ${n(done)}/${n(total)}` : ''}` : `Paused at ${n(done)} of ${n(total)}`;
+  const head = progress ? (total ? tr('discover.readingProgress', { done: n(done), total: n(total) }) : tr('discover.reading')) : tr('discover.pausedAt', { done: n(done), total: n(total) });
   const time = progress ? ` · ${eta(progress.etaSec)}` : '';
-  const line2 = !progress ? 'Continues by itself next time you charge.'
-    : fast ? `Keeps going if you leave · ${battery(progress.batteryPct ?? null)}`
+  const line2 = !progress ? tr('discover.lineResumeCharging')
+    : fast ? tr('discover.lineFastMode', { battery: battery(progress.batteryPct ?? null) })
     // board 11: with dumps up, the line says how far back they reach
-    : hasStories ? (coverageSince != null ? coverageLine(coverageSince) : 'Starting with your newest photos')
+    : hasStories ? (coverageSince != null ? coverageLine(coverageSince) : tr('discover.lineNewest'))
     // BackgroundIndex.kt's charging-only job picks up where this left off; only worth saying when there's a wait
-    : Platform.OS === 'android' && (progress.etaSec ?? 0) > 60 ? 'You can leave the app: it keeps going while your phone charges.'
-    : 'Newest photos first. Your first dumps appear in a few seconds.';
-  const action = !progress ? { label: 'Resume', on: onResume } : fast ? { label: 'Pause', on: onPause } : null;
+    : Platform.OS === 'android' && (progress.etaSec ?? 0) > 60 ? tr('discover.lineAndroidBackground')
+    : tr('discover.lineFirstDumps');
+  const action = !progress ? { label: tr('discover.resume'), on: onResume } : fast ? { label: tr('discover.pause'), on: onPause } : null;
 
   return (
     <FrameCard

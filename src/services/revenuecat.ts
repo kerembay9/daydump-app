@@ -22,7 +22,6 @@ export const REVENUECAT_CONFIG = {
   API_KEYS: {
     APPLE: 'appl_kYyUYfKiGKmKrTPIQExVIKKVHyQ',
     GOOGLE: 'goog_FhTcNYytRCliZcHsDRHiRuEZfUU',
-    TEST_STORE: 'test_ylRDWCJBJadzsPOeIwXNCitplYA',
   },
   // In production and dev on Android, use Google Play key; on iOS use Apple key.
   API_KEY: Platform.OS === 'ios'
@@ -53,10 +52,20 @@ export class RevenueCatService {
   private static async configure(): Promise<void> {
     try {
       // Use custom key if overridden in developer tools, otherwise use configured API key
-      const customKey = await AsyncStorage.getItem(STORAGE_KEYS.API_KEY);
+      // the key override is for debug builds only: in a release build a stored key would point the SDK at another project
+      const customKey = __DEV__ ? await AsyncStorage.getItem(STORAGE_KEYS.API_KEY) : null;
       const apiKey = customKey?.trim() || REVENUECAT_CONFIG.API_KEY;
 
       Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
+      // An emulator without Google Play has no billing: the SDK logs that as errors, which pop a red box on every screen.
+      // Debug builds say it as a plain log; everything else logs as the SDK would.
+      if (__DEV__) {
+        Purchases.setLogHandler((level, message) => {
+          if (level === LOG_LEVEL.ERROR && /BILLING_UNAVAILABLE|Billing is not available/.test(message)) return console.log('[RevenueCat] (no billing on this device)', message.slice(0, 120));
+          const log = level === LOG_LEVEL.ERROR ? console.error : level === LOG_LEVEL.WARN ? console.warn : level === LOG_LEVEL.INFO ? console.info : console.debug;
+          log(`[RevenueCat] ${message}`);
+        });
+      }
 
       await Purchases.configure({
         apiKey,

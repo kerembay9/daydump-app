@@ -25,10 +25,11 @@ import { Filmstrip } from '../../components/edit/Filmstrip';
 import { FramePanel } from '../../components/edit/FramePanel';
 import { usePro } from '../../state/Pro';
 import { LockedStub } from '../../components/LockedDump';
+import { tr } from '../../i18n';
 
 const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-const TABS = [['layout', 'Layout'], ['photos', 'Photos']] as const;
+const TABS = [['layout', 'tabLayout'], ['photos', 'tabPhotos']] as const;
 
 /**
  * Size & Edit studio (ph5.png): Layout (ratio, arrangement, frame, crop) and Photos (look, adjust, texture; hold to compare). The id is a dump (Library draft, Reuse copy, share-in draft) or a Discover story,
@@ -58,8 +59,8 @@ export default function Edit() {
   }, [id, ready, story, dump, locked, unlockedAs]);
 
   if (locked) return <LockedStub story={story!} />;
-  if (dump === null) return <Stub back title="Edit" note="This dump is no longer available." />;
-  if (dump && !dump.photos.length) return <Stub back title="Edit" note="The photos in this dump are no longer on your phone." />;
+  if (dump === null) return <Stub back title={tr('common.edit')} note={tr('edit.dumpUnavailable')} />;
+  if (dump && !dump.photos.length) return <Stub back title={tr('common.edit')} note={tr('edit.photosMissing')} />;
   if (!dump) return null;
   // a draft made under an unlocked id the story has since lost (re-index): the story it was unlocked as
   const own = stories.find((s) => s.id === dump.storyId) ?? stories.find((s) => dump.storyId != null && unlockedIdOf(s) === dump.storyId);
@@ -175,7 +176,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
     const fromStory = (story?.photos ?? []).filter((p) => !have.has(p.id)).slice(0, 24).map(fromAsset);
     const ids = new Set(fromStory.map((p) => p.id));
     const more = photos[0] ? similar(photos[0]).filter((p) => !ids.has(p.id)) : [];
-    return [{ title: 'From this story', photos: fromStory }, { title: 'Similar photos', photos: more }];
+    return [{ title: tr('edit.fromThisStory'), photos: fromStory }, { title: tr('edit.similarPhotos'), photos: more }];
   };
 
   // a removed or replaced photo's own look and Adjust go with it: a stale Pro look would still ask at export
@@ -206,27 +207,27 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
   return (
     <Screen contentContainerStyle={{ paddingBottom: bottom + 16 }}>
       <View style={{ paddingTop: 2, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={back}><Icons.back size={16} /></IconButton>
         <View style={{ flex: 1, alignItems: 'center', minWidth: 0 }}>
           <TextInput value={title} onChangeText={setTitle} onEndEditing={() => { if (!title.trim()) setTitle(dump.title); }}
-            testID="edit-title" accessibilityLabel="Dump title" multiline submitBehavior="blurAndSubmit" returnKeyType="done" maxLength={80}
+            testID="edit-title" accessibilityLabel={tr('edit.dumpTitleA11y')} multiline submitBehavior="blurAndSubmit" returnKeyType="done" maxLength={80}
             style={[display(18.5), { color: t.ink, textAlign: 'center', padding: 0, alignSelf: 'stretch' }]} />
         </View>
         <Tap onPress={toPreview}
-          accessibilityRole="button" accessibilityLabel="Preview"
+          accessibilityRole="button" accessibilityLabel={tr('edit.preview')}
           style={{ height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>Preview</Text>
+          <Text style={[ui(11.5, 600), { color: t.bgScreen }]}>{tr('edit.preview')}</Text>
           <Icons.arrow size={12} color={t.bgScreen} />
         </Tap>
       </View>
 
       <FrameCard radius={20} padding={4} style={{ flexDirection: 'row', marginBottom: 8 }}>
-        {TABS.map(([k, name]) => {
+        {TABS.map(([k, keyName]) => {
           const on = tab === k;
           return (
             <Tap key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }}
               style={{ flex: 1, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.ink : undefined }}>
-              <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]}>{name}</Text>
+              <Text style={[ui(11.5, 600), { color: on ? t.bgScreen : t.ink }]}>{tr(`edit.${keyName}` as any)}</Text>
             </Tap>
           );
         })}
@@ -254,7 +255,7 @@ function Studio({ dump, story, library }: { dump: Dump; story?: Story; library: 
       {tab === 'photos' ? (
         <FilterCard look={look} photo={!!target} own={!!target && editedOwn(filter, target)} onLook={setLook}
           onAllPhotos={() => setSel(null)} onEvery={() => setFilter({ ...look, per: {}, adj: filter.adj })} onReset={() => target && unset(target)}
-          image={focusImage} focus={`Photo ${focusAt + 1}`} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} proLocked={!isPro} />
+          image={focusImage} focus={tr('edit.photoIndex', { index: focusAt + 1 })} adj={(focus && filter.adj[focus.id]) || {}} onAdj={setAdj} tone={tone} proLocked={!isPro} />
       ) : (
         <FramePanel frame={frame} onFrame={setFrame} ratio={ratio} layout={layout} />
       )}

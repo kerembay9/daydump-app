@@ -5,7 +5,7 @@ import { ClipEmbedder, TidyStats } from '../../../modules/clip-embedder';
 import { list } from '../dumps';
 import { getProfile } from '../profile';
 import { db, embedText, mainDb } from '../index/photoIndex';
-import { b64ToFloats, dot, DIM, isZero } from '../index/vectors';
+import { b64ToFloats, dot, DIM, floatsToB64, isZero } from '../index/vectors';
 import { buildResult, isStrict, Pile, softCandidate, TidyResult, TPhoto } from './rules';
 import type { TidyFace } from '../../../modules/clip-embedder';
 
@@ -163,7 +163,7 @@ async function scan() {
   });
 
   // 3. same-shot sets (Tidy.kt), then faces + 512 px checks of their members, to pick each keeper
-  const labels = await N.tidySets!(vecs, photos.map((p) => p.created), photos.map(isStrict));
+  const labels = await N.tidySets!(floatsToB64(vecs), photos.map((p) => p.created), photos.map(isStrict));
   photos.forEach((p, i) => { p.set = labels[i]; });
   await batched(photos.filter((p) => p.set >= 0 && stale(p.fs, owner)), 32, 'check', async (b) => {
     const r = await N.tidyStats!(b.map((p) => p.id), 512, true);

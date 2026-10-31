@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { AppState, Platform } from 'react-native';
 import { byUri, embed, photoVec, textVec, topConcepts, world, NAMES, bgRow } from './world';
-import { DIM } from '../src/services/index/vectors';
+import { b64ToFloats, DIM } from '../src/services/index/vectors';
 
 const MODEL = (require('../src/services/index/clipGolden.json') as { model: string }).model;
 
@@ -45,7 +45,7 @@ const ready: ReturnType<typeof bgRow>['row'][] = [];
   },
   tidyStats: async (ids: string[]) => ids.map((id) => (id in world.tidy.stats ? world.tidy.stats[id] : { b: 120, sd: 50, lap: 300, hi: 0.01, lo: 0.01, finger: false, faces: [] })),
   tidyHash: async (ids: string[]) => ids.map((id) => (id in world.tidy.hash ? world.tidy.hash[id] : `h${id}`)),
-  tidySets: async (v: Float32Array, t: number[], strict: boolean[]) => tidySets(v, t, strict),
+  tidySets: async (v: string, t: number[], strict: boolean[]) => tidySets(b64ToFloats(v), t, strict), // base64 like the real module
   trashState: async (ids: string[]) => {
     const out: Record<string, { trashed: boolean; expires: number }> = {};
     for (const id of ids) {
@@ -144,6 +144,7 @@ jest.mock('react-native-purchases', () => ({
   __esModule: true,
   default: {
     setLogLevel: jest.fn(),
+    setLogHandler: jest.fn(),
     configure: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(),
     getCustomerInfo: jest.fn(async () => ({

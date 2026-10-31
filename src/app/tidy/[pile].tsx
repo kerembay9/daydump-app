@@ -14,6 +14,7 @@ import { moveToTrash, useTidy } from '../../services/tidy/scan';
 import { usePro } from '../../state/Pro';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
+import { tr } from '../../i18n';
 
 const REVIEW: Pile[] = ['copies', 'screens', 'blurry', 'paper', 'chats', 'private'];
 
@@ -51,10 +52,10 @@ export default function PileScreen() {
     try {
       const done = await moveToTrash(picked.map((x) => ({ p: x.p, pile: pile! })));
       if (done) { router.back(); return; }
-      setMsg('Nothing was moved.');
+      setMsg(tr('tidy.nothingMoved'));
     } catch (e) {
       console.warn('[tidy] move failed:', e);
-      setMsg('Nothing was moved.');
+      setMsg(tr('tidy.nothingMoved'));
     }
     setBusy(false);
   })));
@@ -63,20 +64,20 @@ export default function PileScreen() {
   const header = (
     <View style={{ paddingTop: insets.top + 8, paddingBottom: 10, gap: 6 }}>
       <View style={{ paddingTop: 2, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
         <Text style={[display(20), { color: t.ink, flexShrink: 1 }]} numberOfLines={1}>{PILES[pile].title}</Text>
       </View>
-      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{pile === 'private' ? 'Check these yourself.' : PILES[pile].blurb}</Text>
+      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{pile === 'private' ? tr('tidy.checkTheseYourself') : PILES[pile].blurb}</Text>
       {items.length ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-          <Text style={[ui(12.5, 600), { color: t.ink }]}>Remove {picked.length} · {formatBytes(bytes)}</Text>
+          <Text style={[ui(12.5, 600), { color: t.ink }]}>{tr('tidy.removeSummary', { count: picked.length, bytes: formatBytes(bytes) })}</Text>
           {picked.length ? (
-            <Tap onPress={() => setSel(new Set())} accessibilityRole="button" accessibilityLabel="Unselect all" hitSlop={8}>
-              <Text style={[ui(12, 600), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Unselect all</Text>
+            <Tap onPress={() => setSel(new Set())} accessibilityRole="button" accessibilityLabel={tr('tidy.unselectAll')} hitSlop={8}>
+              <Text style={[ui(12, 600), { color: t.inkMuted, textDecorationLine: 'underline' }]}>{tr('tidy.unselectAll')}</Text>
             </Tap>
           ) : null}
         </View>
-      ) : <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 8 }]}>Nothing here.</Text>}
+      ) : <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 8 }]}>{tr('tidy.nothingHere')}</Text>}
     </View>
   );
 
@@ -85,7 +86,7 @@ export default function PileScreen() {
       <TidyGrid items={grid} selected={sel} onPress={onPress} onLongPress={setView} header={header} />
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, gap: 6 }}>
         {msg ? <Text style={[ui(12, 500), { color: t.inkMuted, textAlign: 'center' }]}>{msg}</Text> : null}
-        <Primary label={`Move ${picked.length} to Trash`} onPress={move} disabled={!picked.length || busy} pro={!isPro} />
+        <Primary label={tr('tidy.moveToTrashCount', { count: picked.length })} onPress={move} disabled={!picked.length || busy} pro={!isPro} />
       </View>
       <StatusScrim />
       <PhotoViewer photos={photos} index={view} onClose={() => setView(null)} footer={(p) => (

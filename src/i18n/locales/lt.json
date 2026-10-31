@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Uždaryti",
+    "back": "Atgal",
+    "termsOfService": "Paslaugų teikimo sąlygos",
+    "privacyPolicy": "Privatumo politika"
+  },
+  "tabs": {
+    "discover": "Atrasti",
+    "create": "Kurti",
+    "tidy": "Tvarkyti",
+    "library": "Biblioteka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Lengvai kuriami foto rinkiniai",
+      "title": "Paverskite nuotraukų chaosą stilingais rinkiniais",
+      "description": "Pamirškite varginantį tūkstančių kadrų vartymą. PicDump atrenka geriausias jūsų dienų ir kelionių akimirkas, suderintas tobulu ritmu.",
+      "point1": "Juostinės fotografijos stiliai, rėmeliai ir IG / TikTok formatai",
+      "point2": "Koliažų išdėstymai vos vienu perbraukimu"
+    },
+    "privacy": {
+      "badge": "Atranka tiesiogiai įrenginyje",
+      "title": "Atrinkta jūsų telefone, o ne debesyje",
+      "description": "Nuotraukų atranka, paieška ir rinkinių kūrimas vyksta jūsų telefone. PicDump niekada neįkelia jūsų nuotraukų į serverius.",
+      "point1": "Prieiga prie nuotraukų leidžia rasti pačias gražiausias akimirkas"
+    },
+    "allowContinue": "Leisti pasiekti nuotraukas ir tęsti",
+    "continue": "Tęsti",
+    "page": "{{n}} iš {{total}} psl.",
+    "notifPreview": "Pranešimo peržiūra",
+    "notifNow": "· ką tik",
+    "notifTitle": "Jūsų PicDump paruoštas 🎞️",
+    "notifBody": "Šiandienos nuotraukos sujungtos į vieną rinkinį. Peržiūrėkite prieš miegą.",
+    "notifyHeading": "Jūsų diena 20:00 val., jūsų savaitė sekmadienį",
+    "notifyBody": "Pranešimas 20:00 val., kai paruoštas šiandienos rinkinys, ir sekmadienio vidurdienį su jūsų savaitės apžvalga.",
+    "turnOn": "Įjungti",
+    "notNow": "Ne dabar"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Visi rinkiniai jūsų galerijoje.",
+      "sub": "Nemokama versija apima apžvalgas ir vieną rinkinį per savaitę. Pro atveria juos visus."
+    },
+    "tidy": {
+      "heading": "Išvalykite nereikalingas nuotraukas.",
+      "sub": "Nemokama versija randa pasikartojančius ir neryškius kadrus. Pro perkelia juos į šiukšlinę vienu paspaudimu."
+    },
+    "finish": {
+      "heading": "Išlaikykite juostinės fotografijos stilių.",
+      "sub": "Original, Warm 35mm ir Adjust yra nemokami. Pro eksportuoja visus stilius ir tekstūras."
+    },
+    "search": {
+      "heading": "Ieškokite savo galerijoje.",
+      "sub": "Raskite vietą, mėnesį ar objektą pagal žodžius. Paieška pasiekiama su Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Jūsų galerijoje radome {{count}} rinkinį.",
+        "other": "Jūsų galerijoje radome {{count}} rinkinius."
+      },
+      "sub": "{{titles}}. Pro atveria juos visus.",
+      "subMore": "{{titles}} ir daugiau. Pro atveria juos visus."
+    },
+    "welcome": "Sveiki prisijungę prie PicDump Pro!",
+    "purchaseNotActive": "Pirkimas pavyko, bet Pro dar neįsijungė. Bakstelėkite „Atkurti pirkinius“.",
+    "restored": "Pirkiniai atkurti. Sveiki sugrįžę į Pro!",
+    "noSubscription": "Aktyvios PicDump Pro prenumeratos nerasta.",
+    "close": "Uždaryti",
+    "feature": {
+      "dumps": {
+        "title": "Visi rinkiniai atsirakina",
+        "sub": "Kiekviena kelionė ir akimirka, kurią randa „Atrasti“, o ne viena per savaitę."
+      },
+      "search": {
+        "title": "Ieškokite nuotraukų galerijoje",
+        "sub": "Raskite vietą, mėnesį ar daiktą tiesiog įvedę žodį."
+      },
+      "looks": {
+        "title": "Visi juostiniai stiliai",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, taip pat grūdėtumas, išblukimas ir vinjetė."
+      },
+      "tidy": {
+        "title": "Išvalykite pasikartojančius kadrus ir netvarką",
+        "sub": "Perkelkite dublikatus, neryškias nuotraukas ir ekrano kopijas į šiukšlinę vienu metu."
+      },
+      "yours": {
+        "title": "Jūsų rinkinys, jūsų stiliumi",
+        "sub": "Be PicDump pabaigos skaidrės ir nuo 4 iki 20 nuotraukų viename rinkinyje."
+      }
+    },
+    "plansFailed": "Nepavyko įkelti planų. Patikrinkite ryšį ir bandykite dar kartą.",
+    "startTrial": "Pradėti {{trial}}",
+    "continue": "Tęsti",
+    "restore": "Atkurti pirkinius",
+    "trialThen": "Bandomuoju laikotarpiu nemokamai, vėliau {{price}}. ",
+    "disclosure": "Mokėjimas nuskaitomas iš jūsų parduotuvės paskyros. Prenumeratos atnaujinamos automatiškai, nebent atšaukiamos likus bent 24 valandoms iki dabartinio laikotarpio pabaigos."
+  },
+  "profile": {
+    "title": "Profilis ir nustatymai",
+    "changePhoto": "Keisti profilio nuotrauką",
+    "namePlaceholder": "Jūsų vardas",
+    "handlePlaceholder": "jusu_paskyra",
+    "theme": {
+      "system": "Sistemos",
+      "auto": "Automatinė",
+      "cashmere": "Cashmere",
+      "light": "Šviesi",
+      "espresso": "Espresso",
+      "dark": "Tamsi"
+    },
+    "reindex": {
+      "title": "Iš naujo indeksuoti biblioteką?",
+      "body": "PicDump iš naujo nuskaitys kiekvieną nuotrauką. Tai užtruks kelias minutes ir naudos baterijos energiją. Jūsų rinkiniai Bibliotekoje išliks.",
+      "action": "Indeksuoti iš naujo"
+    },
+    "dumpPicks": {
+      "title": "Rinkinių pasirinkimai",
+      "photosPerDump": "Nuotraukų skaičius rinkinyje",
+      "photosPerDumpSub": "„Atrasti“ parenka kadrų skaičių šiame intervale, dažniausiai iš vidurio.",
+      "fewest": "Mažiausiai nuotraukų",
+      "to": "iki",
+      "most": "Daugiausiai nuotraukų",
+      "hideSensitive": "Slėpti jautrias nuotraukas",
+      "hideSensitiveSub": "Asmens dokumentai, banko kortelės ir medicininiai išrašai niekada nepateks į rinkinius.",
+      "screenshots": "Įtraukti ekrano kopijas",
+      "screenshotsSub": "Ekrano kopijos gali pasirodyti rinkiniuose.",
+      "recap": "Apžvalga",
+      "recapSub": "Šiandienos rinkinys 20:00 val., savaitės apžvalga sekmadienio vidurdienį"
+    },
+    "export": {
+      "title": "Eksportavimas ir bendrinimas",
+      "note": "Nauji rinkiniai bus kuriami su čia nustatytu dydžiu ir kokybe.",
+      "postSize": "Numatytasis įrašo dydis",
+      "quality": "Numatytoji eksportavimo kokybė",
+      "hd": "HD (2160 px)",
+      "standard": "Standartinė (1080 px)",
+      "saveOnPost": "Bendrinant išsaugoti ir galerijoje",
+      "saveOnPostSub": "Išsaugo skaidrių kopiją PicDump albume"
+    },
+    "appearance": {
+      "title": "Išvaizda ir tema"
+    },
+    "library": {
+      "title": "Nuotraukų biblioteka ir paieška",
+      "access": "Prieiga",
+      "openSettings": "Atidaryti nustatymus"
+    },
+    "about": {
+      "title": "Privatumas ir informacija",
+      "onDevice": "Viskas vyksta jūsų telefone",
+      "onDeviceSub": "Kaip PicDump atrenka nuotraukas jų niekur neįkeldama",
+      "contact": "Kontaktai",
+      "noMail": "El. pašto programėlė nerasta. Rašykite info@horizonzeta.com",
+      "version": "Versija"
+    }
+  }
+}

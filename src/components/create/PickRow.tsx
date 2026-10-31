@@ -7,6 +7,7 @@ import { DumpPhoto } from '../../services/dumps';
 import { Print } from '../ui/Print';
 import { Tap } from '../ui/Tap';
 import { Icons } from '../ui/Icons';
+import { tr } from '../../i18n';
 
 const W = 60, H = 66, GAP = 8, STEP = W + GAP, LIFT = 6;
 /** Selected photo's size, its peak while gliding past a neighbour, and the rest's size while one is selected. */
@@ -81,10 +82,10 @@ function Thumb({ photo, index, sel, selIndex, onPress, onRemove }: {
 
   return (
     <Animated.View testID="pick-thumb" style={[{ position: 'absolute', left: PADX, top: TOP, zIndex: selected ? 2 : 1 }, style]}>
-      <Tap onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={`Photo ${index + 1}`}
+      <Tap onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={tr('create.photoIndex', { index: index + 1 })}
         style={[{ borderRadius: 10 }, selected ? { boxShadow: `0 0 0 2.5px ${t.ink}, 0 8px 16px rgba(0,0,0,0.3)` } : null]}>
         <Print uri={photo.uri} w={W} h={H} r={10} border={1} borderColor="rgba(255,255,255,0.6)" />
-        <Tap onPress={onRemove} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove photo ${index + 1}`}
+        <Tap onPress={onRemove} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('create.removePhotoIndex', { index: index + 1 })}
           style={{ position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' }}>
           <Icons.close size={10} color="#fff" />
         </Tap>

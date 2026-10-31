@@ -9,6 +9,7 @@ import type { Story } from '../services/stories';
 import { useTheme } from '../theme/ThemeProvider';
 import { fixed } from '../theme/tokens';
 import { display, ui } from '../theme/type';
+import { tr } from '../i18n';
 
 const KEY = '@daydump_first_dump_shown';
 
@@ -94,7 +95,7 @@ export function FirstDumpStrip({ story, onDone }: { story: Story; onDone: () => 
 
   return (
     <Animated.View style={[{ position: 'absolute', top: insets.top + 56, left: 0, right: 0, bottom: 0, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined }, all]}>
-      <Pressable onPress={skip} accessibilityLabel={`Your first dump: ${story.title}`} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
+      <Pressable onPress={skip} accessibilityLabel={tr('discover.firstDumpLabel', { title: story.title })} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
         <Animated.View style={[{ width: SLOT, height: 12, borderRadius: 6, marginTop: 8, backgroundColor: t.dark ? '#0C0906' : '#181411', zIndex: 2 }, slot]} />
         <View style={{ width: FW + 2 * PAD + 20, height: S + 40, marginTop: -6, overflow: 'hidden', alignItems: 'center' }}>
           <Animated.View style={[{ width: FW + 2 * PAD, padding: PAD, paddingBottom: FOOT, gap: GAP, backgroundColor: fixed.printBorder, boxShadow: t.shadowPrint }, strip]}>

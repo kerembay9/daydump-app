@@ -3,7 +3,7 @@
 Turns a camera roll into photo dumps: a pick of the best shots from your days and trips, ready to edit and post.
 Everything runs on the phone. The photo index, story suggestions and search never leave the device.
 
-(The repo and some identifiers still say `daydump`; the app, bundle id and URL scheme are `picdump`.)
+(The name PicDump is final. The repo and some identifiers still say `daydump` and are kept on purpose: renaming them would reset users' stored data and the store entitlement. The app name, bundle id, package and URL scheme are `picdump`. Kept as `daydump`: the repo and folder name; the RevenueCat entitlement `daydump_pro`; AsyncStorage keys (`@daydump_*`, `daydump.themeMode`); notification identifiers (`daydump_daily_recap_*`, `daydump_weekly_recap_sunday`); the keystore file `daydump-release.keystore`; Maestro flow and test names.)
 
 ## What it does
 

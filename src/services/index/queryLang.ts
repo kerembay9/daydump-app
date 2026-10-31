@@ -2,6 +2,7 @@
 // translation (ML Kit, QueryTranslateModule.kt), and emoji as their names. Create keeps each photo's best score.
 import { useEffect, useState } from 'react';
 import { QueryTranslate as QT } from '../../../modules/clip-embedder';
+import { LANGUAGES } from '../../i18n/languages';
 import { getProfile, Profile, profileNow, setProfile } from '../profile';
 
 const EMOJI = require('./emojiNames.json') as Record<string, string>; // scripts/build_emoji_names.py
@@ -40,7 +41,12 @@ export function searchLangs(p: Profile = profileNow()): string[] {
 }
 
 let names: Map<string, string> | null = null;
-export const langName = (code: string) => (names ??= new Map((QT?.languages() ?? []).map((l) => [l.code, l.name]))).get(code) ?? code;
+export const langName = (code: string) => {
+  if (!names && QT?.languages()?.length) {
+    names = new Map(QT.languages().map((l) => [l.code, l.name]));
+  }
+  return names?.get(code) ?? LANGUAGES.find((l) => l.code === code)?.name ?? code;
+};
 
 /** Downloads missing search languages, retries failed ones and deletes unchecked ones (app start, Settings). */
 export async function syncLangs() {

@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Cau",
+    "back": "Yn ôl",
+    "termsOfService": "Telerau Gwasanaeth",
+    "privacyPolicy": "Polisi Preifatrwydd"
+  },
+  "tabs": {
+    "discover": "Darganfod",
+    "create": "Creu",
+    "tidy": "Tacluso",
+    "library": "Llyfrgell"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dympiadau lluniau diymdrech",
+      "title": "Troi anhrefn eich rholyn camera yn ddympiadau",
+      "description": "Ffarwél â sgrolio trwy filoedd o luniau. Mae PicDump yn dewis y lluniau gorau o'ch dyddiau a'ch teithiau, wedi'u gosod mewn llif naturiol.",
+      "point1": "Gwedd ffilm, borderi a meintiau IG / TikTok",
+      "point2": "Cynlluniau collage, un sychiad ar y tro"
+    },
+    "privacy": {
+      "badge": "Curadu ar y ddyfais",
+      "title": "Wedi'u dewis ar eich ffôn, nid yn y cwmwl",
+      "description": "Mae dethol lluniau, chwilio a dympiadau yn gweithredu ar eich ffôn. Nid yw PicDump yn uwchlwytho eich lluniau i'w curadu.",
+      "point1": "Mae mynediad at luniau yn caniatáu iddo ddod o hyd i'ch eiliadau gorau"
+    },
+    "allowContinue": "Caniatáu lluniau a pharhau",
+    "continue": "Parhau",
+    "page": "Tudalen {{n}} o {{total}}",
+    "notifPreview": "Rhagolwg hysbysiad",
+    "notifNow": "· nawr",
+    "notifTitle": "Mae eich PicDump yn barod 🎞️",
+    "notifBody": "Lluniau heddiw, wedi'u curadu i un dympiad. Cymerwch olwg cyn cysgu.",
+    "notifyHeading": "Eich diwrnod am 8 PM, eich wythnos ar ddydd Sul",
+    "notifyBody": "Hysbysiad am 8 PM pan fydd dympiad heddiw yn barod, ac ar ddydd Sul am hanner dydd gyda'ch wythnos.",
+    "turnOn": "Troi ymlaen",
+    "notNow": "Ddim nawr"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Pob dympiad yn eich rholyn.",
+      "sub": "Mae am ddim yn rhoi crynodebau ac un dympiad yr wythnos i chi. Mae Pro yn agor pob un ohonyn nhw."
+    },
+    "tidy": {
+      "heading": "Gwaredu'r llanast.",
+      "sub": "Mae am ddim yn canfod pob llun ailadroddus ac aneglur. Mae Pro yn eu symud i'r Sbwriel i gyd ar unwaith."
+    },
+    "finish": {
+      "heading": "Cadw'r wedd ffilm.",
+      "sub": "Mae Original, Warm 35mm ac Addasu am ddim. Mae Pro yn allforio pob gwedd a gwead."
+    },
+    "search": {
+      "heading": "Chwilio eich rholyn camera.",
+      "sub": "Dewch o hyd i le, mis neu beth mewn geiriau. Daw chwilio gyda Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Rydym wedi dod o hyd i {{count}} dympiad yn eich rholyn.",
+        "other": "Rydym wedi dod o hyd i {{count}} dympiad yn eich rholyn."
+      },
+      "sub": "{{titles}}. Mae Pro yn agor pob un ohonyn nhw.",
+      "subMore": "{{titles}} a mwy. Mae Pro yn agor pob un ohonyn nhw."
+    },
+    "welcome": "Croeso i PicDump Pro!",
+    "purchaseNotActive": "Aeth y pryniant drwodd ond nid yw Pro wedi troi ymlaen eto. Tapiwch Adfer pryniannau.",
+    "restored": "Pryniannau wedi'u hadfer. Croeso'n ôl i Pro!",
+    "noSubscription": "Ni chanfuwyd tanysgrifiad PicDump Pro gweithredol.",
+    "close": "Cau'r wal dalu",
+    "feature": {
+      "dumps": {
+        "title": "Pob dympiad, wedi'i ddatgloi",
+        "sub": "Pob taith a stori y mae Darganfod yn ei chael, nid un yr wythnos."
+      },
+      "search": {
+        "title": "Chwilio eich rholyn camera",
+        "sub": "Dewch o hyd i le, mis neu beth mewn geiriau."
+      },
+      "looks": {
+        "title": "Pob gwedd ffilm",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, ynghyd â graen, pylu a vignette."
+      },
+      "tidy": {
+        "title": "Clirio lluniau dyblyg a llanast",
+        "sub": "Symud lluniau dyblyg, aneglur a sgrinluniau i'r Sbwriel ar unwaith."
+      },
+      "yours": {
+        "title": "Eich dympiad, eich ffordd chi",
+        "sub": "Dim sleid olaf PicDump, a 4 i 20 o luniau fesul dympiad."
+      }
+    },
+    "plansFailed": "Methu llwytho cynlluniau. Gwiriwch eich cysylltiad a cheisiwch eto.",
+    "startTrial": "Dechrau {{trial}}",
+    "continue": "Parhau",
+    "restore": "Adfer pryniannau",
+    "trialThen": "Am ddim yn ystod y cyfnod prawf, yna {{price}}. ",
+    "disclosure": "Codir y taliad ar eich cyfrif siop. Mae tanysgrifiadau'n adnewyddu'n awtomatig oni bai eu bod yn cael eu canslo o leiaf 24 awr cyn diwedd y cyfnod cyfredol."
+  },
+  "profile": {
+    "title": "Proffil a Gosodiadau",
+    "changePhoto": "Newid llun proffil",
+    "namePlaceholder": "Eich enw",
+    "handlePlaceholder": "eich_cyfrif",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Golau",
+      "espresso": "Espresso",
+      "dark": "Tywyll"
+    },
+    "reindex": {
+      "title": "Ail-fynegeio eich llyfrgell?",
+      "body": "Bydd PicDump yn darllen pob llun eto. Mae hyn yn cymryd ychydig funudau a rhywfaint o fatri. Cedwir eich dympiadau yn y Llyfrgell.",
+      "action": "Ail-fynegeio"
+    },
+    "dumpPicks": {
+      "title": "Dewisiadau dympiad",
+      "photosPerDump": "Lluniau fesul dympiad",
+      "photosPerDumpSub": "Mae Darganfod yn dewis cyfrif yn yr ystod hon, yn bennaf o'r canol.",
+      "fewest": "Lleiaf o luniau",
+      "to": "i",
+      "most": "Mwyaf o luniau",
+      "hideSensitive": "Cuddio lluniau sensitif",
+      "hideSensitiveSub": "Nid yw cardiau adnabod, cardiau banc a dogfennau meddygol byth yn ymddangos mewn dympiadau.",
+      "screenshots": "Cynnwys sgrinluniau",
+      "screenshotsSub": "Gall sgrinluniau ymddangos mewn dympiadau.",
+      "recap": "Crynodeb",
+      "recapSub": "Dympiad heddiw am 8 PM, eich wythnos ar ddydd Sul am hanner dydd"
+    },
+    "export": {
+      "title": "Allforio a phostio",
+      "note": "Mae dympiadau newydd yn dechrau gyda'r maint a'r ansawdd a osodir yma.",
+      "postSize": "Maint Post Diofyn",
+      "quality": "Ansawdd Allforio Diofyn",
+      "hd": "HD (2160 px)",
+      "standard": "Safonol (1080 px)",
+      "saveOnPost": "Mae postio hefyd yn cadw i'r oriel",
+      "saveOnPostSub": "Cadw copi o'r sleidiau yn albwm PicDump"
+    },
+    "appearance": {
+      "title": "Ymddangosiad a thema"
+    },
+    "library": {
+      "title": "Llyfrgell luniau a chwilio",
+      "access": "Mynediad",
+      "openSettings": "Agor gosodiadau"
+    },
+    "about": {
+      "title": "Preifatrwydd a gwybodaeth",
+      "onDevice": "Mae popeth yn digwydd ar eich ffôn",
+      "onDeviceSub": "Sut mae PicDump yn dewis lluniau heb eu huwchlwytho",
+      "contact": "Cyswllt",
+      "noMail": "Ni chanfuwyd ap e-bost. Ysgrifennwch at info@horizonzeta.com",
+      "version": "Fersiwn"
+    }
+  }
+}

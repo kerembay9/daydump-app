@@ -22,6 +22,7 @@ import { usePro } from '../../state/Pro';
 import { dateRange } from '../../services/stories/titles';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
+import { tr } from '../../i18n';
 
 type Marked = { keeper: TPhoto; remove: TPhoto[] };
 
@@ -105,20 +106,20 @@ export default function SetsScreen() {
     try {
       const done = await moveToTrash(marked.flatMap((m) => m.remove.map((p) => ({ p, pile: 'same' as const }))), marked.map((m) => m.keeper));
       if (done) { router.back(); return; }
-      setMsg('Nothing was moved.');
+      setMsg(tr('tidy.nothingMoved'));
     } catch (e) {
       console.warn('[tidy] move failed:', e);
-      setMsg('Nothing was moved.');
+      setMsg(tr('tidy.nothingMoved'));
     }
     setBusy(false);
   })));
-  const moveLabel = `Move ${total} to Trash`;
+  const moveLabel = tr('tidy.moveToTrashCount', { count: total });
 
   const top = (
     <View style={{ paddingTop: insets.top + 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
+      <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
       <View style={{ flex: 1 }}>
-        <Text style={[display(20), { color: t.ink }]} numberOfLines={1}>{set ? `Same shot · set ${at + 1} of ${sets.length}` : 'Same shot'}</Text>
+        <Text style={[display(20), { color: t.ink }]} numberOfLines={1}>{set ? tr('tidy.sameShotSetProgress', { current: at + 1, total: sets.length }) : tr('tidy.sameShot')}</Text>
         {keeper ? <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>{when(keeper.created)}</Text> : null}
       </View>
       {set && total ? <Pill label={moveLabel} onPress={move} height={30} size={11} right={!isPro ? <ProBadge /> : null} /> : null}
@@ -130,13 +131,13 @@ export default function SetsScreen() {
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
         {top}
         <FrameCard radius={18} padding={16} style={{ marginTop: 14, gap: 8 }}>
-          <Text style={[display(18), { color: t.ink }]}>{sets.length ? 'That’s every set' : 'No same-shot sets'}</Text>
+          <Text style={[display(18), { color: t.ink }]}>{sets.length ? tr('tidy.everySetDone') : tr('tidy.noSameShotSets')}</Text>
           <Text style={[ui(12.5), { color: t.inkMuted, lineHeight: 18 }]}>
-            {total ? `${total} photos marked · ${formatBytes(totalBytes)}. Nothing is moved until you say so.` : 'Nothing marked for Trash.'}
+            {total ? tr('tidy.markedSummary', { count: total, bytes: formatBytes(totalBytes) }) : tr('tidy.nothingMarkedForTrash')}
           </Text>
           {msg ? <Text style={[ui(12, 500), { color: t.inkMuted }]}>{msg}</Text> : null}
           <View style={{ marginTop: 4 }}>
-            {total ? <Primary label={moveLabel} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label="Done" onPress={() => router.back()} />}
+            {total ? <Primary label={moveLabel} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label={tr('common.done')} onPress={() => router.back()} />}
           </View>
         </FrameCard>
         <StatusScrim />
@@ -153,14 +154,14 @@ export default function SetsScreen() {
     <View style={{ paddingBottom: 12, gap: 10 }}>
       {top}
       <Text style={[ui(12.5), { color: t.inkMuted, lineHeight: 18 }]}>
-        {set.photos.length} takes of the same shot. Kept {picked ? 'your pick' : set.reason}.
+        {tr('tidy.takesSummary', { count: set.photos.length, kept: picked ? tr('tidy.yourPick') : set.reason })}
       </Text>
       <GestureDetector gesture={swipe}>
         <Animated.View style={lift}>
-          <Tap onLongPress={() => setView(cur.keep)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={picked ? 'Your pick' : 'Keeper'} accessibilityHint="Hold to enlarge">
+          <Tap onLongPress={() => setView(cur.keep)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={picked ? tr('tidy.yourPick') : tr('tidy.keeper')} accessibilityHint={tr('create.holdToEnlarge')}>
             <Print uri={keeper.uri} w={W} h={h} r={14} date={keeper.created} />
             <View style={{ position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: t.ink }}>
-              <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{picked ? 'Your pick' : 'Keeper'}</Text>
+              <Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{picked ? tr('tidy.yourPick') : tr('tidy.keeper')}</Text>
             </View>
           </Tap>
         </Animated.View>
@@ -174,11 +175,11 @@ export default function SetsScreen() {
         ))}
       </View>
       <Text style={[ui(11), { color: t.inkMuted, lineHeight: 16 }]}>
-        Tap a take to keep it instead. Hold to look closer.{still ? '' : ' Swipe the keeper left when you’re done, right to skip.'}
+        {still ? tr('tidy.takeHintStill') : tr('tidy.takeHintSwipe')}
       </Text>
       {out && cur.sel.has(out.id) ? (
-        <Tap onPress={() => mark(out.id, false)} accessibilityRole="button" accessibilityLabel="Keep the outtake too" hitSlop={6} style={{ alignSelf: 'flex-start' }}>
-          <Text style={[ui(12, 600), { color: t.ink, textDecorationLine: 'underline' }]}>Keep the outtake too</Text>
+        <Tap onPress={() => mark(out.id, false)} accessibilityRole="button" accessibilityLabel={tr('tidy.keepOuttakeToo')} hitSlop={6} style={{ alignSelf: 'flex-start' }}>
+          <Text style={[ui(12, 600), { color: t.ink, textDecorationLine: 'underline' }]}>{tr('tidy.keepOuttakeToo')}</Text>
         </Tap>
       ) : null}
     </View>
@@ -186,9 +187,9 @@ export default function SetsScreen() {
   const footer = (
     <View style={{ paddingTop: 10, gap: 8, paddingBottom: insets.bottom }}>
       {msg ? <Text style={[ui(12, 500), { color: t.inkMuted, textAlign: 'center' }]}>{msg}</Text> : null}
-      <Primary label={`Keep ${set.photos.length - removing.length} · Remove ${removing.length} · ${formatBytes(bytes)}`} onPress={() => advance({ keeper, remove: removing })} disabled={busy} />
-      <Tap onPress={() => advance()} accessibilityRole="button" accessibilityLabel="Skip set" style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip set</Text>
+      <Primary label={tr('tidy.keepRemoveSummary', { keep: set.photos.length - removing.length, remove: removing.length, bytes: formatBytes(bytes) })} onPress={() => advance({ keeper, remove: removing })} disabled={busy} />
+      <Tap onPress={() => advance()} accessibilityRole="button" accessibilityLabel={tr('tidy.skipSet')} style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={[ui(13, 600), { color: t.inkMuted }]}>{tr('tidy.skipSet')}</Text>
       </Tap>
     </View>
   );
@@ -201,7 +202,7 @@ export default function SetsScreen() {
         <View>
           <ShotCheckList checks={shotCheck(p, set.photos)} />
           {i === cur.keep
-            ? <Text style={[ui(12, 600), { color: '#fff', marginTop: 10 }]}>{picked ? 'Your pick' : 'Keeper'}</Text>
+            ? <Text style={[ui(12, 600), { color: '#fff', marginTop: 10 }]}>{picked ? tr('tidy.yourPick') : tr('tidy.keeper')}</Text>
             : <KeepToggle removing={cur.sel.has(p.id)} onChange={(r) => mark(p.id, r)} />}
         </View>
       )} />

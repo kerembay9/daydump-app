@@ -47,7 +47,8 @@ type AppStateValue = {
   pause: () => Promise<void>;
   resume: () => Promise<void>;
   /** Starts indexing (asks for photo access first). Onboarding calls it once access is granted. */
-  start: () => Promise<void>;
+  /** reads the photo permission and starts the index; request = false: don't show Android's dialog (onboarding just asked), only read it */
+  start: (request?: boolean) => Promise<void>;
   /** Photo access after a "no": Android's dialog while it still shows it, else Settings (coming back picks a grant up). */
   askPhotos: () => Promise<void>;
   /** started: onboarding already called start() (false: photos denied, nothing asked again). */
@@ -94,8 +95,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     if (week?.picks[0]) ClipEmbedder?.setWeekRecap?.(week.picks[0].uri, week.id);
   };
   // dumps made from Discover stories rank their kind of story up
-  const made = async () => (await listDumps().catch(() => [])).flatMap((d) => (d.storyId ? [d.storyId] : []));
-  const build = async (lib: Library) => buildStories(lib, undefined, limit.current, { ...await getProfile(), made: await made() });
+  const made = useCallback(async () => (await listDumps().catch(() => [])).flatMap((d) => (d.storyId ? [d.storyId] : [])), []);
+  const build = useCallback(async (lib: Library) => buildStories(lib, undefined, limit.current, { ...await getProfile(), made: await made() }), [made]);
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [paused, setPaused] = useState<{ done: number; total: number } | null>(null);
@@ -159,7 +160,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       setLoaded(true);
       console.warn('[stories] refresh failed:', e);
     }
-  }, []);
+  }, [build]);
 
   /** granted, as of the last ask (the foreground check reads it before a re-render) */
   const granted = useRef(false);
@@ -167,8 +168,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   /** "Onboarding every launch" over a completed onboarding: finishing it is a normal launch, whatever the slides did */
   const replaying = useRef(false);
   // one at a time: Home's ask and the foreground check can both land as the dialog closes
-  const start = useCallback(() => asking.current ??= (async () => {
-    const perm = await GalleryService.requestPermissions();
+  const start = useCallback((request = true) => asking.current ??= (async () => {
+    const perm = request ? await GalleryService.requestPermissions() : (await GalleryService.checkPermissions()).granted;
     granted.current = perm;
     setPermission(perm);
     GalleryService.checkPermissions().then((p) => setLimited(p.limited), () => {});
@@ -253,7 +254,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       await NotificationService.init();
     },
     showOnboarding: () => setOnboarding(true),
-  }), [library, stories, available, loaded, paused, permission, limited, onboarding, incoming, refreshStories, start]);
+  }), [library, stories, available, loaded, paused, permission, limited, onboarding, incoming, refreshStories, start, build]);
   const progressValue = useMemo(() => ({ progress, coverageSince: edge === Infinity ? null : edge }), [progress, edge]);
 
   return <Ctx.Provider value={value}><ProgressCtx.Provider value={progressValue}>{children}</ProgressCtx.Provider></Ctx.Provider>;

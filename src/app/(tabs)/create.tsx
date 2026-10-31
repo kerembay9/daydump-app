@@ -31,6 +31,7 @@ import { useBasketThrow } from '../../components/create/BasketThrow';
 import { PickRow } from '../../components/create/PickRow';
 import { ModelLoading } from '../../components/ModelLoading';
 import { useModels } from '../../state/models';
+import { tr } from '../../i18n';
 
 const RECENTS_KEY = '@daydump_recent_searches';
 
@@ -73,7 +74,7 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
     <>
       <View onLayout={(e) => setTop(e.nativeEvent.layout.y + 44)} style={{ marginHorizontal: 16, marginBottom: 8, zIndex: 30, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <FrameCard radius={16} style={[{ flex: 1, height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, focused ? { borderColor: t.ink } : null]}>
-          {searching ? <ActivityIndicator size={16} color={t.inkMuted} accessibilityLabel="Searching" /> : <Icons.search size={16} color={t.inkMuted} />}
+          {searching ? <ActivityIndicator size={16} color={t.inkMuted} accessibilityLabel={tr('create.searching')} /> : <Icons.search size={16} color={t.inkMuted} />}
           <TextInput
             ref={input}
             value={query}
@@ -82,7 +83,7 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
             onFocus={() => setFocused(true)}
             onBlur={() => { setFocused(false); onCommit(last.current); }}
             onSubmitEditing={() => onCommit(query)}
-            placeholder="Search keyword, place, date..."
+            placeholder={tr('create.searchPlaceholder')}
             placeholderTextColor={t.inkMuted}
             returnKeyType="search"
             autoCapitalize="none"
@@ -91,11 +92,11 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
           />
           {/* over the field, not a focus handler: focusing first would flash the keyboard */}
           {locked ? (
-            <Tap onPress={onLocked} accessibilityRole="button" accessibilityLabel="Search" accessibilityHint="PicDump Pro"
+            <Tap onPress={onLocked} accessibilityRole="button" accessibilityLabel={tr('create.search')} accessibilityHint={tr('create.searchProHint')}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
           ) : null}
           {query ? (
-            <Tap onPress={() => onQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+            <Tap onPress={() => onQuery('')} accessibilityRole="button" accessibilityLabel={tr('create.clearSearch')} hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
               <Icons.close size={12} color={t.inkMuted} />
             </Tap>
           ) : null}
@@ -105,17 +106,17 @@ function SearchBar({ query, searching, onQuery, onCommit, recents, suggestions, 
       {focused && rows.length ? (
         <FrameCard radius={16} padding={8} style={{ position: 'absolute', top, left: 16, right: 16, zIndex: 30, borderColor: t.borderStrong, boxShadow: `${t.shadowCard}, 0 10px 15px -3px rgba(0,0,0,0.1)` }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 6, paddingBottom: 4 }}>
-            <Text style={[label(9.5, 0.12), { color: t.inkMuted }]}>{caps(recents.length ? 'Last searches' : 'Try')}</Text>
+            <Text style={[label(9.5, 0.12), { color: t.inkMuted }]}>{caps(recents.length ? tr('create.lastSearches') : tr('create.trySuggestions'))}</Text>
             <Tap onPress={() => { input.current?.blur(); Keyboard.dismiss(); }} hitSlop={8} accessibilityRole="button">
-              <Text style={[ui(10, 600), { color: t.ink, textDecorationLine: 'underline' }]}>Close</Text>
+              <Text style={[ui(10, 600), { color: t.ink, textDecorationLine: 'underline' }]}>{tr('common.close')}</Text>
             </Tap>
           </View>
           {rows.map((q) => (
-            <Tap key={q} onPress={() => pick(q)} accessibilityRole="button" accessibilityLabel={`Search ${q}`} style={{ paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Tap key={q} onPress={() => pick(q)} accessibilityRole="button" accessibilityLabel={tr('create.searchQuery', { q })} style={{ paddingHorizontal: 8, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {recents.length ? <Icons.clock size={12} color={t.inkMuted} /> : <Icons.sparkle size={12} color={t.inkMuted} />}
               <Text style={[ui(11.5, 500), { color: t.ink, flex: 1 }]} numberOfLines={1}>{q}</Text>
               {recents.length ? (
-                <Tap onPress={() => onRemoveRecent(q)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${q}`} style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                <Tap onPress={() => onRemoveRecent(q)} hitSlop={8} accessibilityRole="button" accessibilityLabel={tr('create.removeQuery', { q })} style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
                   <Icons.close size={10} color={t.inkMuted} />
                 </Tap>
               ) : null}
@@ -152,7 +153,7 @@ const GridRow = React.memo(function GridRow({ item, order, basket, w, h, now, on
         const date = dateRange(p.creationTime, p.creationTime, now);
         return (
           <Tap key={p.id} onPress={(e) => onToggle(p, false, e)} onLongPress={() => onOpen(p)} delayLongPress={350} accessibilityRole="button" accessibilityState={{ selected: k != null }}
-            accessibilityHint="Hold to enlarge" accessibilityLabel={`Photo from ${date}${k != null ? `, number ${k + 1} in your picks` : ''}`}
+            accessibilityHint={tr('create.holdToEnlarge')} accessibilityLabel={k != null ? tr('create.photoPickedA11y', { date, n: k + 1 }) : tr('create.photoUnpickedA11y', { date })}
             style={[{ width: w, height: h, borderRadius: 12 }, k != null ? { boxShadow: `0 0 0 2px ${t.ink}` } : null]}>
             <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong }}>
               <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
@@ -187,11 +188,11 @@ const SimilarStrip = React.memo(function SimilarStrip({ photos, sets, onSets, on
       {sets.length ? <SetsTile sets={sets} onPress={onSets} /> : null}
       {photos.map((p) => (
         <Tap key={p.id} onPress={(e) => onAdd(p, true, e)} onLongPress={() => onOpen(photos, p)} delayLongPress={350}
-          accessibilityRole="button" accessibilityLabel="Add this similar photo" accessibilityHint="Hold to enlarge"
+          accessibilityRole="button" accessibilityLabel={tr('create.addSimilarPhoto')} accessibilityHint={tr('create.holdToEnlarge')}
           style={{ width: 62, height: 64, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', backgroundColor: t.borderStrong }}>
           <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} />
           <View style={{ position: 'absolute', top: 4, right: 4, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.65)' }}>
-            <Text style={[ui(8, 600), { color: '#fff' }]}>+ Add</Text>
+            <Text style={[ui(8, 600), { color: '#fff' }]}>{tr('create.addBtn')}</Text>
           </View>
         </Tap>
       ))}
@@ -202,7 +203,7 @@ const SimilarStrip = React.memo(function SimilarStrip({ photos, sets, onSets, on
 /** "Your gallery (N)"; while indexing, how many are read so far. Its own component: progress ticks every batch. */
 function GalleryCount({ n }: { n: number }) {
   const { progress } = useProgress();
-  return <>{progress ? `Your gallery (${progress.done.toLocaleString('en-US')} read so far)` : `Your gallery (${n})`}</>;
+  return <>{progress ? tr('create.galleryReadProgress', { done: progress.done.toLocaleString() }) : tr('create.galleryCount', { count: n })}</>;
 }
 
 type PicksHandle = { open: () => void; close: () => void };
@@ -220,9 +221,9 @@ function PicksSheet({ ref, basket, onChange, onMove, onGo, onStartNew, onView }:
   return (
     <Sheet visible={review} onClose={() => setReview(false)}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={[ui(13, 700), { color: t.ink }]}>Your picks ({basket.length} photo{basket.length === 1 ? '' : 's'})</Text>
+        <Text style={[ui(13, 700), { color: t.ink }]}>{tr('create.yourPicks', { count: basket.length })}</Text>
         <Tap onPress={() => setReview(false)} hitSlop={8} accessibilityRole="button">
-          <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>Hide</Text>
+          <Text style={[ui(11), { color: t.inkMuted, textDecorationLine: 'underline' }]}>{tr('create.hide')}</Text>
         </Tap>
       </View>
       {basket.length ? (
@@ -230,7 +231,7 @@ function PicksSheet({ ref, basket, onChange, onMove, onGo, onStartNew, onView }:
           {(() => {
             const k = basket.findIndex((p) => p.id === sel);
             return k < 0 ? null : (
-              <Tap onPress={() => onView(basket, basket[k].id)} accessibilityRole="button" accessibilityLabel={`Enlarge photo ${k + 1}`}
+              <Tap onPress={() => onView(basket, basket[k].id)} accessibilityRole="button" accessibilityLabel={tr('create.enlargePhoto', { n: k + 1 })}
                 style={{ height: Math.round(winH * 0.3), borderRadius: 14, overflow: 'hidden', backgroundColor: t.borderStrong }}>
                 <Image source={{ uri: basket[k].uri }} style={{ flex: 1 }} contentFit="contain" recyclingKey={basket[k].id} transition={100} />
                 <View style={{ position: 'absolute', right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
@@ -241,27 +242,27 @@ function PicksSheet({ ref, basket, onChange, onMove, onGo, onStartNew, onView }:
           })()}
           <PickRow photos={basket} sel={sel} onSelect={setSel} onRemove={(id) => onChange(basket.filter((x) => x.id !== id))} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {[['Move earlier', -1], ['Move later', 1]].map(([text, by]) => {
+            {[[tr('create.moveEarlier'), -1], [tr('create.moveLater'), 1]].map(([text, by]) => {
               const i = basket.findIndex((p) => p.id === sel);
               const off = i < 0 || i + (by as number) < 0 || i + (by as number) >= basket.length;
               return (
-                <FrameCard key={text} radius={14} onPress={off ? undefined : () => onMove(sel!, by as number)} label={text as string}
+                <FrameCard key={text as string} radius={14} onPress={off ? undefined : () => onMove(sel!, by as number)} label={text as string}
                   style={{ flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
                   <Text style={[ui(11.5, 600), { color: t.ink }]}>{text}</Text>
                 </FrameCard>
               );
             })}
           </View>
-          <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? 'Move it, or tap it big to see it full screen. Tap × to remove.' : 'Tap a photo to see it bigger and move it. Tap × to remove.'}</Text>
+          <Text style={[ui(10.5), { color: t.inkMuted }]}>{basket.some((p) => p.id === sel) ? tr('create.picksSelectedHint') : tr('create.picksHint')}</Text>
           <Tap onPress={onGo} accessibilityRole="button" style={{ height: 40, borderRadius: 20, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-            <Text style={[ui(12, 600), { color: t.bgScreen }]}>Continue to Edit ({basket.length}) →</Text>
+            <Text style={[ui(12, 600), { color: t.bgScreen }]}>{tr('create.continueToEditCount', { count: basket.length })}</Text>
           </Tap>
           <Tap onPress={onStartNew} accessibilityRole="button" style={{ alignSelf: 'center', paddingVertical: 6 }}>
-            <Text style={[ui(11, 500), { color: t.inkMuted }]}>Start a new dump</Text>
+            <Text style={[ui(11, 500), { color: t.inkMuted }]}>{tr('create.startNewDump')}</Text>
           </Tap>
         </>
       ) : (
-        <Text style={[ui(12), { color: t.inkMuted, paddingVertical: 12 }]}>Nothing picked yet. Tap photos in the grid to add them.</Text>
+        <Text style={[ui(12), { color: t.inkMuted, paddingVertical: 12 }]}>{tr('create.nothingPicked')}</Text>
       )}
     </Sheet>
   );
@@ -379,8 +380,8 @@ export default function Create() {
   const suggestions = useMemo(() => {
     if (!lib) return [];
     const places = [...placeIndex(lib).entries()].sort((a, b) => b[1].size - a[1].size).map(([k]) => k);
-    const season = ['winter', 'spring', 'summer', 'autumn'][Math.floor(((new Date().getMonth() + 1) % 12) / 3)];
-    return [places[1] ?? places[0], `${season} sunset`, 'coffee with friends'].filter((x): x is string => !!x);
+    const season = [tr('create.seasons.winter'), tr('create.seasons.spring'), tr('create.seasons.summer'), tr('create.seasons.autumn')][Math.floor(((new Date().getMonth() + 1) % 12) / 3)];
+    return [places[1] ?? places[0], tr('create.seasonSunset', { season }), tr('create.coffeeWithFriends')].filter((x): x is string => !!x);
   }, [lib]);
 
   // ---- search: parse, embed the CLIP words, filter + rank (150 ms after typing stops) ----
@@ -398,7 +399,7 @@ export default function Create() {
       const v = vs[0] ?? null;
       if (!live) return;
       const r = searchLibrary(lib, q, vs.filter((y): y is Float32Array => !!y));
-      if (query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip ${JSON.stringify(x?.texts ?? [])}: ${r.length} in ${Date.now() - t0} ms`);
+      if (__DEV__ && query) console.log(`[create] "${query}" -> places ${JSON.stringify(q.places)} months ${q.months ? [...q.months] : '-'} years ${q.years ? [...q.years] : '-'} clip ${JSON.stringify(x?.texts ?? [])}: ${r.length} in ${Date.now() - t0} ms`);
       setRows(r.map((i) => lib.photos[i]));
       setQvec(v);
       setExpanded(x);
@@ -497,8 +498,8 @@ export default function Create() {
   const pending = query.trim() && expanded?.pending.length ? (() => {
     const failed = expanded.pending.some((l) => langStates[l] === 'failed');
     const names = expanded.pending.map(langName).join(', ');
-    return failed ? `${names} didn’t download, so this searches only what you typed. Retry in Settings.`
-      : `${names} is still downloading (about 30 MB). Until then this searches only what you typed.`;
+    return failed ? tr('create.langDownloadFailed', { names })
+      : tr('create.langDownloading', { names });
   })() : null;
   const langNote = pending ? (
     <Text style={[ui(10.5), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 2 }]}>{pending}</Text>
@@ -509,19 +510,19 @@ export default function Create() {
       {langNote}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 2, gap: 8 }}>
         <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={2}>
-          {query.trim() ? `Matches for "${query.trim()}" (${rows?.length ?? 0})` : <GalleryCount n={rows?.length ?? 0} />}
+          {query.trim() ? tr('create.matchesFor', { query: query.trim(), count: rows?.length ?? 0 }) : <GalleryCount n={rows?.length ?? 0} />}
         </Text>
-        <Text style={[ui(9.5), { color: t.inkMuted }]}>Hold to enlarge</Text>
+        <Text style={[ui(9.5), { color: t.inkMuted }]}>{tr('create.holdToEnlarge')}</Text>
       </View>
     </View>
   );
 
   const empty = permission === false ? (
     <FrameCard padding={16} style={{ gap: 8 }}>
-      <Text style={[display(18), { color: t.ink }]}>PicDump needs your photos</Text>
-      <Text style={[ui(12), { color: t.inkMuted }]}>Allow photo access to search and pick from your library. Nothing leaves your phone.</Text>
+      <Text style={[display(18), { color: t.ink }]}>{tr('create.permissionTitle')}</Text>
+      <Text style={[ui(12), { color: t.inkMuted }]}>{tr('create.permissionBody')}</Text>
       <Tap onPress={askPhotos} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: t.ink, justifyContent: 'center' }}>
-        <Text style={[ui(12, 600), { color: t.bgScreen }]}>Allow photos</Text>
+        <Text style={[ui(12, 600), { color: t.bgScreen }]}>{tr('create.allowPhotos')}</Text>
       </Tap>
     </FrameCard>
   ) : models && models.vision.state !== 'ready' && !lib?.photos.length ? (
@@ -529,13 +530,13 @@ export default function Create() {
   ) : query.trim() && wordsSkipped && models && !textReady ? (
     <ModelLoading pack="text" s={models.text} />
   ) : rows == null ? (
-    <Text style={[ui(12), { color: t.inkMuted, padding: 8 }]}>Loading your photos…</Text>
+    <Text style={[ui(12), { color: t.inkMuted, padding: 8 }]}>{tr('create.loadingPhotos')}</Text>
   ) : (
     <FrameCard padding={16} style={{ gap: 6 }}>
       {(() => {
         const [title, body] = query.trim()
-            ? ['No matches', `Nothing in your library matches “${query.trim()}”. Try a place, a month or a simpler word.`]
-            : ['No photos yet', 'Photos appear here as PicDump reads your library.'];
+            ? [tr('create.noMatchesTitle'), tr('create.noMatchesBody', { query: query.trim() })]
+            : [tr('create.noPhotosTitle'), tr('create.noPhotosBody')];
         return (
           <>
             <Text style={[display(18), { color: t.ink }]}>{title}</Text>
@@ -580,14 +581,14 @@ export default function Create() {
             <View style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 20, paddingHorizontal: 2 }}>
                 <Icons.sparkle size={12} color={t.ink} />
-                <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{caps('Similar to your picks')}</Text>
+                <Text style={[label(9.5, 0.11), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{caps(tr('create.similarToPicks'))}</Text>
               </View>
               <View style={{ marginTop: 4 }}><SimilarStrip photos={similar} sets={sets} onSets={onSets} onAdd={onToggle} onOpen={onOpenSimilar} /></View>
             </View>
           ) : null}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <FrameCard radius={16} onPress={() => picks.current?.open()} label={`Picks: ${basket.length}. Review`}
+            <FrameCard radius={16} onPress={() => picks.current?.open()} label={tr('create.picksReviewLabel', { count: basket.length })}
               style={{ paddingVertical: 4, paddingRight: 12, paddingLeft: 6, flexDirection: 'row', alignItems: 'center', gap: 10, boxShadow: `${t.shadowCard}, 0 4px 6px -1px rgba(0,0,0,0.1)` }}>
               <View ref={basketStack}>
                 <Animated.View style={stackStyle}>
@@ -598,19 +599,19 @@ export default function Create() {
                 </Animated.View>
               </View>
               <View>
-                <Text style={[ui(11, 700), { color: t.ink }]}>Picks</Text>
+                <Text style={[ui(11, 700), { color: t.ink }]}>{tr('create.picks')}</Text>
                 {suggestedN ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                     <Text style={[ui(9.5), { color: t.inkMuted }]}>{basket.length - suggestedN} + {suggestedN}</Text>
                     <Icons.sparkle size={9} color={t.inkMuted} />
-                    <Text style={[ui(9.5), { color: t.inkMuted }]}> · review</Text>
+                    <Text style={[ui(9.5), { color: t.inkMuted }]}> · {tr('create.review')}</Text>
                   </View>
-                ) : <Text style={[ui(9.5), { color: t.inkMuted }]}>Tap to review</Text>}
+                ) : <Text style={[ui(9.5), { color: t.inkMuted }]}>{tr('create.tapToReview')}</Text>}
               </View>
             </FrameCard>
-            <Tap onPress={go} accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel={`Continue with ${basket.length} photo${basket.length === 1 ? '' : 's'}`}
+            <Tap onPress={go} accessibilityRole="button" accessibilityState={{ disabled: !basket.length }} accessibilityLabel={tr('create.continueWithCount', { count: basket.length })}
               style={{ height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: basket.length ? 1 : 0.4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <Text style={[ui(11, 600), { color: t.bgScreen }]}>Continue</Text>
+              <Text style={[ui(11, 600), { color: t.bgScreen }]}>{tr('common.continue')}</Text>
               <Icons.arrow size={14} color={t.bgScreen} />
             </Tap>
           </View>
@@ -625,12 +626,12 @@ export default function Create() {
         footer={(p) => {
           const k = order.get(p.id);
           return (
-            <Tap onPress={() => toggle(p)} accessibilityRole="button" accessibilityLabel={k == null ? 'Add to picks' : 'Remove from picks'}
+            <Tap onPress={() => toggle(p)} accessibilityRole="button" accessibilityLabel={k == null ? tr('create.addToPicksLabel') : tr('create.removeFromPicks')}
               style={{ height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: k == null ? '#fff' : 'rgba(255,255,255,0.15)' }}>
-              {k == null ? <Text style={[ui(13, 600), { color: '#000' }]}>+ Add to picks</Text> : (
+              {k == null ? <Text style={[ui(13, 600), { color: '#000' }]}>{tr('create.addToPicks')}</Text> : (
                 <>
                   <Icons.check size={15} color="#fff" />
-                  <Text style={[ui(13, 600), { color: '#fff' }]}>Pick #{k + 1} · Remove</Text>
+                  <Text style={[ui(13, 600), { color: '#fff' }]}>{tr('create.pickNumberRemove', { n: k + 1 })}</Text>
                 </>
               )}
             </Tap>

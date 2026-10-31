@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Tutup",
+    "back": "Kembali",
+    "termsOfService": "Syarat Perkhidmatan",
+    "privacyPolicy": "Dasar Privasi"
+  },
+  "tabs": {
+    "discover": "Teroka",
+    "create": "Cipta",
+    "tidy": "Kemas",
+    "library": "Pustaka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dump foto yang mudah",
+      "title": "Ubah foto berselerak jadi dump kemas",
+      "description": "Tak perlu lagi skrol ribuan gambar. PicDump memilih foto terbaik hari dan percutian anda, disusun dengan rentak menarik.",
+      "point1": "Gaya filem, bingkai dan saiz IG / TikTok",
+      "point2": "Susun atur kolaj, satu leretan setiap kali"
+    },
+    "privacy": {
+      "badge": "Kurasi terus pada peranti",
+      "title": "Dipilih pada telefon anda, bukan di awan",
+      "description": "Pilihan foto, carian dan dump diproses terus pada telefon anda. PicDump tidak memuat naik foto anda untuk mengurasi.",
+      "point1": "Akses foto membolehkannya mencari detik terbaik anda"
+    },
+    "allowContinue": "Benarkan foto & teruskan",
+    "continue": "Teruskan",
+    "page": "Halaman {{n}} daripada {{total}}",
+    "notifPreview": "Pratonton pemberitahuan",
+    "notifNow": "· sekarang",
+    "notifTitle": "PicDump anda sedia 🎞️",
+    "notifBody": "Foto hari ini, dikurasi menjadi satu dump. Luangkan masa lihat sebelum tidur.",
+    "notifyHeading": "Hari anda pada 8 malam, minggu anda pada Ahad",
+    "notifyBody": "Pemberitahuan pada 8 malam apabila dump hari ini sedia, dan pada tengah hari Ahad dengan ringkasan minggu anda.",
+    "turnOn": "Hidupkan",
+    "notNow": "Bukan sekarang"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Setiap dump dalam galeri anda.",
+      "sub": "Percuma dapatkan imbasan semula dan satu dump seminggu. Pro membuka semuanya."
+    },
+    "tidy": {
+      "heading": "Bersihkan foto bersepah.",
+      "sub": "Percuma mencari setiap foto berulang dan kabur. Pro memindahkannya ke Tong Sampah sekali gus."
+    },
+    "finish": {
+      "heading": "Kekalkan sentuhan filem.",
+      "sub": "Original, Warm 35mm dan Adjust adalah percuma. Pro mengeksport setiap gaya dan tekstur."
+    },
+    "search": {
+      "heading": "Cari dalam galeri foto anda.",
+      "sub": "Cari tempat, bulan atau objek dengan perkataan. Carian disertakan dengan Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Kami menemui {{count}} dump dalam galeri anda.",
+        "other": "Kami menemui {{count}} dump dalam galeri anda."
+      },
+      "sub": "{{titles}}. Pro membuka semuanya.",
+      "subMore": "{{titles}} dan banyak lagi. Pro membuka semuanya."
+    },
+    "welcome": "Selamat datang ke PicDump Pro!",
+    "purchaseNotActive": "Pembelian berjaya tetapi Pro belum diaktifkan lagi. Ketik Pulihkan pembelian.",
+    "restored": "Pembelian dipulihkan. Selamat kembali ke Pro!",
+    "noSubscription": "Tiada langganan PicDump Pro yang aktif ditemui.",
+    "close": "Tutup langganan",
+    "feature": {
+      "dumps": {
+        "title": "Semua dump dibuka",
+        "sub": "Setiap perjalanan dan cerita yang ditemui Teroka, bukan hanya satu seminggu."
+      },
+      "search": {
+        "title": "Cari dalam galeri foto anda",
+        "sub": "Cari tempat, bulan atau objek dengan perkataan."
+      },
+      "looks": {
+        "title": "Semua gaya filem",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, serta butiran filem, pudar dan vignet."
+      },
+      "tidy": {
+        "title": "Padam foto berulang dan bersepah",
+        "sub": "Pindahkan foto pendua, kabur dan tangkapan skrin ke Tong Sampah sekali gus."
+      },
+      "yours": {
+        "title": "Dump anda, gaya anda",
+        "sub": "Tanpa slaid akhir PicDump, dan 4 hingga 20 foto setiap dump."
+      }
+    },
+    "plansFailed": "Pelan tidak dapat dimuatkan. Sila semak sambungan anda dan cuba lagi.",
+    "startTrial": "Mulakan {{trial}}",
+    "continue": "Teruskan",
+    "restore": "Pulihkan pembelian",
+    "trialThen": "Percuma sepanjang percubaan, kemudian {{price}}. ",
+    "disclosure": "Bayaran dicaj ke akaun gedung aplikasi anda. Langganan diperbaharui secara automatik melainkan dibatalkan sekurang-kurangnya 24 jam sebelum tamat tempoh semasa."
+  },
+  "profile": {
+    "title": "Profil & Tetapan",
+    "changePhoto": "Tukar foto profil",
+    "namePlaceholder": "Nama anda",
+    "handlePlaceholder": "akaun_anda",
+    "theme": {
+      "system": "Sistem",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Cerah",
+      "espresso": "Espresso",
+      "dark": "Gelap"
+    },
+    "reindex": {
+      "title": "Indeks semula pustaka anda?",
+      "body": "PicDump akan membaca semula setiap foto. Ini mengambil masa beberapa minit dan sedikit bateri. Dump anda dalam Pustaka akan dikekalkan.",
+      "action": "Indeks semula"
+    },
+    "dumpPicks": {
+      "title": "Pilihan dump",
+      "photosPerDump": "Foto setiap dump",
+      "photosPerDumpSub": "Teroka memilih jumlah foto dalam julat ini, kebanyakannya daripada pertengahan.",
+      "fewest": "Foto paling sedikit",
+      "to": "hingga",
+      "most": "Foto paling banyak",
+      "hideSensitive": "Sembunyikan foto sensitif",
+      "hideSensitiveSub": "Kad pengenalan, kad bank dan dokumen perubatan tidak akan dipaparkan dalam dump.",
+      "screenshots": "Sertakan tangkapan skrin",
+      "screenshotsSub": "Tangkapan skrin boleh dipaparkan dalam dump.",
+      "recap": "Imbasan semula",
+      "recapSub": "Dump hari ini pada 8 malam, minggu anda pada tengah hari Ahad"
+    },
+    "export": {
+      "title": "Eksport & siaran",
+      "note": "Dump baharu bermula dengan saiz dan kualiti yang ditetapkan di sini.",
+      "postSize": "Saiz Siaran Lalai",
+      "quality": "Kualiti Eksport Lalai",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Menyiarkan juga menyimpan ke galeri",
+      "saveOnPostSub": "Simpan salinan slaid dalam album PicDump"
+    },
+    "appearance": {
+      "title": "Rupa & tema"
+    },
+    "library": {
+      "title": "Pustaka foto & carian",
+      "access": "Akses",
+      "openSettings": "Buka tetapan"
+    },
+    "about": {
+      "title": "Privasi & perihal",
+      "onDevice": "Segala-galanya berlaku pada telefon anda",
+      "onDeviceSub": "Cara PicDump memilih foto tanpa memuat naiknya",
+      "contact": "Hubungi kami",
+      "noMail": "Tiada aplikasi emel ditemui. Tulis kepada info@horizonzeta.com",
+      "version": "Versi"
+    }
+  }
+}

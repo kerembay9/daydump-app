@@ -24,6 +24,7 @@ import { FirstDumpStrip, useFirstDump } from '../../components/FirstDumpStrip';
 import { useModels } from '../../state/models';
 import { usePro } from '../../state/Pro';
 import { LockBadge, LOCKED_BLUR } from '../../components/LockedDump';
+import { tr } from '../../i18n';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const uris = (s: Story) => s.picks.map((p) => p.uri);
@@ -98,7 +99,7 @@ function TileTape({ id }: { id: string }) {
 function Tile({ s, kind, rotate, onPress, style, more, paper, locked }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; paper?: PaperStyle; locked: boolean }) {
   const wide = kind === 'wide';
   return (
-    <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? ', locked' : ''}`} style={style}>
+    <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? `, ${tr('discover.locked')}` : ''}`} style={style}>
       <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} blur={locked ? LOCKED_BLUR : undefined} style={{ marginBottom: kind === 'tall' ? 8 : 6 }} />
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
@@ -216,28 +217,28 @@ export default function Discover() {
 
   const header = (
     <>
-      <TopHeader title={name ? `Hi, ${name}` : 'Hi there'} right={<AvatarButton onPress={() => router.push('/profile')} />} />
+      <TopHeader title={name ? tr('discover.greeting', { name }) : tr('discover.greetingDefault')} right={<AvatarButton onPress={() => router.push('/profile')} />} />
       <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} coverageSince={coverageSince} onPause={pause} onResume={resume} />
       {(progress || paused) && stories.length > 0 && permission !== false && (
         <Text style={[ui(11, 400), { color: t.inkMuted, marginTop: 2, paddingHorizontal: 2 }]}>
           {/* the strip shows the reach unless it's busy with the battery line or paused */}
-          {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
+          {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}{tr('discover.indexingAdvice')}
         </Text>
       )}
       {permission && limited && (
         // Android 14 "Select photos": asking again shows Android's dialog with "Allow all" and the picker
         <TapedNote
-          title="PicDump only sees the photos you picked"
-          body="Dumps come from your whole camera roll, so a handful of photos won’t make many."
-          action="Allow all photos"
+          title={tr('discover.limitedTitle')}
+          body={tr('discover.limitedBody')}
+          action={tr('discover.limitedAction')}
           onAction={askPhotos}
         />
       )}
       {permission === false ? (
         <TapedNote
-          title="Let PicDump see your photos"
-          body="Dumps are made on your phone from your camera roll. Nothing leaves your device."
-          action="Allow photos"
+          title={tr('discover.permissionTitle')}
+          body={tr('discover.permissionBody')}
+          action={tr('discover.permissionAction')}
           onAction={askPhotos}
         />
       ) : stories.length ? (
@@ -246,9 +247,9 @@ export default function Discover() {
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
         <TapedNote
-          title={progress || paused ? 'Building your dumps…' : 'No dumps yet'}
-          body={progress || paused ? 'They show up here as your photos are read. Or make one yourself.' : 'Take a few more photos and they’ll show up here. Or make one yourself.'}
-          action="Create one now"
+          title={progress || paused ? tr('discover.buildingTitle') : tr('discover.noDumpsTitle')}
+          body={progress || paused ? tr('discover.buildingBody') : tr('discover.noDumpsBody')}
+          action={tr('discover.createOneNow')}
           onAction={() => router.navigate('/create')}
         />
       ) : null}
@@ -268,8 +269,8 @@ export default function Discover() {
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}
-            label="Discover more dumps" style={{ height: 44, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[ui(13, 600), { color: t.ink }]}>{loadingMore ? 'Making more dumps…' : 'Discover more dumps'}</Text>
+            label={tr('discover.moreDumps')} style={{ height: 44, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[ui(13, 600), { color: t.ink }]}>{loadingMore ? tr('discover.makingMoreDumps') : tr('discover.moreDumps')}</Text>
           </FrameCard>
         ) : null}
         showsVerticalScrollIndicator={false}
