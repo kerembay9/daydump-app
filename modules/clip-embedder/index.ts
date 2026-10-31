@@ -115,6 +115,8 @@ type ClipEmbedderModule = {
 
 /** b: mean brightness 0-255, sd: its spread, lap: Laplacian variance (fine detail; compare at one side only), hi / lo: share of blown-out / crushed pixels. */
 export type TidyStats = { b: number; sd: number; lap: number; hi: number; lo: number; finger: boolean; faces?: TidyFace[];
+  /** the finger's corner: 0 top left, 1 top right, 2 bottom left, 3 bottom right (missing in checks saved before it existed) */
+  corner?: number | null;
   /** horizon angle in degrees, null = no long level-ish line to judge by (missing in checks saved before it existed) */
   tilt?: number | null };
 /** A face (fractions of the photo): l = its brightness, sharp = its Laplacian, cut = touches the edge, yaw = nose off the eyes' midpoint in eye widths (0 = facing). */

@@ -79,8 +79,8 @@ export async function ownerFace(): Promise<Float32Array | null> {
 /** SFace: same person when the dot is over 0.363 (OpenCV's cosine threshold). */
 const isOwner = (owner: Float32Array | null, faces?: TidyFace[]) =>
   owner && faces?.length ? faces.some((f) => f.vec && b64ToFloats(f.vec).reduce((a, x, k) => a + x * owner[k], 0) > 0.363) : undefined;
-/** Saved checks that predate the horizon check, or the face match (when there is a face to match against). */
-const stale = (s: TPhoto['fs'], owner: Float32Array | null) => s === undefined || (!!s && (s.tilt === undefined || (!!owner && !!s.faces?.some((f) => f.vec === undefined))));
+/** Saved checks that predate the horizon check, the finger's corner, or the face match (when there is a face to match against). */
+const stale = (s: TPhoto['fs'], owner: Float32Array | null) => s === undefined || (!!s && (s.tilt === undefined || (s.finger && s.corner === undefined) || (!!owner && !!s.faces?.some((f) => f.vec === undefined))));
 const SOFT_TAGS = ['sky', 'fog', 'night', 'darkness', 'a concert'];
 type TRow = { id: string; stats: string | null; faces: string | null; sharp: number | null; emb: Uint8Array | null; concepts: string | null };
 const vecOf = (emb: Uint8Array) => new Float32Array(emb.buffer.slice(emb.byteOffset, emb.byteOffset + DIM * 4));
@@ -215,7 +215,8 @@ export const PER_DIALOG = 2000;
  * Our sheet has confirmed: Android's own dialog(s) next, then a re-check of what really moved (each dialog is all or
  * nothing). Returns null when nothing moved. keepers: the set keepers kept, for "Start a dump from these keepers?".
  */
-export async function moveToTrash(items: { p: TPhoto; pile: Pile }[], keepers: TPhoto[] = []): Promise<Moved | null> {
+/** join: an earlier move this one continues (a swipe round), so Undo and the history treat them as one. */
+export async function moveToTrash(items: { p: TPhoto; pile: Pile }[], keepers: TPhoto[] = [], join?: Moved): Promise<Moved | null> {
   const N = ClipEmbedder!;
   const live = await N.trashState!(items.map((x) => x.p.id));
   const todo = items.filter((x) => live[x.p.id] && !live[x.p.id].trashed);
@@ -223,7 +224,7 @@ export async function moveToTrash(items: { p: TPhoto; pile: Pile }[], keepers: T
   const after = await N.trashState!(todo.map((x) => x.p.id));
   const moved = todo.filter((x) => after[x.p.id]?.trashed);
   if (!moved.length) return null;
-  const session = Date.now();
+  const session = join?.session ?? Date.now();
   const m = await log();
   await m.withTransactionAsync(async () => {
     for (const x of moved) await m.runAsync('INSERT INTO trash_log (id, size, at, pile, session) VALUES (?, ?, ?, ?, ?)', [x.p.id, x.p.size, session, x.pile, session]);
@@ -232,7 +233,9 @@ export async function moveToTrash(items: { p: TPhoto; pile: Pile }[], keepers: T
   const r = state.result!;
   const names = await N.conceptNames();
   const res = buildResult(r.photos.filter((p) => !gone.has(p.id)), r.vecs, await keepMap(), names.indexOf('a screenshot'));
-  const done: Moved = { session, n: moved.length, bytes: moved.reduce((a, x) => a + x.p.size, 0), keepers, from: keepers.length + moved.filter((x) => x.pile === 'same').length };
+  const fresh = keepers.filter((k) => !join?.keepers.includes(k));
+  const done: Moved = { session, n: (join?.n ?? 0) + moved.length, bytes: (join?.bytes ?? 0) + moved.reduce((a, x) => a + x.p.size, 0),
+    keepers: [...(join?.keepers ?? []), ...fresh], from: (join?.from ?? 0) + fresh.length + moved.filter((x) => x.pile === 'same').length };
   set({ result: res, moved: done });
   return done;
 }

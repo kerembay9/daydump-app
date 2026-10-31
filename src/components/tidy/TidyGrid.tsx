@@ -1,7 +1,7 @@
 import React from 'react';
 import { FlatList, StyleProp, Text, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
-import { Check, NOT_CHECKED, TPhoto } from '../../services/tidy/rules';
+import { Check, TPhoto } from '../../services/tidy/rules';
 import { PER_DIALOG } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -67,7 +67,7 @@ export function KeepToggle({ removing, onChange }: { removing: boolean; onChange
   );
 }
 
-/** Shot check rows (check / cross icons: the app's Inter subset has no ✓ ✗) and what it can't see; white, for PhotoViewer's dark footer unless color is given. */
+/** Shot check rows (check / cross icons: the app's Inter subset has no ✓ ✗); white, for PhotoViewer's dark footer unless color is given. */
 export function ShotCheckList({ checks, color = '#fff' }: { checks: Check[]; color?: string }) {
   return (
     <View style={{ gap: 3 }}>
@@ -77,7 +77,6 @@ export function ShotCheckList({ checks, color = '#fff' }: { checks: Check[]; col
           <Text style={[ui(12, 500), { color }]}>{c.text}</Text>
         </View>
       ))}
-      <Text style={[ui(11), { color, opacity: 0.65, marginTop: 2 }]}>{NOT_CHECKED}</Text>
     </View>
   );
 }

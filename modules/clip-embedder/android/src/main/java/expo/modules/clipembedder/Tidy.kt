@@ -51,7 +51,7 @@ private fun lapVar(g: FloatArray, stride: Int, x0: Int, y0: Int, x1: Int, y1: In
 /**
  * Pixel checks of one photo, decoded with its shortest side `side` (<= 512: MediaStore's cached thumbnail). b: mean
  * brightness 0-255, sd: its spread, lap: Laplacian variance (compare only at the same side), hi / lo: share of blown-out /
- * crushed pixels, finger: a corner is smooth, warm and unlike the rest, tilt: the horizon's angle in degrees (null = no
+ * crushed pixels, finger: a corner is smooth, warm and unlike the rest (corner: which, 0 top left, 1 top right, 2 bottom left, 3 bottom right), tilt: the horizon's angle in degrees (null = no
  * long level-ish line). With yunet: faces as YuNet's, plus l (face brightness), sharp (its Laplacian), cut (touches the
  * edge), yaw (nose off the eyes' midpoint, in eye widths; 0 = facing), vec (SFace feature with sface, else "").
  */
@@ -74,7 +74,7 @@ internal fun tidyStats(ctx: Context, id: String, side: Int, yunet: YuNet?, sface
   val lap = lapVar(g, w, 0, 0, w, h)
   // ponytail: finger = one corner quarter much smoother than the frame, reddish and off the frame's brightness; calibrate on real finger shots
   val cw = w / 4; val ch = h / 4
-  val finger = listOf(0 to 0, w - cw to 0, 0 to h - ch, w - cw to h - ch).any { (x0, y0) ->
+  val corner = listOf(0 to 0, w - cw to 0, 0 to h - ch, w - cw to h - ch).indexOfFirst { (x0, y0) ->
     var r = 0.0; var gr = 0.0; var bl = 0.0; var l = 0.0
     for (y in y0 until y0 + ch) for (x in x0 until x0 + cw) { val c = p[y * w + x]; r += (c shr 16) and 255; gr += (c shr 8) and 255; bl += c and 255; l += g[y * w + x] }
     val n = (cw * ch).toDouble()
@@ -82,7 +82,7 @@ internal fun tidyStats(ctx: Context, id: String, side: Int, yunet: YuNet?, sface
     lap > 20 && lapVar(g, w, x0, y0, x0 + cw, y0 + ch) < 0.08 * lap && r > gr + 10 && r - bl > 30 && abs(l - mean) > 25
   }
   val out = mutableMapOf<String, Any?>("tilt" to horizonTilt(g, w, h), "b" to mean, "sd" to sqrt(maxOf(0.0, sq / p.size - mean * mean)), "lap" to lap,
-    "hi" to hi.toDouble() / p.size, "lo" to lo.toDouble() / p.size, "finger" to finger)
+    "hi" to hi.toDouble() / p.size, "lo" to lo.toDouble() / p.size, "finger" to (corner >= 0), "corner" to corner.takeIf { it >= 0 })
   if (yunet != null) {
     @Suppress("UNCHECKED_CAST")
     val faces = yunet.detect(bmp, 0.6, sface, keepFull = true)["faces"] as List<Map<String, Any>>

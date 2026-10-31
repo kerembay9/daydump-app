@@ -1,0 +1,421 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidy Options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Caveat:wght@600&display=swap">
+<style>
+/* /tidy round 3: the current screens first, for reference, then pick a category, see the differences, swipe. Three ways to show the differences. A54 at 0.75x. Sample numbers; stock photos stand in for the library. */
+:root {
+  --page: #E9E0D4; --bg: #F6EFE6; --paper: #FFFCF7; --card: #EFE6DA;
+  --screen: linear-gradient(180deg, #F9F4E8 0%, #F5F2E7 48%, #F7EDE6 100%);
+  --line: rgba(74,52,40,0.08); --line2: rgba(74,52,40,0.15);
+  --ink: #261F1B; --muted: #766860; --accent: #A84A2F; --keep: #47704D; --tape: rgba(212,196,182,0.8); --desk: #DCCDB9; --box: #C9A97F; --box2: #B4926A; --shelf: #8D6E50;
+  --shadow: 0 10px 24px -12px rgba(74,52,40,0.22), 0 2px 5px rgba(74,52,40,0.06);
+  --print: 0 7px 16px -4px rgba(55,38,28,0.34), 0 2px 4px rgba(55,38,28,0.16);
+  --phone-shadow: 0 30px 60px -24px rgba(55,38,28,0.45); --bezel: #181411;
+  --serif: "Source Serif 4", Georgia, serif; --sans: Inter, system-ui, sans-serif; --hand: Caveat, "Comic Sans MS", cursive;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --card: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080; --accent: #D9704F; --keep: #86B98D; --tape: rgba(212,169,106,0.4); --desk: #3A2D1F; --box: #6B5238; --box2: #57422C; --shelf: #2A1E12;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --print: 0 7px 16px -4px rgba(0,0,0,0.6); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --page: #17120C; --bg: #241D14; --paper: #2E2418; --card: #2E2418; --screen: #241D14;
+  --line: rgba(255,232,200,0.09); --line2: rgba(255,232,200,0.17); --ink: #F3ECE3; --muted: #9E9080; --accent: #D9704F; --keep: #86B98D; --tape: rgba(212,169,106,0.4); --desk: #3A2D1F; --box: #6B5238; --box2: #57422C; --shelf: #2A1E12;
+  --shadow: 0 10px 24px -12px rgba(0,0,0,0.5); --print: 0 7px 16px -4px rgba(0,0,0,0.6); --phone-shadow: 0 30px 60px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,232,200,0.12);
+  --bezel: #0C0906; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--sans); padding: 28px 16px 60px; }
+h1 { font: 600 26px/1.1 var(--serif); margin: 0 auto 4px; max-width: 1000px; }
+.lede { color: var(--muted); font-size: 14px; margin: 0 auto 28px; max-width: 1000px; line-height: 1.45; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(304px, 1fr)); gap: 34px 18px; max-width: 1000px; margin: 0 auto; }
+.cell { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.cap { max-width: 304px; margin-top: 14px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cap b { color: var(--ink); display: block; font-size: 14px; margin-bottom: 2px; }
+.phone { width: 304px; max-width: 100%; padding: 8px; border-radius: 40px; background: var(--bezel); box-shadow: var(--phone-shadow); }
+.screen { width: 100%; height: 600px; border-radius: 32px; background: var(--bg); background-image: var(--screen); overflow: hidden; display: flex; flex-direction: column; padding: 20px 14px 14px; position: relative; user-select: none; -webkit-user-select: none; }
+.scroll { overflow-y: auto; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; min-height: 28px; flex: none; }
+.top h2 { font: 500 21px var(--serif); letter-spacing: -0.02em; margin: 0; flex: 1; min-width: 0; }
+.ib { width: 28px; height: 28px; border-radius: 14px; background: var(--card); display: grid; place-items: center; font-size: 13px; flex: none; }
+.meta { font-size: 10px; color: var(--muted); font-weight: 500; }
+.sub { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
+.btn { height: 36px; padding: 0 14px; border-radius: 18px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; flex: none; }
+.btn.alt { background: none; color: var(--ink); border: 1px solid var(--line2); }
+.btn.full { width: 100%; }
+.grow { flex: 1; min-height: 0; }
+.tape { position: absolute; width: 46px; height: 14px; background: var(--tape); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 20px 20px 0 0; padding: 16px 16px 18px; z-index: 40; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -10px 30px rgba(30,20,10,.3); }
+.sheet h4 { font: 500 16px/1.2 var(--serif); margin: 0; }
+.scrim { position: absolute; inset: 0; background: rgba(20,14,10,.4); z-index: 39; }
+
+.pic { display: block; background: #A99C8E center/cover no-repeat; width: 100%; height: 100%; }
+.night { background: radial-gradient(circle at 70% 30%, #4A4238 0 6%, transparent 7%), #14110E; }
+.shot { background: linear-gradient(#3B6FD8 0 13%, transparent 13%), repeating-linear-gradient(180deg, #E2E6EE 0 7%, #F8F9FB 7% 14%); }
+.shot2 { background: linear-gradient(#1F2933 0 12%, transparent 12%), radial-gradient(circle at 24% 26%, #7B8794 0 7%, transparent 8%), repeating-linear-gradient(180deg, #323F4B 0 9%, #1F2933 9% 18%); }
+.receipt { background: repeating-linear-gradient(180deg, #A9A196 0 2%, #F5F1E8 2% 8%), #F5F1E8; }
+
+/* current */
+.hero { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; position: relative; flex: none; box-shadow: var(--shadow); }
+.hero b { font: 500 26px/1 var(--serif); letter-spacing: -0.02em; display: block; }
+.hero strong { font-size: 10px; font-weight: 600; display: block; margin-top: 3px; }
+.pills { display: flex; gap: 5px; margin: 9px -14px 9px 0; overflow: hidden; flex: none; }
+.pl { height: 23px; padding: 0 9px; border-radius: 12px; border: 1px solid var(--line2); font-size: 9px; font-weight: 500; display: inline-flex; align-items: center; white-space: nowrap; }
+.pl.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.rw { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 7px; display: flex; align-items: center; gap: 9px; text-align: left; margin-bottom: 6px; box-shadow: var(--shadow); flex: none; }
+.rw b { font: 500 12.5px var(--serif); display: block; }
+.rw em { font: 400 8.5px var(--sans); color: var(--muted); display: block; margin-top: 1px; }
+.stk { width: 42px; height: 42px; position: relative; flex: none; }
+.stk i { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.6); }
+.stk i:nth-child(1) { transform: rotate(-6deg) scale(.93); opacity: .85; } .stk i:nth-child(2) { transform: rotate(5deg) scale(.96); opacity: .9; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.gc { aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; display: block; width: 100%; }
+.gc.on .pic { opacity: .4; }
+.gc span { position: absolute; right: 4px; bottom: 4px; height: 17px; padding: 0 6px; border-radius: 9px; background: rgba(255,255,255,.92); color: #1a1a1a; font-size: 8px; font-weight: 600; display: flex; align-items: center; }
+.gc.on span { background: var(--ink); color: var(--bg); }
+.gc small { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,.55); color: #fff; font-size: 7px; font-weight: 600; padding: 1px 4px; border-radius: 5px; }
+
+/* flow */
+.sum { font-size: 10.5px; color: var(--muted); margin: -6px 0 8px; flex: none; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tl { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 5px 5px 7px; text-align: left; box-shadow: var(--shadow); display: block; width: 100%; min-width: 0; }
+.tl.wide { grid-column: 1 / -1; }
+.mos { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; height: 58px; border-radius: 8px; overflow: hidden; margin-bottom: 5px; }
+.tl.wide .mos { height: 78px; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr; }
+.mos i { display: block; min-height: 0; overflow: hidden; }
+.mos i:first-child { grid-row: 1 / -1; }
+.tl.wide .mos i:first-child { grid-row: auto; }
+.tl b { font: 500 12.5px var(--serif); display: block; padding: 0 3px; white-space: nowrap; }
+.tl em { font: 400 9px var(--sans); color: var(--muted); display: block; padding: 1px 3px 0; white-space: nowrap; overflow: hidden; }
+.tl.done .mos { opacity: .35; }
+.toast { background: var(--ink); color: var(--bg); border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; font-weight: 600; margin-bottom: 8px; flex: none; }
+.segs { display: flex; gap: 3px; margin-bottom: 9px; flex: none; }
+.segs i { flex: 1; height: 4px; border-radius: 2px; background: var(--line2); }
+.segs i.on { background: var(--ink); }
+.deck { position: relative; flex: 1; min-height: 0; }
+.pr { position: absolute; inset: 0 0 3px; background: #FFFCF7; border-radius: 10px; padding: 7px; box-shadow: var(--print); display: flex; flex-direction: column; touch-action: none; cursor: grab; }
+.pr.under { transform: scale(.95) translateY(8px) rotate(-1.2deg); }
+.pr.fly { transition: transform .22s ease-in, opacity .22s; }
+.pr.back { transition: transform .18s ease-out; }
+.ph { position: relative; flex: 1; min-height: 0; border-radius: 6px; overflow: hidden; }
+.ph .pic { position: absolute; inset: 0; }
+.finger { position: absolute; right: -12%; bottom: -14%; width: 52%; height: 44%; border-radius: 50%; background: #B9806A; filter: blur(5px); }
+.stamp { position: absolute; top: 22px; font: 600 23px var(--serif); padding: 1px 9px; border: 3px solid currentColor; border-radius: 7px; opacity: 0; background: rgba(255,252,247,.88); pointer-events: none; z-index: 5; }
+.stamp.t { color: #A84A2F; right: 16px; transform: rotate(12deg); }
+.stamp.k { color: #47704D; left: 16px; transform: rotate(-12deg); }
+.tag { position: absolute; left: 6px; top: 6px; background: rgba(20,14,10,.74); color: #fff; font-size: 8.5px; font-weight: 600; padding: 2px 7px; border-radius: 8px; z-index: 2; }
+.lock { position: absolute; right: 12px; top: -3px; background: var(--tape); color: #4A3A2E; font-size: 8.5px; font-weight: 600; padding: 2px 7px; transform: rotate(3deg); z-index: 3; }
+.diff { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; flex: none; min-height: 21px; }
+.d { height: 21px; padding: 0 8px; border-radius: 11px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.d.bad { background: #F3D9CE; color: #7E3119; }
+.d.good { background: #DCE7DC; color: #2F5335; }
+.d.info { background: var(--card); color: var(--muted); }
+.crops { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; flex: none; }
+.crop { position: relative; height: 104px; border-radius: 8px; overflow: hidden; background: #A99C8E; }
+.crop .pic { position: absolute; inset: 0; }
+.crop.solo { grid-column: 1 / -1; }
+.crop span { position: absolute; left: 5px; bottom: 5px; background: rgba(20,14,10,.74); color: #fff; font-size: 8.5px; font-weight: 600; padding: 2px 6px; border-radius: 7px; }
+.acts { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 9px; flex: none; }
+.rb { width: 50px; height: 50px; border-radius: 25px; background: var(--paper); border: 1px solid var(--line2); box-shadow: var(--shadow); font-size: 19px; display: grid; place-items: center; }
+.rb.t { color: var(--accent); } .rb.k { color: var(--keep); } .rb.u { width: 34px; height: 34px; font-size: 13px; color: var(--muted); }
+.swap { text-align: center; font-size: 10px; font-weight: 600; text-decoration: underline; color: var(--muted); margin-top: 6px; flex: none; min-height: 14px; }
+.flip { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); background: rgba(255,252,247,.92); color: #261F1B; font-size: 9.5px; font-weight: 600; padding: 3px 9px; border-radius: 10px; white-space: nowrap; z-index: 2; pointer-events: none; }
+.ph.flipped .flip { background: #261F1B; color: #fff; }
+.pin { position: absolute; right: 6px; top: 6px; width: 54px; height: 54px; background: #FFFCF7; padding: 2px; border-radius: 4px; box-shadow: var(--print); z-index: 2; overflow: hidden; }
+.pin .pic { position: relative; }
+.pin span { position: absolute; left: 2px; right: 2px; bottom: 2px; background: rgba(20,14,10,.74); color: #fff; font-size: 7.5px; font-weight: 600; text-align: center; }
+.mark { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.mark path, .mark ellipse, .mark line { fill: none; stroke: #E8392A; stroke-width: 2.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.note { position: absolute; font: 600 19px/1 var(--hand); color: #fff; background: #E8392A; padding: 1px 7px 2px; border-radius: 4px; transform: rotate(-3deg); z-index: 2; white-space: nowrap; }
+.tally { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; flex: none; }
+.tally div { background: var(--card); border-radius: 10px; padding: 8px 4px; text-align: center; font-size: 9.5px; color: var(--muted); }
+.tally b { display: block; font: 500 20px var(--serif); color: var(--ink); }
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.strip button { aspect-ratio: 1; border-radius: 7px; position: relative; overflow: hidden; display: block; }
+.strip button .pic { position: absolute; inset: 0; }
+.strip button .finger { width: 60%; }
+.strip span { position: absolute; right: 2px; bottom: 2px; background: var(--ink); color: var(--bg); font-size: 8px; font-weight: 600; padding: 1px 4px; border-radius: 5px; }
+@media (prefers-reduced-motion: reduce) { .pr.fly, .pr.back { transition: none; } }
+</style>
+
+<h1>Tidy, round 3</h1>
+<p class="lede">The first phone is the app today. The other three are the same flow: pick a category, see what's different, swipe left to trash or right to keep. They differ only in how they show the difference, so start with Same shot in each. Each set is one stock photo with faults added on purpose, stronger than a real burst. Numbers are samples.</p>
+
+<div class="row">
+  <div class="cell"><div class="phone"><div class="screen" id="cur"></div></div>
+    <p class="cap"><b>Current app</b>For reference. Tap Same shot or any pile to see what opens today.</p></div>
+  <div class="cell"><div class="phone"><div class="screen" id="fa"></div></div>
+    <p class="cap"><b>A · Zoomed side by side</b>Under the card, the keeper and this take zoomed to the same spot, with the misses as chips. The clearest for sharpness. The card is smaller.</p></div>
+  <div class="cell"><div class="phone"><div class="screen" id="fb"></div></div>
+    <p class="cap"><b>B · Hold to flip</b>The biggest photo. Hold it and the keeper swaps in at the same spot, so whatever changed jumps out. Quickest to swipe, but you have to know to hold.</p></div>
+  <div class="cell"><div class="phone"><div class="screen" id="fc"></div></div>
+    <p class="cap"><b>C · Marked up</b>The miss is drawn on the photo: the tilted horizon, the finger, the soft spot. You see why at a glance, with the keeper pinned in the corner. Only as good as the checks.</p></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const mb = (x) => (x < 10 ? x.toFixed(1) : Math.round(x)) + ' MB';
+/* a number is a stock photo, a string is a painted screenshot, receipt or black frame */
+const pic = (p, style = '') => typeof p === 'number'
+  ? `<u class="pic" style="background-image:url(https://picsum.photos/id/${p}/360/360);${style}"></u>`
+  : `<u class="pic ${p}" style="${style}"></u>`;
+const SOFT = 'filter:blur(4px);transform:scale(1.14) translate(-2%,1%)', DARK = 'filter:brightness(.3);transform:scale(1.1) translate(2%,2%)', TILT = 'transform:rotate(9deg) scale(1.38)';
+const sheetHtml = (title, body, yes, no, attr) => `<div class="scrim"></div><div class="sheet"><h4>${title}</h4><div class="sub">${body}</div>
+  <div style="display:flex;gap:8px;margin-top:4px"><button class="btn" ${attr}="yes">${yes}</button><button class="btn alt" ${attr}="no">${no}</button></div></div>`;
+
+/* current */
+const PILES = [
+  { k: 'same', t: 'Same shot', line: '94 sets · 263 photos · 1.3 GB', ph: [1015, 1015, 1015] },
+  { k: 'copies', t: 'Exact copies', line: '18 · 44 MB', blurb: 'The same file saved twice.', ph: [237, 1080, 1025], pre: 5 },
+  { k: 'screens', t: 'Screenshots', line: '131 · 240 MB', blurb: 'Older than a month are picked. The rest are yours to check.', ph: ['shot', 'shot2', 'shot'], pre: 6 },
+  { k: 'blurry', t: 'Blurry & dark', line: '86 · 310 MB', blurb: 'Black frames are picked. Blurry ones are yours to check.', ph: ['night', 1011, 'night'], pre: 2, chip: 'Too dark' },
+  { k: 'paper', t: 'Paper', line: '264 · 420 MB · review only', blurb: 'Receipts, documents, notes. Review only.', ph: ['receipt', 'receipt', 'receipt'], pre: 0 },
+  { k: 'chats', t: 'Saved from chats', line: '712 · 380 MB · review only', blurb: 'Memes and screens other apps saved. Review only.', ph: ['shot2', 1025, 'shot'], pre: 0 },
+  { k: 'private', t: 'Private', line: '12 · Check these yourself.', blurb: 'Check these yourself.', ph: ['receipt', 'shot2', 'receipt'], pre: 0 },
+];
+let cV = 'home', cP = null, cSel = new Set();
+function renderCur() {
+  const el = $('cur');
+  if (cV === 'home') {
+    el.innerHTML = `<div class="top"><h2>Tidy</h2><button class="ib" aria-label="Trash history">◷</button></div>
+      <div class="scroll" style="flex:1;margin:0 -14px;padding:7px 14px 0">
+      <div class="hero"><div class="tape" style="top:-7px;right:20px;transform:rotate(2deg)"></div><b>1,412</b><strong>duplicates and photos you don’t use</strong><div class="sub" style="font-size:8.5px;margin-top:3px">About 2.4 GB back · Space comes back when Trash empties.</div></div>
+      <div class="pills"><span class="pl on">All months</span><span class="pl">Oct · 31</span><span class="pl">Sep · 58</span><span class="pl">✓ Aug</span><span class="pl">Jul · 112</span></div>
+      ${PILES.map((p, i) => `<button class="rw" data-cur="open" data-i="${i}"><span class="stk">${[2, 1, 0].map((j) => `<i>${pic(p.ph[j])}</i>`).join('')}</span><span style="flex:1;min-width:0"><b>${p.t}</b><em>${p.line}</em></span><span style="color:var(--muted);font-size:13px">›</span></button>`).join('')}
+      <div class="sub" style="text-align:center;font-size:8.5px;margin-top:4px">Videos: coming later</div>
+      <div class="sub" style="text-align:center;font-size:8.5px;font-weight:600;padding:7px">Scan again</div>
+      <div class="sub" style="text-align:center;font-size:8.5px;padding-bottom:6px">Last tidy: 21 Oct · 86 photos cleared</div></div>`;
+  } else if (cV === 'pile') {
+    const p = PILES[cP], all = [...p.ph, ...p.ph, ...p.ph, ...p.ph].slice(0, 12);
+    el.innerHTML = `<div class="top" style="margin-bottom:5px"><button class="ib" data-cur="home" aria-label="Back">‹</button><h2 style="font-size:15px">${p.t}</h2></div>
+      <div class="sub" style="font-size:9px">${p.blurb}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:7px 0"><b style="font-size:9.5px;font-weight:600">Remove ${cSel.size} · ${mb(cSel.size * 1.9)}</b>${cSel.size ? `<button style="font-size:9px;font-weight:600;color:var(--muted);text-decoration:underline" data-cur="none">Unselect all</button>` : ''}</div>
+      <div class="scroll grow"><div class="g3">${all.map((x, i) => `<button class="gc ${cSel.has(i) ? 'on' : ''}" data-cur="tog" data-i="${i}" aria-label="${cSel.has(i) ? 'Trash' : 'Keep'}">${pic(x)}${p.chip ? `<small>${p.chip}</small>` : ''}<span>${cSel.has(i) ? 'Trash' : 'Keep'}</span></button>`).join('')}</div></div>
+      <button class="btn full" style="margin-top:8px;${cSel.size ? '' : 'opacity:.4'}" data-cur="home">Move ${cSel.size} to Trash</button>`;
+  } else {
+    const on = cSel.has(0);
+    el.innerHTML = `<div class="top" style="margin-bottom:5px"><button class="ib" data-cur="home" aria-label="Back">‹</button><h2 style="font-size:15px;line-height:1.1">Same shot · set 1 of 94<div class="meta" style="font-family:var(--sans);font-size:8.5px">21 Jul, 19:04</div></h2></div>
+      <div class="scroll grow">
+      <div class="sub" style="font-size:9.5px;margin-bottom:6px">3 takes of the same shot. Kept the sharpest one.</div>
+      <div style="position:relative;background:#FFFCF7;padding:4px;box-shadow:var(--print);border-radius:6px;height:190px">${pic(1015, 'border-radius:4px')}<span style="position:absolute;top:9px;left:9px;background:var(--ink);color:var(--bg);font-size:8px;font-weight:600;padding:2px 6px;border-radius:7px">Keeper</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin:7px 0">${['Sharp', 'Full resolution', 'Level', 'Well lit', 'Nothing in the way'].map((c) => `<span class="pl" style="height:17px;padding:0 6px;font-size:8px;background:var(--card)">✓ ${c}</span>`).join('')}</div>
+      <div class="sub" style="font-size:8.5px;margin-bottom:7px">Tap a take to keep it instead. Hold to look closer. Swipe the keeper left when you’re done, right to skip.</div>
+      <div class="g3">${[[SOFT, 'Less sharp'], [TILT, 'Tilted']].map(([f, m]) => `<div class="gc on">${pic(1015, f)}<small>${m}</small><span>Trash</span></div>`).join('')}</div>
+      </div>
+      <button class="btn full" style="margin-top:8px">Keep 1 · Remove 2 · 9.4 MB</button>
+      <div class="sub" style="text-align:center;font-weight:600;padding-top:8px">Skip set</div>`;
+  }
+}
+$('cur').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cur]');
+  if (!b) return;
+  const a = b.dataset.cur;
+  if (a === 'home') cV = 'home';
+  if (a === 'open') { cP = +b.dataset.i; const p = PILES[cP]; cV = p.k === 'same' ? 'set' : 'pile'; cSel = new Set(Array.from({ length: p.pre || 0 }, (_, i) => i)); }
+  if (a === 'tog') { const i = +b.dataset.i; if (cSel.has(i)) cSel.delete(i); else cSel.add(i); }
+  if (a === 'none') cSel = new Set();
+  renderCur();
+});
+
+/* flow. A card is one photo to decide on: t = this photo, k = the one that stays, if any */
+const IMG = (o, extra = '') => pic(o.p, (o.f || '') + extra) + (o.finger ? '<i class="finger"></i>' : '');
+const set = (id, k, takes) => takes.map((t) => ({ set: id, k: { p: k, f: '' }, t: { p: k, f: t.f, finger: t.finger }, ...t }));
+const DECKS = {
+  same: [
+    ...set(1, 1015, [
+      { f: SOFT, bad: ['Less sharp'], gain: ['Sharper'], info: ['2 s later'], mark: 'soft', mb: 4.4 },
+      { f: TILT, bad: ['Tilted 9°'], gain: ['Level'], info: ['4 s later'], mark: 'tilt', mb: 5.0 },
+    ]),
+    ...set(2, 1027, [
+      { f: DARK, bad: ['Face in shadow'], gain: ['Face lit'], info: ['1 s earlier'], mark: 'dark', mb: 3.1 },
+      { f: 'transform:scale(1.12) translate(2%,-2%)', finger: 1, bad: ['Finger in the corner'], gain: ['Nothing in the way'], info: ['1 s later'], mark: 'finger', mb: 3.6 },
+    ]),
+    ...set(3, 1080, [
+      { f: SOFT, bad: ['Less sharp'], gain: ['Sharper'], info: ['3 s later'], mark: 'soft', mb: 2.8 },
+    ]),
+  ],
+  copies: [
+    { k: { p: 237 }, t: { p: 237 }, bad: ['In WhatsApp Images'], gain: [], info: ['Same file'], keepLabel: 'In Camera', mb: 3.9 },
+    { k: { p: 1025 }, t: { p: 1025 }, bad: ['In Downloads'], gain: [], info: ['Same file'], keepLabel: 'In Camera', mb: 2.2 },
+  ],
+  screens: [
+    { t: { p: 'shot' }, bad: ['7 months old'], info: ['2.1 MB'], mb: 2.1 },
+    { t: { p: 'shot2' }, bad: ['9 months old'], info: ['1.2 MB'], mb: 1.2 },
+    { t: { p: 'shot' }, info: ['Last week', '1.8 MB'], mb: 1.8 },
+  ],
+  blurry: [
+    { t: { p: 'night' }, bad: ['Black frame'], info: ['12 Jun, 23:40'], mark: 'dark', solo: 1, mb: 3.4 },
+    { t: { p: 1011, f: SOFT }, bad: ['Blurry'], info: ['14 Aug'], mark: 'soft', solo: 1, mb: 4.6 },
+    { t: { p: 237, f: SOFT }, bad: ['Blurry'], info: ['6 Sep'], mark: 'soft', solo: 1, lock: 'Favorite', ask: 'This one’s a favorite.', mb: 3.9 },
+  ],
+  paper: [
+    { t: { p: 'receipt' }, info: ['Looks like a receipt', '2 May'], mb: 1.8 },
+    { t: { p: 'receipt' }, info: ['Looks like a page', '30 Jan'], mb: 2.0 },
+  ],
+  chats: [
+    { t: { p: 'shot2' }, info: ['Saved by WhatsApp', '9 Feb'], mb: 0.6 },
+    { t: { p: 1025 }, info: ['Saved by Telegram', '3 Apr'], mb: 0.4 },
+  ],
+  private: [
+    { t: { p: 'receipt' }, info: ['Looks like a card', '11 Nov'], mb: 1.1 },
+  ],
+};
+const CATS = [
+  ['same', 'Same shot', '94 sets · 263 photos · 1.3 GB', [1015, 1027, 1080], 1],
+  ['copies', 'Exact copies', '18 · 44 MB', [237, 1025, 1080]],
+  ['screens', 'Screenshots', '131 · 240 MB', ['shot', 'shot2', 'shot']],
+  ['blurry', 'Blurry & dark', '86 · 310 MB', ['night', 1011, 'night']],
+  ['paper', 'Paper', '264 · 420 MB', ['receipt', 'receipt', 'receipt']],
+  ['chats', 'Saved from chats', '712 · 380 MB', ['shot2', 1025, 'shot']],
+  ['private', 'Private', '12 · Check yourself', ['receipt', 'shot2', 'receipt']],
+];
+function markup(c, kept) {
+  if (!c.mark || kept) return '';
+  const svg = (b) => `<svg class="mark" viewBox="0 0 100 100" preserveAspectRatio="none">${b}</svg>`;
+  const n = (txt, css) => `<div class="note" style="${css}">${txt}</div>`;
+  if (c.mark === 'soft') return svg('<ellipse cx="50" cy="46" rx="34" ry="24"/>') + n(c.bad[0], 'left:12%;top:68%');
+  if (c.mark === 'tilt') return svg('<line x1="4" y1="50" x2="96" y2="50" stroke-dasharray="5 4"/><line x1="4" y1="44" x2="96" y2="56"/>') + n(c.bad[0], 'left:12%;top:64%');
+  if (c.mark === 'finger') return svg('<ellipse cx="82" cy="84" rx="24" ry="20"/>') + n('Finger', 'left:42%;top:60%');
+  return svg('<ellipse cx="50" cy="42" rx="30" ry="24"/>') + n(c.bad[0], 'left:12%;top:68%');
+}
+function Flow(id, mode) {
+  const el = $(id);
+  let view = 'cats', cat = null, deck = [], at = 0, log = [], ask = false, busy = false, moved = null, done = {};
+  const start = (k) => { cat = k; deck = DECKS[k].map((c) => ({ ...c, bad: c.bad || [], gain: c.gain || [], info: c.info || [] })); at = 0; log = []; view = 'deck'; moved = null; render(); };
+  function chips(c) {
+    const b = c.swapped ? c.gain.map((x) => `<span class="d good">✓ ${x}</span>`) : c.bad.map((x) => `<span class="d bad">✕ ${x}</span>`);
+    return `<div class="diff">${b.join('')}${c.info.map((x) => `<span class="d info">${x}</span>`).join('')}</div>`;
+  }
+  /* the same zoomed spot of both photos: the corner for a finger, else the middle */
+  const zoomed = (o, c) => `<div style="position:absolute;inset:0;transform:scale(2.6);transform-origin:${c.mark === 'finger' ? '100% 100%' : '50% 45%'}">${IMG(o)}</div>`;
+  function crops(c) {
+    if (c.solo) return `<div class="crops"><div class="crop solo">${zoomed(c.t, c)}<span>Zoomed in</span></div></div>`;
+    if (!c.k || c.keepLabel) return ''; /* exact copies look the same: the chips say where each one is */
+    return `<div class="crops"><div class="crop">${zoomed(c.k, c)}<span>${c.keepLabel || 'Keeper'}</span></div>
+      <div class="crop">${zoomed(c.t, c)}<span>This one</span></div></div>`;
+  }
+  function card(c, cls) {
+    const pr = c.k && mode === 'c' ? `<div class="pin">${pic(c.k.p, c.k.f || '')}<span>${c.keepLabel ? 'Camera' : 'Keeper'}</span></div>` : '';
+    return `<div class="pr ${cls}">
+      ${c.lock ? `<div class="lock">${c.lock}</div>` : ''}
+      <div class="stamp t">TRASH</div><div class="stamp k">KEEP</div>
+      <div class="ph" data-ph>${IMG(c.t)}${mode === 'c' ? markup(c, c.swapped) + pr : ''}${mode === 'b' && c.k ? '<div class="flip">Hold to see the keeper</div>' : ''}</div>
+    </div>`;
+  }
+  function render() {
+    if (view === 'cats') {
+      el.innerHTML = `<div class="top"><h2>Tidy</h2><button class="ib" aria-label="Trash history">◷</button></div>
+        <div class="sum">1,412 photos could go · about 2.4 GB</div>
+        ${moved ? `<div class="toast"><span>Moved ${moved.n} to Trash · ${mb(moved.mb)} back</span><button data-f="undo" style="text-decoration:underline">Undo</button></div>` : ''}
+        <div class="pills" style="margin-top:0"><span class="pl on">All months</span><span class="pl">Oct · 31</span><span class="pl">Sep · 58</span><span class="pl">✓ Aug</span><span class="pl">Jul · 112</span></div>
+        <div class="tiles scroll grow" style="align-content:start;margin:0 -2px;padding:0 2px 4px">${CATS.map(([k, t, line, ph, wide]) => `<button class="tl ${wide ? 'wide' : ''} ${done[k] ? 'done' : ''}" data-f="cat" data-k="${k}"><span class="mos">${ph.map((p) => `<i>${pic(p)}</i>`).join('')}</span><b>${done[k] ? '✓ ' : ''}${t}</b><em>${line}</em></button>`).join('')}</div>`;
+      return;
+    }
+    const name = CATS.find((c) => c[0] === cat)[1];
+    if (at >= deck.length) {
+      const t = log.filter((l) => l.v === 't'), total = t.reduce((a, l) => a + l.c.mb, 0);
+      el.innerHTML = `<div class="top"><button class="ib" data-f="cats" aria-label="Back">‹</button><h2 style="font-size:17px">${name}</h2></div>
+        <div class="tally"><div><b>${t.length}</b>to Trash</div><div><b>${log.length - t.length}</b>kept</div></div>
+        <div style="font:500 14px var(--serif);margin-bottom:6px">Check before they go <span class="meta" style="font-family:var(--sans)">Tap one to save it</span></div>
+        <div class="strip">${t.map((l) => `<button data-f="save" data-i="${log.indexOf(l)}" aria-label="Save this one">${IMG(l.c.t)}<span>Trash</span></button>`).join('') || '<div class="sub" style="grid-column:1/-1">Nothing marked for Trash.</div>'}</div>
+        <div class="grow"></div>
+        <div class="sub" style="text-align:center;margin-bottom:8px">Android asks once, then they go to Trash.</div>
+        ${t.length ? `<button class="btn full" style="height:42px;border-radius:21px" data-f="move">Move ${t.length} to Trash · ${mb(total)}</button>` : `<button class="btn full" style="height:42px;border-radius:21px" data-f="cats">Back to categories</button>`}`;
+      return;
+    }
+    const c = deck[at], next = deck[at + 1];
+    el.innerHTML = `<div class="top" style="margin-bottom:8px"><button class="ib" data-f="cats" aria-label="Back">‹</button><h2 style="font-size:17px">${name}</h2><span class="meta">${at + 1} of ${deck.length}</span></div>
+      <div class="segs">${deck.map((_, i) => `<i class="${i < at ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="deck">${next ? card(next, 'under') : ''}${card(c, 'live')}</div>
+      ${mode === 'a' ? crops(c) : ''}
+      ${chips(c)}
+      <div class="acts"><button class="rb t" aria-label="Trash" data-f="t">✕</button><button class="rb u" aria-label="Undo" data-f="back">↶</button><button class="rb k" aria-label="Keep" data-f="k">✓</button></div>
+      <div class="swap">${c.k && c.set ? `<button data-f="swap" style="text-decoration:underline">${c.swapped ? 'Back to Tidy’s pick' : 'Keep this one instead'}</button>` : ''}</div>
+      ${ask ? sheetHtml(`${c.ask} Trash anyway?`, 'You can restore it from Tidy while it’s in Trash.', 'Trash anyway', 'Keep it', 'data-fa') : ''}`;
+    bind();
+  }
+  function decide(v) {
+    const c = deck[at], live = el.querySelector('.pr.live');
+    if (busy || !c) return;
+    if (v === 't' && c.lock && !ask) { ask = true; render(); return; }
+    ask = false; busy = true;
+    if (live) {
+      const st = live.querySelector(`.stamp.${v}`);
+      if (st) st.style.opacity = 1;
+      live.classList.add('fly');
+      live.style.transform = v === 't' ? 'translate(-340px,30px) rotate(-22deg)' : 'translate(340px,30px) rotate(22deg)';
+    }
+    setTimeout(() => { log.push({ c, v }); at++; busy = false; render(); }, 210);
+  }
+  function bind() {
+    const c = el.querySelector('.pr.live');
+    if (!c || ask) return;
+    const card0 = deck[at], ph = c.querySelector('[data-ph]');
+    let on = false, sx = 0, sy = 0, dx = 0, dy = 0, hold = null, flipped = false;
+    const paint = () => {
+      c.style.transform = `translate(${dx}px,${dy * 0.25}px) rotate(${dx / 18}deg)`;
+      c.querySelector('.stamp.t').style.opacity = Math.min(1, Math.max(0, -dx - 16) / 50);
+      c.querySelector('.stamp.k').style.opacity = Math.min(1, Math.max(0, dx - 16) / 50);
+    };
+    const flip = (yes) => {
+      if (mode !== 'b' || !card0.k || flipped === yes) return;
+      flipped = yes;
+      const o = yes ? card0.k : card0.t;
+      ph.classList.toggle('flipped', yes);
+      ph.innerHTML = IMG(o) + `<div class="flip">${yes ? (card0.keepLabel ? 'Camera copy' : 'The keeper') : 'Hold to see the keeper'}</div>`;
+    };
+    c.addEventListener('pointerdown', (e) => { on = true; sx = e.clientX; sy = e.clientY; dx = dy = 0; c.setPointerCapture(e.pointerId); c.classList.remove('back'); hold = setTimeout(() => flip(true), 170); });
+    c.addEventListener('pointermove', (e) => {
+      if (!on) return;
+      dx = e.clientX - sx; dy = e.clientY - sy;
+      if (flipped) return;
+      if (Math.hypot(dx, dy) > 8) clearTimeout(hold);
+      paint();
+    });
+    const end = () => {
+      if (!on) return;
+      on = false; clearTimeout(hold);
+      if (flipped) { flip(false); dx = dy = 0; paint(); return; }
+      if (dx > 80) return decide('k');
+      if (dx < -80) {
+        if (card0.lock) { c.classList.add('back'); dx = dy = 0; paint(); setTimeout(() => { ask = true; render(); }, 170); return; }
+        return decide('t');
+      }
+      c.classList.add('back'); dx = dy = 0; paint();
+    };
+    c.addEventListener('pointerup', end);
+    c.addEventListener('pointercancel', end);
+    c.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  el.addEventListener('click', (e) => {
+    const yn = e.target.closest('[data-fa]');
+    if (yn) { if (yn.dataset.fa === 'yes') decide('t'); else { ask = false; decide('k'); } return; }
+    const b = e.target.closest('[data-f]');
+    if (!b) return;
+    const a = b.dataset.f;
+    if (a === 'cat') start(b.dataset.k);
+    if (a === 'cats') { view = 'cats'; render(); }
+    if (a === 't' || a === 'k') decide(a);
+    if (a === 'back' && log.length) { log.pop(); at--; ask = false; render(); }
+    if (a === 'save') { log[+b.dataset.i].v = 'k'; render(); }
+    if (a === 'move') { const t = log.filter((l) => l.v === 't'); moved = { n: t.length, mb: t.reduce((x, l) => x + l.c.mb, 0), cat }; done[cat] = 1; view = 'cats'; render(); }
+    if (a === 'undo') { if (moved) delete done[moved.cat]; moved = null; render(); }
+    if (a === 'swap') {
+      const c = deck[at], old = c.k;
+      c.k = c.t; c.t = old; c.swapped = !c.swapped;
+      /* later takes of the set now compare against the new keeper */
+      for (let i = at + 1; i < deck.length && deck[i].set === c.set; i++) deck[i].k = c.k;
+      render();
+    }
+  });
+  render();
+}
+
+renderCur();
+Flow('fa', 'a'); Flow('fb', 'b'); Flow('fc', 'c');
+</script>

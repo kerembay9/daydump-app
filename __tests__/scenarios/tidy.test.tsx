@@ -20,14 +20,14 @@ test('Tidy: 4 takes of one shot, a copy and a black frame; keep the best take, T
   await fireEvent.press(await screen.findByRole('button', { name: 'Start Tidy' }, { timeout: 10000 }));
   await screen.findByText('Same shot', {}, { timeout: 20000 });
   // 3 extra takes + the second copy + the black frame
-  expect(screen.getByText('5')).toBeTruthy();
-  expect(screen.getByText('duplicates and photos you don’t use')).toBeTruthy();
+  expect(screen.getByText(/^5 photos could go · about /)).toBeTruthy();
   expect(screen.getByRole('button', { name: /^Exact copies, 2 · / })).toBeTruthy();
   expect(screen.getByRole('button', { name: /^Blurry & dark, 1/ })).toBeTruthy();
   expect(screen.getByRole('button', { name: /^Same shot, 1 set · 4 photos/ })).toBeTruthy();
 
   // the set: the sharp take is the keeper, the rest are marked
   await fireEvent.press(screen.getByRole('button', { name: /^Same shot/ }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'Grid' }));
   expect(await screen.findByText(/4 takes of the same shot\. Kept the sharpest one\./)).toBeTruthy();
   // each other take says what happens to it, in words; tapping one keeps it instead
   expect(screen.getAllByRole('button', { name: /, Trash$/ })).toHaveLength(3);
@@ -61,6 +61,7 @@ test('Tidy: Trash history restores a move', async () => {
   const start = await screen.findByRole('button', { name: /Start Tidy|Scan again/ }, { timeout: 10000 }).catch(() => null);
   if (start) await fireEvent.press(start);
   await fireEvent.press(await screen.findByRole('button', { name: /^Same shot/ }, { timeout: 20000 }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'Grid' }));
   await fireEvent.press(await screen.findByRole('button', { name: /^Keep 1 · Remove 2/ }));
   await fireEvent.press((await screen.findAllByRole('button', { name: 'Move 2 to Trash' })).at(-1)!);
   await fireEvent.press(await screen.findByRole('button', { name: 'Move to Trash' }));
@@ -92,9 +93,9 @@ test('Tidy: the month strip narrows the piles; a tilted take says so; Keep the o
 
   await fireEvent.press(screen.getByRole('button', { name: 'Aug 2025 · 2' }));
   expect(await screen.findByRole('button', { name: /^Same shot, 1 set · 3 photos/ })).toBeTruthy();
-  expect(screen.getByText('Videos: coming later')).toBeTruthy();
 
   await fireEvent.press(screen.getByRole('button', { name: /^Same shot/ }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'Grid' }));
   expect(await screen.findByText('Tilted')).toBeTruthy();
   expect(screen.getAllByRole('button', { name: /, Trash$/ })).toHaveLength(2);
   await fireEvent.press(screen.getByRole('button', { name: 'Keep the outtake too' }));
