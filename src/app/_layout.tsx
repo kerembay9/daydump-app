@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Text, ToastAndroid, View } from 'react-native';
-import { DefaultTheme, router, Stack, ThemeProvider as NavThemeProvider, useRootNavigationState } from 'expo-router';
+import { DefaultTheme, router, Stack, ThemeProvider as NavThemeProvider, usePathname, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme, useThemeNow } from '../theme/ThemeProvider';
 import { AppStateProvider, onTouch, useApp } from '../state/AppState';
-import { OnboardingModal } from '../components/OnboardingModal';
+import { ProProvider } from '../state/Pro';
 import { NotificationService } from '../services/notificationService';
 import { currentCreateDraft, discardShared, DumpPhoto, receiveShared, sharedPhotos } from '../services/dumps';
 import { Sheet } from '../components/ui/Sheet';
@@ -24,7 +24,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AppStateProvider>
-            <Root />
+            <ProProvider>
+              <Root />
+            </ProProvider>
           </AppStateProvider>
         </ThemeProvider>
       </SafeAreaProvider>
@@ -47,6 +49,12 @@ function Root() {
   // Photos shared to / "opened with" PicDump start a Create draft, or join the one in progress if the user says so.
   // On a cold start the intent is there on the first render, so wait for the navigator before navigating.
   const navReady = !!useRootNavigationState()?.key;
+  // First run (and Developer tools → Onboarding): the onboarding routes cover the app until finishOnboarding; Home stays
+  // mounted underneath, so it sees onboarding close (the first-dump strip waits for that)
+  const pathname = usePathname();
+  useEffect(() => {
+    if (navReady && app.onboarding && !pathname.startsWith('/onboarding')) router.push('/onboarding/1' as never);
+  }, [navReady, app.onboarding, pathname]);
   const [ask, setAsk] = useState<DumpPhoto[] | null>(null);
   const toCreate = async (photos: DumpPhoto[], mode: 'add' | 'new') => {
     setAsk(null);
@@ -81,6 +89,7 @@ function Root() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade', freezeOnBlur: true }}>
           {/* listed screens come first, so the tabs stay the initial route */}
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" options={{ animation: 'none', gestureEnabled: false }} />
           {/* one screen per route + id: a fast double tap pushed two, so Back showed the same page again */}
           {['preview/[id]', 'edit/[id]', 'profile', 'selfie', 'people', 'today', 'today-tags', 'tidy/sets', 'tidy/[pile]', 'tidy/history'].map((name) => <Stack.Screen key={name} name={name} dangerouslySingular />)}
         </Stack>
@@ -97,8 +106,6 @@ function Root() {
           <Text style={[ui(13, 600), { color: t.ink }]}>Start a new dump</Text>
         </FrameCard>
       </Sheet>
-      {/* keyed so onboarding reopened from Dev tools starts again at slide 1 */}
-      <OnboardingModal key={String(app.onboarding)} visible={app.onboarding} onStart={app.start} onFinish={app.finishOnboarding} />
       <StatusBar style={now.dark ? 'light' : 'dark'} />
     </View>
   );

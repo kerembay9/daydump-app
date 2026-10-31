@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Isara",
+    "back": "Bumalik",
+    "termsOfService": "Mga Tuntunin ng Serbisyo",
+    "privacyPolicy": "Patakaran sa Privacy"
+  },
+  "tabs": {
+    "discover": "Tuklasin",
+    "create": "Lumikha",
+    "tidy": "Ayusin",
+    "library": "Library"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Madaling mga photo dump",
+      "title": "Gawing mga dump ang gulo sa camera roll",
+      "description": "Magpaalam sa pag-scroll sa libu-libong litrato. Pinipili ng PicDump ang pinakamagagandang larawan ng iyong mga araw at biyahe, nang may magandang daloy.",
+      "point1": "Mga film look, border, at sukat para sa IG / TikTok",
+      "point2": "Mga collage layout, sa isang swipe lang"
+    },
+    "privacy": {
+      "badge": "Curation sa mismong device",
+      "title": "Pinili sa iyong telepono, hindi sa cloud",
+      "description": "Gumagana sa iyong telepono ang pagpili ng litrato, paghahanap, at mga dump. Hindi ina-upload ng PicDump ang iyong mga larawan para i-curate ang mga ito.",
+      "point1": "Dahil sa access sa larawan, mahahanap nito ang iyong mga natatanging sandali"
+    },
+    "allowContinue": "Payagan ang mga larawan at magpatuloy",
+    "continue": "Magpatuloy",
+    "page": "Pahina {{n}} ng {{total}}",
+    "notifPreview": "Preview ng notification",
+    "notifNow": "· ngayon lang",
+    "notifTitle": "Handa na ang iyong PicDump 🎞️",
+    "notifBody": "Ang mga larawan ngayon, pinagsama-sama sa isang dump. Silipin bago matulog.",
+    "notifyHeading": "Ang iyong araw sa 8 PM, ang iyong linggo sa Linggo",
+    "notifyBody": "Isang paalala sa 8 PM kapag handa na ang dump ngayon, at sa Linggo ng tanghali kasama ang iyong linggo.",
+    "turnOn": "I-on",
+    "notNow": "Huwag muna"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Bawat dump sa iyong roll.",
+      "sub": "Libre ang iyong mga recap at isang dump bawat linggo. Binubuksan ng Pro ang lahat."
+    },
+    "tidy": {
+      "heading": "Linisin ang kalat.",
+      "sub": "Nahahanap ng Libre ang bawat nauulit at malabong kuha. Inililipat ng Pro ang mga ito sa Trash nang sabay-sabay."
+    },
+    "finish": {
+      "heading": "Panatilihin ang film look.",
+      "sub": "Libre ang Original, Warm 35mm, at Adjust. Ini-export ng Pro ang bawat look at texture."
+    },
+    "search": {
+      "heading": "Maghanap sa iyong camera roll.",
+      "sub": "Maghanap ng lugar, buwan, o bagay gamit ang mga salita. Kasama sa Pro ang paghahanap."
+    },
+    "found": {
+      "heading": {
+        "one": "Nakahanap kami ng {{count}} dump sa iyong roll.",
+        "other": "Nakahanap kami ng {{count}} mga dump sa iyong roll."
+      },
+      "sub": "{{titles}}. Binubuksan ng Pro ang lahat.",
+      "subMore": "{{titles}} at marami pa. Binubuksan ng Pro ang lahat."
+    },
+    "welcome": "Maligayang pagdating sa PicDump Pro!",
+    "purchaseNotActive": "Pumasok ang pagbili ngunit hindi pa gumagana ang Pro. I-tap ang I-restore ang mga binili.",
+    "restored": "Na-restore ang mga pagbili. Maligayang pagbabalik sa Pro!",
+    "noSubscription": "Walang nakitang aktibong subscription sa PicDump Pro.",
+    "close": "Isara ang paywall",
+    "feature": {
+      "dumps": {
+        "title": "Bawat dump, naka-unlock",
+        "sub": "Bawat biyahe at kuwentong mahahanap ng Tuklasin, hindi lang isa kada linggo."
+      },
+      "search": {
+        "title": "Maghanap sa iyong camera roll",
+        "sub": "Maghanap ng lugar, buwan, o bagay gamit ang mga salita."
+      },
+      "looks": {
+        "title": "Lahat ng film look",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, pati na rin ang grain, fade, at vignette."
+      },
+      "tidy": {
+        "title": "Linisin ang mga nauulit at kalat",
+        "sub": "Ilipat ang mga duplicate, malabong kuha, at screenshot sa Trash nang minsanan."
+      },
+      "yours": {
+        "title": "Ang iyong dump, sa paraan mo",
+        "sub": "Walang PicDump end slide, at 4 hanggang 20 larawan bawat dump."
+      }
+    },
+    "plansFailed": "Hindi ma-load ang mga plano. Suriin ang iyong koneksyon at subukang muli.",
+    "startTrial": "Simulan ang {{trial}}",
+    "continue": "Magpatuloy",
+    "restore": "I-restore ang mga binili",
+    "trialThen": "Libre habang trial, pagkatapos ay {{price}}. ",
+    "disclosure": "Sisingilin ang bayad sa iyong store account. Awtomatikong nagre-renew ang mga subscription maliban kung kakanselahin nang hindi bababa sa 24 oras bago matapos ang kasalukuyang panahon."
+  },
+  "profile": {
+    "title": "Profile at Mga Setting",
+    "changePhoto": "Palitan ang profile photo",
+    "namePlaceholder": "Iyong pangalan",
+    "handlePlaceholder": "iyong_account",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Maliwanag",
+      "espresso": "Espresso",
+      "dark": "Madilim"
+    },
+    "reindex": {
+      "title": "I-reindex ang iyong library?",
+      "body": "Babahasin ulit ng PicDump ang bawat larawan. Tatagal ito nang ilang minuto at gagamit ng kaunting baterya. Mananatili ang iyong mga dump sa Library.",
+      "action": "I-reindex"
+    },
+    "dumpPicks": {
+      "title": "Mga piniling dump",
+      "photosPerDump": "Mga larawan bawat dump",
+      "photosPerDumpSub": "Pumipili ang Tuklasin ng bilang sa hanay na ito, kadalasan mula sa gitna.",
+      "fewest": "Pinakakaunting larawan",
+      "to": "hanggang",
+      "most": "Pinakamaraming larawan",
+      "hideSensitive": "Itago ang mga sensitibong larawan",
+      "hideSensitiveSub": "Hindi kailanman lalabas sa mga dump ang mga ID, bank card, at medical paper.",
+      "screenshots": "Isama ang mga screenshot",
+      "screenshotsSub": "Maaaring lumabas sa mga dump ang mga screenshot.",
+      "recap": "Recap",
+      "recapSub": "Ang dump ngayon sa 8 PM, ang iyong linggo sa Linggo nang tanghali"
+    },
+    "export": {
+      "title": "Pag-export at pag-post",
+      "note": "Magsisimula ang mga bagong dump sa laki at kalidad na itinakda rito.",
+      "postSize": "Default na Laki ng Post",
+      "quality": "Default na Kalidad ng Pag-export" ,
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Nase-save din sa gallery kapag nag-post",
+      "saveOnPostSub": "Nagtatabi ng kopya ng mga slide sa PicDump album"
+    },
+    "appearance": {
+      "title": "Hitsura at tema"
+    },
+    "library": {
+      "title": "Photo library at paghahanap",
+      "access": "Access",
+      "openSettings": "Buksan ang mga setting"
+    },
+    "about": {
+      "title": "Privacy at tungkol sa app",
+      "onDevice": "Lahat ay nangyayari sa iyong telepono",
+      "onDeviceSub": "Kung paano pumipili ng mga larawan ang PicDump nang hindi nag-a-upload",
+      "contact": "Makipag-ugnayan",
+      "noMail": "Walang nahanap na mail app. Sumulat sa info@horizonzeta.com",
+      "version": "Bersyon"
+    }
+  }
+}

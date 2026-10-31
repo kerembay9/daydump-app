@@ -21,10 +21,14 @@ export class GalleryService {
     return album;
   }
 
-  /** Every library photo (pruned), the input to the on-device index: camera shots newest first, then everything else newest first. */
-  static async listLibraryPhotos(): Promise<PhotoAsset[]> {
+  /** Every library photo (pruned; with limit, the newest pages holding that many camera shots), the input to the on-device index: camera shots newest first, then everything else newest first. */
+  static async listLibraryPhotos(limit?: number): Promise<PhotoAsset[]> {
     const raw: MediaLibrary.Asset[] = [];
-    for await (const page of this.rawPages()) raw.push(...page);
+    // limit: stop listing once that many camera shots are in (the newest pages), so a 100k library isn't read to the end for them
+    for await (const page of this.rawPages()) {
+      raw.push(...page);
+      if (limit && raw.filter((a) => isCameraPhoto(a.uri)).length >= limit) break;
+    }
     const all = this.pruneAndCleanAssets(raw).filter(notOurs);
     return [...all.filter((p) => isCameraPhoto(p.uri)), ...all.filter((p) => !isCameraPhoto(p.uri))];
   }

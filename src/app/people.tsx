@@ -15,6 +15,7 @@ import { useApp } from '../state/AppState';
 import { ClipEmbedder, type Face, type FaceScan } from '../../modules/clip-embedder';
 import { faceVec, groupFaces, isAnyOf } from '../services/faces';
 import { getProfile } from '../services/profile';
+import { tr } from '../i18n';
 
 /**
  * uri -> faces found; names: face key (uri#index) -> name, so a name survives regrouping; groups: face key -> person,
@@ -152,7 +153,7 @@ export default function People() {
   const header = (
     <>
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
         <Text style={[display(20), { color: t.ink }]}>People experiment</Text>
       </View>
       <FrameCard radius={18} padding={14}>

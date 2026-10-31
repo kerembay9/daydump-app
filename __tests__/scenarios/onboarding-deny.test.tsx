@@ -1,7 +1,7 @@
-import path from 'path';
-import { AppState, Dimensions } from 'react-native';
+import { AppState, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { bootApp, firstRunToAsk } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 
 const ML = jest.requireMock('expo-media-library/legacy');
@@ -17,35 +17,29 @@ beforeEach(async () => {
   ML.getPermissionsAsync.mockImplementation(async () => granted);
 });
 
-/** First run, swiped to the privacy slide. */
-async function toAsk() {
-  await renderRouter(path.resolve(__dirname, '../../src/app'), { initialUrl: '/' });
-  let pager = await screen.findByText('Turn camera roll chaos into dumps', {}, { timeout: 10000 });
-  while (!pager.props.onScroll) pager = pager.parent!;
-  await fireEvent.scroll(pager, { nativeEvent: { contentOffset: { x: Dimensions.get('window').width } } });
-  return screen.findByText('Allow photos & continue');
-}
+const toAsk = firstRunToAsk;
 
-test('onboarding: a "no" to photos is asked once (even double-tapped), Home offers it again, and a grant in Settings is picked up on return', async () => {
-  ML.requestPermissionsAsync.mockImplementation(async () => denied);
-  ML.getPermissionsAsync.mockImplementation(async () => denied);
+const inSettings = (to: unknown) => {
+  ML.getPermissionsAsync.mockImplementation(async () => to);
+  ML.requestPermissionsAsync.mockImplementation(async () => to);
+};
+const returnToApp = async () => {
+  const subs = (AppState.addEventListener as jest.Mock).mock.calls.filter(([e]) => e === 'change').map(([, f]) => f);
+  await act(async () => { subs.forEach((f) => f('active')); });
+};
+
+test('onboarding: a "no" keeps the photo question (asked once even double-tapped); a yes on the next ask moves on', async () => {
+  inSettings(denied);
   const allow = await toAsk();
   fireEvent.press(allow);
   await fireEvent.press(allow);
+  expect(await screen.findByText('PicDump needs your photos')).toBeTruthy();
+  expect(ML.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+  expect(await AsyncStorage.getItem(DONE)).toBeNull();
 
-  expect(await screen.findByText('Let PicDump see your photos', {}, { timeout: 10000 })).toBeTruthy();
-  expect(ML.requestPermissionsAsync).toHaveBeenCalledTimes(1); // no second system dialog on the way to Home
-  expect(await AsyncStorage.getItem(DONE)).toBe('true');
-
-  // Home's button: Android still shows its dialog (canAskAgain), so it asks there rather than sending to Settings
-  await fireEvent.press(screen.getByText('Allow photos'));
+  // the dialog shows again and this time they allow
+  ML.requestPermissionsAsync.mockImplementation(async () => { ML.getPermissionsAsync.mockImplementation(async () => granted); return granted; });
+  await fireEvent.press(screen.getByText('Allow photos and continue'));
   expect(ML.requestPermissionsAsync).toHaveBeenCalledTimes(2);
-  expect(screen.getByText('Let PicDump see your photos')).toBeTruthy();
-
-  // allowed in Settings meanwhile, then back in front: no dialog, the no-access note goes
-  ML.getPermissionsAsync.mockImplementation(async () => granted);
-  ML.requestPermissionsAsync.mockImplementation(async () => granted);
-  const subs = (AppState.addEventListener as jest.Mock).mock.calls.filter(([e]) => e === 'change').map(([, f]) => f);
-  await act(async () => { subs.forEach((f) => f('active')); });
-  await waitFor(() => expect(screen.queryByText('Let PicDump see your photos')).toBeNull());
+  expect(await screen.findByText('Looking through your library…', {}, { timeout: 10000 })).toBeTruthy();
 }, 30000);

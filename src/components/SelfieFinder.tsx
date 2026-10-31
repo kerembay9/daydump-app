@@ -13,6 +13,7 @@ import { PhotoAsset } from '../types';
 import { getProfile, setProfile } from '../services/profile';
 import { faceVec, isAnyOf } from '../services/faces';
 import { GalleryService, isCameraPhoto } from '../services/galleryService';
+import { tr } from '../i18n';
 
 /** Photos scanned per call: ~0.4 s on an A54. Small, so the check before the first pick is short. */
 const CHUNK = 30;
@@ -129,6 +130,9 @@ export function useSelfiePick(on = true) {
     }
   };
 
+  /** swap the pick for another of the same person (the strip under it); the one it replaces stays in the pool */
+  const choose = (s: Selfie) => setSt((st) => ({ ...st, cur: s, passed: true }));
+
   /** s and the other selfies of the same person (all the others before facepack: no grouping), best first; grows as the scan goes. */
   const mine = (s: Selfie) => {
     const r = rankSelfies(st.pool).filter((x) => !isAnyOf(x.box, notMe.current));
@@ -139,9 +143,9 @@ export function useSelfiePick(on = true) {
   // what it waits for: [title, body, progress or null]
   const wait: [string, string, number | null] | null = best ? null
     : st.done ? null
-    : !st.passed ? ['Picking your best selfie', 'Looking through your recent photos. Nothing leaves your phone.', Math.min(1, st.scanned / st.firstBy)]
-    : ['Looking further back', 'Checking older photos.', null];
-  return { best, wait, verdict, vote, next, mine };
+    : !st.passed ? [tr('onboarding.stepProfile.pickingSelfie'), tr('onboarding.stepProfile.pickingSelfieSub'), Math.min(1, st.scanned / st.firstBy)]
+    : [tr('onboarding.stepProfile.lookingFurther'), tr('onboarding.stepProfile.lookingFurtherSub'), null];
+  return { best, wait, verdict, vote, next, mine, choose };
 }
 
 /** /selfie: the pick, a verdict, and the user's name. */

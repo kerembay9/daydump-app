@@ -8,13 +8,14 @@ import { useProfile } from '../../services/profile';
 import { em, sans } from '../../theme/type';
 import { CreateRays, FancyFrame, FrameCheck, IconProps, WorkspaceEdit } from './Icons';
 import { Tap } from './Tap';
+import { tr } from '../../i18n';
 
 // Create/Library glyphs draw smaller in the 24 box than Discover's, so they get a bigger size to match.
 const TABS: Record<string, { label: string; Icon: (p: IconProps) => React.ReactElement; size: number }> = {
-  index: { label: 'Discover', Icon: FancyFrame, size: 19 },
-  create: { label: 'Create', Icon: CreateRays, size: 22 },
-  tidy: { label: 'Tidy', Icon: FrameCheck, size: 21 },
-  library: { label: 'Library', Icon: WorkspaceEdit, size: 22 },
+  index: { label: 'tabs.discover', Icon: FancyFrame, size: 19 },
+  create: { label: 'tabs.create', Icon: CreateRays, size: 22 },
+  tidy: { label: 'tabs.tidy', Icon: FrameCheck, size: 21 },
+  library: { label: 'tabs.library', Icon: WorkspaceEdit, size: 22 },
 };
 
 /** Mock bottom bar: bg-card, top hairline, 4 equal tabs; the active one is full ink, bold, on a faint ink pill; the rest muted. Fills the nav-bar inset too. */
@@ -46,7 +47,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             onPress={onPress}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={tr(tab.label)}
             style={[
               { flex: 1, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 14, alignItems: 'center', gap: 2 },
               // ink + 8-digit hex alpha (~9%): a tint that works in both themes
@@ -56,7 +57,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
             <View style={{ height: 22, justifyContent: 'center' }}>
               <tab.Icon size={tab.size} color={color} />
             </View>
-            <Text style={{ fontFamily: sans[on ? 700 : 600], fontSize: 10.5, lineHeight: 12, letterSpacing: em(10.5, -0.025), color }}>{tab.label}</Text>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ fontFamily: sans[on ? 700 : 600], fontSize: 10.5, lineHeight: 12, letterSpacing: em(10.5, -0.025), color }}>{tr(tab.label)}</Text>
           </Tap>
         );
       })}

@@ -12,12 +12,13 @@ import { display, ui } from '../../theme/type';
 import { history, restore, type Session } from '../../services/tidy/scan';
 import { PILES, type Pile } from '../../services/tidy/rules';
 import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
+import { tr } from '../../i18n';
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-const when = (ms: number) => (new Date(ms).toDateString() === new Date().toDateString() ? 'Today' : day(ms));
+const when = (ms: number) => (new Date(ms).toDateString() === new Date().toDateString() ? tr('tidy.today') : day(ms));
 /** A trashed photo by MediaStore id (its file:// path changes while it's in Trash). */
 const thumb = (id: string) => `content://media/external/images/media/${id}`;
-const photos = (n: number) => `${n} photo${n === 1 ? '' : 's'}`;
+const photos = (n: number) => tr('tidy.photoCount', { count: n });
 
 /** Every move to Trash, newest first, each restorable (Android's Restore dialog) until it leaves Trash. */
 export default function TrashHistory() {
@@ -41,13 +42,13 @@ export default function TrashHistory() {
   return (
     <Screen>
       <View style={{ paddingTop: 2, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
         <View style={{ flex: 1 }}>
-          <Text style={[display(20), { color: t.ink }]}>Trash history</Text>
-          <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 2 }]}>Restore anytime before it leaves Trash</Text>
+          <Text style={[display(20), { color: t.ink }]}>{tr('tidy.trashHistory')}</Text>
+          <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 2 }]}>{tr('tidy.historySubtitle')}</Text>
         </View>
       </View>
-      {list?.length === 0 && <Text style={[ui(13, 500), { color: t.inkMuted, marginTop: 16, textAlign: 'center' }]}>Nothing moved to Trash yet.</Text>}
+      {list?.length === 0 && <Text style={[ui(13, 500), { color: t.inkMuted, marginTop: 16, textAlign: 'center' }]}>{tr('tidy.historyEmpty')}</Text>}
       {list?.map((s) => (
         <FrameCard key={s.session} radius={18} padding={14} style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -56,30 +57,30 @@ export default function TrashHistory() {
               <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 2 }]}>{`${bytes(s.bytes)} · ${s.piles.map((p) => PILES[p as Pile]?.title ?? p).join(', ')}`}</Text>
             </View>
             {s.inTrash > 0 && (
-              <Tap onPress={() => onRestore(s)} disabled={busy != null} accessibilityRole="button" accessibilityLabel={`Restore ${photos(s.inTrash)}`} hitSlop={4}
+              <Tap onPress={() => onRestore(s)} disabled={busy != null} accessibilityRole="button" accessibilityLabel={tr('tidy.restoreCountA11y', { count: photos(s.inTrash) })} hitSlop={4}
                 style={{ height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: t.ink, alignItems: 'center', justifyContent: 'center', opacity: busy === s.session ? 0.5 : 1 }}>
-                <Text style={[ui(12, 600), { color: t.bgScreen }]}>Restore all</Text>
+                <Text style={[ui(12, 600), { color: t.bgScreen }]}>{tr('tidy.restoreAll')}</Text>
               </Tap>
             )}
           </View>
-          <Text style={[ui(11.5, 500), { color: t.inkMuted, marginTop: 8 }]}>{s.inTrash > 0 && s.until ? `In Trash until ${day(s.until)}` : 'Gone from Trash'}</Text>
+          <Text style={[ui(11.5, 500), { color: t.inkMuted, marginTop: 8 }]}>{s.inTrash > 0 && s.until ? tr('tidy.inTrashUntil', { date: day(s.until) }) : tr('tidy.goneFromTrash')}</Text>
           {s.trashed.length > 1 ? (
             <>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginHorizontal: -14 }} contentContainerStyle={{ paddingHorizontal: 14, gap: 6 }}>
                 {s.trashed.map((id, i) => (
-                  <Tap key={id} onPress={() => onRestore(s, [id])} disabled={busy != null} accessibilityRole="button" accessibilityLabel={`Restore photo ${i + 1}`}
+                  <Tap key={id} onPress={() => onRestore(s, [id])} disabled={busy != null} accessibilityRole="button" accessibilityLabel={tr('tidy.restorePhotoIndex', { index: i + 1 })}
                     style={{ width: 56, height: 56, borderRadius: 8, overflow: 'hidden', backgroundColor: t.borderStrong }}>
                     <Image source={{ uri: thumb(id) }} style={{ flex: 1 }} contentFit="cover" recyclingKey={id} />
                   </Tap>
                 ))}
               </ScrollView>
-              <Text style={[ui(11), { color: t.inkMuted, marginTop: 6 }]}>Tap a photo to restore just that one.</Text>
+              <Text style={[ui(11), { color: t.inkMuted, marginTop: 6 }]}>{tr('tidy.tapToRestoreOne')}</Text>
             </>
           ) : null}
-          {failed === s.session && <Text style={[ui(11.5, 600), { color: t.ink, marginTop: 4 }]}>Nothing was restored.</Text>}
+          {failed === s.session && <Text style={[ui(11.5, 600), { color: t.ink, marginTop: 4 }]}>{tr('tidy.nothingRestored')}</Text>}
         </FrameCard>
       ))}
-      {list && list.length > 0 && <Text style={[ui(11.5, 500), { color: t.inkMuted, marginTop: 6, textAlign: 'center' }]}>{"Restoring shows Android's own dialog."}</Text>}
+      {list && list.length > 0 && <Text style={[ui(11.5, 500), { color: t.inkMuted, marginTop: 6, textAlign: 'center' }]}>{tr('tidy.restoreDialogNote')}</Text>}
     </Screen>
   );
 }

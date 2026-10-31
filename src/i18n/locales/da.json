@@ -1,0 +1,159 @@
+{
+  "common": {
+    "close": "Luk",
+    "back": "Tilbage",
+    "termsOfService": "Servicevilkår",
+    "privacyPolicy": "Privatlivspolitik"
+  },
+  "tabs": {
+    "discover": "Opdag",
+    "create": "Opret",
+    "tidy": "Ryd op",
+    "library": "Bibliotek"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Ubesværede fotodumps",
+      "title": "Gør kamerarullekaos til flotte dumps",
+      "description": "Slip for at scrolle gennem tusindvis af billeder. PicDump udvælger de bedste billeder fra dine dage og ture med et naturligt flow.",
+      "point1": "Filmlook, rammer og størrelser til IG og TikTok",
+      "point2": "Collage-layouts, ét swipe ad gangen"
+    },
+    "privacy": {
+      "badge": "Sortering på enheden",
+      "title": "Udvælges på din telefon, ikke i skyen",
+      "description": "Billedudvælgelse, søgning og dumps kører på din telefon. PicDump uploader ikke dine billeder for at kuratere dem.",
+      "point1": "Billedadgang gør det muligt at finde dine bedste øjeblikke"
+    },
+    "allowContinue": "Giv adgang til billeder og fortsæt",
+    "continue": "Fortsæt",
+    "page": "Side {{n}} af {{total}}",
+    "notifPreview": "Forhåndsvisning af notifikation",
+    "notifNow": "· nu",
+    "notifTitle": "Dit PicDump er klar 🎞️",
+    "notifBody": "Dagens billeder, samlet i ét dump. Tag et kig inden sengetid.",
+    "notifyHeading": "Din dag kl. 20.00, din uge om søndagen",
+    "notifyBody": "En notifikation kl. 20.00, når dagens dump er klar, og søndag middag med ugens højdepunkter.",
+    "turnOn": "Slå til",
+    "notNow": "Ikke nu"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Hvert dump i din kamerarulle.",
+      "sub": "Gratis giver dig overblik og ét dump om ugen. Pro låser op for dem alle."
+    },
+    "tidy": {
+      "heading": "Ryd op i rodet.",
+      "sub": "Gratis finder dubletter og slørede billeder. Pro flytter dem til papirkurven på én gang."
+    },
+    "finish": {
+      "heading": "Bevar filmlooket.",
+      "sub": "Original, Warm 35mm og Juster er gratis. Pro eksporterer alle looks og teksturer."
+    },
+    "search": {
+      "heading": "Søg i din kamerarulle.",
+      "sub": "Find et sted, en måned eller en ting med ord. Søgning følger med Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Vi fandt {{count}} dump i din kamerarulle.",
+        "other": "Vi fandt {{count}} dumps i din kamerarulle."
+      },
+      "sub": "{{titles}}. Pro låser op for dem alle.",
+      "subMore": "{{titles}} og mere til. Pro låser op for dem alle."
+    },
+    "welcome": "Velkommen til PicDump Pro!",
+    "purchaseNotActive": "Købet gik igennem, men Pro blev ikke aktiveret endnu. Tryk på Gendan køb.",
+    "restored": "Køb gendannet. Velkommen tilbage til Pro!",
+    "noSubscription": "Intet aktivt PicDump Pro-abonnement fundet.",
+    "close": "Luk betalingsmur",
+    "feature": {
+      "dumps": {
+        "title": "Alle dumps låst op",
+        "sub": "Hver tur og historie Opdag finder – ikke kun én om ugen."
+      },
+      "search": {
+        "title": "Søg i din kamerarulle",
+        "sub": "Find et sted, en måned eller en ting med ord."
+      },
+      "looks": {
+        "title": "Alle filmlooks",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll samt korn, fade og vignettering."
+      },
+      "tidy": {
+        "title": "Fjern dubletter og rod",
+        "sub": "Flyt dubletter, slørede billeder og skærmbilleder til papirkurven på én gang."
+      },
+      "yours": {
+        "title": "Dit dump på din måde",
+        "sub": "Intet PicDump-slutslyde, og 4 til 20 billeder pr. dump."
+      }
+    },
+    "plansFailed": "Planer kunne ikke indlæses. Tjek din internetforbindelse og prøv igen.",
+    "startTrial": "Start {{trial}}",
+    "continue": "Fortsæt",
+    "restore": "Gendan køb",
+    "trialThen": "Gratis i prøveperioden, derefter {{price}}. ",
+    "disclosure": "Betaling opkræves på din butikskonto. Abonnementer fornys automatisk, medmindre de opsiges mindst 24 timer før udløbet af den aktuelle periode."
+  },
+  "profile": {
+    "title": "Profil og indstillinger",
+    "changePhoto": "Skift profilbillede",
+    "namePlaceholder": "Dit navn",
+    "handlePlaceholder": "din_konto",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Lys",
+      "espresso": "Espresso",
+      "dark": "Mørk"
+    },
+    "reindex": {
+      "title": "Genindekser dit bibliotek?",
+      "body": "PicDump gennemgår alle billeder igen. Dette tager et par minutter og bruger lidt batteri. Dine dumps i Bibliotek bevares.",
+      "action": "Genindekser"
+    },
+    "dumpPicks": {
+      "title": "Dump-valg",
+      "photosPerDump": "Billeder pr. dump",
+      "photosPerDumpSub": "Opdag vælger et antal i dette interval, oftest mod midten."
+    ,
+      "fewest": "Færrest billeder",
+      "to": "til",
+      "most": "Flest billeder",
+      "hideSensitive": "Skjul følsomme billeder",
+      "hideSensitiveSub": "Id-kort, betalingskort og sundhedsdokumenter vises aldrig i dumps.",
+      "screenshots": "Inkluder skærmbilleder",
+      "screenshotsSub": "Skærmbilleder kan blive vist i dumps.",
+      "recap": "Overblik",
+      "recapSub": "Dagens dump kl. 20.00, din uge om søndagen kl. 12.00"
+    },
+    "export": {
+      "title": "Eksport og deling",
+      "note": "Nye dumps starter med den størrelse og kvalitet, der er valgt her.",
+      "postSize": "Standard poststørrelse",
+      "quality": "Standard eksportkvalitet",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Opslag gemmer også i galleri",
+      "saveOnPostSub": "Gemmer en kopi af slides i PicDump-albummet"
+    },
+    "appearance": {
+      "title": "Udseende og tema"
+    },
+    "library": {
+      "title": "Fotobibliotek og søgning",
+      "access": "Adgang",
+      "openSettings": "Åbn indstillinger"
+    },
+    "about": {
+      "title": "Privatliv og om",
+      "onDevice": "Alt sker på din telefon",
+      "onDeviceSub": "Sådan udvælger PicDump billeder uden at uploade dem",
+      "contact": "Kontakt",
+      "noMail": "Ingen mail-app fundet. Skriv til info@horizonzeta.com",
+      "version": "Version"
+    }
+  }
+}

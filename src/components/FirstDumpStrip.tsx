@@ -9,15 +9,16 @@ import type { Story } from '../services/stories';
 import { useTheme } from '../theme/ThemeProvider';
 import { fixed } from '../theme/tokens';
 import { display, ui } from '../theme/type';
+import { tr } from '../i18n';
 
 const KEY = '@daydump_first_dump_shown';
 
 /**
  * The very first dump, once: after onboarding (indexing may already have made it by then), or after Home had none. Waits for
  * onboarding to close and Home to be the tab showing, however long that takes. Someone who already had dumps when this shipped
- * never sees it (marked shown at once).
+ * never sees it (marked shown at once). Locked dumps count as dumps here; the print itself only shows one the user can open.
  */
-export function useFirstDump(stories: Story[], loaded: boolean, onboarding: boolean) {
+export function useFirstDump(stories: Story[], loaded: boolean, onboarding: boolean, isOpen: (s: Story) => boolean) {
   const [shown, setShown] = useState<boolean | null>(null); // null: not read yet
   const [focused, setFocused] = useState(false);
   const [playing, setPlaying] = useState<Story | null>(null); // held: the 30 s rebuilds may reorder stories mid-print
@@ -28,10 +29,12 @@ export function useFirstDump(stories: Story[], loaded: boolean, onboarding: bool
     if (onboarding || (loaded && !stories.length)) fresh.current = true;
     if (shown !== false || !stories.length) return;
     if (fresh.current && (onboarding || !focused)) return; // wait for Home to be what's showing
-    if (fresh.current) setPlaying(stories[0]);
+    // the print shows picks: a free user's comes from the first dump they can open; with none open, no print
+    const open = stories.find(isOpen);
+    if (fresh.current && open) setPlaying(open);
     setShown(true);
     AsyncStorage.setItem(KEY, 'true');
-  }, [shown, stories, loaded, onboarding, focused]);
+  }, [shown, stories, loaded, onboarding, focused, isOpen]);
   return { story: playing, done: useCallback(() => setPlaying(null), []) };
 }
 
@@ -92,7 +95,7 @@ export function FirstDumpStrip({ story, onDone }: { story: Story; onDone: () => 
 
   return (
     <Animated.View style={[{ position: 'absolute', top: insets.top + 56, left: 0, right: 0, bottom: 0, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined }, all]}>
-      <Pressable onPress={skip} accessibilityLabel={`Your first dump: ${story.title}`} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
+      <Pressable onPress={skip} accessibilityLabel={tr('discover.firstDumpLabel', { title: story.title })} accessibilityRole="button" style={{ flex: 1, alignItems: 'center' }}>
         <Animated.View style={[{ width: SLOT, height: 12, borderRadius: 6, marginTop: 8, backgroundColor: t.dark ? '#0C0906' : '#181411', zIndex: 2 }, slot]} />
         <View style={{ width: FW + 2 * PAD + 20, height: S + 40, marginTop: -6, overflow: 'hidden', alignItems: 'center' }}>
           <Animated.View style={[{ width: FW + 2 * PAD, padding: PAD, paddingBottom: FOOT, gap: GAP, backgroundColor: fixed.printBorder, boxShadow: t.shadowPrint }, strip]}>

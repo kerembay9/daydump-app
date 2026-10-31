@@ -58,6 +58,8 @@ type ClipEmbedderModule = {
   selfieCheck(uris: string[], minScore: number, embed: boolean): Promise<{ scans: FaceScan[]; vecs: string; reject: number[]; gateVecs: string; sharp: number[] }>;
   /** Loads the models faces and selfieCheck use (CLIP, or the gate before the vision pack), so the selfie finder's first look doesn't wait for them. */
   warmSelfie(): Promise<void>;
+  /** Loads the index's vision models (GPU program, CPU half, concepts) so the first embedImages call doesn't pay for it (~12 s on a fresh install). */
+  warmVision?(): Promise<void>;
   /**
    * Indexing outside JS (BackgroundIndex.kt): replaces the worker's todo and starts it. fast: now, as a foreground service
    * with a progress notification (call while the app is on screen). Otherwise once the phone charges.
@@ -105,8 +107,8 @@ type ClipEmbedderModule = {
   tidyStats?(ids: string[], side: number, faces: boolean): Promise<(TidyStats | null)[]>;
   /** SHA-1 of each file's first 64 KB; null = unreadable. */
   tidyHash?(ids: string[]): Promise<(string | null)[]>;
-  /** Same-shot sets over photos in time order (vecs n x 512, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
-  tidySets?(vecs: Float32Array, times: number[], strict: boolean[]): Promise<number[]>;
+  /** Same-shot sets over photos in time order (vecs: n x 512 little-endian floats as base64, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
+  tidySets?(vecs: string, times: number[], strict: boolean[]): Promise<number[]>;
   /** Ids still in MediaStore, Trash included; expires = when Trash empties it (ms, 0 = not trashed). A missing id is gone for good. */
   trashState?(ids: string[]): Promise<Record<string, { trashed: boolean; expires: number }>>;
   /** Android's own Move to Trash (trashed) or Restore dialog for MediaStore ids; true = the user allowed it. Never deletes. */

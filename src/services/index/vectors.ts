@@ -10,7 +10,7 @@ export function b64ToFloats(b64: string): Float32Array {
 export function floatsToB64(v: Float32Array): string {
   const bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192)); // a char at a time is ~5 MB of appends for Tidy's vectors
   return btoa(bin);
 }
 

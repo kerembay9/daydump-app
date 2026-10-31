@@ -13,6 +13,7 @@ import type { DumpPhoto } from '../../services/dumps';
 import { developFor, FilterState } from '../../services/filters';
 import { Crop, Frame, LAYOUTS, LayoutKey, paintOrder, placePhoto, ratioOf, slideCells } from '../../services/layouts';
 import { LiveCrop, previewImage, SlideDrawing, SlidePhoto } from '../../services/slides';
+import { tr } from '../../i18n';
 
 export type Slide = { layout: LayoutKey; photos: DumpPhoto[] };
 
@@ -198,8 +199,8 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
               {/* like Stories: the left third goes back, the rest forward (both wrap); swipe is taken by the crop */}
               <Pressable onPress={(e) => step(e.nativeEvent.locationX < cw / 3 ? -1 : 1)}
                 onLongPress={mode === 'photos' ? () => setOriginal(true) : undefined} onPressOut={() => setOriginal(false)} delayLongPress={250}
-                accessibilityRole="adjustable" accessibilityLabel={`Slide ${i + 1} of ${n}`}
-                accessibilityHint={mode === 'photos' ? 'Hold to see the original photos' : undefined}
+                accessibilityRole="adjustable" accessibilityLabel={tr('edit.slideIndexA11y', { current: i + 1, total: n })}
+                accessibilityHint={mode === 'photos' ? tr('edit.holdOriginalA11y') : undefined}
                 accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
                 onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'decrement' ? -1 : 1)}
                 style={{ width: cw, height: ch, borderRadius: 13, overflow: 'hidden' }}>
@@ -217,7 +218,7 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
                 {/* Grid guide: the profile grid shows a 4:5 cover's 3:4 middle, a little off each side (Edit only, not exported) */}
                 {guide && i === 0 ? (
                   <View pointerEvents="none" testID="grid-guide" style={{ position: 'absolute', top: 0, bottom: 0, left: (cw - (ch * 3) / 4) / 2, width: (ch * 3) / 4, borderLeftWidth: 1.5, borderRightWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.9)' }}>
-                    <Text style={[ui(8.5, 700), { color: '#fff', position: 'absolute', right: 6, bottom: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }]}>Grid crop</Text>
+                    <Text style={[ui(8.5, 700), { color: '#fff', position: 'absolute', right: 6, bottom: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }]}>{tr('edit.gridCrop')}</Text>
                   </View>
                 ) : null}
                 {/* hairline slide edge: the cream matte otherwise melts into the light-theme card (preview only, not exported) */}
@@ -235,7 +236,7 @@ export function SlidePager({ slides, ratio, frame, layout, filter, index, images
         <View pointerEvents="none" style={[chip, { left: left + 8 }]} onLayout={(e) => setBadgeW(e.nativeEvent.layout.width)}>
           {mode === 'layout' ? <Icons.crop size={10} color="#fff" /> : null}
           <Text style={[ui(9.5, 600), { color: '#fff' }]}>
-            {mode === 'photos' ? (compare ? 'Showing original' : 'Hold to compare') : !hits.length ? 'Whole photos on blur' : n > 1 ? 'Tap sides · drag to crop' : 'Drag or pinch a photo'}
+            {mode === 'photos' ? (compare ? tr('edit.showingOriginal') : tr('edit.holdToCompare')) : !hits.length ? tr('edit.wholePhotosOnBlur') : n > 1 ? tr('edit.tapSidesDragToCrop') : tr('edit.dragOrPinchPhoto')}
           </Text>
         </View>
         {/* the counter drops to the bottom only when it would hit the badge (9:16) */}

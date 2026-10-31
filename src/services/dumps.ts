@@ -145,8 +145,15 @@ export async function remove(id: string): Promise<void> {
   await (await dbx()).runAsync('DELETE FROM dumps WHERE id = ?', [id]);
 }
 
-/** A Discover story's draft, if it has been opened in Edit. */
-export async function storyDraft(storyId: string): Promise<Dump | null> {
+/**
+ * A Discover story's draft, if it has been opened in Edit (or unlocked). `as`: the id it was unlocked under
+ * (unlockedAs), when a re-index has re-id'd it since; that id's draft is the snapshot, so it wins.
+ */
+export async function storyDraft(storyId: string, as?: string | null): Promise<Dump | null> {
+  if (as && as !== storyId) {
+    const d = await storyDraft(as);
+    if (d) return d;
+  }
   const r = await (await dbx()).getFirstAsync<Row>("SELECT * FROM dumps WHERE story_id = ? AND status = 'draft'", [storyId]);
   return r ? get(r.id) : null;
 }
@@ -158,13 +165,13 @@ export const storyAsDump = (s: Story): Dump => ({
   ratio: profileNow().ratio, fit: null, layout: null, filter: null, caption: null, platform: null, created: s.end, edited: s.end, postedAt: null,
 });
 
-/** Opening a Discover story in Edit: its draft, made from the story's picks the first time. */
-export async function draftForStory(s: Story): Promise<Dump> {
-  const found = await storyDraft(s.id);
+/** Opening a Discover story in Edit: its draft (`as`: see storyDraft), made from the story's picks the first time. */
+export async function draftForStory(s: Story, as?: string | null): Promise<Dump> {
+  const found = await storyDraft(s.id, as);
   if (found) return found;
   // a concurrent open won the insert (unique index): use its draft
   return createDraft({ title: s.title, source: 'story', storyId: s.id, photos: storyAsDump(s).photos })
-    .catch(async (e) => (await storyDraft(s.id)) ?? Promise.reject(e));
+    .catch(async (e) => (await storyDraft(s.id, as)) ?? Promise.reject(e));
 }
 
 /** The draft the Create tab is working on (P6 sets it when the basket gets its first photo). */

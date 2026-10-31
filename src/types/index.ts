@@ -11,23 +11,3 @@ export interface PhotoAsset {
     longitude: number;
   };
 }
-
-export type SubscriptionPlanId = 'weekly' | 'yearly' | 'annual' | 'lifetime';
-
-export interface SubscriptionPlan {
-  id: SubscriptionPlanId;
-  title: string;
-  priceString: string;
-  billingPeriod: string;
-  badge?: string;
-  trialDays?: number;
-  popular?: boolean;
-}
-
-export interface UserSubscriptionState {
-  isPro: boolean;
-  activePlan?: SubscriptionPlanId;
-  expirationDate?: string | null;
-  dailyDumpsUsedToday: number;
-  maxFreeDailyDumps: number;
-}

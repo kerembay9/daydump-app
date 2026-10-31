@@ -137,3 +137,38 @@ export function filterOf(raw: unknown): FilterState {
 }
 
 export const IDENTITY = I;
+
+/**
+ * Pro looks (docs/superpowers/specs/2026-10-28-monetization-design.md): every look but Original and Warm 35mm, and any
+ * Texture (grain, fade, vignette). Adjust is free. Everything previews freely in Edit; a free export asks first.
+ */
+const FREE_LOOKS: FilterKey[] = ['none', 'warm35'];
+export const isProLook = (k: FilterKey) => !FREE_LOOKS.includes(k);
+const TEXTURE = ['grain', 'fade', 'vignette'] as const;
+/** The look has some texture (drawn whatever its key or strength: developFor applies it on Original too). */
+export const hasTexture = (l: Look) => TEXTURE.some((k) => (l[k] ?? 0) > 0);
+
+/**
+ * The looks the dump's photos are drawn with: each photo's own, or the dump's for those without one. A `per` entry for a
+ * photo no longer in the dump doesn't count, nor the dump's look when every photo has its own.
+ */
+const looks = (f: FilterState, photoIds: string[]): Look[] => photoIds.map((id) => lookFor(f, id));
+/** a Pro key counts only where it shows (not Original, not 0%) */
+const proKey = (l: Look) => l.key !== 'none' && l.pct > 0 && isProLook(l.key);
+export const usesProLook = (f: FilterState, photoIds: string[]) => looks(f, photoIds).some((l) => proKey(l) || hasTexture(l));
+
+/** Only these photos' own looks and Adjust (after a photo is removed or replaced in Edit); f itself when nothing goes. */
+export function keepLooksFor(f: FilterState, photoIds: string[]): FilterState {
+  const keep = new Set(photoIds);
+  const gone = (o: Record<string, unknown>) => Object.keys(o).some((id) => !keep.has(id));
+  if (!gone(f.per) && !gone(f.adj)) return f;
+  const only = <T,>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([id]) => keep.has(id)));
+  return { ...f, per: only(f.per), adj: only(f.adj) };
+}
+
+/** "Export without finish": every Pro look back to Original (strength kept), texture off; Adjust stays. */
+export function withoutProLooks(f: FilterState): FilterState {
+  const free = ({ grain: _g, fade: _f, vignette: _v, ...l }: Look): Look => (isProLook(l.key) ? { ...l, key: 'none' } : l);
+  const { grain: _g, fade: _f, vignette: _v, ...rest } = f;
+  return { ...rest, ...free(lookOf(f)), per: Object.fromEntries(Object.entries(f.per).map(([id, l]) => [id, free(l)])) };
+}

@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Stäng",
+    "back": "Tillbaka",
+    "termsOfService": "Användarvillkor",
+    "privacyPolicy": "Integritetspolicy"
+  },
+  "tabs": {
+    "discover": "Upptäck",
+    "create": "Skapa",
+    "tidy": "Rensa",
+    "library": "Bibliotek"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Enkla fotodumpar",
+      "title": "Förvandla kamerarullens kaos till dumpar",
+      "description": "Slipp scrolla genom tusentals bilder. PicDump väljer de bästa bilderna från dina dagar och resor, sammansatta med flyt.",
+      "point1": "Filmlooks, ramar och storlekar för IG / TikTok",
+      "point2": "Kollagelayouter, ett svep i taget"
+    },
+    "privacy": {
+      "badge": "Kurering direkt på enheten",
+      "title": "Valda på din telefon, inte i molnet",
+      "description": "Fotoval, sökning och dumpar körs på din telefon. PicDump laddar inte upp dina bilder för att välja ut dem.",
+      "point1": "Fotoåtkomst gör att appen kan hitta dina bästa ögonblick"
+    },
+    "allowContinue": "Tillåt bilder och fortsätt",
+    "continue": "Fortsätt",
+    "page": "Sida {{n}} av {{total}}",
+    "notifPreview": "Förhandsvisning av avisering",
+    "notifNow": "· nu",
+    "notifTitle": "Din PicDump är klar 🎞️",
+    "notifBody": "Dagens bilder, samlade i en dump. Ta en titt innan du lägger dig.",
+    "notifyHeading": "Din dag kl. 20.00, din vecka på söndag",
+    "notifyBody": "En notis kl. 20.00 när dagens dump är klar, och på söndag kl. 12.00 med din vecka.",
+    "turnOn": "Slå på",
+    "notNow": "Inte nu"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Varje dump i din rulle.",
+      "sub": "Gratisversionen ger dig sammanfattningar och en dump i veckan. Pro låser upp alla."
+    },
+    "tidy": {
+      "heading": "Rensa bort röran.",
+      "sub": "Gratisversionen hittar dubbletter och suddiga bilder. Pro flyttar dem till papperskorgen på en gång."
+    },
+    "finish": {
+      "heading": "Behåll filmkänslan.",
+      "sub": "Original, Warm 35mm och Justera är gratis. Pro exporterar alla looks och texturer."
+    },
+    "search": {
+      "heading": "Sök i din kamerarulle.",
+      "sub": "Hitta en plats, en månad eller en sak med ord. Sök ingår i Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Vi hittade {{count}} dump i din rulle.",
+        "other": "Vi hittade {{count}} dumpar i din rulle."
+      },
+      "sub": "{{titles}}. Pro låser upp alla.",
+      "subMore": "{{titles}} och fler. Pro låser upp alla."
+    },
+    "welcome": "Välkommen till PicDump Pro!",
+    "purchaseNotActive": "Köpet gick igenom men Pro aktiverades inte än. Tryck på Återställ köp.",
+    "restored": "Köp återställda. Välkommen tillbaka till Pro!",
+    "noSubscription": "Ingen aktiv PicDump Pro-prenumeration hittades.",
+    "close": "Stäng betalvägg",
+    "feature": {
+      "dumps": {
+        "title": "Alla dumpar, upplåsta",
+        "sub": "Alla resor och händelser som Upptäck hittar, inte bara en i veckan."
+      },
+      "search": {
+        "title": "Sök i din kamerarulle",
+        "sub": "Hitta en plats, en månad eller en sak med ord."
+      },
+      "looks": {
+        "title": "Alla filmlooks",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus korn, fade och vinjett."
+      },
+      "tidy": {
+        "title": "Rensa dubbletter och skräp",
+        "sub": "Flytta dubbletter, suddiga bilder och skärmavbilder till papperskorgen på en gång."
+      },
+      "yours": {
+        "title": "Din dump, på ditt sätt",
+        "sub": "Ingen PicDump-slutsida och 4 till 20 bilder per dump."
+      }
+    },
+    "plansFailed": "Det gick inte att ladda prenumerationer. Kontrollera din anslutning och försök igen.",
+    "startTrial": "Starta {{trial}}",
+    "continue": "Fortsätt",
+    "restore": "Återställ köp",
+    "trialThen": "Gratis under provperioden, sedan {{price}}. ",
+    "disclosure": "Betalningen debiteras ditt butikskonto. Prenumerationer förnyas automatiskt om de inte sägs upp minst 24 timmar före den aktuella periodens slut."
+  },
+  "profile": {
+    "title": "Profil och inställningar",
+    "changePhoto": "Byt profilbild",
+    "namePlaceholder": "Ditt namn",
+    "handlePlaceholder": "ditt_konto",
+    "theme": {
+      "system": "System",
+      "auto": "Automatiskt",
+      "cashmere": "Cashmere",
+      "light": "Ljust",
+      "espresso": "Espresso",
+      "dark": "Mörkt"
+    },
+    "reindex": {
+      "title": "Indexera om ditt bibliotek?",
+      "body": "PicDump läser in alla bilder igen. Det tar några minuter och drar lite batteri. Dina dumpar i Biblioteket sparas.",
+      "action": "Indexera om"
+    },
+    "dumpPicks": {
+      "title": "Val för dumpar",
+      "photosPerDump": "Bilder per dump",
+      "photosPerDumpSub": "Upptäck väljer ett antal i detta intervall, oftast från mitten.",
+      "fewest": "Minst antal bilder",
+      "to": "till",
+      "most": "Flest bilder",
+      "hideSensitive": "Dölj känsliga bilder",
+      "hideSensitiveSub": "ID-handlingar, bankkort och medicinska papper visas aldrig i dumpar.",
+      "screenshots": "Inkludera skärmavbilder",
+      "screenshotsSub": "Skärmavbilder kan visas i dumpar.",
+      "recap": "Sammanfattning",
+      "recapSub": "Dagens dump kl. 20.00, din vecka på söndag kl. 12.00"
+    },
+    "export": {
+      "title": "Export och delning",
+      "note": "Nya dumpar börjar med den storlek och kvalitet som ställts in här.",
+      "postSize": "Standardstorlek för inlägg",
+      "quality": "Standard exportkvalitet",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Spara även till galleriet vid inlägg",
+      "saveOnPostSub": "Sparar en kopia av bilderna i PicDump-albumet"
+    },
+    "appearance": {
+      "title": "Utseende och tema"
+    },
+    "library": {
+      "title": "Fotobibliotek och sökning",
+      "access": "Åtkomst",
+      "openSettings": "Öppna inställningar"
+    },
+    "about": {
+      "title": "Integritet och om appen",
+      "onDevice": "Allt sker på din telefon",
+      "onDeviceSub": "Hur PicDump väljer ut bilder utan att ladda upp dem",
+      "contact": "Kontakt",
+      "noMail": "Inget e-postprogram hittades. Skriv till info@horizonzeta.com",
+      "version": "Version"
+    }
+  }
+}

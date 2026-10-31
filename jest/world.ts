@@ -13,6 +13,8 @@ export type FakePhoto = { id: string; uri: string; created: number; w: number; h
 /** Concept c lives on axis C0 + c; every photo also gets its own axis (so no two photos are near-duplicates), a twin its twin's. */
 const C0 = 10, N_CONCEPTS = 90, U0 = 200;
 const FILLER = Array.from({ length: 10 }, (_, i) => N_CONCEPTS + i);
+/** Axes no photo uses (after the concepts and fillers, before U0): unknown text phrases land here. */
+const TEXT0 = C0 + N_CONCEPTS + FILLER.length;
 
 export const NAMES: string[] = Array.from({ length: 100 }, (_, i) => `filler ${i}`);
 Object.assign(NAMES, { 0: 'street', 7: 'cinnamon roll', 8: 'golden retriever puppy splashing through the shallow waves', 9: 'sunset' });
@@ -39,6 +41,8 @@ export const world = {
    * whether Android's Trash/Restore dialog is allowed, and the photos in Trash (out of `photos` until restored).
    */
   tidy: newTidy(),
+  /** RevenueCat says the user has PicDump Pro (default: yes, so scenarios not about monetization see no locks) */
+  pro: true,
 };
 
 function newTidy() {
@@ -80,6 +84,7 @@ export function seedWorld(photos = defaultLibrary()) {
   world.shareResult = 'com.instagram.android';
   world.shareTargets = ['instagram', 'instagram-story', 'instagram-reel', 'tiktok'];
   world.files = { written: new Set(), held: null };
+  world.pro = true;
   world.tidy = newTidy();
 }
 
@@ -105,7 +110,9 @@ export function textVec(text: string): Float32Array {
   const t = text.toLowerCase();
   const c = NAMES.findIndex((name, i) => i < N_CONCEPTS && !name.startsWith('filler') && t.includes(name));
   if (c >= 0) v[C0 + c] = 1;
-  else v[U0 + ([...t].reduce((a, ch) => a + ch.charCodeAt(0), 0) % (DIM - U0))] = 1;
+  // an unknown phrase gets an axis of its own between the concepts and the photos' own axes: on a photo's axis (U0 + id) it
+  // would match that photo (the bingo card's "Your desk" matched photo 1 on the days it was drawn)
+  else v[TEXT0 + ([...t].reduce((a, ch) => a + ch.charCodeAt(0), 0) % (U0 - TEXT0))] = 1;
   return normalize(v);
 }
 

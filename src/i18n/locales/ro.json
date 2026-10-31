@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Închide",
+    "back": "Înapoi",
+    "termsOfService": "Termeni și condiții",
+    "privacyPolicy": "Politica de confidențialitate"
+  },
+  "tabs": {
+    "discover": "Descoperă",
+    "create": "Creează",
+    "tidy": "Curăță",
+    "library": "Bibliotecă"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Dump-uri foto fără efort",
+      "title": "Transformă haosul din galerie în dump-uri",
+      "description": "Spune adio derulării prin mii de poze. PicDump alege cele mai bune cadre din zilele și călătoriile tale, organizate cursiv.",
+      "point1": "Efecte de film, margini și formate pentru IG și TikTok",
+      "point2": "Aranjamente tip colaj, cu o singură glisare"
+    },
+    "privacy": {
+      "badge": "Selecție pe dispozitiv",
+      "title": "Alese pe telefonul tău, nu în cloud",
+      "description": "Selecția fotografiilor, căutarea și dump-urile rulează pe telefonul tău. PicDump nu încarcă fotografiile pentru a le sorta.",
+      "point1": "Accesul la fotografii îi permite să găsească momentele memorabile"
+    },
+    "allowContinue": "Permite accesul la fotografii și continuă",
+    "continue": "Continuă",
+    "page": "Pagina {{n}} din {{total}}",
+    "notifPreview": "Previzualizare notificare",
+    "notifNow": "· acum",
+    "notifTitle": "PicDump-ul tău este gata 🎞️",
+    "notifBody": "Fotografiile de azi, reunite într-un dump. Aruncă o privire înainte de culcare.",
+    "notifyHeading": "Ziua ta la ora 20:00, săptămâna ta duminică",
+    "notifyBody": "O notificare la ora 20:00 când dump-ul de azi e gata și duminică la prânz cu rezumatul săptămânii.",
+    "turnOn": "Activează",
+    "notNow": "Nu acum"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Fiecare dump din galeria ta.",
+      "sub": "Versiunea gratuită îți oferă rezumatele și un dump pe săptămână. Pro le deblochează pe toate."
+    },
+    "tidy": {
+      "heading": "Scapă de dezordine.",
+      "sub": "Versiunea gratuită găsește pozele duplicate și neclare. Pro le mută în Coș dintr-o singură mișcare."
+    },
+    "finish": {
+      "heading": "Păstrează aspectul de film.",
+      "sub": "Original, Warm 35mm și Adjust sunt gratuite. Pro exportă orice stil și textură."
+    },
+    "search": {
+      "heading": "Caută în galeria foto.",
+      "sub": "Găsește un loc, o lună sau un obiect prin cuvinte. Căutarea vine cu Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Am găsit {{count}} dump în galeria ta.",
+        "other": "Am găsit {{count}} dump-uri în galeria ta."
+      },
+      "sub": "{{titles}}. Pro le deblochează pe toate.",
+      "subMore": "{{titles}} și altele. Pro le deblochează pe toate."
+    },
+    "welcome": "Bun venit la PicDump Pro!",
+    "purchaseNotActive": "Achiziția a fost realizată, dar Pro nu s-a activat încă. Apasă pe Restaurează achizițiile.",
+    "restored": "Achizițiile au fost restaurate. Bine ai revenit la Pro!",
+    "noSubscription": "Nu a fost găsit niciun abonament activ PicDump Pro.",
+    "close": "Închide ecranul de plată",
+    "feature": {
+      "dumps": {
+        "title": "Fiecare dump, deblocat",
+        "sub": "Fiecare călătorie și poveste pe care o găsește Descoperă, nu doar una pe săptămână."
+      },
+      "search": {
+        "title": "Caută în galeria foto",
+        "sub": "Găsește un loc, o lună sau un obiect prin cuvinte."
+      },
+      "looks": {
+        "title": "Toate stilurile de film",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus granulație, fade și vignetă."
+      },
+      "tidy": {
+        "title": "Șterge pozele duplicate și dezordinea",
+        "sub": "Mută duplicatele, pozele neclare și capturile de ecran în Coș dintr-o mișcare."
+      },
+      "yours": {
+        "title": "Dump-ul tău, în stilul tău",
+        "sub": "Fără slide final PicDump și de la 4 la 20 de fotografii per dump."
+      }
+    },
+    "plansFailed": "Planurile nu au putut fi încărcate. Verifică conexiunea și încearcă din nou.",
+    "startTrial": "Începe {{trial}}",
+    "continue": "Continuă",
+    "restore": "Restaurează achizițiile",
+    "trialThen": "Gratuit în perioada de probă, apoi {{price}}. ",
+    "disclosure": "Plata este debitată din contul magazinului de aplicații. Abonamentele se reînnoiesc automat, cu excepția cazului în care sunt anulate cu cel puțin 24 de ore înainte de sfârșitul perioadei curente."
+  },
+  "profile": {
+    "title": "Profil și setări",
+    "changePhoto": "Schimbă fotografia de profil",
+    "namePlaceholder": "Numele tău",
+    "handlePlaceholder": "contul_tău",
+    "theme": {
+      "system": "Sistem",
+      "auto": "Automat",
+      "cashmere": "Cashmere",
+      "light": "Luminos",
+      "espresso": "Espresso",
+      "dark": "Întunecat"
+    },
+    "reindex": {
+      "title": "Reindexezi biblioteca?",
+      "body": "PicDump va citi din nou fiecare fotografie. Durează câteva minute și consumă puțină baterie. Dump-urile tale din Bibliotecă vor fi păstrate.",
+      "action": "Reindexează"
+    },
+    "dumpPicks": {
+      "title": "Selecția dump-urilor",
+      "photosPerDump": "Fotografii per dump",
+      "photosPerDumpSub": "Descoperă alege un număr din acest interval, de obicei din mijloc.",
+      "fewest": "Cele mai puține fotografii",
+      "to": "până la",
+      "most": "Cele mai multe fotografii",
+      "hideSensitive": "Ascunde fotografiile confidențiale",
+      "hideSensitiveSub": "Actele de identitate, cardurile bancare și documentele medicale nu apar niciodată în dump-uri.",
+      "screenshots": "Include capturile de ecran",
+      "screenshotsSub": "Capturile de ecran pot apărea în dump-uri.",
+      "recap": "Rezumat",
+      "recapSub": "Dump-ul de azi la 20:00, săptămâna ta duminică la prânz"
+    },
+    "export": {
+      "title": "Export și publicare",
+      "note": "Dump-urile noi pornesc cu dimensiunea și calitatea setate aici.",
+      "postSize": "Dimensiune implicită a postării",
+      "quality": "Calitate implicită de export",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Publicarea salvează și în galerie",
+      "saveOnPostSub": "Păstrează o copie a slide-urilor în albumul PicDump"
+    },
+    "appearance": {
+      "title": "Aspect și temă"
+    },
+    "library": {
+      "title": "Biblioteca foto și căutare",
+      "access": "Acces",
+      "openSettings": "Deschide setările"
+    },
+    "about": {
+      "title": "Confidențialitate și despre",
+      "onDevice": "Totul se întâmplă pe telefonul tău",
+      "onDeviceSub": "Cum alege PicDump fotografiile fără a le încărca",
+      "contact": "Contact",
+      "noMail": "Nu a fost găsită nicio aplicație de e-mail. Scrie la info@horizonzeta.com",
+      "version": "Versiune"
+    }
+  }
+}

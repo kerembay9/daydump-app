@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Sluit",
+    "back": "Terug",
+    "termsOfService": "Diensbepalings",
+    "privacyPolicy": "Privaatheidsbeleid"
+  },
+  "tabs": {
+    "discover": "Ontdek",
+    "create": "Skep",
+    "tidy": "Opruim",
+    "library": "Biblioteek"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Moeitelose fotodumps",
+      "title": "Verander kamerarol-chaos in dumps",
+      "description": "Sê vaarwel aan blaai deur duisende foto's. PicDump kies die beste foto's van jou dae en reise, met 'n natuurlike vloei.",
+      "point1": "Filmkopies, rande en IG- / TikTok-groottes",
+      "point2": "Collage-uitlegte, een veeg op 'n slag"
+    },
+    "privacy": {
+      "badge": "Samestelling op jou toestel",
+      "title": "Gekies op jou foon, nie in die wolk nie",
+      "description": "Fotokeuses, soektogte en dumps gebeur op jou foon. PicDump laai nie jou foto's op om hulle saam te stel nie.",
+      "point1": "Foto-toegang laat dit jou uitblink-oomblikke vind"
+    },
+    "allowContinue": "Laat foto's toe en gaan voort",
+    "continue": "Gaan voort",
+    "page": "Bladsy {{n}} van {{total}}",
+    "notifPreview": "Kennisgewingvoorskou",
+    "notifNow": "· nou",
+    "notifTitle": "Jou PicDump is gereed 🎞️",
+    "notifBody": "Vandag se foto's, saamgestel in een dump. Kyk gerus voor slaaptyd.",
+    "notifyHeading": "Jou dag om 20:00, jou week op Sondag",
+    "notifyBody": "'n Kennisgewing om 20:00 wanneer vandag se dump gereed is, en Sondag om 12:00 met jou week.",
+    "turnOn": "Skakel aan",
+    "notNow": "Nie nou nie"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Elke dump in jou kamerarol.",
+      "sub": "Gratis gee jou opsommings en een dump per week. Pro ontsluit hulle almal."
+    },
+    "tidy": {
+      "heading": "Ruim die rommel op.",
+      "sub": "Gratis vind elke herhaling en dowwe foto. Pro skuif hulle met een slag na die Asblik."
+    },
+    "finish": {
+      "heading": "Behou die filmvoorkoms.",
+      "sub": "Oorspronklik, Warm 35mm en Pas aan is gratis. Pro voer elke voorkoms en tekstuur uit."
+    },
+    "search": {
+      "heading": "Deursoek jou kamerarol.",
+      "sub": "Vind 'n plek, 'n maand of 'n ding met woorde. Soektog kom saam met Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Ons het {{count}} dump in jou rol gevind.",
+        "other": "Ons het {{count}} dumps in jou rol gevind."
+      },
+      "sub": "{{titles}}. Pro ontsluit hulle almal.",
+      "subMore": "{{titles}} en meer. Pro ontsluit hulle almal."
+    },
+    "welcome": "Welkom by PicDump Pro!",
+    "purchaseNotActive": "Aankoop het deurgegaan maar Pro is nog nie aktief nie. Tik op Stel aankope terug.",
+    "restored": "Aankope teruggestel. Welkom terug by Pro!",
+    "noSubscription": "Geen aktiewe PicDump Pro-intekening gevind nie.",
+    "close": "Sluit betaalmuur",
+    "feature": {
+      "dumps": {
+        "title": "Elke dump, ontsluit",
+        "sub": "Elke reis en storie wat Ontdek vind, nie net een per week nie."
+      },
+      "search": {
+        "title": "Deursoek jou kamerarol",
+        "sub": "Vind 'n plek, 'n maand of 'n ding met woorde."
+      },
+      "looks": {
+        "title": "Alle filmvoorkomste",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, plus korrel, vervaging en vignet."
+      },
+      "tidy": {
+        "title": "Verwyder herhalings en rommel",
+        "sub": "Skuif duplikate, dowwe foto's en skermkiekies met een slag na die Asblik."
+      },
+      "yours": {
+        "title": "Jou dump, op jou manier",
+        "sub": "Geen PicDump-eindskyfie nie, en 4 tot 20 foto's per dump."
+      }
+    },
+    "plansFailed": "Planne kon nie laai nie. Gaan jou verbinding na en probeer weer.",
+    "startTrial": "Begin {{trial}}",
+    "continue": "Gaan voort",
+    "restore": "Stel aankope terug",
+    "trialThen": "Gratis tydens die proeflopie, daarna {{price}}. ",
+    "disclosure": "Betaling word teen jou winkelrekening gehef. Intekeninge hernu outomaties tensy dit minstens 24 uur voor die einde van die huidige tydperk gekanselleer word."
+  },
+  "profile": {
+    "title": "Profiel en instellings",
+    "changePhoto": "Verander profielfoto",
+    "namePlaceholder": "Jou naam",
+    "handlePlaceholder": "jou_rekening",
+    "theme": {
+      "system": "Stelsel",
+      "auto": "Outo",
+      "cashmere": "Cashmere",
+      "light": "Lig",
+      "espresso": "Espresso",
+      "dark": "Donker"
+    },
+    "reindex": {
+      "title": "Herindekseer jou biblioteek?",
+      "body": "PicDump sal elke foto weer lees. Dit neem 'n paar minute en batterykrag. Jou dumps in Biblioteek word behou.",
+      "action": "Herindekseer"
+    },
+    "dumpPicks": {
+      "title": "Dump-keuses",
+      "photosPerDump": "Foto's per dump",
+      "photosPerDumpSub": "Ontdek kies 'n getal in hierdie reeks, meestal uit die middel.",
+      "fewest": "Minste foto's",
+      "to": "tot",
+      "most": "Meeste foto's",
+      "hideSensitive": "Versteek sensitiewe foto's",
+      "hideSensitiveSub": "ID's, bankkaarte en mediese dokumente verskyn nooit in dumps nie.",
+      "screenshots": "Sluit skermkiekies in",
+      "screenshotsSub": "Skermkiekies kan in dumps verskyn.",
+      "recap": "Opsomming",
+      "recapSub": "Vandag se dump om 20:00, jou week op Sondag om 12:00"
+    },
+    "export": {
+      "title": "Uitvoer en plasing",
+      "note": "Nuwe dumps begin met die grootte en gehalte wat hier gestel is.",
+      "postSize": "Verstekplasinggrootte",
+      "quality": "Verstekuitvoergehalte",
+      "hd": "HD (2160 px)",
+      "standard": "Standaard (1080 px)",
+      "saveOnPost": "Plasing stoor ook na gallery",
+      "saveOnPostSub": "Hou 'n afskrif van die skyfies in die PicDump-album"
+    },
+    "appearance": {
+      "title": "Voorkoms en tema"
+    },
+    "library": {
+      "title": "Fotobiblioteek en soektog",
+      "access": "Toegang",
+      "openSettings": "Maak instellings oop"
+    },
+    "about": {
+      "title": "Privaatheid en inligting",
+      "onDevice": "Alles gebeur op jou foon",
+      "onDeviceSub": "Hoe PicDump foto's kies sonder om dit op te laai",
+      "contact": "Kontak",
+      "noMail": "Geen e-posprogram gevind nie. Skryf na info@horizonzeta.com",
+      "version": "Weergawe"
+    }
+  }
+}

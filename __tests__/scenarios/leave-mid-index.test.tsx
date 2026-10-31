@@ -70,7 +70,7 @@ test('home button before the first batch, then back', async () => {
 test('indexing on screen, home button mid-run, then back', async () => {
   hold(2);
   await bootApp('/');
-  expect(await screen.findByText(/^Reading your library… 256\/477$/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(await screen.findByText(/^Reading your library… 160\/477$/, {}, { timeout: 10000 })).toBeTruthy();
   expect(screen.getByText('Building your dumps…')).toBeTruthy();
 
   // home: the third batch (already started) ends, the fourth finds the app away and hands the rest to the background worker
@@ -88,13 +88,13 @@ test('indexing on screen, home button mid-run, then back', async () => {
 test('indexing on screen, app killed mid-run, then opened again', async () => {
   hold(2);
   await bootApp('/');
-  expect(await screen.findByText(/^Reading your library… 256\/477$/, {}, { timeout: 10000 })).toBeTruthy();
+  expect(await screen.findByText(/^Reading your library… 160\/477$/, {}, { timeout: 10000 })).toBeTruthy();
   state = 'background';
   release();
   await settle(3000);
   screen.unmount();
 
-  // cold start: 384 screenshots in the index, no dump from them yet
+  // cold start: 288 screenshots in the index, no dump from them yet
   state = 'active';
   hold(0);
   await bootApp('/');
