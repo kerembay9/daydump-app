@@ -97,7 +97,7 @@ const MIN_DATE = Date.UTC(1990, 0, 1);
 async function readStats(): Promise<LibraryStats | null> {
   const page = (ascending: boolean, first: number) => MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, ascending]], first });
   const [newest, oldest] = await Promise.all([page(false, 1), page(true, 100)]);
-  if (!newest.totalCount) return null;
+  if (!newest.totalCount) return { count: 0, oldest: 0, newest: 0 }; // nothing readable (limited access with nothing picked): screen 4b says so
   const latest = newest.assets[0].creationTime;
   // the oldest *dated* photo among the first hundred; none = the library's dates are unusable, so the span is a single day
   const first = oldest.assets.find((a) => a.creationTime >= MIN_DATE)?.creationTime ?? latest;
@@ -124,6 +124,7 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
   const [firstPhotos, setFirstPhotos] = useState<string[]>([]);
   const [reel, setReel] = useState<string[]>(NO_PHOTOS);
   const [scanned, setScanned] = useState(false);
+  const [looked, setLooked] = useState(0);
   const markScanned = useCallback(() => setScanned(true), []);
   const [answers, setAnswers] = useState<Answers>(START);
   const selfie = useSelfiePick(access === 'full');
@@ -162,7 +163,7 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
       console.warn('[onboarding] permission request failed:', e);
     }
     const a = toAccess(await GalleryService.checkPermissions().catch(() => ({ granted: false, limited: false })));
-    if (a !== 'denied') app.start().catch((e) => console.warn('[onboarding] start failed:', e));
+    if (a !== 'denied') app.start(false).catch((e) => console.warn('[onboarding] start failed:', e));
     setAccess(a);
     return a;
   }, [app]);
@@ -170,8 +171,9 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
   const recheck = useCallback(async () => {
     const a = toAccess(await GalleryService.checkPermissions().catch(() => ({ granted: false, limited: false })));
     // Allowed in Settings meanwhile: index now, as the first grant does
-    if (a !== 'denied') app.start().catch((e) => console.warn('[onboarding] start failed:', e));
+    if (a !== 'denied') app.start(false).catch((e) => console.warn('[onboarding] start failed:', e));
     setAccess(a);
+    setLooked((n) => n + 1); // the selection may have changed in Settings: count again
     return a;
   }, [app]);
 
@@ -194,7 +196,7 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
     readPhotos().then((p) => { if (live) setFirstPhotos(p); }, (e) => console.warn('[onboarding] library photos failed:', e));
     readReel().then((r) => { if (live) setReel(r); }, (e) => console.warn('[onboarding] scan photos failed:', e));
     return () => { live = false; };
-  }, [access]);
+  }, [access, looked]);
 
   const value = useMemo(() => ({ access, stats, photos, reel, scanned, markScanned, ask, recheck, answers, set, toggle, index: !!ClipEmbedder, tidy: tidySupported(), selfie, purchased, setPurchased, editing, setEditing, progress, reach }),
     [access, stats, photos, reel, scanned, markScanned, ask, recheck, answers, set, toggle, selfie, purchased, editing, progress, reach]);

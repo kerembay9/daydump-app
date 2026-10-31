@@ -47,7 +47,8 @@ type AppStateValue = {
   pause: () => Promise<void>;
   resume: () => Promise<void>;
   /** Starts indexing (asks for photo access first). Onboarding calls it once access is granted. */
-  start: () => Promise<void>;
+  /** reads the photo permission and starts the index; request = false: don't show Android's dialog (onboarding just asked), only read it */
+  start: (request?: boolean) => Promise<void>;
   /** Photo access after a "no": Android's dialog while it still shows it, else Settings (coming back picks a grant up). */
   askPhotos: () => Promise<void>;
   /** started: onboarding already called start() (false: photos denied, nothing asked again). */
@@ -167,8 +168,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   /** "Onboarding every launch" over a completed onboarding: finishing it is a normal launch, whatever the slides did */
   const replaying = useRef(false);
   // one at a time: Home's ask and the foreground check can both land as the dialog closes
-  const start = useCallback(() => asking.current ??= (async () => {
-    const perm = await GalleryService.requestPermissions();
+  const start = useCallback((request = true) => asking.current ??= (async () => {
+    const perm = request ? await GalleryService.requestPermissions() : (await GalleryService.checkPermissions()).granted;
     granted.current = perm;
     setPermission(perm);
     GalleryService.checkPermissions().then((p) => setLimited(p.limited), () => {});

@@ -12,10 +12,10 @@ test('full access with an on-device index walks all 30 screens', () => {
   expect(walk('full')).toEqual(['1', '2', '3', '4', '5', ...Array.from({ length: 25 }, (_, i) => String(i + 6))]);
 });
 
-test('4 goes to the library count only when everything was shared; 4b otherwise', () => {
+test('4 goes to the library count when everything was shared, 4b when limited, and stays when denied', () => {
   expect(nextStep('4', 'full')).toBe('5');
   expect(nextStep('4', 'limited')).toBe('4b');
-  expect(nextStep('4', 'denied')).toBe('4b');
+  expect(nextStep('4', 'denied')).toBe('4');
 });
 
 test('limited access counts the photos shared, then skips the screens that read the library', () => {
@@ -25,10 +25,8 @@ test('limited access counts the photos shared, then skips the screens that read 
   expect(w).toContain('24');
 });
 
-test('no access skips 5 as well', () => {
-  const w = walk('denied');
-  expect(w.slice(3, 7)).toEqual(['4', '4b', '6', '7']);
-  for (const s of ['5', '12', '20', '21', '22', '23']) expect(w).not.toContain(s);
+test('no access never gets past 4: the app needs photos', () => {
+  expect(nextStep('4', 'denied')).toBe('4');
 });
 
 test('no Tidy (Android 10 and older) hides clutter but keeps search', () => {

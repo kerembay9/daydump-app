@@ -8,6 +8,7 @@ import { FrameScreen, LayoutScreen, LookScreen, RatioScreen, SizeScreen, StyleSc
 import { ClutterScreen, FindingScreen, FoundScreen, SearchScreen } from '../../components/onboarding/screensE';
 import { NameScreen, RemindersScreen, SelfieScreen, TryScreen } from '../../components/onboarding/screensF';
 import { DoneScreen, PaywallScreen, RecapScreen } from '../../components/onboarding/screensG';
+import { GalleryService } from '../../services/galleryService';
 import { saveAnswers } from '../../services/onboardingAnswers';
 import { hasBack, inProgress, isStep, nextStep, type StepId } from '../../services/onboardingFlow';
 import { useApp } from '../../state/AppState';
@@ -26,6 +27,7 @@ function Step({ step }: { step: StepId }) {
   const app = useApp();
   const [busy, setBusy] = useState(false);
   const asked = useRef(false); // a double tap asks once
+  const [again, setAgain] = useState(true); // the OS will still show its dialog (false after "Don't allow" twice: only Settings is left)
   const next = () => {
     Haptics.selectionAsync();
     const to_ = nextStep(step, access, { index, tidy, editing });
@@ -49,23 +51,27 @@ function Step({ step }: { step: StepId }) {
   }, [step, access]);
 
   // Settings → PicDump → Photos: back in front, pick up what was changed there
+  const waiting = step === '4b' || (step === '4' && access === 'denied');
   useEffect(() => {
-    if (step !== '4b') return;
+    if (!waiting) return;
     const sub = AppState.addEventListener('change', async (s) => {
       if (s !== 'active') return;
       const a = await recheck();
-      if (a === 'full') to('5');
+      const n = nextStep('4', a, { index, tidy });
+      if (n !== step && n !== '4') to(n);
     });
     return () => sub.remove();
-  }, [step, recheck]);
+  }, [waiting, step, recheck, index, tidy]);
 
   const allow = async () => {
     if (asked.current) return;
     asked.current = true;
     setBusy(true);
     try {
+      if (access === 'denied' && !again) { await Linking.openSettings(); return; }
       const a = await ask();
-      to(nextStep('4', a, { index, tidy }));
+      if (a === 'denied') setAgain((await GalleryService.checkPermissions()).canAskAgain);
+      else to(nextStep('4', a, { index, tidy }));
     } finally {
       asked.current = false;
       setBusy(false);
@@ -76,7 +82,7 @@ function Step({ step }: { step: StepId }) {
     case '1': return <HookScreen onNext={next} />;
     case '2': return <PromiseScreen onNext={next} onBack={back} />;
     case '3': return <PrivacyScreen onNext={next} onBack={back} />;
-    case '4': return <AccessScreen onAsk={allow} onBack={back} busy={busy} />;
+    case '4': return <AccessScreen onAsk={allow} onBack={back} busy={busy} denied={access === 'denied'} settings={!again} />;
     case '4b': return <LimitedScreen access={access} shared={stats?.count ?? null} onSettings={() => Linking.openSettings()} onContinue={next} />;
     case '5': return <LibraryScreen access={access} stats={stats} onNext={next} />;
     case '6': return <PostScreen nav={nav} />;

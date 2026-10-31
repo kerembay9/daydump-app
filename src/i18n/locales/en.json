@@ -95,10 +95,15 @@
         "primerTitle": "Why PicDump asks",
         "primer1": "Reads dates and places to group your photos into stories.",
         "primer2": "Runs on this phone. Nothing is uploaded.",
-        "primer3": "Prefer to pick photos yourself? Limited access works too."
+        "primer3": "Prefer to pick photos yourself? Limited access works too.",
+        "deniedTitle": "PicDump needs your photos",
+        "deniedSub": "Without them there is nothing to make dumps from. Nothing leaves your phone.",
+        "deniedSubSettings": "Allow photos in Settings → PicDump → Permissions, then come back. Nothing leaves your phone."
       },
       "limited": {
         "title": "Limited access works too.",
+        "titleFew": "Share a few more photos",
+        "subFew": "PicDump needs at least {{min}} photos to build dumps. Pick more, or allow all photos, in Settings.",
         "subLimited": "PicDump only sees the photos you shared. You can add more anytime.",
         "subNone": "PicDump can still make dumps. Previews use sample photos until you share some.",
         "sharedTitle": "{{count}} photos shared",

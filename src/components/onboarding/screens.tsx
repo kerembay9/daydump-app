@@ -8,7 +8,7 @@ import { Icons } from '../ui/Icons';
 import { Card, Shell } from './Shell';
 import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
 import { RevenueCatService } from '../../services/revenuecat';
-import { dateSpan, librarySize, type Access } from '../../services/onboardingFlow';
+import { dateSpan, librarySize, MIN_SHARED, type Access } from '../../services/onboardingFlow';
 import { useOnboardingFlow, type LibraryStats } from '../../state/OnboardingFlow';
 import { fixed } from '../../theme/tokens';
 import { getLocale, tr } from '../../i18n';
@@ -84,11 +84,14 @@ export function PrivacyScreen({ onNext, onBack }: Nav) {
 }
 
 /** 4 · Photo access: our reason first, then the OS dialog */
-export function AccessScreen({ onAsk, onBack, busy }: { onAsk: () => void; onBack?: () => void; busy: boolean }) {
+export function AccessScreen({ onAsk, onBack, busy, denied, settings }: { onAsk: () => void; onBack?: () => void; busy: boolean; denied: boolean; settings: boolean }) {
   const { t } = useTheme();
+  // PicDump can't work without photos: after "Don't allow" the question stays, and once Android stops asking, the button opens Settings
   return (
-    <Shell onBack={onBack} busy={busy} eyebrow={tr('onboarding.flow.access.eyebrow')} headline={tr('onboarding.flow.access.title')} sub={tr('onboarding.flow.access.sub')}
-      primary={{ label: tr('onboarding.flow.access.cta'), onPress: onAsk }}>
+    <Shell onBack={onBack} busy={busy} eyebrow={tr('onboarding.flow.access.eyebrow')}
+      headline={tr(denied ? 'onboarding.flow.access.deniedTitle' : 'onboarding.flow.access.title')}
+      sub={tr(denied ? (settings ? 'onboarding.flow.access.deniedSubSettings' : 'onboarding.flow.access.deniedSub') : 'onboarding.flow.access.sub')}
+      primary={{ label: tr(denied && settings ? 'onboarding.flow.limited.openSettings' : 'onboarding.flow.access.cta'), onPress: onAsk }}>
       <Card style={{ marginTop: 12, padding: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: t.bgScreen, borderWidth: 1, borderColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
@@ -111,12 +114,16 @@ export function AccessScreen({ onAsk, onBack, busy }: { onAsk: () => void; onBac
 export function LimitedScreen({ access, shared, onSettings, onContinue }: { access: Access | null; shared: number | null; onSettings: () => void; onContinue: () => void }) {
   const { t } = useTheme();
   const limited = access === 'limited';
+  // a handful of photos can't make dumps: no way on until more are shared
+  const few = limited && shared != null && shared < MIN_SHARED;
+  const counting = limited && shared == null; // the count is still being read: no way on yet either
   const pic = usePic();
   const cells = [pic(0), pic(1), pic(2), pic(3)];
   return (
-    <Shell headline={tr('onboarding.flow.limited.title')} sub={tr(limited ? 'onboarding.flow.limited.subLimited' : 'onboarding.flow.limited.subNone')}
+    <Shell headline={tr(few ? 'onboarding.flow.limited.titleFew' : 'onboarding.flow.limited.title')}
+      sub={few ? tr('onboarding.flow.limited.subFew', { min: MIN_SHARED }) : tr(limited ? 'onboarding.flow.limited.subLimited' : 'onboarding.flow.limited.subNone')}
       primary={{ label: tr('onboarding.flow.limited.openSettings'), onPress: onSettings }}
-      secondary={{ label: tr(limited ? 'onboarding.flow.limited.continueSelected' : 'onboarding.flow.limited.continueWithout'), onPress: onContinue }}>
+      secondary={few || counting ? undefined : { label: tr(limited ? 'onboarding.flow.limited.continueSelected' : 'onboarding.flow.limited.continueWithout'), onPress: onContinue }}>
       <Card style={{ marginTop: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View style={{ width: 84, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
           {cells.map((bg, i) => <Pic key={i} bg={bg} style={{ width: 40, height: 40, borderRadius: 4, opacity: limited ? 1 : 0.25 }} />)}
@@ -176,7 +183,7 @@ export function LibraryScreen({ access, stats, onNext }: { access: Access | null
   const count = stats?.count.toLocaleString(getLocale()) ?? '';
   const headline = !size ? tr('onboarding.flow.library.counting') : tr(`onboarding.flow.library.${size}`, { count });
   const sub = size ? tr(`onboarding.flow.library.${{ large: 'subLarge', mid: 'subMid', small: 'subSmall', limited: 'subLimited' }[size]}`) : undefined;
-  const rows = stats ? [
+  const rows = stats?.count ? [
     ...(size === 'limited' ? [{ k: tr('onboarding.flow.library.shared'), v: tr('onboarding.flow.library.sharedValue', { count }) }] : []),
     { k: tr('onboarding.flow.library.dateSpan'), v: dateSpan(stats.oldest, stats.newest, getLocale()) },
   ] : [];

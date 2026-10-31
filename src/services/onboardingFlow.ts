@@ -18,6 +18,9 @@ export function hasBack(s: StepId, access: Access | null = 'full'): boolean {
   return !(s === '6' && access !== 'full');
 }
 
+/** Fewer shared photos than this (limited access) can't make dumps: screen 4b asks for more instead of letting them continue. */
+export const MIN_SHARED = 30;
+
 /** What this phone can do: run the on-device index (search, stories), and Tidy (Android 11+ Trash). */
 export type Caps = { index?: boolean; tidy?: boolean };
 
@@ -34,7 +37,8 @@ export function skipped(s: StepId, access: Access | null, caps: Caps = {}): bool
 /** The screen after cur. editing: cur was opened from the recap's chips, so finishing it goes back there. */
 export function nextStep(cur: StepId, access: Access | null, opts: Caps & { editing?: boolean } = {}): StepId {
   if (opts.editing && STYLE_STEPS.includes(cur)) return '19';
-  if (cur === '4') return access === 'full' ? '5' : '4b';
+  // denied: PicDump can't work without photos, so the question stays (screen 4 turns into "open Settings")
+  if (cur === '4') return access === 'full' ? '5' : access === 'limited' ? '4b' : '4';
   let i = NUMS.indexOf(cur === '4b' ? '4' : cur) + 1;
   while (i < NUMS.length && skipped(NUMS[i], access, opts)) i++;
   return NUMS[i] ?? '30';
