@@ -41,7 +41,7 @@ const SHARED = 0.05; // of the smaller group's photos. A photo's faces are diffe
 const GROUPING = `${MIN_SCORE} ${JOIN} ${MERGE} ${SHARED}`;
 
 let saved: Saved = { scans: {}, names: {} };
-let state = { list: [] as Person[], shown: [] as Person[], scanned: 0, suggest: null as [Person, Person] | null };
+let state = { list: [] as Person[], shown: [] as Person[], scanned: 0, suggest: null as [Person, Person] | null, scanning: false };
 const subs = new Set<() => void>();
 const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
 
@@ -49,11 +49,11 @@ const save = () => { try { file().write(JSON.stringify(saved)); } catch (e) { co
 const publish = () => {
   const list = people(saved, saved.groups ?? {});
   const shown = list.filter((p) => p.photos >= MIN_PHOTOS);
-  state = { list, shown, scanned: Object.keys(saved.scans).length, suggest: suggestMerge(shown, saved.apart) };
+  state = { list, shown, scanned: Object.keys(saved.scans).length, suggest: suggestMerge(shown, saved.apart), scanning: running };
   subs.forEach((f) => f());
 };
 
-/** The people found so far, most photos first. shown: the ones in enough photos to offer; list: everyone; suggest: the likeliest two to be one person. */
+/** The people found so far, most photos first. shown: the ones in enough photos to offer; list: everyone; suggest: the likeliest two to be one person; scanning: a run is waiting its turn or under way. */
 export const usePeople = () => useSyncExternalStore(subscribe, () => state);
 
 const shotsOf = (s: Saved): Shot[] => Object.entries(s.scans).flatMap(([uri, sc]) =>
@@ -314,13 +314,14 @@ export async function scanPeople(photos: { uri: string }[], busy: () => boolean)
       try { const f = file(); if (f.exists) saved = { ...saved, ...JSON.parse(await f.text()) }; } catch (e) { console.warn('[people] load failed:', e); }
       if (saved.grouping !== GROUPING) { delete saved.groups; saved.grouping = GROUPING; }
       loaded = true;
-      publish();
     }
+    publish();
     await whenReady('faces');
     while (pending) { const ps = pending; pending = null; await scan(ps, busy); }
   } catch (e) {
     console.warn('[people] scan failed:', e);
   } finally {
     running = false;
+    publish();
   }
 }

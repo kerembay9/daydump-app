@@ -47,8 +47,8 @@ function FilterFace({ p, filter, onChange, onMerge, size, label }: { p: Person; 
 /** One row of small faces, no names, scrolling away with the grid. All of them: the sheet, with a dot when it has a question. */
 export function PeopleRow({ people, filter, onChange, onMore, onMerge }: { people: Person[]; filter: PeopleFilter; onChange: (f: PeopleFilter) => void; onMore: () => void; onMerge: (p: Person) => void }) {
   const { t } = useTheme();
-  const { suggest } = usePeople();
-  if (!people.length) return null;
+  const { suggest, scanning } = usePeople();
+  if (!people.length) return scanning ? <Text style={[ui(11), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 2 }]}>{tr('people.finding')}</Text> : null;
   const top = people.slice(0, IN_ROW);
   // someone picked in the sheet, past the row's end: first, so the filter is always on show
   const row = [...people.slice(IN_ROW).filter((p) => stateOf(filter, p.id) !== 'any'), ...top];

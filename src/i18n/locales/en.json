@@ -1107,6 +1107,7 @@
   },
   "people": {
     "unnamed": "Unnamed person",
+    "finding": "Finding the people in your photos. They'll show up here.",
     "faceHint": "Tap to change, hold to merge",
     "state": {
       "with": "{{name}}: with",
