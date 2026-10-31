@@ -304,6 +304,7 @@
       "clutter": {
         "title": "{{count}} repeats and blurry shots.",
         "counting": "Counting repeats and blurry shots…",
+        "progress": "Checked {{done}} of {{total}} photos so far",
         "sub": "Free shows the count. Pro clears them in one go.",
         "repeats": "Repeats",
         "blurry": "Blurry shots",
@@ -328,7 +329,9 @@
         "noneSub": "That's fine. Previews use your photos as they are.",
         "lookingTitle": "Looking for a selfie…",
         "lookingSub": "Looking through your recent photos. Nothing leaves your phone.",
-        "note": "Only on your previews. Stays on your phone."
+        "note": "Only on your previews. Stays on your phone.",
+        "others": "Other photos of you",
+        "useThis": "Use this photo"
       },
       "name": {
         "title": "What should we call you?",
@@ -380,7 +383,9 @@
         "failed": "Plans didn't load.",
         "failedSub": "Check your connection and try again.",
         "best": "Best value",
-        "billedMonthly": "Billed monthly"
+        "billedMonthly": "Billed monthly",
+        "billedWeekly": "Billed weekly",
+        "billedYearly": "Billed yearly"
       },
       "done": {
         "title": "You're in. Your first dump is waiting.",

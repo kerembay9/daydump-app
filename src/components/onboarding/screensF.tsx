@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -27,8 +27,10 @@ import { Label, Nav, Note, PillButton, Pills, pick, SlidePreview } from './parts
 export function SelfieScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
   const { access, selfie, set } = useOnboardingFlow();
-  const { best, wait, vote } = selfie;
+  const { best, wait, vote, mine, choose } = selfie;
   const none = access !== 'full' || (!best && !wait);
+  // the same person's other selfies, best first; tapping one makes it the pick (the scan keeps adding to them)
+  const others = best && !none ? mine(best).filter((x) => x.p.id !== best.p.id).slice(0, 8) : [];
   const yes = () => {
     if (!best) return;
     vote('up');
@@ -56,6 +58,19 @@ export function SelfieScreen({ nav }: { nav: Nav }) {
             <Icons.user size={64} color={t.inkMuted} />
           </View>
         )}
+        {others.length ? (
+          <View style={{ alignSelf: 'stretch', gap: 8 }}>
+            <Label>{tr('onboarding.flow.selfie.others')}</Label>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+              {others.map((x) => (
+                <Tap key={x.p.id} onPress={() => { Haptics.selectionAsync().catch(() => {}); choose(x); }} accessibilityRole="button" accessibilityLabel={tr('onboarding.flow.selfie.useThis')}
+                  style={{ borderRadius: 32, borderWidth: 2, borderColor: fixed.printBorder }}>
+                  <FaceCircle uri={x.p.uri} box={x.box} aspect={x.aspect} size={60} />
+                </Tap>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
         {best && !none ? <Note center>{tr('onboarding.flow.selfie.note')}</Note> : null}
       </View>
     </Shell>

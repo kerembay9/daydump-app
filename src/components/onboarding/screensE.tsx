@@ -143,6 +143,15 @@ export function ClutterScreen({ nav }: { nav: Nav }) {
               <ProTag />
             </View>
           </Card>
+        ) : tidy.total > 0 ? (
+          // the piles only exist once the scan has grouped everything: until then the number is how far it has read
+          <Card style={{ padding: 16, gap: 10 }}>
+            <Text style={[ui(13, 600), { color: t.ink, fontVariant: ['tabular-nums'] }]}>{tr('onboarding.flow.clutter.progress', { done: fmt(tidy.done), total: fmt(tidy.total) })}</Text>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: t.borderStrong, overflow: 'hidden' }}>
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: t.ink, width: `${Math.min(100, (tidy.done / tidy.total) * 100)}%` }} />
+            </View>
+            <Text style={[ui(11, 500), { color: t.inkMuted }]}>{tr('onboarding.flow.clutter.wait')}</Text>
+          </Card>
         ) : <Note>{tr('onboarding.flow.clutter.wait')}</Note>}
       </View>
     </Shell>

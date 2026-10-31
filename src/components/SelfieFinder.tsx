@@ -130,6 +130,9 @@ export function useSelfiePick(on = true) {
     }
   };
 
+  /** swap the pick for another of the same person (the strip under it); the one it replaces stays in the pool */
+  const choose = (s: Selfie) => setSt((st) => ({ ...st, cur: s, passed: true }));
+
   /** s and the other selfies of the same person (all the others before facepack: no grouping), best first; grows as the scan goes. */
   const mine = (s: Selfie) => {
     const r = rankSelfies(st.pool).filter((x) => !isAnyOf(x.box, notMe.current));
@@ -142,7 +145,7 @@ export function useSelfiePick(on = true) {
     : st.done ? null
     : !st.passed ? [tr('onboarding.stepProfile.pickingSelfie'), tr('onboarding.stepProfile.pickingSelfieSub'), Math.min(1, st.scanned / st.firstBy)]
     : [tr('onboarding.stepProfile.lookingFurther'), tr('onboarding.stepProfile.lookingFurtherSub'), null];
-  return { best, wait, verdict, vote, next, mine };
+  return { best, wait, verdict, vote, next, mine, choose };
 }
 
 /** /selfie: the pick, a verdict, and the user's name. */

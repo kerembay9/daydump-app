@@ -50,6 +50,9 @@ const FEATURES = [
 
 const trialDays = (p: PlanRow | null) => { const m = p?.trial ? /(\d+)-day/.exec(p.trial) : null; return m ? +m[1] : null; };
 
+/** The line under a plan with no trial: how often it bills (the weekly plan said "monthly"). */
+const BILLED: Record<string, string> = { WEEKLY: 'billedWeekly', MONTHLY: 'billedMonthly', ANNUAL: 'billedYearly' };
+
 /**
  * 29 · Paywall: the store's own plans (prices, trial, order from RevenueCat), the features ordered by what they said stops them, a trial
  * timeline when the plan has one. Search and clutter rows only show where the phone can do them. Close or "Continue free" ends at the free tier.
@@ -155,7 +158,7 @@ export function PaywallScreen({ onPurchased, onFree }: { onPurchased: () => void
                   {best ? <View style={{ position: 'absolute', top: -9, right: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: t.ink }}><Text style={[ui(10, 600), { color: t.bgScreen }]}>{tr('onboarding.flow.paywall.best')}</Text></View> : null}
                   <Text style={[ui(13, 600), { color: t.ink }]}>{p.title}</Text>
                   <Text style={[display(15), { color: t.ink }]}>{p.price}</Text>
-                  <Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.trial ?? tr('onboarding.flow.paywall.billedMonthly')}</Text>
+                  <Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.trial ?? tr(`onboarding.flow.paywall.${BILLED[p.pkg.packageType as string] ?? 'billedMonthly'}`)}</Text>
                 </Tap>
               );
             })}
