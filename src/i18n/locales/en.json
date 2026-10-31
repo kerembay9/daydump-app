@@ -302,7 +302,10 @@
         "opensWithPro": "Opens with Pro"
       },
       "clutter": {
-        "title": "{{count}} repeats and blurry shots.",
+        "title": {
+          "one": "1 photo to clear.",
+          "other": "{{n}} repeats and blurry shots."
+        },
         "counting": "Counting repeats and blurry shots…",
         "progress": "Checked {{done}} of {{total}} photos so far",
         "sub": "Free shows the count. Pro clears them in one go.",

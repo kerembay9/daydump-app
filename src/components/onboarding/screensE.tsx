@@ -122,7 +122,7 @@ export function ClutterScreen({ nav }: { nav: Nav }) {
   const total = rows ? rows.reduce((a, x) => a + x[1], 0) : 0;
   const thumbs = r ? [...r.piles.same, ...r.piles.blurry, ...r.piles.screens].slice(0, 4).map((x) => x.p.uri) : [];
   return (
-    <Shell onBack={nav.onBack} progress={nav.progress} headline={rows ? tr('onboarding.flow.clutter.title', { count: fmt(total) }) : tr('onboarding.flow.clutter.counting')} sub={tr('onboarding.flow.clutter.sub')}
+    <Shell onBack={nav.onBack} progress={nav.progress} headline={rows ? tr('onboarding.flow.clutter.title', { count: total, n: fmt(total) }) : tr('onboarding.flow.clutter.counting')} sub={tr('onboarding.flow.clutter.sub')}
       primary={{ label: tr('common.continue'), onPress: nav.onNext }}>
       <View style={{ gap: 12, marginTop: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
