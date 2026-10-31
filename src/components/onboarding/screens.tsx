@@ -142,9 +142,10 @@ export function LimitedScreen({ access, shared, onSettings, onContinue }: { acce
 const SCAN_MIN_MS = 3600;
 const SCAN_MAX_MS = 6000;
 const FLIP_MS = 120;
+const SLOW_MS = 3000;
 
 /** Screen 5's first beat: random photos from the library flick through a print while the count climbs to the real total. */
-function Scan({ reel, total, done }: { reel: string[]; total: number | null; done: () => void }) {
+function Scan({ reel, fallback, total, done }: { reel: string[]; fallback: string[]; total: number | null; done: () => void }) {
   const { t } = useTheme();
   const [tick, setTick] = useState(0);
   const [t0] = useState(Date.now); // the clock keeps running when the count or the photos arrive
@@ -157,11 +158,14 @@ function Scan({ reel, total, done }: { reel: string[]; total: number | null; don
     return () => clearInterval(id);
   }, [t0, reel.length, total, done]);
   const shown = total == null ? 0 : Math.round(total * (1 - Math.pow(1 - Math.min(1, tick / SCAN_MIN_MS), 3)));
-  const uri = reel.length ? reel[Math.floor(tick / FLIP_MS) % reel.length] : null;
+  // until the sample is read (decoded images and all): whatever photos the flow already has, one every 3 s, fading
+  const slow = !reel.length;
+  const list = slow ? fallback : reel;
+  const uri = list.length ? list[Math.floor(tick / (slow ? SLOW_MS : FLIP_MS)) % list.length] : null;
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
       <View style={{ width: 190, height: 238, borderWidth: 5, borderColor: fixed.printBorder, borderRadius: 8, overflow: 'hidden', backgroundColor: t.borderStrong, transform: [{ rotate: '-2deg' }] }}>
-        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" /> : null}
+        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" transition={slow ? 400 : 0} /> : null}
       </View>
       <Text style={[display(30, 1), { color: t.ink, fontVariant: ['tabular-nums'] }]}>{shown.toLocaleString(getLocale())}</Text>
     </View>
@@ -170,9 +174,9 @@ function Scan({ reel, total, done }: { reel: string[]; total: number | null; don
 
 export function LibraryScreen({ access, stats, onNext }: { access: Access | null; stats: LibraryStats | null; onNext: () => void }) {
   const { t } = useTheme();
-  const { reel, scanned, markScanned } = useOnboardingFlow();
+  const { reel, photos, scanned, markScanned } = useOnboardingFlow();
   // no photos to flick through (Expo Go, nothing readable): no scan
-  const scanning = !scanned && access !== null && access !== 'denied';
+  const scanning = !scanned && access !== null && access !== 'denied' && stats?.count !== 0;
   const pick = usePic();
   const prints: PrintSpec[] = [
     { x: 90, y: 28, w: 96, h: 118, r: -7, bg: pick(0) },
@@ -182,13 +186,13 @@ export function LibraryScreen({ access, stats, onNext }: { access: Access | null
   const size = stats ? librarySize(stats.count, access) : null;
   const count = stats?.count.toLocaleString(getLocale()) ?? '';
   const headline = !size ? tr('onboarding.flow.library.counting') : tr(`onboarding.flow.library.${size}`, { count });
-  const sub = size ? tr(`onboarding.flow.library.${{ large: 'subLarge', mid: 'subMid', small: 'subSmall', limited: 'subLimited' }[size]}`) : undefined;
+  const sub = size ? tr(`onboarding.flow.library.${{ large: 'subLarge', mid: 'subMid', few: 'subFew', empty: 'subEmpty', limited: 'subLimited' }[size]}`) : undefined;
   const rows = stats?.count ? [
     ...(size === 'limited' ? [{ k: tr('onboarding.flow.library.shared'), v: tr('onboarding.flow.library.sharedValue', { count }) }] : []),
     { k: tr('onboarding.flow.library.dateSpan'), v: dateSpan(stats.oldest, stats.newest, getLocale()) },
   ] : [];
   if (scanning) {
-    return <Shell headline={tr('onboarding.flow.library.scanning')} primary={{ label: tr('common.continue'), onPress: onNext, disabled: true }} justify="center"><Scan reel={reel} total={stats?.count ?? null} done={markScanned} /></Shell>;
+    return <Shell headline={tr('onboarding.flow.library.scanning')} primary={{ label: tr('common.continue'), onPress: onNext, disabled: true }} justify="center"><Scan reel={reel} fallback={photos} total={stats?.count ?? null} done={markScanned} /></Shell>;
   }
   return (
     <Shell headline={headline} sub={sub} primary={{ label: tr('common.continue'), onPress: onNext }} above={<PrintStack prints={prints} height={170} />}>

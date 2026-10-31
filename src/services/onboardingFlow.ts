@@ -51,11 +51,13 @@ export function progressOf(s: StepId): number {
   return n >= 6 && n <= 27 ? (n - 5) / 22 : n > 27 ? 1 : 0;
 }
 
-/** Screen 5's wording: Limited access, or by library size (design: 1,000+, 50-1,000, under 50). */
-export type LibrarySize = 'limited' | 'large' | 'mid' | 'small';
+/** Screen 5's wording: Limited access, or by library size (none, under FEW_PHOTOS, 1,000+, the rest). */
+export type LibrarySize = 'limited' | 'empty' | 'few' | 'mid' | 'large';
+/** Fewer photos than this make small dumps: screen 5 says so (it doesn't stop them). */
+export const FEW_PHOTOS = 100;
 export function librarySize(count: number, access: Access | null): LibrarySize {
   if (access === 'limited') return 'limited';
-  return count >= 1000 ? 'large' : count >= 50 ? 'mid' : 'small';
+  return count === 0 ? 'empty' : count < FEW_PHOTOS ? 'few' : count >= 1000 ? 'large' : 'mid';
 }
 
 /** "Mar 2019 – Oct 2026", or "Aug – Oct 2026" inside one year; one month alone when both ends fall in it. */

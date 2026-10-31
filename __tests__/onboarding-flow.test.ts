@@ -90,8 +90,10 @@ test('library size follows the design breakpoints', () => {
   expect(librarySize(3963, 'full')).toBe('large');
   expect(librarySize(1000, 'full')).toBe('large');
   expect(librarySize(640, 'full')).toBe('mid');
-  expect(librarySize(50, 'full')).toBe('mid');
-  expect(librarySize(32, 'full')).toBe('small');
+  expect(librarySize(100, 'full')).toBe('mid');
+  expect(librarySize(99, 'full')).toBe('few');
+  expect(librarySize(0, 'full')).toBe('empty');
+  expect(librarySize(32, 'full')).toBe('few');
   expect(librarySize(3963, 'limited')).toBe('limited');
 });
 

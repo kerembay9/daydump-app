@@ -257,7 +257,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
             <Text style={[ui(9.5, 700), { color: accent(t), letterSpacing: 1, textTransform: 'uppercase' }]}>{q.found ? tr('today.foundOn', { on }) : tr('today.thisWeeksQuest')}</Text>
             <Text style={[display(19), { color: t.ink }]}>{q.label}</Text>
             <Text style={[ui(11.5), { color: t.inkMuted, lineHeight: 16 }]}>
-              {q.found ? tr('today.questFoundSub', { day: on === 'today' ? tr('today.today') : weekday(q.day!) }) : tr('today.questFindSub')}
+              {q.found ? tr('today.questFoundSub', { day: on === 'today' ? tr('today.today').toLowerCase() : weekday(q.day!) }) : tr('today.questFindSub')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
               {q.found ? <ShareButtons name="side quest" ghost />
