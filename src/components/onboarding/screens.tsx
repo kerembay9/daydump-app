@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Platform, Text, ToastAndroid, View } from 'react-native';
+import { Image } from 'expo-image';
 import Check from 'lucide-react-native/icons/check';
 import { useTheme } from '../../theme/ThemeProvider';
 import { caps, display, label, ui } from '../../theme/type';
@@ -8,7 +9,8 @@ import { Card, Shell } from './Shell';
 import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
 import { RevenueCatService } from '../../services/revenuecat';
 import { dateSpan, librarySize, type Access } from '../../services/onboardingFlow';
-import type { LibraryStats } from '../../state/OnboardingFlow';
+import { useOnboardingFlow, type LibraryStats } from '../../state/OnboardingFlow';
+import { fixed } from '../../theme/tokens';
 import { getLocale, tr } from '../../i18n';
 
 type Nav = { onNext: () => void; onBack?: () => void };
@@ -129,8 +131,41 @@ export function LimitedScreen({ access, shared, onSettings, onContinue }: { acce
 }
 
 /** 5 · Library count, from the photos the OS let us see */
+/** The scan plays at least this long, and gives up waiting for the photos or the count after the cap. */
+const SCAN_MIN_MS = 3600;
+const SCAN_MAX_MS = 6000;
+const FLIP_MS = 120;
+
+/** Screen 5's first beat: random photos from the library flick through a print while the count climbs to the real total. */
+function Scan({ reel, total, done }: { reel: string[]; total: number | null; done: () => void }) {
+  const { t } = useTheme();
+  const [tick, setTick] = useState(0);
+  const [t0] = useState(Date.now); // the clock keeps running when the count or the photos arrive
+  useEffect(() => {
+    const id = setInterval(() => {
+      const ms = Date.now() - t0;
+      setTick(ms);
+      if (ms >= SCAN_MAX_MS || (ms >= SCAN_MIN_MS && total != null && reel.length)) done();
+    }, FLIP_MS);
+    return () => clearInterval(id);
+  }, [t0, reel.length, total, done]);
+  const shown = total == null ? 0 : Math.round(total * (1 - Math.pow(1 - Math.min(1, tick / SCAN_MIN_MS), 3)));
+  const uri = reel.length ? reel[Math.floor(tick / FLIP_MS) % reel.length] : null;
+  return (
+    <View style={{ alignItems: 'center', gap: 14 }}>
+      <View style={{ width: 190, height: 238, borderWidth: 5, borderColor: fixed.printBorder, borderRadius: 8, overflow: 'hidden', backgroundColor: t.borderStrong, transform: [{ rotate: '-2deg' }] }}>
+        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" /> : null}
+      </View>
+      <Text style={[display(30, 1), { color: t.ink, fontVariant: ['tabular-nums'] }]}>{shown.toLocaleString(getLocale())}</Text>
+    </View>
+  );
+}
+
 export function LibraryScreen({ access, stats, onNext }: { access: Access | null; stats: LibraryStats | null; onNext: () => void }) {
   const { t } = useTheme();
+  const { reel, scanned, markScanned } = useOnboardingFlow();
+  // no photos to flick through (Expo Go, nothing readable): no scan
+  const scanning = !scanned && access !== null && access !== 'denied';
   const pick = usePic();
   const prints: PrintSpec[] = [
     { x: 90, y: 28, w: 96, h: 118, r: -7, bg: pick(0) },
@@ -145,6 +180,9 @@ export function LibraryScreen({ access, stats, onNext }: { access: Access | null
     ...(size === 'limited' ? [{ k: tr('onboarding.flow.library.shared'), v: tr('onboarding.flow.library.sharedValue', { count }) }] : []),
     { k: tr('onboarding.flow.library.dateSpan'), v: dateSpan(stats.oldest, stats.newest, getLocale()) },
   ] : [];
+  if (scanning) {
+    return <Shell headline={tr('onboarding.flow.library.scanning')} primary={{ label: tr('common.continue'), onPress: onNext, disabled: true }} justify="center"><Scan reel={reel} total={stats?.count ?? null} done={markScanned} /></Shell>;
+  }
   return (
     <Shell headline={headline} sub={sub} primary={{ label: tr('common.continue'), onPress: onNext }} above={<PrintStack prints={prints} height={170} />}>
       {rows.length ? (

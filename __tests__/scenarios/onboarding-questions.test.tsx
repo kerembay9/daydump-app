@@ -18,6 +18,7 @@ const press = async (text: string) => fireEvent.press((await screen.findAllByTex
 
 test('questions: Continue waits for an answer, where they post sets the shape, and a style edit returns to the recap', async () => {
   await fireEvent.press(await firstRunToAsk());
+  await screen.findByText(/^You have [\d,]+ photos\.$/, {}, { timeout: 10000 }); // 5: the scan plays first
   await pressLast('Continue'); // 5 -> 6
   expect(await screen.findByText('Where do you post?')).toBeTruthy();
 

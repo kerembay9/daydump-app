@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
@@ -8,6 +8,7 @@ import { tidySupported } from '../services/tidy/scan';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { type Access, type Answers, progressOf, setAnswer, START, toggleAnswer } from '../services/onboardingFlow';
 import { useApp, useProgress } from './AppState';
+import { capIndex } from '../services/index/photoIndex';
 import { useSelfiePick } from '../components/SelfieFinder';
 
 /** What screen 5 shows about the library: how many photos, and the first and last date. */
@@ -19,6 +20,11 @@ type Flow = {
   stats: LibraryStats | null;
   /** real photos from the library, spread over time (empty until access is granted); screens 5+ show these instead of gradients */
   photos: string[];
+  /** random camera photos from across the library for screen 5's scan; already prefetched (empty until access is granted) */
+  reel: string[];
+  /** screen 5's scan has played: coming back to it shows the count at once */
+  scanned: boolean;
+  markScanned: () => void;
   /** asks the OS for photo access (it shows its own dialog); starts indexing when granted */
   ask: () => Promise<Access>;
   /** reads the current access without asking (back from Settings) */
@@ -53,6 +59,8 @@ export const useOnboardingFlow = (): Flow => {
 const toAccess = (p: { granted: boolean; limited: boolean }): Access => (p.limited ? 'limited' : p.granted ? 'full' : 'denied');
 
 const POOL = 12;
+/** 10 full batches: ~30 s of reading, plenty to rate the dumps onboarding shows. */
+const ONBOARDING_INDEX = 128 * 10;
 const NO_PHOTOS: string[] = [];
 
 /**
@@ -66,6 +74,21 @@ async function readPhotos(): Promise<string[]> {
   const pool = cam.length >= POOL ? cam : all; // iOS: no DCIM paths
   const step = Math.max(1, Math.floor(pool.length / POOL));
   return Array.from({ length: Math.min(POOL, pool.length) }, (_, i) => pool[i * step].uri);
+}
+
+const REEL = 28;
+const SCAN_FROM = 1000;
+
+/** A random sample of the newest SCAN_FROM camera photos for the scan's flicker; the decoded images are in the cache before the screen shows. */
+async function readReel(): Promise<string[]> {
+  const { assets } = await MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: SCAN_FROM });
+  const all = GalleryService.pruneAndCleanAssets(assets);
+  const cam = all.filter((p) => isCameraPhoto(p.uri));
+  const pool = (cam.length >= REEL ? cam : all).map((p) => p.uri);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const pick = pool.slice(0, REEL);
+  await Image.prefetch(pick);
+  return pick;
 }
 
 /** Photos with no date taken (WhatsApp, downloads) come back as 0 or a few days after 1970; they'd stretch the date span to "Jan 1970". */
@@ -99,6 +122,9 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
   const [access, setAccess] = useState<Access | null>(null);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [firstPhotos, setFirstPhotos] = useState<string[]>([]);
+  const [reel, setReel] = useState<string[]>(NO_PHOTOS);
+  const [scanned, setScanned] = useState(false);
+  const markScanned = useCallback(() => setScanned(true), []);
   const [answers, setAnswers] = useState<Answers>(START);
   const selfie = useSelfiePick(access === 'full');
   const [editing, setEditing] = useState(false);
@@ -149,15 +175,28 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
     return a;
   }, [app]);
 
+  // The index reads only the newest ONBOARDING_INDEX photos meanwhile (a 100k library would take minutes to list and read); leaving
+  // lifts the cap, and the pass that follows takes the rest.
+  const refresh = useRef(app.refreshStories);
+  useEffect(() => { refresh.current = app.refreshStories; });
+  useEffect(() => {
+    capIndex(ONBOARDING_INDEX);
+    return () => { capIndex(null); refresh.current().catch(() => {}); };
+  }, []);
+
+  // Screens 1-4 need no photos: load the CLIP models meanwhile, so the first batch after the permission isn't the one paying for it.
+  useEffect(() => { ClipEmbedder?.warmVision?.().catch((e) => console.warn('[onboarding] vision warm-up failed:', e)); }, []);
+
   useEffect(() => {
     if (!access || access === 'denied') return;
     let live = true;
     readStats().then((s) => { if (live) setStats(s); }, (e) => console.warn('[onboarding] library stats failed:', e));
     readPhotos().then((p) => { if (live) setFirstPhotos(p); }, (e) => console.warn('[onboarding] library photos failed:', e));
+    readReel().then((r) => { if (live) setReel(r); }, (e) => console.warn('[onboarding] scan photos failed:', e));
     return () => { live = false; };
   }, [access]);
 
-  const value = useMemo(() => ({ access, stats, photos, ask, recheck, answers, set, toggle, index: !!ClipEmbedder, tidy: tidySupported(), selfie, purchased, setPurchased, editing, setEditing, progress, reach }),
-    [access, stats, photos, ask, recheck, answers, set, toggle, selfie, purchased, editing, progress, reach]);
+  const value = useMemo(() => ({ access, stats, photos, reel, scanned, markScanned, ask, recheck, answers, set, toggle, index: !!ClipEmbedder, tidy: tidySupported(), selfie, purchased, setPurchased, editing, setEditing, progress, reach }),
+    [access, stats, photos, reel, scanned, markScanned, ask, recheck, answers, set, toggle, selfie, purchased, editing, progress, reach]);
   return <Ctx.Provider value={value}>{children}{photos.length ? <Warm photos={photos} /> : null}</Ctx.Provider>;
 }

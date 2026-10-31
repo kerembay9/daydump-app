@@ -110,6 +110,7 @@
       },
       "library": {
         "counting": "Reading your library…",
+        "scanning": "Looking through your library…",
         "large": "You have {{count}} photos.",
         "mid": "You have {{count}} photos.",
         "small": "You have {{count}} photos.",

@@ -169,6 +169,9 @@ class ClipEmbedderModule : Module() {
       }
     }
 
+    // Loads the index's vision models (GPU program + CPU half + concepts) ahead; onboarding calls it before the photo permission.
+    AsyncFunction("warmVision") Coroutine { -> withContext(Dispatchers.Default) { clip.warmVision() } }
+
     // YuNet faces per photo, best first (+ SFace vectors with embed); a photo that fails to decode has none.
     // Decodes 4 at a time (decoding is ~90% of the cost); thumb > 0: MediaStore thumbnails of content:// uris.
     AsyncFunction("faces") Coroutine { uris: List<String>, minScore: Double, embed: Boolean, thumb: Int? ->
@@ -530,6 +533,26 @@ class ClipEngine private constructor(private val ctx: Context) {
   }
 
   suspend fun embedImages(uris: List<String>, thumb: Int) = mutex.withLock { embedImagesLocked(uris, thumb) }
+
+  // Loads what the first index batch would: the GPU program (compile ~3 s, cached after) and the CPU model, each with one
+  // blank run (first-run allocation), plus the concepts head. Onboarding calls it before the photo permission, so the first
+  // batch after it starts warm. Quiet when the vision pack isn't there yet or LiteRT can't run.
+  suspend fun warmVision() = mutex.withLock {
+    runCatching {
+      withContext(liteThread) {
+        val m = liteModel() ?: return@withContext
+        val i = m.createInputBuffers(); val o = m.createOutputBuffers()
+        try { runLite(m, i, o, FloatArray(3 * PLANE), 0, FloatArray(DIM)) } finally { (i + o).forEach { it.close() } }
+      }
+      withContext(cpuThread) {
+        val h = helperModel() ?: return@withContext
+        val i = h.createInputBuffers(); val o = h.createOutputBuffers()
+        try { runLite(h, i, o, FloatArray(3 * PLANE), 0, FloatArray(DIM)) } finally { (i + o).forEach { it.close() } }
+      }
+      concepts
+    }.onFailure { Log.w("ClipEmbedder", "vision warm-up skipped", it) }
+    Unit
+  }
 
   // Bench: the decode pool alone (current decoder, 4 threads, nice 9) over uris, as an index batch decodes them.
   suspend fun benchDecode(uris: List<String>): Map<String, Double> = mutex.withLock {
