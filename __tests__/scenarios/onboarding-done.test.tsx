@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
-import { firstRunToAsk, goToStep } from '../../jest/app';
+import { firstRunToAsk, goToStep, settle } from '../../jest/app';
 import { seedWorld } from '../../jest/world';
 
 const ML = jest.requireMock('expo-media-library/legacy');
@@ -26,4 +26,6 @@ test('onboarding: done is saved at the end, not at the photo grant (killed befor
   await goToStep('30');
   await fireEvent.press(await screen.findByText('Open Discover'));
   await waitFor(async () => expect(await AsyncStorage.getItem(DONE)).toBe('true'));
+  // Discover starts the people scan: ended here it outlives the jest environment and jams the worker for the next suite
+  await settle();
 }, 30000);
