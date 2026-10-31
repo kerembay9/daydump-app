@@ -76,32 +76,31 @@ export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
   return (running ??= (async () => {
-    const n = await run(onProgress);
-    // the cap was lifted (onboarding ended) while the capped pass ran: the rest of the library follows at once
-    return capped && cap == null ? n + (await run(onProgress)) : n;
+    // a first pass of the newest photos, then at once the rest: the cap only says when the first curated photos are ready
+    const first = firstPass;
+    const n = await run(onProgress, first);
+    return first != null ? n + (await run(onProgress, null)) : n;
   })().finally(() => { running = null; setReading(0); }));
 }
 
-let cap: number | null = null;
-let capped = false;
+let firstPass: number | null = null;
 /**
- * Onboarding indexes only the newest `n` camera photos (null: no limit again), so a 100k library reaches its curated photos in
- * seconds, not after listing and reading everything. Photos past the cap wait for the next pass, which starts as the cap is lifted.
+ * Onboarding's first pass reads only the newest `n` camera photos (null: none), so a 100k library reaches its curated photos in
+ * seconds, not after listing and reading everything. It doesn't stop there: the full pass follows straight away, in the background,
+ * and onboarding carries on once the first pass is in.
  */
-export const capIndex = (n: number | null) => { cap = n; };
+export const capIndex = (n: number | null) => { firstPass = n; };
 
 /** How many new photos the foreground index is reading right now (Today: "Checking 2 new photos…"). */
 export const reading = { n: 0, subs: new Set<() => void>() };
 const setReading = (n: number) => { reading.n = n; reading.subs.forEach((f) => f()); };
 
-async function run(onProgress?: IndexProgressFn): Promise<number> {
+async function run(onProgress: IndexProgressFn | undefined, limit: number | null): Promise<number> {
   const d = await db();
   const bg = await ClipEmbedder?.backgroundIndexStatus();
   // A fast or paused run is the user's to stop; a charging-only job just yields to the app.
   if (bg && bg.state !== 'running' && bg.state !== 'paused') await ClipEmbedder!.cancelBackgroundIndex();
   const tl = Date.now();
-  const limit = cap;
-  capped = limit != null;
   const assets = await GalleryService.listLibraryPhotos(limit ?? undefined);
   console.log(`[photoIndex] listed ${assets.length} photos in ${Date.now() - tl} ms`);
   const byId = new Map(assets.map((a, i) => [a.id, [a, i] as const]));

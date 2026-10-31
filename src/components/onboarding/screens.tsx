@@ -165,14 +165,14 @@ function Scan({ reel, fallback, total, done }: { reel: string[]; fallback: strin
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
       <View style={{ width: 190, height: 238, borderWidth: 5, borderColor: fixed.printBorder, borderRadius: 8, overflow: 'hidden', backgroundColor: t.borderStrong, transform: [{ rotate: '-2deg' }] }}>
-        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" transition={slow ? 400 : 0} /> : null}
+        {uri ? <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" transition={slow ? 400 : 0} /> : <View style={{ flex: 1, experimental_backgroundImage: SAMPLE[0] }} />}
       </View>
       <Text style={[display(30, 1), { color: t.ink, fontVariant: ['tabular-nums'] }]}>{shown.toLocaleString(getLocale())}</Text>
     </View>
   );
 }
 
-export function LibraryScreen({ access, stats, onNext }: { access: Access | null; stats: LibraryStats | null; onNext: () => void }) {
+export function LibraryScreen({ access, stats, onNext, onSettings }: { access: Access | null; stats: LibraryStats | null; onNext: () => void; onSettings: () => void }) {
   const { t } = useTheme();
   const { reel, photos, scanned, markScanned } = useOnboardingFlow();
   // no photos to flick through (Expo Go, nothing readable): no scan
@@ -195,7 +195,8 @@ export function LibraryScreen({ access, stats, onNext }: { access: Access | null
     return <Shell headline={tr('onboarding.flow.library.scanning')} primary={{ label: tr('common.continue'), onPress: onNext, disabled: true }} justify="center"><Scan reel={reel} fallback={photos} total={stats?.count ?? null} done={markScanned} /></Shell>;
   }
   return (
-    <Shell headline={headline} sub={sub} primary={{ label: tr('common.continue'), onPress: onNext }} above={<PrintStack prints={prints} height={170} />}>
+    <Shell headline={headline} sub={sub} primary={{ label: tr('common.continue'), onPress: onNext }}
+      secondary={size === 'empty' ? { label: tr('onboarding.flow.limited.openSettings'), onPress: onSettings } : undefined} above={<PrintStack prints={prints} height={170} />}>
       {rows.length ? (
         <Card>
           {rows.map((r, i) => (

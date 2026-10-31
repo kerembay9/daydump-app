@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
@@ -59,7 +59,7 @@ export const useOnboardingFlow = (): Flow => {
 const toAccess = (p: { granted: boolean; limited: boolean }): Access => (p.limited ? 'limited' : p.granted ? 'full' : 'denied');
 
 const POOL = 12;
-/** 10 full batches: ~30 s of reading, plenty to rate the dumps onboarding shows. */
+/** The first pass: 10 full batches, ~30 s of reading and enough to rate the dumps onboarding shows. */
 const ONBOARDING_INDEX = 128 * 10;
 const NO_PHOTOS: string[] = [];
 
@@ -177,13 +177,11 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
     return a;
   }, [app]);
 
-  // The index reads only the newest ONBOARDING_INDEX photos meanwhile (a 100k library would take minutes to list and read); leaving
-  // lifts the cap, and the pass that follows takes the rest.
-  const refresh = useRef(app.refreshStories);
-  useEffect(() => { refresh.current = app.refreshStories; });
+  // The index's first pass reads only the newest ONBOARDING_INDEX photos (a 100k library would take minutes to list and read); the rest
+  // of the library follows straight away in the background, while onboarding goes on.
   useEffect(() => {
     capIndex(ONBOARDING_INDEX);
-    return () => { capIndex(null); refresh.current().catch(() => {}); };
+    return () => { capIndex(null); };
   }, []);
 
   // Screens 1-4 need no photos: load the CLIP models meanwhile, so the first batch after the permission isn't the one paying for it.

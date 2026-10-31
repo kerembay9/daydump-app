@@ -84,7 +84,7 @@ function Step({ step }: { step: StepId }) {
     case '3': return <PrivacyScreen onNext={next} onBack={back} />;
     case '4': return <AccessScreen onAsk={allow} onBack={back} busy={busy} denied={access === 'denied'} settings={!again} />;
     case '4b': return <LimitedScreen access={access} shared={stats?.count ?? null} onSettings={() => Linking.openSettings()} onContinue={next} />;
-    case '5': return <LibraryScreen access={access} stats={stats} onNext={next} />;
+    case '5': return <LibraryScreen access={access} stats={stats} onNext={next} onSettings={() => Linking.openSettings()} />;
     case '6': return <PostScreen nav={nav} />;
     case '7': return <FreqScreen nav={nav} />;
     case '8': return <TopicsScreen nav={nav} />;

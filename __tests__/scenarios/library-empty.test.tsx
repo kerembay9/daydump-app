@@ -17,4 +17,5 @@ test('full access to an empty library: screen 5 says no photos were found, witho
   await fireEvent.press(await firstRunToAsk());
   expect(await screen.findByText("We couldn't find any photos.", {}, { timeout: 10000 })).toBeTruthy();
   expect(screen.queryByText('Looking through your library…')).toBeNull();
+  expect(screen.getByText('Open settings')).toBeTruthy();
 }, 30000);
