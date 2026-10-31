@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { Alert } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import { ClipEmbedder, type Face, type FaceScan } from '../../modules/clip-embedder';
+import { tr } from '../i18n';
 import { whenReady } from '../state/models';
 import { dot, faceVec, grouper, isAnyOf, meanOf } from './faces';
 import { getProfile } from './profile';
@@ -133,10 +134,10 @@ export function peopleIn(photos: { uri: string }[], list: Person[], n = 3): Pers
 export function filterLabel(f: PeopleFilter, list: Person[]): string {
   const who = (ids: number[], join: string) => {
     const ps = list.filter((p) => ids.includes(p.id));
-    return ps.every((p) => p.name) ? ps.map((p) => p.name).join(join) : `${ps.length} ${ps.length === 1 ? 'person' : 'people'}`;
+    return ps.every((p) => p.name) ? ps.map((p) => p.name).join(join) : tr('people.filter.count', { count: ps.length });
   };
-  const yes = list.some((p) => f.with.includes(p.id)) ? `with ${who(f.with, f.either ? ' or ' : ' & ')}` : '';
-  const no = list.some((p) => f.without.includes(p.id)) ? `without ${who(f.without, ', ')}` : '';
+  const yes = list.some((p) => f.with.includes(p.id)) ? tr('people.filter.with', { who: who(f.with, tr(f.either ? 'people.filter.or' : 'people.filter.and')) }) : '';
+  const no = list.some((p) => f.without.includes(p.id)) ? tr('people.filter.without', { who: who(f.without, tr('people.filter.list')) }) : '';
   return [yes, no].filter(Boolean).join(' ');
 }
 
@@ -150,9 +151,9 @@ export function renamePerson(p: Person, name: string, onNo?: () => void) {
   };
   const other = state.list.find((x) => x.id !== p.id && same(x.name, name));
   if (!other) return write();
-  Alert.alert(`Merge with ${other.name}?`, `Someone is already called ${other.name}. Are they the same person?`, [
-    { text: 'No', style: 'cancel', onPress: onNo },
-    { text: 'Merge', onPress: write },
+  Alert.alert(tr('people.rename.title', { name: other.name }), tr('people.rename.body', { name: other.name }), [
+    { text: tr('people.rename.no'), style: 'cancel', onPress: onNo },
+    { text: tr('people.rename.merge'), onPress: write },
   ], { cancelable: true, onDismiss: onNo });
 }
 

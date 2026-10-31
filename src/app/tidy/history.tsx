@@ -10,7 +10,7 @@ import { Tap } from '../../components/ui/Tap';
 import { useTheme } from '../../theme/ThemeProvider';
 import { display, ui } from '../../theme/type';
 import { history, restore, type Session } from '../../services/tidy/scan';
-import { PILES, type Pile } from '../../services/tidy/rules';
+import { PILES } from '../../services/tidy/rules';
 import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
 import { tr } from '../../i18n';
 
@@ -54,7 +54,7 @@ export default function TrashHistory() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Text style={[display(17), { color: t.ink }]}>{`${when(s.session)} · ${photos(s.n)}`}</Text>
-              <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 2 }]}>{`${bytes(s.bytes)} · ${s.piles.map((p) => PILES[p as Pile]?.title ?? p).join(', ')}`}</Text>
+              <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 2 }]}>{`${bytes(s.bytes)} · ${s.piles.map((p) => (p in PILES ? tr(`tidy.piles.${p}.title`) : p)).join(', ')}`}</Text>
             </View>
             {s.inTrash > 0 && (
               <Tap onPress={() => onRestore(s)} disabled={busy != null} accessibilityRole="button" accessibilityLabel={tr('tidy.restoreCountA11y', { count: photos(s.inTrash) })} hitSlop={4}

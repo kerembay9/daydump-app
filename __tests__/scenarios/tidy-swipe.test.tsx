@@ -5,6 +5,7 @@ import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-han
 import { bootApp, settle } from '../../jest/app';
 import { burst, byId, defaultLibrary, photo, seedWorld, world } from '../../jest/world';
 import { ClipEmbedder } from '../../modules/clip-embedder';
+import { i18n, setLocale } from '../../src/i18n';
 import { DIM } from '../../src/services/index/vectors';
 import { buildRounds, swapKeeper, type TPhoto } from '../../src/services/tidy/rules';
 
@@ -78,6 +79,28 @@ test('Tidy swipe: the first open teaches the swipe; a toggle shows the keeper; s
   expect(byId(takes[3].id)).toBeTruthy();
   expect(screen.queryByText('Videos: coming later')).toBeNull();
 }, 60000);
+
+test('Tidy swipe: another language reaches the deck and its Shot checks, while the rules keep comparing the English', async () => {
+  const takes = burst(new Date(2025, 5, 1, 12), 4, [22]);
+  seedWorld([...defaultLibrary(), ...takes]);
+  for (const p of takes) world.tidy.stats[p.id] = { b: 120, sd: 50, lap: p === takes[2] ? 400 : 60, hi: 0.01, lo: 0.01, finger: false, faces: [] };
+  i18n.store({ xx: { tidy: { swipe: { grid: 'Izgara', theKeeper: 'Kalan' }, checks: { 'Less sharp': 'Daha az net' }, doneOfTotal: '{{done}} / {{total}}' } } });
+  setLocale('xx');
+  try {
+    await openTidy();
+    await fireEvent.press(await screen.findByRole('button', { name: /^Same shot/ }, { timeout: 20000 }));
+    await screen.findByRole('button', { name: 'Kalan' });
+    await layDeck();
+    await settle();
+    expect(screen.getByRole('button', { name: 'Izgara' })).toBeTruthy();
+    expect(screen.getByText('1 / 3')).toBeTruthy();
+    // on the photo and in a chip, so faultMarks still got the English
+    expect(screen.getAllByText('Daha az net')).toHaveLength(2);
+    expect(screen.queryByText('Less sharp')).toBeNull();
+  } finally {
+    setLocale('en');
+  }
+});
 
 test('Tidy swipe: every 16 the round asks; a move carries on to the next round and counts as one move', async () => {
   const takes = burst(new Date(2025, 5, 1, 12), 18, [22]);

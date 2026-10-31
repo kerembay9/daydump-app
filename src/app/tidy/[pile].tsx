@@ -9,7 +9,7 @@ import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Tap } from '../../components/ui/Tap';
 import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
-import { monthOf, Pile, PILES, shotCheck } from '../../services/tidy/rules';
+import { monthOf, Pile, shotCheck } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
 import { usePro } from '../../state/Pro';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -65,9 +65,9 @@ export default function PileScreen() {
     <View style={{ paddingTop: insets.top + 8, paddingBottom: 10, gap: 6 }}>
       <View style={{ paddingTop: 2, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/tidy'))}><Icons.back size={16} /></IconButton>
-        <Text style={[display(20), { color: t.ink, flexShrink: 1 }]} numberOfLines={1}>{PILES[pile].title}</Text>
+        <Text style={[display(20), { color: t.ink, flexShrink: 1 }]} numberOfLines={1}>{tr(`tidy.piles.${pile}.title`)}</Text>
       </View>
-      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{pile === 'private' ? tr('tidy.checkTheseYourself') : PILES[pile].blurb}</Text>
+      <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17 }]}>{pile === 'private' ? tr('tidy.checkTheseYourself') : tr(`tidy.piles.${pile}.blurb`)}</Text>
       {items.length ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
           <Text style={[ui(12.5, 600), { color: t.ink }]}>{tr('tidy.removeSummary', { count: picked.length, bytes: formatBytes(bytes) })}</Text>

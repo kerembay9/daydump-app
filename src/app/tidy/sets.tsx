@@ -15,7 +15,7 @@ import { Print } from '../../components/ui/Print';
 import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Tap } from '../../components/ui/Tap';
-import { missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
+import { checkLabel, missChip, formatBytes, KeepToggle, lockConfirm, moveConfirm, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
 import { monthOf, outtake, shotCheck, ShotSet, TPhoto } from '../../services/tidy/rules';
 import { moveToTrash, useTidy } from '../../services/tidy/scan';
 import { usePro } from '../../state/Pro';
@@ -170,7 +170,7 @@ export default function SetsScreen() {
         {shotCheck(keeper, set.photos).map((c) => (
           <View key={c.text} style={{ paddingHorizontal: 8, height: 22, borderRadius: 11, flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: c.ok ? t.borderSubtle : t.borderStrong, backgroundColor: c.ok ? t.bgCard : 'transparent' }}>
             {c.ok ? <Icons.check size={11} color={t.ink} /> : <Icons.close size={11} color={t.inkMuted} />}
-            <Text style={[ui(10.5, 500), { color: c.ok ? t.ink : t.inkMuted }]}>{c.text}</Text>
+            <Text style={[ui(10.5, 500), { color: c.ok ? t.ink : t.inkMuted }]}>{checkLabel(c.text)}</Text>
           </View>
         ))}
       </View>

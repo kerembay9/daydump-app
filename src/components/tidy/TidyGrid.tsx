@@ -21,7 +21,9 @@ export function formatBytes(b: number) {
 }
 
 /** A grid cell's chip: its first failed Shot check in words ("Too dark"), none when everything passed. */
-export const missChip = (c: Check[]) => c.find((x) => !x.ok)?.text;
+export const missChip = (c: Check[]) => { const m = c.find((x) => !x.ok); return m && checkLabel(m.text); };
+/** A Shot check, lock or note on screen: rules.ts compares the English text, so it's translated only here. */
+export const checkLabel = (text: string) => tr(`tidy.checks.${text}`, { defaultValue: text });
 
 const LOCK_ASK: Record<string, string> = {
   Favorite: 'tidy.lockFavorite',
@@ -81,7 +83,7 @@ export function ShotCheckList({ checks, color = '#fff' }: { checks: Check[]; col
       {checks.map((c) => (
         <View key={c.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {c.ok ? <Icons.check size={13} color={color} /> : <Icons.close size={13} color={color} />}
-          <Text style={[ui(12, 500), { color }]}>{c.text}</Text>
+          <Text style={[ui(12, 500), { color }]}>{checkLabel(c.text)}</Text>
         </View>
       ))}
     </View>
@@ -100,13 +102,13 @@ const Cell = React.memo(function Cell({ it, on, size, index, onPress, onLongPres
   return (
     <Tap onPress={() => onPress(p.id)} onLongPress={() => onLongPress(index)} delayLongPress={350} accessibilityRole="button"
       accessibilityState={{ selected: on }} accessibilityHint={tr('tidy.holdToEnlarge')}
-      accessibilityLabel={tr('tidy.photoFromA11y', { date: dateRange(p.created, p.created), badge: badge ? `, ${badge}` : '', status: on ? tr('tidy.trash') : tr('tidy.keep') })}
+      accessibilityLabel={tr('tidy.photoFromA11y', { date: dateRange(p.created, p.created), badge: badge ? `, ${checkLabel(badge)}` : '', status: on ? tr('tidy.trash') : tr('tidy.keep') })}
       style={{ width: size, height: size, borderRadius: 10 }}>
       <View style={{ flex: 1, borderRadius: 10, overflow: 'hidden', backgroundColor: t.borderStrong }}>
         <Image source={{ uri: p.uri }} style={{ flex: 1, opacity: on ? 0.4 : 1 }} contentFit="cover" recyclingKey={p.id} transition={100} />
         {badge ? (
           <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 5, paddingTop: 10, paddingBottom: 4, experimental_backgroundImage: 'linear-gradient(0deg, rgba(0,0,0,0.65), rgba(0,0,0,0))' }}>
-            <Text style={[ui(8.5, 600), { color: '#fff' }]} numberOfLines={1}>{badge}</Text>
+            <Text style={[ui(8.5, 600), { color: '#fff' }]} numberOfLines={1}>{checkLabel(badge)}</Text>
           </View>
         ) : null}
         {chip ? (

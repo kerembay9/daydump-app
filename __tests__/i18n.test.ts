@@ -6,6 +6,7 @@ import { LANGUAGES } from '../src/i18n/languages';
 import { translations } from '../src/i18n/translations';
 import { getLocale, i18n, isRtl, setLocale, subscribeLocale, tr, useLocale, useTranslation } from '../src/i18n';
 import { langName } from '../src/services/index/queryLang';
+import { filterLabel, type Person } from '../src/services/people';
 import en from '../src/i18n/locales/en.json';
 
 const LOCALES = path.join(__dirname, '../src/i18n/locales');
@@ -140,4 +141,23 @@ test('AppState becoming active synchronizes deviceLanguage when different', () =
 
   handler('active');
   expect(getLocale()).toBe('en');
+});
+
+test('every label rules.ts shows (Shot checks, locks, notes) has a key: tr() finds them by their English text', () => {
+  const rules = fs.readFileSync(path.join(__dirname, '../src/services/tidy/rules.ts'), 'utf8');
+  const all = (re: RegExp, s = rules) => [...s.matchAll(re)].map((m) => m[1]);
+  const lockOf = rules.slice(rules.indexOf('function lockOf'), rules.indexOf('const asIndexed'));
+  const better = rules.slice(rules.indexOf('const BETTER'), rules.indexOf('export function diffChecks'));
+  const shown = [...all(/text: '([^']+)'/g), ...all(/note: '([^']+)'/g), ...all(/COPY_STAYS = '([^']+)'/g), ...all(/return '([^']+)'/g, lockOf), ...all(/: '([^']+)'/g, better)];
+  expect(shown.length).toBeGreaterThan(25);
+  expect(shown.filter((x) => !(x in en.tidy.checks))).toEqual([]);
+});
+
+test('the people filter in words reads the same through tr()', () => {
+  const list = [{ id: 1, name: 'Ada' }, { id: 2, name: 'Ben' }, { id: 3, name: '' }, { id: 4, name: '' }] as Person[];
+  expect(filterLabel({ with: [1, 2], without: [3], either: false }, list)).toBe('with Ada & Ben without 1 person');
+  expect(filterLabel({ with: [1, 2], without: [], either: true }, list)).toBe('with Ada or Ben');
+  expect(filterLabel({ with: [], without: [1, 2], either: false }, list)).toBe('without Ada, Ben');
+  expect(filterLabel({ with: [3, 4], without: [], either: false }, list)).toBe('with 2 people');
+  expect(filterLabel({ with: [], without: [], either: false }, list)).toBe('');
 });

@@ -14,10 +14,11 @@ import { Pill } from '../../components/ui/Pill';
 import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
 import { PhotoViewer } from '../../components/ui/PhotoViewer';
 import { Tap } from '../../components/ui/Tap';
-import { formatBytes, lockConfirm, missChip, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
+import { checkLabel, formatBytes, lockConfirm, missChip, Primary, ShotCheckList, TidyGrid } from '../../components/tidy/TidyGrid';
 import { buildDeck, buildRounds, diffChecks, faultMarks, monthOf, Pile, PILES, shotCheck, swapKeeper, TPhoto } from '../../services/tidy/rules';
 import { Moved, moveToTrash, useTidy } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
+import { tr } from '../../i18n';
 import { usePro } from '../../state/Pro';
 import { useTheme } from '../../theme/ThemeProvider';
 import { fixed } from '../../theme/tokens';
@@ -31,8 +32,9 @@ const FRAME = 6;
 const folderOf = (uri: string) => uri.split('/').slice(-2, -1)[0] ?? '';
 function apart(p: TPhoto, k: TPhoto) {
   const s = Math.round(Math.abs(p.created - k.created) / 1000);
-  if (!s) return 'Same second';
-  return `${s < 60 ? `${s} s` : `${Math.round(s / 60)} min`} ${p.created > k.created ? 'later' : 'earlier'}`;
+  if (!s) return tr('tidy.swipe.sameSecond');
+  const when = p.created > k.created ? 'later' : 'earlier';
+  return s < 60 ? tr(`tidy.swipe.seconds.${when}`, { n: s }) : tr(`tidy.swipe.minutes.${when}`, { n: Math.round(s / 60) });
 }
 
 function Chip({ text, tone }: { text: string; tone?: 'worse' | 'better' }) {
@@ -64,7 +66,7 @@ function Marks({ p, worse }: { p: TPhoto; worse: string[] }) {
       <View style={{ position: 'absolute', left: 8, bottom: 8, gap: 4, alignItems: 'flex-start' }}>
         {worse.map((x) => (
           <View key={x} style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, backgroundColor: RED, transform: [{ rotate: '-2deg' }] }}>
-            <Text style={[ui(12, 600), { color: '#fff' }]}>{x}</Text>
+            <Text style={[ui(12, 600), { color: '#fff' }]}>{checkLabel(x)}</Text>
           </View>
         ))}
       </View>
@@ -189,7 +191,7 @@ export default function SwipeScreen() {
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/tidy'));
   const back = () => {
     if (!p && cards.length) { undo(); return; }
-    if (trash.length) setAsk({ title: 'Leave this round?', body: `The ${trash.length} marked for Trash in this round stay in your gallery.`, action: 'Leave', onConfirm: leave });
+    if (trash.length) setAsk({ title: tr('tidy.swipe.leaveTitle'), body: tr('tidy.swipe.leaveBody', { n: trash.length }), action: tr('tidy.swipe.leave'), onConfirm: leave });
     else leave();
   };
   const onward = () => {
@@ -202,21 +204,21 @@ export default function SwipeScreen() {
     setBusy(true); setMsg(null);
     try {
       const m = await moveToTrash(trash.map((c) => ({ p: c.p, pile: pile! })), keepers.filter((_, i) => trash.some((c) => c.set === i)), moved);
-      if (m) { setMoved(m); onward(); } else setMsg('Nothing was moved.');
+      if (m) { setMoved(m); onward(); } else setMsg(tr('tidy.nothingMoved'));
     } catch (e) {
       console.warn('[tidy] move failed:', e);
-      setMsg('Nothing was moved.');
+      setMsg(tr('tidy.nothingMoved'));
     }
     setBusy(false);
   };
 
   if (!pile) return null;
-  const roundLabel = rounds.length > 1 ? `Round ${round + 1} of ${rounds.length}` : '';
+  const roundLabel = rounds.length > 1 ? tr('tidy.swipe.round', { round: round + 1, total: rounds.length }) : '';
   const title = (
     <View style={{ paddingTop: insets.top + 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
-      <Text style={[display(20), { color: t.ink, flex: 1 }]} numberOfLines={1}>{PILES[pile].title}</Text>
-      {p ? <Pill label="Grid" onPress={() => router.replace(pile === 'same' ? { pathname: '/tidy/sets', params: month ? { month } : {} } : { pathname: '/tidy/[pile]', params: { pile, ...(month ? { month } : {}) } })} height={30} size={11} /> : null}
+      <IconButton label={tr('common.back')} onPress={back}><Icons.back size={16} /></IconButton>
+      <Text style={[display(20), { color: t.ink, flex: 1 }]} numberOfLines={1}>{tr(`tidy.piles.${pile}.title`)}</Text>
+      {p ? <Pill label={tr('tidy.swipe.grid')} onPress={() => router.replace(pile === 'same' ? { pathname: '/tidy/sets', params: month ? { month } : {} } : { pathname: '/tidy/[pile]', params: { pile, ...(month ? { month } : {}) } })} height={30} size={11} /> : null}
     </View>
   );
 
@@ -232,13 +234,13 @@ export default function SwipeScreen() {
           header={(
             <View style={{ paddingBottom: 10, gap: 6 }}>
               {title}
-              <Text style={[display(18), { color: t.ink, marginTop: 6 }]}>{cards.length ? (roundLabel ? `${roundLabel}: are you sure?` : 'Are you sure?') : 'Nothing here'}</Text>
-              {cards.length ? <Text style={[ui(12), { color: t.inkMuted }]}>{trash.length} to Trash · {cards.length - trash.length} kept. Tap one to change it.</Text> : null}
+              <Text style={[display(18), { color: t.ink, marginTop: 6 }]}>{cards.length ? (roundLabel ? tr('tidy.swipe.roundSure', { round: roundLabel }) : tr('tidy.swipe.sure')) : tr('tidy.swipe.nothingHere')}</Text>
+              {cards.length ? <Text style={[ui(12), { color: t.inkMuted }]}>{tr('tidy.swipe.verdicts', { trash: trash.length, kept: cards.length - trash.length })}</Text> : null}
             </View>
           )} />
         <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, gap: 6 }}>
           {msg ? <Text style={[ui(12, 500), { color: t.inkMuted, textAlign: 'center' }]}>{msg}</Text> : null}
-          {trash.length ? <Primary label={`Move ${trash.length} to Trash · ${formatBytes(bytes)}`} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label={more ? 'Next round' : 'Done'} onPress={onward} />}
+          {trash.length ? <Primary label={tr('tidy.swipe.move', { n: trash.length, size: formatBytes(bytes) })} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label={more ? tr('tidy.swipe.nextRound') : tr('common.done')} onPress={onward} />}
         </View>
         <StatusScrim />
         <PhotoViewer photos={cards.map((c) => c.p)} index={view} onClose={() => setView(null)} />
@@ -253,11 +255,11 @@ export default function SwipeScreen() {
   };
   const size = fit(aspect(alt && keeper ? keeper : p));
   const next = cards[at + 1]?.p;
-  const worse = diff?.worse ?? (card.copyOf ? [`In ${folderOf(p.uri)}`] : pile === 'blurry' ? [missChip(shotCheck(p))].filter((x): x is string => !!x) : []);
+  const worse = diff?.worse.map(checkLabel) ?? (card.copyOf ? [tr('tidy.swipe.inFolder', { folder: folderOf(p.uri) })] : pile === 'blurry' ? [missChip(shotCheck(p))].filter((x): x is string => !!x) : []);
   const info = [
-    ...(lock ? [lock] : []),
-    ...(keeper ? [apart(p, keeper)] : card.copyOf ? ['Same file', `Keeps the one in ${folderOf(card.copyOf.uri)}`] : [dateRange(p.created, p.created)]),
-    ...(noteOf.get(p.id) ? [noteOf.get(p.id)!] : []),
+    ...(lock ? [checkLabel(lock)] : []),
+    ...(keeper ? [apart(p, keeper)] : card.copyOf ? [tr('tidy.swipe.sameFile'), tr('tidy.swipe.keepsIn', { folder: folderOf(card.copyOf.uri) })] : [dateRange(p.created, p.created)]),
+    ...(noteOf.get(p.id) ? [checkLabel(noteOf.get(p.id)!)] : []),
     formatBytes(p.size),
   ];
   const nothing = diff && !diff.worse.length && !diff.better.length;
@@ -270,12 +272,12 @@ export default function SwipeScreen() {
           <View style={{ width: `${(100 * at) / cards.length}%`, height: 4, backgroundColor: t.ink }} />
         </View>
         {roundLabel ? <Text style={[ui(11, 500), { color: t.inkMuted }]}>{roundLabel} ·</Text> : null}
-        <Text style={[ui(11, 500), { color: t.inkMuted }]}>{at + 1} of {cards.length}</Text>
+        <Text style={[ui(11, 500), { color: t.inkMuted }]}>{tr('tidy.doneOfTotal', { done: at + 1, total: cards.length })}</Text>
       </View>
       {keeper ? (
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 }}>
-          <Pill label="This one" on={!alt} onPress={() => setAlt(false)} height={34} size={12} />
-          <Pill label="The keeper" on={alt} onPress={() => setAlt(true)} height={34} size={12} />
+          <Pill label={tr('tidy.swipe.thisOne')} on={!alt} onPress={() => setAlt(false)} height={34} size={12} />
+          <Pill label={tr('tidy.swipe.theKeeper')} on={alt} onPress={() => setAlt(true)} height={34} size={12} />
         </View>
       ) : null}
 
@@ -287,7 +289,7 @@ export default function SwipeScreen() {
         ) : null}
         {box.w ? (
           <GestureDetector gesture={gesture}>
-            <Animated.View key={p.id} accessible accessibilityRole="image" accessibilityLabel={`Photo from ${dateRange(p.created, p.created)}${worse.length ? `, ${worse.join(', ')}` : ''}`}
+            <Animated.View key={p.id} accessible accessibilityRole="image" accessibilityLabel={`${tr('tidy.swipe.photoFrom', { date: dateRange(p.created, p.created) })}${worse.length ? `, ${worse.join(', ')}` : ''}`}
               style={[{ width: size.w + 2 * FRAME, height: size.h + 2 * FRAME, padding: FRAME, borderRadius: 10, backgroundColor: fixed.printBorder, boxShadow: t.shadowCard }, lift]}>
               <View style={{ flex: 1, borderRadius: 6, overflow: 'hidden', backgroundColor: t.borderStrong }}>
                 <Image source={{ uri: p.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={p.id} onLoad={loaded(p)} />
@@ -296,10 +298,10 @@ export default function SwipeScreen() {
                 {diff && !alt ? <Marks p={p} worse={diff.worse} /> : null}
               </View>
               <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 22, right: 16, paddingHorizontal: 9, borderWidth: 3, borderRadius: 7, borderColor: RED, backgroundColor: fixed.printBorder, transform: [{ rotate: '12deg' }] }, stampT]}>
-                <Text style={[display(24), { color: RED }]}>TRASH</Text>
+                <Text style={[display(24), { color: RED }]}>{tr('tidy.swipe.stampTrash')}</Text>
               </Animated.View>
               <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 22, left: 16, paddingHorizontal: 9, borderWidth: 3, borderRadius: 7, borderColor: '#47704D', backgroundColor: fixed.printBorder, transform: [{ rotate: '-12deg' }] }, stampK]}>
-                <Text style={[display(24), { color: '#47704D' }]}>KEEP</Text>
+                <Text style={[display(24), { color: '#47704D' }]}>{tr('tidy.swipe.stampKeep')}</Text>
               </Animated.View>
             </Animated.View>
           </GestureDetector>
@@ -308,30 +310,30 @@ export default function SwipeScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 10 }}>
         {worse.map((x) => <Chip key={x} text={x} tone="worse" />)}
-        {diff?.better.map((x) => <Chip key={x} text={x} tone="better" />)}
-        {nothing ? <Chip text="Looks the same" /> : null}
+        {diff?.better.map((x) => <Chip key={x} text={checkLabel(x)} tone="better" />)}
+        {nothing ? <Chip text={tr('tidy.swipe.looksSame')} /> : null}
         {info.map((x) => <Chip key={x} text={x} />)}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 10 }}>
-        <Tap onPress={() => decide('t')} accessibilityRole="button" accessibilityLabel="Trash" style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+        <Tap onPress={() => decide('t')} accessibilityRole="button" accessibilityLabel={tr('tidy.trash')} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
           <Icons.close size={22} color={RED} />
         </Tap>
-        <Tap onPress={undo} disabled={!at} accessibilityRole="button" accessibilityLabel="Undo" accessibilityState={{ disabled: !at }} style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, opacity: at ? 1 : 0.4, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(13, 600), { color: t.ink }]}>Undo</Text>
+        <Tap onPress={undo} disabled={!at} accessibilityRole="button" accessibilityLabel={tr('tidy.undo')} accessibilityState={{ disabled: !at }} style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, opacity: at ? 1 : 0.4, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13, 600), { color: t.ink }]}>{tr('tidy.undo')}</Text>
         </Tap>
-        <Tap onPress={() => decide('k')} accessibilityRole="button" accessibilityLabel="Keep" style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+        <Tap onPress={() => decide('k')} accessibilityRole="button" accessibilityLabel={tr('tidy.keep')} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
           <Icons.check size={22} color="#47704D" />
         </Tap>
       </View>
       {keeper ? (
-        <Tap onPress={swap} accessibilityRole="button" accessibilityLabel="Keep this one instead" style={{ height: 46, marginTop: 10, borderRadius: 23, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[ui(13.5, 600), { color: t.ink }]}>Keep this one instead</Text>
+        <Tap onPress={swap} accessibilityRole="button" accessibilityLabel={tr('tidy.swipe.keepInstead')} style={{ height: 46, marginTop: 10, borderRadius: 23, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[ui(13.5, 600), { color: t.ink }]}>{tr('tidy.swipe.keepInstead')}</Text>
         </Tap>
       ) : null}
       <StatusScrim />
       <PhotoViewer photos={keeper ? [p, keeper] : [p]} index={view} onClose={() => setView(null)} footer={(x, i) => (
         <View>
-          <Text style={[ui(12, 600), { color: '#fff', marginBottom: 6 }]}>{i === 0 ? 'This one' : 'The keeper'}</Text>
+          <Text style={[ui(12, 600), { color: '#fff', marginBottom: 6 }]}>{i === 0 ? tr('tidy.swipe.thisOne') : tr('tidy.swipe.theKeeper')}</Text>
           <ShotCheckList checks={shotCheck(x, peers)} />
         </View>
       )} />

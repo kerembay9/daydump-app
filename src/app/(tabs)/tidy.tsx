@@ -15,7 +15,7 @@ import { usePro } from '../../state/Pro';
 import { Pill } from '../../components/ui/Pill';
 import { GalleryService } from '../../services/galleryService';
 import { currentCreateDraft, receiveShared } from '../../services/dumps';
-import { monthOf, Pile, PILES } from '../../services/tidy/rules';
+import { monthOf, Pile } from '../../services/tidy/rules';
 import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
 import { clearMoved, hasFullAccess, history, restore, scannedBefore, Session, setStoryPhotos, startScan, tidySupported, useTidy } from '../../services/tidy/scan';
 import { tr } from '../../i18n';
@@ -209,11 +209,11 @@ export default function Tidy() {
                 : `${n(items.length)} · ${mb}${REVIEW_ONLY.has(k) ? ` · ${tr('tidy.reviewOnly')}` : ''}`;
               const wide = k === 'same';
               return (
-                <Tap key={k} accessibilityRole="button" accessibilityLabel={`${PILES[k].title}, ${line}`}
+                <Tap key={k} accessibilityRole="button" accessibilityLabel={`${tr(`tidy.piles.${k}.title`)}, ${line}`}
                   onPress={() => router.push({ pathname: '/tidy/swipe', params: { pile: k, ...(month ? { month } : {}) } })}
                   style={{ flexBasis: wide ? '100%' : '47%', flexGrow: 1, backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, borderRadius: 14, padding: 6 }}>
                   <Mosaic wide={wide} uris={(wide ? inSets.map((st) => st.photos[st.keeper]) : items.map((x) => x.p)).slice(0, 3).map((p) => p.uri)} />
-                  <Text style={[display(15.5), { color: t.ink, marginTop: 6, paddingHorizontal: 3 }]} numberOfLines={1}>{PILES[k].title}</Text>
+                  <Text style={[display(15.5), { color: t.ink, marginTop: 6, paddingHorizontal: 3 }]} numberOfLines={1}>{tr(`tidy.piles.${k}.title`)}</Text>
                   <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1, paddingHorizontal: 3, paddingBottom: 3 }]} numberOfLines={1}>{line}</Text>
                 </Tap>
               );

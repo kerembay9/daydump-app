@@ -807,7 +807,72 @@
     "trash": "Trash",
     "holdToEnlarge": "Hold to enlarge",
     "photoFromA11y": "Photo from {{date}}{{badge}}, {{status}}",
-    "checkTheseYourself": "Check these yourself."
+    "checkTheseYourself": "Check these yourself.",
+    "swipe": {
+      "sameSecond": "Same second",
+      "seconds": {
+        "later": "{{n}} s later",
+        "earlier": "{{n}} s earlier"
+      },
+      "minutes": {
+        "later": "{{n}} min later",
+        "earlier": "{{n}} min earlier"
+      },
+      "leaveTitle": "Leave this round?",
+      "leaveBody": "The {{n}} marked for Trash in this round stay in your gallery.",
+      "leave": "Leave",
+      "round": "Round {{round}} of {{total}}",
+      "grid": "Grid",
+      "roundSure": "{{round}}: are you sure?",
+      "sure": "Are you sure?",
+      "nothingHere": "Nothing here",
+      "verdicts": "{{trash}} to Trash · {{kept}} kept. Tap one to change it.",
+      "move": "Move {{n}} to Trash · {{size}}",
+      "nextRound": "Next round",
+      "inFolder": "In {{folder}}",
+      "sameFile": "Same file",
+      "keepsIn": "Keeps the one in {{folder}}",
+      "thisOne": "This one",
+      "theKeeper": "The keeper",
+      "photoFrom": "Photo from {{date}}",
+      "stampTrash": "TRASH",
+      "stampKeep": "KEEP",
+      "looksSame": "Looks the same",
+      "keepInstead": "Keep this one instead"
+    },
+    "checks": {
+      "Sharp": "Sharp",
+      "Less sharp": "Less sharp",
+      "Full resolution": "Full resolution",
+      "Lower resolution": "Lower resolution",
+      "Blurry": "Blurry",
+      "You’re in it": "You’re in it",
+      "You’re not in it": "You’re not in it",
+      "Tilted": "Tilted",
+      "Level": "Level",
+      "Too bright": "Too bright",
+      "Too dark": "Too dark",
+      "Well lit": "Well lit",
+      "Finger in the corner": "Finger in the corner",
+      "Nothing in the way": "Nothing in the way",
+      "Face cut off": "Face cut off",
+      "Faces in frame": "Faces in frame",
+      "Looking away": "Looking away",
+      "Facing the camera": "Facing the camera",
+      "Face in shadow": "Face in shadow",
+      "Face lit": "Face lit",
+      "Sharper": "Sharper",
+      "Higher resolution": "Higher resolution",
+      "Better lit": "Better lit",
+      "Favorite": "Favorite",
+      "In a dump": "In a dump",
+      "In a Discover story": "In a Discover story",
+      "Taken in the last 2 days": "Taken in the last 2 days",
+      "Looks like a moment": "Looks like a moment",
+      "The copy that stays": "The copy that stays",
+      "Tag only · check it": "Tag only · check it",
+      "Black frame": "Black frame"
+    }
   },
   "library": {
     "nounPosted": "posted dumps",
@@ -1036,6 +1101,61 @@
     "shareName": "Share {{name}}",
     "tabBingo": "Bingo",
     "tabAlbum": "Album"
+  },
+  "people": {
+    "unnamed": "Unnamed person",
+    "faceHint": "Tap to change, hold to merge",
+    "state": {
+      "with": "{{name}}: with",
+      "any": "{{name}}: any",
+      "without": "{{name}}: without"
+    },
+    "all": "All people",
+    "merged": "Merged into one person.",
+    "sameAs": "Same person as…",
+    "nobodyElse": "Nobody else found yet.",
+    "mergeWithA11y": "Merge with {{name}}, {{photos}}",
+    "samePerson": "Same person?",
+    "pairPhotos": "{{a}} and {{b}} photos",
+    "notSame": "Not the same",
+    "same": "Same person",
+    "faceOf": "Face {{n}} of {{name}}",
+    "notThisPerson": "Not this person",
+    "mergeWith": "Merge with…",
+    "separate": "Separate",
+    "strayHint": "Tap a face that isn't them to take it out.",
+    "title": "People",
+    "together": "Together",
+    "either": "Either",
+    "photosWho": "Photos {{who}} · {{count}}",
+    "howTo": "Tap a face to include them in your search. Tap again to exclude them.",
+    "search": {
+      "with": "Search for {{name}}: included",
+      "without": "Search for {{name}}: excluded",
+      "any": "Search for {{name}}: off"
+    },
+    "addName": "Add a name",
+    "included": "Included in search",
+    "excluded": "Excluded from search",
+    "doneNaming": "Done naming",
+    "editName": "Edit {{name}}",
+    "filter": {
+      "with": "with {{who}}",
+      "without": "without {{who}}",
+      "or": " or ",
+      "and": " & ",
+      "list": ", ",
+      "count": {
+        "one": "{{count}} person",
+        "other": "{{count}} people"
+      }
+    },
+    "rename": {
+      "title": "Merge with {{name}}?",
+      "body": "Someone is already called {{name}}. Are they the same person?",
+      "no": "No",
+      "merge": "Merge"
+    }
   },
   "models": {
     "vision": {
