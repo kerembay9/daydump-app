@@ -307,7 +307,7 @@ export function playToday(lib: Library, now = Date.now()): Promise<Hub> {
     const foundOn = Array.from({ length: 7 }, (_, j) => dayKey(new Date(from).setDate(new Date(from).getDate() + j))).find((k) => album[k]?.quest && g.days[k].quest === c.quest.key);
     const hub: Hub = {
       day: today,
-      cells: d.cells.map((k, i) => ({ i, key: k, label: k ? SLOTS.find((s) => s.key === k)!.label : 'Free', on: on[i], uri: k ? by[k]?.uri : undefined, win: winSet.has(i) })),
+      cells: d.cells.map((k, i) => ({ i, key: k, label: k ? SLOTS.find((s) => s.key === k)!.label : '', on: on[i], uri: k ? by[k]?.uri : undefined, win: winSet.has(i) })),
       got: on.filter(Boolean).length - 1,
       bingo: w.length > 0,
       near: near ? SLOTS.find((s) => s.key === d.cells[near[0]])!.label : null,

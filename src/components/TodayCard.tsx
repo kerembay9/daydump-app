@@ -12,15 +12,16 @@ import { Tape } from './ui/Tape';
 
 const ACCENT_INK = '#FAF4EE';
 
-/** The board in miniature: free middle washed, filled squares their photo (ink without one), a winning row ringed in accent. */
+/** The board in miniature: the app icon in the middle, filled squares their photo (ink without one), a winning row ringed in accent. */
 function Mini({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>['flip'] }) {
   const { t } = useTheme();
   return (
     <View style={{ width: 14 * 3 + 2 * 2, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
       {hub.cells.map((c) => (
         <Animated.View key={c.i} style={[{ width: 14, height: 14, borderRadius: 3, overflow: 'hidden', ...(c.key === ''
-          ? { backgroundColor: accentTint(t) }
+          ? null
           : c.on ? { backgroundColor: c.win ? accent(t) : t.ink } : { borderWidth: 1, borderStyle: 'dashed', borderColor: t.borderStrong }) }, c.on ? flip(c.key) : null]}>
+          {c.key === '' ? <Image source={require('../../assets/icon.png')} style={{ flex: 1 }} contentFit="cover" /> : null}
           {c.on && c.uri ? <Image source={{ uri: c.uri }} style={{ flex: 1 }} contentFit="cover" recyclingKey={c.uri} /> : null}
           {c.on && c.uri && c.win ? <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 3, borderWidth: 1.5, borderColor: accent(t) }} /> : null}
         </Animated.View>

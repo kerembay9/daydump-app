@@ -21,8 +21,8 @@ import { PhotoViewer } from '../components/ui/PhotoViewer';
 import { useApp } from '../state/AppState';
 import { AlbumDay, Cell, dayKey, Hub, monday, photosOn, setPrint, setSquare, swapCell, useChecking, useHub } from '../services/today';
 import { useTheme } from '../theme/ThemeProvider';
-import { fixed, type Theme } from '../theme/tokens';
-import { display, sans, ui } from '../theme/type';
+import { cashmere, fixed, type Theme } from '../theme/tokens';
+import { display, sans, serif, ui } from '../theme/type';
 
 const TILT = [-4, 5, -3, 6, -5, 4, -2];
 const shade = { textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 };
@@ -56,7 +56,7 @@ function Corners({ t }: { t: Theme }) {
 function Square({ c, swaps, flip, onFix, onView }: { c: Cell; swaps: number; flip: ReturnType<typeof useSlotPop>['flip']; onFix: (c: Cell) => void; onView: (c: Cell) => void }) {
   const { t } = useTheme();
   const box = { width: '100%' as const, aspectRatio: 1, borderRadius: 9, overflow: 'hidden' as const, alignItems: 'center' as const, justifyContent: 'center' as const, padding: 6 };
-  if (!c.key) return <View style={[box, { backgroundColor: accentTint(t) }]}><Text style={[display(15), { color: accent(t) }]}>Free</Text></View>;
+  if (!c.key) return <Photo testID="square-icon" source={require('../../assets/icon.png')} accessibilityLabel="PicDump" style={{ width: '100%', aspectRatio: 1, borderRadius: 9 }} resizeMode="cover" />;
   if (c.on) return (
     <Tap onPress={() => onFix(c)} onLongPress={() => onView(c)} delayLongPress={350} accessibilityRole="button" accessibilityLabel={`${c.label}, done`} accessibilityHint="Hold to enlarge" style={{ width: '100%', aspectRatio: 1 }}>
     <Animated.View style={[box, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, flip(c.key)]}>
@@ -181,16 +181,61 @@ function Chip({ text, hot, t }: { text: string; hot?: boolean; t: Theme }) {
   );
 }
 
-function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>['flip'] }) {
+/**
+ * What the bingo's Save and Share send: a polaroid of the card, the same in light and dark. Off-screen but mounted while the
+ * Bingo tab is up, so its photos have loaded by the time it is captured. Outside the page's ScrollView, which could cull it.
+ */
+function BingoPrint({ hub, card }: { hub: Hub; card: React.RefObject<View | null> }) {
+  const a = accent(cashmere);
+  const date = new Date(hub.day + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const box = { flex: 1, aspectRatio: 1, borderRadius: 2 };
+  const square = (c: Cell) => {
+    if (!c.key) return <Photo key={c.i} source={require('../../assets/icon.png')} style={box} resizeMode="cover" />;
+    if (!c.on || !c.uri) return (
+      <View key={c.i} style={[box, { borderWidth: 1.5, borderStyle: 'dashed', borderColor: cashmere.borderStrong, alignItems: 'center', justifyContent: 'center', padding: 6 }]}>
+        <Text allowFontScaling={false} style={[ui(11, 500), { color: cashmere.inkMuted, textAlign: 'center' }]}>{c.label}</Text>
+      </View>
+    );
+    return (
+      <View key={c.i} style={box}>
+        <Photo testID="print-photo" source={{ uri: c.uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 2 }} resizeMode="cover" />
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingVertical: 2, paddingHorizontal: 4, backgroundColor: 'rgba(20,16,12,0.55)' }}>
+          <Text allowFontScaling={false} style={[ui(11, 500), { color: fixed.printBorder, textAlign: 'center' }]}>{c.label}</Text>
+        </View>
+        {c.win ? <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 2, borderWidth: 3, borderColor: a }} /> : null}
+      </View>
+    );
+  };
+  return (
+    <View ref={card} collapsable={false} testID="bingo-print" pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+      style={{ position: 'absolute', left: -1000, top: 0, width: 360, padding: 24, backgroundColor: '#E9E0D4' }}>
+      <View style={{ backgroundColor: '#FFFDF9', borderWidth: 1, borderColor: cashmere.borderStrong, borderRadius: 3, paddingTop: 16, paddingHorizontal: 14, transform: [{ rotate: '-1deg' }] }}>
+        <View style={{ gap: 5 }}>
+          {[0, 3, 6].map((r) => <View key={r} style={{ flexDirection: 'row', gap: 5 }}>{hub.cells.slice(r, r + 3).map(square)}</View>)}
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 14, paddingBottom: 20, paddingHorizontal: 2 }}>
+          <View>
+            <Text allowFontScaling={false} style={{ fontFamily: serif.italic, fontSize: 27, lineHeight: 31, color: cashmere.ink }}>{hub.bingo ? 'Bingo!' : 'Photo bingo'}</Text>
+            <Text allowFontScaling={false} style={[ui(12), { color: cashmere.inkMuted, marginTop: 2 }]}>{date}</Text>
+          </View>
+          <Text allowFontScaling={false} style={[ui(15, 700), { color: '#2A3D36' }]}>PicDump</Text>
+        </View>
+        <View style={{ position: 'absolute', top: -12, left: '50%', marginLeft: -44, width: 88, height: 24, backgroundColor: 'rgba(212,196,182,0.8)', transform: [{ rotate: '-2deg' }] }} />
+      </View>
+    </View>
+  );
+}
+
+function TodayTab({ hub, flip, print }: { hub: Hub; flip: ReturnType<typeof useSlotPop>['flip']; print: React.RefObject<View | null> }) {
   const { t } = useTheme();
   const { library, stories } = useApp();
   const checking = useChecking(library);
   const story = stories.find((x) => x.kind === 'today');
-  const board = useRef<View>(null), questCard = useRef<View>(null);
+  const questCard = useRef<View>(null);
   const [fixing, setFixing] = useState<Cell | null>(null);
   const [view, setView] = useState<number | null>(null);
   const shown = hub.cells.filter((c) => c.on && c.uri).map((c) => ({ id: c.uri!, uri: c.uri! }));
-  const bingo = useShare(board, 'bingo card', `${hub.bingo ? 'Bingo! ' : ''}Today’s photo bingo #picdumpbingo`);
+  const bingo = useShare(print, 'bingo card', `${hub.bingo ? 'Bingo! ' : ''}Today’s photo bingo #picdumpbingo`);
   const q = hub.quest;
   const quest = useShare(questCard, 'side quest', `Side quest: ${q.label} ✓ #picdumpquest #${q.label.toLowerCase().replace(/[^a-z]/g, '')}`);
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
@@ -200,7 +245,7 @@ function TodayTab({ hub, flip }: { hub: Hub; flip: ReturnType<typeof useSlotPop>
   return (
     <>
       <View style={{ marginBottom: 8 }}>
-      <View ref={board} collapsable={false}>
+      <View>
         <FrameCard radius={14} padding={12}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9, minHeight: 34 }}>
             <Text style={[display(17), { color: t.ink }]}>Today’s bingo</Text>
@@ -412,16 +457,18 @@ export default function Today() {
   const [focused, setFocused] = useState(false);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
   const { text, anim, flip } = useSlotPop(hub, focused && tab === 'Bingo');
+  const print = useRef<View>(null);
 
   return (
     <View style={{ flex: 1 }}>
+      {hub && tab === 'Bingo' ? <BingoPrint hub={hub} card={print} /> : null}
       <Screen>
         <View style={{ paddingTop: 2, paddingBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
           <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}><Icons.back size={16} /></IconButton>
           <View style={{ flex: 1, alignItems: 'center' }}><Pill big items={['Bingo', 'Album'] as const} on={tab} onPick={setTab} /></View>
           <View style={{ width: 36 }} />
         </View>
-        {!hub ? <ActivityIndicator color={t.ink} /> : tab === 'Bingo' ? <TodayTab hub={hub} flip={flip} /> : <AlbumTab hub={hub} />}
+        {!hub ? <ActivityIndicator color={t.ink} /> : tab === 'Bingo' ? <TodayTab hub={hub} flip={flip} print={print} /> : <AlbumTab hub={hub} />}
       </Screen>
       <PopToast text={text} anim={anim} t={t} />
     </View>

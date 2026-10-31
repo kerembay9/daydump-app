@@ -26,6 +26,9 @@ test('Today hub: the card is drawn from what you shoot, two everyday photos make
   expect(await screen.findByLabelText('The sky, done')).toBeTruthy();
   expect(screen.getByLabelText('Somewhere wide, done')).toBeTruthy();
   expect(screen.getByText(/^Bingo! Today’s print is in/)).toBeTruthy();
+  // the middle square is the app icon, as an RN Image so it clips in the shared PNG
+  expect(screen.queryByText('Free')).toBeNull();
+  expect(screen.getByLabelText('PicDump').type).toBe('Image');
   // this week's side quest: found today, and the stamp holds that photo
   expect(screen.getByText('Found today')).toBeTruthy();
   expect(screen.getByText('Stuck on today’s polaroid. Next quest on Monday.')).toBeTruthy();
@@ -44,6 +47,13 @@ test('Today hub: the card is drawn from what you shoot, two everyday photos make
   });
   await fireEvent.press(screen.getByLabelText('Share bingo card'));
   await waitFor(() => expect(up).toEqual([true, true, true]));
+  // what goes out is the polaroid, not the screen: the name and date, the photos, none of the screen's hints
+  expect(skia.makeImageFromView.mock.lastCall[0].current.props.testID).toBe('bingo-print');
+  const print = within(screen.getByTestId('bingo-print', { includeHiddenElements: true }));
+  const hidden = { includeHiddenElements: true };
+  for (const text of ['Bingo!', 'PicDump', now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }), 'The sky']) expect(print.getByText(text, hidden)).toBeTruthy();
+  expect(print.getAllByTestId('print-photo', hidden).length).toBeGreaterThan(1);
+  expect(print.queryByText(/print is in|↻|✓/, hidden)).toBeNull();
   await waitFor(() => expect(share).toHaveBeenLastCalledWith([expect.stringMatching(/^file:\/\/\/cache\/bingo card-.*\.png$/)], expect.stringContaining('Bingo! Today’s photo bingo #picdumpbingo'), null));
   await fireEvent.press(screen.getByLabelText('Share side quest'));
   const tag = quest.label.toLowerCase().replace(/[^a-z]/g, '');
