@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Tutup",
+    "back": "Kembali",
+    "termsOfService": "Ketentuan Layanan",
+    "privacyPolicy": "Kebijakan Privasi"
+  },
+  "tabs": {
+    "discover": "Jelajahi",
+    "create": "Buat",
+    "tidy": "Rapikan",
+    "library": "Pustaka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Photo dump praktis tanpa repot",
+      "title": "Ubah foto berantakan jadi dump keren",
+      "description": "Tak perlu lagi menggulir ribuan foto. PicDump memilih foto-foto terbaik dari hari dan liburanmu, tersusun rapi dengan alur yang pas.",
+      "point1": "Nuansa film analog, bingkai & ukuran pas untuk IG / TikTok",
+      "point2": "Tata letak kolase hanya dengan sekali usap"
+    },
+    "privacy": {
+      "badge": "Kurasi langsung di perangkat",
+      "title": "Dipilih di ponselmu, bukan di cloud",
+      "description": "Pemilihan foto, pencarian, dan pembuatan dump berjalan di ponselmu. PicDump tidak pernah mengunggah fotomu untuk dikurasi.",
+      "point1": "Akses foto membantunya menemukan momen terbaikmu"
+    },
+    "allowContinue": "Izinkan akses foto & lanjutkan",
+    "continue": "Lanjutkan",
+    "page": "Halaman {{n}} dari {{total}}",
+    "notifPreview": "Pratinjau notifikasi",
+    "notifNow": "· baru saja",
+    "notifTitle": "PicDump kamu sudah siap 🎞️",
+    "notifBody": "Foto hari ini telah dikurasi menjadi satu dump. Lihat sebelum tidur!",
+    "notifyHeading": "Harimu pukul 20.00, minggumu di hari Minggu",
+    "notifyBody": "Pemberitahuan pukul 20.00 saat dump hari ini siap, dan Minggu siang dengan rangkuman mingguanmu.",
+    "turnOn": "Aktifkan",
+    "notNow": "Nanti saja"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Setiap dump di rol kameramu.",
+      "sub": "Versi gratis membuka rekap dan satu dump per minggu. Pro membuka semuanya."
+    },
+    "tidy": {
+      "heading": "Bersihkan foto berantakan.",
+      "sub": "Versi gratis menemukan foto duplikat dan buram. Pro memindahkannya ke Sampah sekaligus."
+    },
+    "finish": {
+      "heading": "Pertahankan nuansa film analog.",
+      "sub": "Original, Warm 35mm, dan Adjust tersedia gratis. Pro mengekspor semua look dan tekstur."
+    },
+    "search": {
+      "heading": "Cari di rol kameramu.",
+      "sub": "Temukan tempat, bulan, atau benda lewat kata pencarian. Fitur Cari ada di Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Kami menemukan {{count}} dump di rol kameramu.",
+        "other": "Kami menemukan {{count}} dump di rol kameramu."
+      },
+      "sub": "{{titles}}. Pro membuka semuanya.",
+      "subMore": "{{titles}} dan lainnya. Pro membuka semuanya."
+    },
+    "welcome": "Selamat datang di PicDump Pro!",
+    "purchaseNotActive": "Pembelian berhasil tetapi Pro belum aktif. Ketuk Pulihkan pembelian.",
+    "restored": "Pembelian dipulihkan. Selamat datang kembali di Pro!",
+    "noSubscription": "Langganan PicDump Pro aktif tidak ditemukan.",
+    "close": "Tutup paywall",
+    "feature": {
+      "dumps": {
+        "title": "Buka semua dump",
+        "sub": "Semua perjalanan dan momen yang ditemukan fitur Jelajahi, bukan cuma satu per minggu."
+      },
+      "search": {
+        "title": "Cari di rol kameramu",
+        "sub": "Temukan lokasi, bulan, atau objek dengan mengetikkan kata."
+      },
+      "looks": {
+        "title": "Semua look film analog",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, ditambah efek grain, fade, dan vignette."
+      },
+      "tidy": {
+        "title": "Bersihkan foto duplikat & sampah",
+        "sub": "Pindahkan foto mirip, buram, dan tangkapan layar ke Sampah sekaligus."
+      },
+      "yours": {
+        "title": "Dump sesukamu, gayamu",
+        "sub": "Tanpa slide penutup PicDump, dan 4 hingga 20 foto per dump."
+      }
+    },
+    "plansFailed": "Gagal memuat paket langganan. Periksa koneksi internetmu dan coba lagi.",
+    "startTrial": "Mulai {{trial}}",
+    "continue": "Lanjutkan",
+    "restore": "Pulihkan pembelian",
+    "trialThen": "Gratis selama masa uji coba, lalu {{price}}. ",
+    "disclosure": "Pembayaran akan ditagihkan ke akun toko aplikasi Anda. Langganan diperpanjang secara otomatis kecuali dibatalkan setidaknya 24 jam sebelum akhir periode berjalan."
+  },
+  "profile": {
+    "title": "Profil & Pengaturan",
+    "changePhoto": "Ubah foto profil",
+    "namePlaceholder": "Nama Anda",
+    "handlePlaceholder": "nama_pengguna",
+    "theme": {
+      "system": "Sistem",
+      "auto": "Otomatis",
+      "cashmere": "Cashmere",
+      "light": "Terang",
+      "espresso": "Espresso",
+      "dark": "Gelap"
+    },
+    "reindex": {
+      "title": "Indeks ulang pustaka Anda?",
+      "body": "PicDump akan memindai ulang setiap foto. Proses ini memerlukan beberapa menit dan daya baterai. Dump Anda di Pustaka akan tetap aman.",
+      "action": "Indeks Ulang"
+    },
+    "dumpPicks": {
+      "title": "Pilihan dump",
+      "photosPerDump": "Foto per dump",
+      "photosPerDumpSub": "Fitur Jelajahi memilih jumlah foto dalam rentang ini, sebagian besar dari nilai tengah.",
+      "fewest": "Foto paling sedikit",
+      "to": "sampai",
+      "most": "Foto paling banyak",
+      "hideSensitive": "Sembunyikan foto sensitif",
+      "hideSensitiveSub": "KTP, kartu bank, dan dokumen medis tidak akan pernah muncul di dump.",
+      "screenshots": "Sertakan tangkapan layar",
+      "screenshotsSub": "Tangkapan layar dapat muncul di dump.",
+      "recap": "Rekap",
+      "recapSub": "Dump hari ini pukul 20.00, mingguanmu di hari Minggu siang"
+    },
+    "export": {
+      "title": "Ekspor & posting",
+      "note": "Dump baru akan menggunakan ukuran dan kualitas yang diatur di sini.",
+      "postSize": "Default Ukuran Postingan",
+      "quality": "Default Kualitas Ekspor",
+      "hd": "HD (2160 px)",
+      "standard": "Standar (1080 px)",
+      "saveOnPost": "Posting juga menyimpan ke galeri",
+      "saveOnPostSub": "Menyimpan salinan slide di album PicDump"
+    },
+    "appearance": {
+      "title": "Tampilan & tema"
+    },
+    "library": {
+      "title": "Pustaka foto & pencarian",
+      "access": "Akses",
+      "openSettings": "Buka pengaturan"
+    },
+    "about": {
+      "title": "Privasi & tentang",
+      "onDevice": "Semua diproses di ponselmu",
+      "onDeviceSub": "Cara PicDump memilih foto tanpa mengunggahnya",
+      "contact": "Kontak",
+      "noMail": "Aplikasi email tidak ditemukan. Kirim email ke info@horizonzeta.com",
+      "version": "Versi"
+    }
+  }
+}

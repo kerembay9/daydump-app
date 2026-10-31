@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlatList, RefreshControl, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, ColorMatrix, Fill, FractalNoise, RadialGradient, Skia, Turbulence, vec } from '@shopify/react-native-skia';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, useProgress } from '../../state/AppState';
 import type { Story } from '../../services/stories';
@@ -24,6 +25,9 @@ import { TodayCard } from '../../components/TodayCard';
 import { FaceThumb } from '../../components/FaceCircle';
 import { FirstDumpStrip, useFirstDump } from '../../components/FirstDumpStrip';
 import { useModels } from '../../state/models';
+import { usePro } from '../../state/Pro';
+import { LockBadge, LOCKED_BLUR } from '../../components/LockedDump';
+import { tr } from '../../i18n';
 
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
 const uris = (s: Story) => s.picks.map((p) => p.uri);
@@ -114,14 +118,14 @@ function TileFaces({ s }: { s: Story }) {
   );
 }
 
-/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). paper: a paper sheet with its own tape. */
-function Tile({ s, kind, rotate, onPress, style, more, paper }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; paper?: PaperStyle }) {
+/** One "other dump" tile of the bento: stacked prints, then the title and meta. Stretches to its row's height. more: scrapbook (bigger tilt, tape). paper: a paper sheet with its own tape. locked: blurred, with a lock. */
+function Tile({ s, kind, rotate, onPress, style, more, paper, locked }: { s: Story; kind: StackKind; rotate: number; onPress: () => void; style?: ViewStyle; more?: boolean; paper?: PaperStyle; locked: boolean }) {
   const wide = kind === 'wide';
   return (
-    <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}`} style={style}>
+    <FrameCard radius={14} padding={8} rotate={paper ? rotate * PAPER_TILT : more ? rotate * 2.6 : rotate} paper={paper && s.id} onPress={onPress} label={`${s.title}, ${s.subtitle}${locked ? `, ${tr('discover.locked')}` : ''}`} style={style}>
       <View style={{ marginBottom: kind === 'tall' ? 8 : 6 }}>
-        <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} />
-        <TileFaces s={s} />
+        <PhotoStack kind={kind} uris={uris(s)} tilt={paper ? PAPER_PRINT_TILT : 1} blur={locked ? LOCKED_BLUR : undefined} />
+        {!locked && <TileFaces s={s} />}
       </View>
       {wide ? (
         <View style={{ paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
@@ -134,6 +138,7 @@ function Tile({ s, kind, rotate, onPress, style, more, paper }: { s: Story; kind
           <Meta s={s} />
         </View>
       )}
+      {locked && <LockBadge />}
       {more && <TileTape id={s.id} />}
       {paper && <ScrapTapes id={s.id} style={paper} />}
     </FrameCard>
@@ -141,9 +146,9 @@ function Tile({ s, kind, rotate, onPress, style, more, paper }: { s: Story; kind
 }
 
 /** Mock bento: tall left, top + mid right, wide below; repeated for every 4 stories. Short last blocks degrade. */
-const Bento = React.memo(function Bento({ block, more, paper }: { block: Story[]; more: boolean; paper?: PaperStyle }) {
+const Bento = React.memo(function Bento({ block, more, paper, isLocked, open }: { block: Story[]; more: boolean; paper?: PaperStyle; isLocked: (s: Story) => boolean; open: (s: Story) => void }) {
   const [a, b, c, d] = block;
-  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => preview(s.id)} style={style} more={more} paper={paper} />;
+  const tile = (s: Story, kind: StackKind, rotate: number, style?: ViewStyle) => <Tile key={s.id} s={s} kind={kind} rotate={rotate} onPress={() => open(s)} style={style} more={more} paper={paper} locked={isLocked(s)} />;
   const gap = more || paper ? 14 : 8; // room for the tape between tiles
   return (
     <View style={{ gap, marginBottom: gap }}>
@@ -177,12 +182,37 @@ function TapedNote({ title, body, action, onAction }: { title: string; body: str
   );
 }
 
+const FIRST_PAYWALL = '@picdump_first_paywall_shown';
+
+/**
+ * Once ever: when indexing is done and Discover shows locked dumps, the paywall lists what it found. Most trials start
+ * on day one, and this is the first moment the user can see what Pro opens. settled also means Discover is on screen
+ * (not under onboarding, Edit or a Post) and RevenueCat has answered this session: a subscriber is free until then.
+ */
+function useFirstPaywall(stories: Story[], settled: boolean, isLocked: (s: Story) => boolean, openPaywall: (source: 'first-discover', found: string[]) => void) {
+  const locked = useMemo(() => stories.filter(isLocked).map((s) => s.title), [stories, isLocked]);
+  useEffect(() => {
+    if (!settled || !locked.length) return;
+    let live = true;
+    AsyncStorage.getItem(FIRST_PAYWALL).then(async (seen) => {
+      if (seen || !live) return;
+      await AsyncStorage.setItem(FIRST_PAYWALL, '1');
+      openPaywall('first-discover', locked);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [settled, locked, openPaywall]);
+}
+
 /** Discover (ph2.png, "scrapbook bento"): the Today card (Dump Meter), then every dump in repeating bento blocks; today's own dump is the card's. */
 export default function Discover() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const { stories, loaded, permission, limited, askPhotos, paused, pause, resume, shuffleStories, moreStories, showMoreStories, onboarding } = useApp();
-  const first = useFirstDump(stories, loaded, onboarding);
+  const pro = usePro();
+  const isLocked = useCallback((s: Story) => pro.accessOf(s) === 'locked', [pro]);
+  // the first dump's print shows its picks: a free user's comes from the dumps they can open (today, recaps, unlocks)
+  const isOpen = useCallback((s: Story) => !isLocked(s), [isLocked]);
+  const first = useFirstDump(stories, loaded, onboarding, isOpen);
   const { progress, coverageSince } = useProgress();
   const [loadingMore, setLoadingMore] = useState(false);
   const name = useProfile().name.trim().split(/\s+/)[0] ?? '';
@@ -192,12 +222,14 @@ export default function Discover() {
   // paper cards bring their own tape, so Bands only dresses the classic ones (dark mode: charcoal sheets)
   const sheets = cards !== 'classic' ? cards : undefined;
   const more = useBands() === 'more' && !sheets;
-
+  const open = useCallback((s: Story) => (isLocked(s) ? pro.askUnlock(s) : preview(s.id)), [isLocked, pro]);
+  const focused = useIsFocused();
+  useFirstPaywall(stories, loaded && !progress && !paused && !onboarding && focused && pro.checked, isLocked, pro.openPaywall);
 
   const others = useMemo(() => stories.filter((s) => s.kind !== 'today'), [stories]);
   const blocks = useMemo(() => Array.from({ length: Math.ceil(others.length / 4) }, (_, i) => others.slice(i * 4, i * 4 + 4)), [others]);
 
-  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} paper={sheets} />, [more, sheets]);
+  const renderBento = useCallback(({ item }: { item: Story[] }) => <Bento block={item} more={more} paper={sheets} isLocked={isLocked} open={open} />, [more, sheets, isLocked, open]);
 
   // Pull to refresh = shuffle: what's on screen is marked seen and drops down the ranking.
   const shuffle = async () => {
@@ -211,28 +243,28 @@ export default function Discover() {
 
   const header = (
     <>
-      <TopHeader title={name ? `Hi, ${name}` : 'Hi there'} right={<AvatarButton onPress={() => router.push('/profile')} />} />
+      <TopHeader title={name ? tr('discover.greeting', { name }) : tr('discover.greetingDefault')} right={<AvatarButton onPress={() => router.push('/profile')} />} />
       <IndexStrip progress={progress} paused={paused} hasStories={stories.length > 0} coverageSince={coverageSince} onPause={pause} onResume={resume} />
       {(progress || paused) && stories.length > 0 && permission !== false && (
         <Text style={[ui(11, 400), { color: t.inkMuted, marginTop: 2, paddingHorizontal: 2 }]}>
           {/* the strip shows the reach unless it's busy with the battery line or paused */}
-          {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}Dumps get better once your whole library is read.
+          {(!progress || progress.batteryPct !== undefined) && coverageSince != null && `${coverageLine(coverageSince)}. `}{tr('discover.indexingAdvice')}
         </Text>
       )}
       {permission && limited && (
         // Android 14 "Select photos": asking again shows Android's dialog with "Allow all" and the picker
         <TapedNote
-          title="PicDump only sees the photos you picked"
-          body="Dumps come from your whole camera roll, so a handful of photos won’t make many."
-          action="Allow all photos"
+          title={tr('discover.limitedTitle')}
+          body={tr('discover.limitedBody')}
+          action={tr('discover.limitedAction')}
           onAction={askPhotos}
         />
       )}
       {permission === false ? (
         <TapedNote
-          title="Let PicDump see your photos"
-          body="Dumps are made on your phone from your camera roll. Nothing leaves your device."
-          action="Allow photos"
+          title={tr('discover.permissionTitle')}
+          body={tr('discover.permissionBody')}
+          action={tr('discover.permissionAction')}
           onAction={askPhotos}
         />
       ) : stories.length ? (
@@ -241,9 +273,9 @@ export default function Discover() {
         <ModelLoading pack="vision" s={vision} />
       ) : loaded ? (
         <TapedNote
-          title={progress || paused ? 'Building your dumps…' : 'No dumps yet'}
-          body={progress || paused ? 'They show up here as your photos are read. Or make one yourself.' : 'Take a few more photos and they’ll show up here. Or make one yourself.'}
-          action="Create one now"
+          title={progress || paused ? tr('discover.buildingTitle') : tr('discover.noDumpsTitle')}
+          body={progress || paused ? tr('discover.buildingBody') : tr('discover.noDumpsBody')}
+          action={tr('discover.createOneNow')}
           onAction={() => router.navigate('/create')}
         />
       ) : null}
@@ -259,12 +291,12 @@ export default function Discover() {
         data={blocks}
         keyExtractor={(b) => b[0].id}
         renderItem={renderBento}
-        extraData={[more, sheets]}
+        extraData={renderBento}
         ListHeaderComponent={header}
         ListFooterComponent={moreStories ? (
           <FrameCard radius={18} onPress={loadingMore ? undefined : () => { setLoadingMore(true); showMoreStories().finally(() => setLoadingMore(false)); }}
-            label="Discover more dumps" style={{ height: 44, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[ui(13, 600), { color: t.ink }]}>{loadingMore ? 'Making more dumps…' : 'Discover more dumps'}</Text>
+            label={tr('discover.moreDumps')} style={{ height: 44, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[ui(13, 600), { color: t.ink }]}>{loadingMore ? tr('discover.makingMoreDumps') : tr('discover.moreDumps')}</Text>
           </FrameCard>
         ) : null}
         showsVerticalScrollIndicator={false}

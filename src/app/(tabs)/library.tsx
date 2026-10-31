@@ -12,10 +12,11 @@ import { PhotoStack } from '../../components/ui/PhotoStack';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { Confirm, ConfirmSpec } from '../../components/ui/Sheet';
+import { tr } from '../../i18n';
 
 const edit = (id: string) => router.push({ pathname: '/edit/[id]', params: { id } });
 const preview = (id: string) => router.push({ pathname: '/preview/[id]', params: { id } });
-const NOUN = { posted: 'posted dumps', draft: 'drafts' } as const;
+const noun = (s: DumpStatus) => s === 'posted' ? tr('library.nounPosted') : tr('library.nounDraft');
 
 /** Full-bleed Posted / Drafts switcher: active = bold ink with a 64x3.5 ink bar, counts at 75%. */
 function Tabs({ tab, counts, onTab }: { tab: DumpStatus; counts: Record<DumpStatus, number>; onTab: (s: DumpStatus) => void }) {
@@ -27,7 +28,7 @@ function Tabs({ tab, counts, onTab }: { tab: DumpStatus; counts: Record<DumpStat
         return (
           <Tap key={s} onPress={() => onTab(s)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingBottom: 6 }}>
             <Text style={{ fontFamily: sans[on ? 700 : 500], fontSize: 13.5, letterSpacing: em(13.5, -0.025), color: on ? t.ink : t.inkMuted }}>
-              {s === 'posted' ? 'Posted' : 'Drafts'} <Text style={{ fontSize: 11, opacity: 0.75 }}>({counts[s]})</Text>
+              {s === 'posted' ? tr('library.tabPosted') : tr('library.tabDrafts')} <Text style={{ fontSize: 11, opacity: 0.75 }}>({counts[s]})</Text>
             </Text>
             {on ? <View style={{ position: 'absolute', bottom: 0, width: 64, height: 3.5, borderRadius: 2, backgroundColor: t.ink }} /> : null}
           </Tap>
@@ -61,15 +62,15 @@ const Row = React.memo(function Row({ d, onReuse, onDelete }: { d: Dump; onReuse
       onPress={() => (draft ? edit(d.id) : preview(d.id))}
       onLongPress={() => onDelete(d)}
       accessibilityRole="button"
-      accessibilityLabel={`${d.title}, ${draft ? 'draft' : 'posted'}`}
-      accessibilityHint={`${draft ? 'Opens it in Edit' : 'Opens the preview'}. Long-press to delete.`}
+      accessibilityLabel={tr('library.dumpA11y', { title: d.title, status: draft ? tr('library.draft') : tr('library.posted') })}
+      accessibilityHint={draft ? tr('library.draftHint') : tr('library.postedHint')}
       style={{ backgroundColor: t.bgCard, borderWidth: 1, borderColor: t.borderSubtle, boxShadow: t.shadowCard, borderRadius: 16, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}
     >
       <PhotoStack kind="row" uris={d.photos.map((p) => p.uri)} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={{ fontFamily: sans[700], fontSize: 9, letterSpacing: em(9, 0.05), textTransform: 'uppercase', paddingHorizontal: 6, borderRadius: 8, overflow: 'hidden', backgroundColor: draft ? t.accentFab : t.dark ? t.borderStrong : 'rgba(0,0,0,0.09)', color: draft ? t.accentFabText : t.inkMuted }}>
-            {caps(draft ? 'Draft' : 'Posted')}
+            {caps(draft ? tr('library.draft') : tr('library.posted'))}
           </Text>
           <Text style={[ui(10, 500), { color: t.inkMuted, flexShrink: 1 }]} numberOfLines={1}>{kindLabel(d)}</Text>
         </View>
@@ -78,9 +79,9 @@ const Row = React.memo(function Row({ d, onReuse, onDelete }: { d: Dump; onReuse
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 2 }]} numberOfLines={2}>{metaLines(d).join('\n')}</Text>
       </View>
       <View style={{ gap: 4 }}>
-        {draft ? <Pill primary text="Edit" onPress={() => edit(d.id)} /> : <Pill primary text="Reuse" onPress={() => onReuse(d)} />}
-        <Pill text="Preview" onPress={() => preview(d.id)} />
-        {draft ? <Pill text="Delete" onPress={() => onDelete(d)} /> : null}
+        {draft ? <Pill primary text={tr('library.edit')} onPress={() => edit(d.id)} /> : <Pill primary text={tr('library.reuse')} onPress={() => onReuse(d)} />}
+        <Pill text={tr('library.preview')} onPress={() => preview(d.id)} />
+        {draft ? <Pill text={tr('library.delete')} onPress={() => onDelete(d)} /> : null}
       </View>
     </Tap>
   );
@@ -129,9 +130,9 @@ export default function Library() {
   }, []);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const confirmDelete = useCallback((d: Dump) => setConfirm({
-    title: d.status === 'draft' ? 'Delete draft?' : 'Remove from Library?',
-    body: `“${d.title}” will be removed from Library. Your photos stay on your phone.`,
-    action: d.status === 'draft' ? 'Delete' : 'Remove', danger: true,
+    title: d.status === 'draft' ? tr('library.deleteDraftTitle') : tr('library.removeFromLibraryTitle'),
+    body: tr('library.deleteBody', { title: d.title }),
+    action: d.status === 'draft' ? tr('library.delete') : tr('library.remove'), danger: true,
     onConfirm: () => { remove(d.id).then(load); },
   }), [load, setConfirm]);
 
@@ -144,7 +145,7 @@ export default function Library() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={`Search in ${NOUN[tab]}…`}
+            placeholder={tr('library.searchIn', { noun: noun(tab) })}
             placeholderTextColor={t.inkMuted}
             returnKeyType="search"
             autoCapitalize="none"
@@ -152,7 +153,7 @@ export default function Library() {
             style={[ui(12, 500), { flex: 1, color: t.ink, padding: 0 }]}
           />
           {query ? (
-            <Tap onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+            <Tap onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel={tr('library.clearSearchAction')} hitSlop={8} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
               <Icons.close size={12} color={t.inkMuted} />
             </Tap>
           ) : null}
@@ -163,11 +164,11 @@ export default function Library() {
           {shown.map((d) => <Row key={d.id} d={d} onReuse={reuse} onDelete={confirmDelete} />)}
         </View>
       ) : items.length ? (
-        <Empty title="No matches" body={`Nothing in your ${NOUN[tab]} matches “${query.trim()}”.`} action="Clear search" onAction={() => setQuery('')} />
+        <Empty title={tr('library.noMatchesTitle')} body={tr('library.noMatchesBody', { tab: noun(tab), query: query.trim() })} action={tr('library.clearSearchAction')} onAction={() => setQuery('')} />
       ) : tab === 'posted' ? (
-        <Empty title="Nothing posted yet" body="When you share a dump to Instagram or TikTok, it lands here so you can reuse it." action="Find a dump" onAction={() => router.navigate('/')} />
+        <Empty title={tr('library.nothingPostedTitle')} body={tr('library.nothingPostedBody')} action={tr('library.findADump')} onAction={() => router.navigate('/')} />
       ) : (
-        <Empty title="No drafts yet" body="Dumps you open in Edit or start in Create are saved here as you go." action="Start one" onAction={() => router.navigate('/create')} />
+        <Empty title={tr('library.noDraftsTitle')} body={tr('library.noDraftsBody')} action={tr('library.startOne')} onAction={() => router.navigate('/create')} />
       )}
       <Confirm c={confirm} onClose={() => setConfirm(null)} />
     </Screen>

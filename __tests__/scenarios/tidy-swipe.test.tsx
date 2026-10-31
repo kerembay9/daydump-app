@@ -30,10 +30,10 @@ test('Tidy swipe: the first open teaches the swipe; a toggle shows the keeper; s
   await fireEvent.press(await screen.findByRole('button', { name: /^Same shot/ }, { timeout: 20000 }));
 
   await screen.findByRole('button', { name: 'The keeper' });
-  expect(await AsyncStorage.getItem('tidy.swipeHint')).toBeNull();
+  expect(await AsyncStorage.getItem('@picdump_tidy_swipe_hint')).toBeNull();
   await layDeck();
   await settle();
-  expect(await AsyncStorage.getItem('tidy.swipeHint')).toBe('1');
+  expect(await AsyncStorage.getItem('@picdump_tidy_swipe_hint')).toBe('1');
 
   // the miss is on the photo and in a chip; only what differs shows
   expect(screen.getByText('1 of 3')).toBeTruthy();

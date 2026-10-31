@@ -5,7 +5,7 @@ import { ClipEmbedder, TidyStats } from '../../../modules/clip-embedder';
 import { list } from '../dumps';
 import { getProfile } from '../profile';
 import { db, embedText, mainDb } from '../index/photoIndex';
-import { b64ToFloats, dot, DIM, isZero } from '../index/vectors';
+import { b64ToFloats, dot, DIM, floatsToB64, isZero } from '../index/vectors';
 import { buildResult, isStrict, Pile, softCandidate, TidyResult, TPhoto } from './rules';
 import type { TidyFace } from '../../../modules/clip-embedder';
 
@@ -47,12 +47,17 @@ export const startScan = () => (running ??= scan().catch((e) => { console.warn('
 
 const RENDERS = /\/Pictures\/(PicDump|DayDump)\//i;
 
-let storyIds = new Set<string>();
-/** Discover's current stories' slides: locked like dump photos (Discover sets them; Tidy reads them on its next build). */
-export const setStoryPhotos = (ids: string[]) => { storyIds = new Set(ids); };
+let storyIds = new Map<string, string>();
+/**
+ * Discover's current stories' slides: locked like dump photos (Discover sets them; Tidy reads them on its next build).
+ * A locked story's picks are kept too, under the moment wording: "In a Discover story" would tell a free user its picks.
+ */
+export const setStoryPhotos = (open: string[], locked: string[] = []) => {
+  storyIds = new Map([...locked.map((id) => [id, 'Looks like a moment'] as const), ...open.map((id) => [id, 'In a Discover story'] as const)]);
+};
 /** lockOf's map: photos in saved dumps and drafts, then Discover's stories. */
 async function keepMap() {
-  const m = new Map<string, string>([...storyIds].map((id) => [id, 'In a Discover story']));
+  const m = new Map(storyIds);
   for (const dm of await list()) for (const p of dm.photos) m.set(p.id, 'In a dump');
   return m;
 }
@@ -158,7 +163,7 @@ async function scan() {
   });
 
   // 3. same-shot sets (Tidy.kt), then faces + 512 px checks of their members, to pick each keeper
-  const labels = await N.tidySets!(vecs, photos.map((p) => p.created), photos.map(isStrict));
+  const labels = await N.tidySets!(floatsToB64(vecs), photos.map((p) => p.created), photos.map(isStrict));
   photos.forEach((p, i) => { p.set = labels[i]; });
   await batched(photos.filter((p) => p.set >= 0 && stale(p.fs, owner)), 32, 'check', async (b) => {
     const r = await N.tidyStats!(b.map((p) => p.id), 512, true);

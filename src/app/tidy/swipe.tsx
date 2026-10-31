@@ -18,11 +18,12 @@ import { formatBytes, lockConfirm, missChip, Primary, ShotCheckList, TidyGrid } 
 import { buildDeck, buildRounds, diffChecks, faultMarks, monthOf, Pile, PILES, shotCheck, swapKeeper, TPhoto } from '../../services/tidy/rules';
 import { Moved, moveToTrash, useTidy } from '../../services/tidy/scan';
 import { dateRange } from '../../services/stories/titles';
+import { usePro } from '../../state/Pro';
 import { useTheme } from '../../theme/ThemeProvider';
 import { fixed } from '../../theme/tokens';
 import { display, ui } from '../../theme/type';
 
-const HINT_KEY = 'tidy.swipeHint';
+const HINT_KEY = '@picdump_tidy_swipe_hint';
 const HINT_DX = 80;
 const RED = '#D93A2B';
 const FRAME = 6;
@@ -79,6 +80,7 @@ export default function SwipeScreen() {
   const { pile: param, month } = useLocalSearchParams<{ pile: string; month?: string }>();
   const pile = param && param in PILES ? (param as Pile) : null;
   const { result } = useTidy();
+  const { isPro, openPaywall } = usePro();
   // a snapshot: a rescan or a round's move mustn't reshuffle the deck
   const [start] = useState(() => {
     const inMonth = (ms: number) => !month || monthOf(ms) === month;
@@ -195,6 +197,8 @@ export default function SwipeScreen() {
     setRound(round + 1); setAt(0); setMarks({}); setMsg(null);
   };
   const move = async () => {
+    // Pro, as in the other piles: a free user swipes and reviews, moving opens the paywall
+    if (!isPro) { openPaywall('tidy'); return; }
     setBusy(true); setMsg(null);
     try {
       const m = await moveToTrash(trash.map((c) => ({ p: c.p, pile: pile! })), keepers.filter((_, i) => trash.some((c) => c.set === i)), moved);
@@ -234,7 +238,7 @@ export default function SwipeScreen() {
           )} />
         <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, gap: 6 }}>
           {msg ? <Text style={[ui(12, 500), { color: t.inkMuted, textAlign: 'center' }]}>{msg}</Text> : null}
-          {trash.length ? <Primary label={`Move ${trash.length} to Trash · ${formatBytes(bytes)}`} onPress={move} disabled={busy} /> : <Primary label={more ? 'Next round' : 'Done'} onPress={onward} />}
+          {trash.length ? <Primary label={`Move ${trash.length} to Trash · ${formatBytes(bytes)}`} onPress={move} disabled={busy} pro={!isPro} /> : <Primary label={more ? 'Next round' : 'Done'} onPress={onward} />}
         </View>
         <StatusScrim />
         <PhotoViewer photos={cards.map((c) => c.p)} index={view} onClose={() => setView(null)} />

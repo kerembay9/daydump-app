@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Lukk",
+    "back": "Tilbake",
+    "termsOfService": "Vilkår for bruk",
+    "privacyPolicy": "Personvernerklæring"
+  },
+  "tabs": {
+    "discover": "Oppdag",
+    "create": "Opprett",
+    "tidy": "Rydd",
+    "library": "Bibliotek"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Uanstrengte fotodumper",
+      "title": "Gjør kamerarull-kaos om til dumps",
+      "description": "Glem scrolling gjennom tusenvis av bilder. PicDump velger de beste bildene fra dagene og turene dine, sammensatt med god flyt.",
+      "point1": "Filmuttrykk, rammer og formater for IG og TikTok",
+      "point2": "Kollasjoppsett, ett sveip om gangen"
+    },
+    "privacy": {
+      "badge": "Kuratering på enheten",
+      "title": "Valgt på telefonen din, ikke i skyen",
+      "description": "Bildeutvalg, søk og dumps foregår på telefonen din. PicDump laster aldri opp bildene dine for å kuratere dem.",
+      "point1": "Bildetilgang lar appen finne høydepunktene dine"
+    },
+    "allowContinue": "Gi bildetilgang og fortsett",
+    "continue": "Fortsett",
+    "page": "Side {{n}} av {{total}}",
+    "notifPreview": "Forhåndsvisning av varsel",
+    "notifNow": "· nå",
+    "notifTitle": "Din PicDump er klar 🎞️",
+    "notifBody": "Dagens bilder, kuratert til én dump. Ta en titt før du legger deg.",
+    "notifyHeading": "Dagen din kl. 20.00, uken din på søndag",
+    "notifyBody": "Et varsel kl. 20.00 når dagens dump er klar, og på søndag kl. 12.00 med uken din.",
+    "turnOn": "Slå på",
+    "notNow": "Ikke nå"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Hver eneste dump i rullen din.",
+      "sub": "Gratis gir deg oppsummeringer og én dump i uken. Pro låser opp alle."
+    },
+    "tidy": {
+      "heading": "Rydd opp i rotet.",
+      "sub": "Gratis finner duplikater og uskarpe bilder. Pro flytter dem til Papirkurv på én gang."
+    },
+    "finish": {
+      "heading": "Behold filmuttrykket.",
+      "sub": "Original, Warm 35mm og Adjust er gratis. Pro eksporterer alle stiler og teksturer."
+    },
+    "search": {
+      "heading": "Søk i kamerarullen.",
+      "sub": "Finn et sted, en måned eller en ting med ord. Søk følger med Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Vi fant {{count}} dump i rullen din.",
+        "other": "Vi fant {{count}} dumper i rullen din."
+      },
+      "sub": "{{titles}}. Pro låser opp alle.",
+      "subMore": "{{titles}} og mer. Pro låser opp alle."
+    },
+    "welcome": "Velkommen til PicDump Pro!",
+    "purchaseNotActive": "Kjøpet gikk gjennom, men Pro ble ikke aktivert ennå. Trykk på Gjenopprett kjøp.",
+    "restored": "Kjøp gjenopprettet. Velkommen tilbake til Pro!",
+    "noSubscription": "Fant ingen aktivt PicDump Pro-abonnement.",
+    "close": "Lukk betalingsvegg",
+    "feature": {
+      "dumps": {
+        "title": "Alle dumper låst opp",
+        "sub": "Hver tur og historie Oppdag finner, ikke bare én i uken."
+      },
+      "search": {
+        "title": "Søk i kamerarullen",
+        "sub": "Finn et sted, en måned eller en ting med ord."
+      },
+      "looks": {
+        "title": "Alle filmuttrykk",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, pluss korn, fade og vignett."
+      },
+      "tidy": {
+        "title": "Fjern duplikater og rot",
+        "sub": "Flytt duplikater, uskarpe bilder og skjermbilder til Papirkurv på én gang."
+      },
+      "yours": {
+        "title": "Din dump, på din måte",
+        "sub": "Ingen PicDump-sluttbilde, og 4 til 20 bilder per dump."
+      }
+    },
+    "plansFailed": "Kunne ikke laste inn abonnementer. Sjekk tilkoblingen din og prøv igjen.",
+    "startTrial": "Start {{trial}}",
+    "continue": "Fortsett",
+    "restore": "Gjenopprett kjøp",
+    "trialThen": "Gratis i prøveperioden, deretter {{price}}. "
+    ,"disclosure": "Betaling belastes butikkkontoen din. Abonnement fornyes automatisk med mindre det sies opp minst 24 timer før slutten av gjeldende periode."
+  },
+  "profile": {
+    "title": "Profil og innstillinger",
+    "changePhoto": "Endre profilbilde",
+    "namePlaceholder": "Navnet ditt",
+    "handlePlaceholder": "din_konto",
+    "theme": {
+      "system": "System",
+      "auto": "Auto",
+      "cashmere": "Cashmere",
+      "light": "Lyst",
+      "espresso": "Espresso",
+      "dark": "Mørkt"
+    },
+    "reindex": {
+      "title": "Indeksere biblioteket på nytt?",
+      "body": "PicDump vil lese hvert bilde på nytt. Dette tar noen minutter og litt batteri. Dumpene dine i Bibliotek beholdes.",
+      "action": "Indekser på nytt"
+    },
+    "dumpPicks": {
+      "title": "Dump-utvalg",
+      "photosPerDump": "Bilder per dump",
+      "photosPerDumpSub": "Oppdag velger et antall i dette området, som oftest rundt midten.",
+      "fewest": "Færrest bilder",
+      "to": "til",
+      "most": "Flest bilder",
+      "hideSensitive": "Skjul sensitive bilder",
+      "hideSensitiveSub": "ID-kort, bankkort og medisinske papirer vises aldri i dumper.",
+      "screenshots": "Inkluder skjermbilder",
+      "screenshotsSub": "Skjermbilder kan dukke opp i dumper.",
+      "recap": "Oppsummering",
+      "recapSub": "Dagens dump kl. 20.00, uken din på søndag kl. 12.00"
+    },
+    "export": {
+      "title": "Eksport og publisering",
+      "note": "Nye dumper starter med størrelsen og kvaliteten som er angitt her.",
+      "postSize": "Standard innleggsstørrelse",
+      "quality": "Standard eksportkvalitet",
+      "hd": "HD (2160 px)",
+      "standard": "Standard (1080 px)",
+      "saveOnPost": "Publisering lagrer også i galleriet",
+      "saveOnPostSub": "Beholder en kopi av lysbildene i PicDump-albumet"
+    },
+    "appearance": {
+      "title": "Utseende og tema"
+    },
+    "library": {
+      "title": "Bildebibliotek og søk",
+      "access": "Tilgang",
+      "openSettings": "Åpne innstillinger"
+    },
+    "about": {
+      "title": "Personvern og om appen",
+      "onDevice": "Alt skjer på telefonen din",
+      "onDeviceSub": "Hvordan PicDump velger bilder uten å laste dem opp",
+      "contact": "Kontakt oss",
+      "noMail": "Ingen e-postapp funnet. Skriv til info@horizonzeta.com",
+      "version": "Versjon"
+    }
+  }
+}

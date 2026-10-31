@@ -95,34 +95,41 @@ test('Profile: sections grouped by what they change, no one-row sections', async
 }, 30000);
 
 test('Profile: Go Pro opens paywall; no Done, no bio', async () => {
+  world.pro = false;
   await bootApp('/profile');
   await screen.findByText('Profile & Settings', {}, { timeout: 10000 });
   expect(screen.getByText('PicDump Pro')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: 'Go Pro' }));
-  expect(await screen.findByText('Curate and export without limits.')).toBeTruthy();
+  expect(await screen.findByText('Every dump in your roll.')).toBeTruthy();
+  // the annual plan has the trial, so it starts selected and the button says so
+  expect(await screen.findByRole('radio', { name: 'Annual, $29.99 / year, 7-day free trial', selected: true })).toBeTruthy();
+  expect(screen.getByText('Start 7-day free trial')).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Weekly, $3.99 / week' })).toBeTruthy();
   expect(screen.queryByText('Done')).toBeNull();
   expect(screen.queryByPlaceholderText('Add a short bio')).toBeNull();
   await fireEvent.press(screen.getByLabelText('Close paywall'));
+  world.pro = true;
 }, 30000);
 
 test('a renewing subscription shows its renewal date and Manage', async () => {
+  world.pro = false;
   await AsyncStorage.setItem('@daydump_fake_sub', JSON.stringify({ plan: 'Yearly', until: Date.UTC(2027, 4, 12, 12), renews: true }));
   await bootApp('/profile');
   expect(await screen.findByText(/^Yearly · renews .*2027/, {}, { timeout: 10000 })).toBeTruthy();
   expect(screen.getByText('Manage')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Go Pro' })).toBeNull();
   await AsyncStorage.removeItem('@daydump_fake_sub');
+  world.pro = true;
 }, 30000);
 
-// Profile has the Pro card (above); everywhere else stays paywall-free
-test('no paywall or crown anywhere', async () => {
+// Pro sees no locks or upsells outside Profile's Pro card; no screen talks to the store SDK directly
+test('Pro: no lock or upsell anywhere', async () => {
   for (const url of ['/', '/create', '/library']) {
     await bootApp(url);
     await screen.findAllByLabelText('Profile and settings', {}, { timeout: 10000 }).catch(() => screen.findByText('Profile & Settings'));
     expect(dump().filter((s) => PAYWALL.test(s))).toEqual([]);
     screen.unmount();
   }
-  // and no route or component draws one (comments saying there is none are fine)
   const files = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
     .flatMap((e) => (e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx$/.test(e.name) ? [path.join(dir, e.name)] : []));
   for (const f of files(path.resolve(__dirname, '../../src'))) {

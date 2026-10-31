@@ -10,6 +10,7 @@ import { FaceThumb } from '../components/FaceCircle';
 import { useTheme } from '../theme/ThemeProvider';
 import { display, ui } from '../theme/type';
 import { renamePerson, usePeople } from '../services/people';
+import { tr } from '../i18n';
 
 /** Dev tools: everyone services/people.ts found, with their faces; name them here too. On-device. */
 export default function People() {
@@ -23,7 +24,7 @@ export default function People() {
   const header = (
     <>
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
+        <IconButton label={tr('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))}><Icons.back size={16} /></IconButton>
         <Text style={[display(20), { color: t.ink }]}>People experiment</Text>
       </View>
       <FrameCard radius={18} padding={14}>

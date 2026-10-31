@@ -19,6 +19,7 @@ import { Bar } from './ModelLoading';
 import type { Selfie } from '../services/selfie';
 import { getProfile, setProfile } from '../services/profile';
 import { GalleryService, isCameraPhoto } from '../services/galleryService';
+import { tr } from '../i18n';
 
 type Rect = { x: number; y: number; w: number; h: number };
 type Fly = { from: Rect; to: Rect; origin: Rect; node: ReactNode; scale: number; key: number };
@@ -102,11 +103,11 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
     <Animated.View ref={root} style={[{ flex: 1 }, lift]}>
       <Animated.View entering={SlideInRight.duration(320)} style={{ flex: 1 }}>
       <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 14, paddingBottom: 16 }}>
-        <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Your dump previews')}</Animated.Text>
-        <Animated.Text entering={FadeInDown.delay(60).duration(450)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 10 }]}>Put yourself in your posts</Animated.Text>
+        <Animated.Text entering={FadeInDown.duration(450)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps(tr('onboarding.stepProfile.dumpPreviews'))}</Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(60).duration(450)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 10 }]}>{tr('onboarding.stepProfile.putYourselfInPosts')}</Animated.Text>
         <Animated.View entering={FadeInDown.delay(120).duration(450)} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 6, marginBottom: 14 }}>
           <Lock size={12} color={t.inkMuted} strokeWidth={2} />
-          <Text style={[ui(11.5), { color: t.inkMuted }]}>Only on your previews. Stays on your phone.</Text>
+          <Text style={[ui(11.5), { color: t.inkMuted }]}>{tr('onboarding.stepProfile.previewsOnlyNote')}</Text>
         </Animated.View>
 
         {/* a post header like the previews' (PostMocks): the name and face fly into it */}
@@ -119,16 +120,16 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
               </View>
               <View style={{ flex: 1 }}>
                 <View ref={headName} collapsable={false} style={{ alignSelf: 'flex-start' }}>
-                  <Text style={[ui(14, 600), { color: shown ? t.ink : t.inkMuted }]} numberOfLines={1}>{shown || 'Your name'}</Text>
+                  <Text style={[ui(14, 600), { color: shown ? t.ink : t.inkMuted }]} numberOfLines={1}>{shown || tr('profile.namePlaceholder')}</Text>
                 </View>
-                <Text style={[ui(11), { color: t.inkMuted }]}>Today · photo dump</Text>
+                <Text style={[ui(11), { color: t.inkMuted }]}>{tr('onboarding.stepProfile.todayDump')}</Text>
               </View>
             </View>
             {/* the newest six camera photos, 3 × 2 (grey until listed); the selfie question sits over them, darkened */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, borderRadius: 10, overflow: 'hidden' }}>
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <View key={i} style={{ flexBasis: '30%', flexGrow: 1, aspectRatio: 1, backgroundColor: t.borderStrong }}>
-                  {shots[i] && <Animated.View entering={FadeIn.delay(60 * i).duration(300)} style={{ flex: 1 }}><Image source={{ uri: shots[i] }} contentFit="cover" style={{ flex: 1 }} accessibilityLabel={`Your photo ${i + 1}`} /></Animated.View>}
+                  {shots[i] && <Animated.View entering={FadeIn.delay(60 * i).duration(300)} style={{ flex: 1 }}><Image source={{ uri: shots[i] }} contentFit="cover" style={{ flex: 1 }} accessibilityLabel={tr('onboarding.stepProfile.yourPhotoA11y', { index: i + 1 })} /></Animated.View>}
                 </View>
               ))}
               {phase === 'selfie' && (
@@ -138,17 +139,17 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
                       <Animated.View key={best.p.id} entering={pop()} exiting={FadeOutLeft.duration(180)} style={{ borderRadius: BIG / 2 + 3, borderWidth: 3, borderColor: '#fff' }}>
                         <View ref={big} collapsable={false}><FaceCircle uri={best.p.uri} box={best.box} aspect={best.aspect} size={BIG} /></View>
                       </Animated.View>
-                      <Text style={[display(18, 1.2), { color: '#fff', marginTop: 8 }]}>Is this you?</Text>
+                      <Text style={[display(18, 1.2), { color: '#fff', marginTop: 8 }]}>{tr('profile.isThisYou')}</Text>
                       <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, alignSelf: 'stretch', paddingHorizontal: 10 }}>
-                        <Pill label="Not me" onPress={no} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
-                        <Pill label="That's me" on onPress={yes} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
+                        <Pill label={tr('onboarding.stepProfile.notMe')} onPress={no} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
+                        <Pill label={tr('onboarding.stepProfile.thatsMe')} on onPress={yes} height={36} size={13} style={{ flex: 1, justifyContent: 'center' }} />
                       </View>
                     </>
                   ) : (
                     <View style={{ alignSelf: 'stretch', gap: 6 }}>
-                      <Text style={[ui(14, 600), { color: '#fff', textAlign: 'center' }]}>{wait ? wait[0] : 'No selfie found'}</Text>
+                      <Text style={[ui(14, 600), { color: '#fff', textAlign: 'center' }]}>{wait ? wait[0] : tr('onboarding.stepProfile.noSelfieFound')}</Text>
                       <Text style={[ui(12.5), { color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 18 }]}>
-                        {wait ? 'Looking through your photos for one.' : 'Your previews show your initial. Add a photo later in Profile.'}
+                        {wait ? tr('onboarding.stepProfile.lookingForOne') : tr('onboarding.stepProfile.initialNote')}
                       </Text>
                       {wait && <Bar progress={wait[2]} />}
                     </View>
@@ -161,23 +162,23 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
 
         {phase === 'name' ? (
           <Animated.View key="name" entering={FadeInDown.delay(320).duration(450)} exiting={FadeOutUp.duration(200)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>{caps('What should we call you?')}</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 6, paddingHorizontal: 4 }]}>{caps(tr('onboarding.stepProfile.callYou'))}</Text>
             <FrameCard radius={18} style={{ paddingHorizontal: 14, paddingVertical: 4 }}>
               <View ref={input} collapsable={false}>
-                <TextInput value={name} onChangeText={setName} onSubmitEditing={submitName} placeholder="Your name" placeholderTextColor={t.inkMuted} autoFocus
+                <TextInput value={name} onChangeText={setName} onSubmitEditing={submitName} placeholder={tr('profile.namePlaceholder')} placeholderTextColor={t.inkMuted} autoFocus
                   returnKeyType="next" submitBehavior="submit" style={[display(18), { color: t.ink, paddingVertical: 8, paddingHorizontal: 0 }]} />
               </View>
             </FrameCard>
           </Animated.View>
         ) : phase === 'selfie' ? null : (
           <Animated.View key="picked" entering={FadeInDown.delay(FLY_MS - 120).duration(400)}>
-            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>{caps('Not this one? Pick another')}</Text>
+            <Text style={[label(10, 0.12), { color: t.inkMuted, marginBottom: 8, paddingHorizontal: 4 }]}>{caps(tr('onboarding.stepProfile.pickAnother'))}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 4, paddingVertical: 4 }}>
               {strip.map((s, i) => {
                 const on = s.p.id === picked?.p.id;
                 return (
                   <Animated.View key={s.p.id} entering={pop().delay(FLY_MS + 50 * i)}>
-                    <Tap onPress={() => { if (!on) { Haptics.selectionAsync(); take(s, { current: thumbs.current.get(s.p.id) ?? null }, THUMB, true); } }} accessibilityRole="button" accessibilityLabel={`Photo ${i + 1}`}
+                    <Tap onPress={() => { if (!on) { Haptics.selectionAsync(); take(s, { current: thumbs.current.get(s.p.id) ?? null }, THUMB, true); } }} accessibilityRole="button" accessibilityLabel={tr('edit.photoIndex', { index: i + 1 })}
                       style={{ borderRadius: 32, padding: 3, borderWidth: 2, borderColor: on ? t.ink : 'transparent' }}>
                       <View ref={(v) => { thumbs.current.set(s.p.id, v); }} collapsable={false}>
                         <FaceThumb uri={s.p.uri} box={s.box} size={THUMB} />
@@ -188,7 +189,7 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
               })}
             </ScrollView>
             <Tap onPress={no} accessibilityRole="button" style={{ alignSelf: 'center', height: 36, marginTop: 8, paddingHorizontal: 16, justifyContent: 'center' }}>
-              <Text style={[ui(13, 600), { color: t.inkMuted }]}>That&apos;s not me</Text>
+              <Text style={[ui(13, 600), { color: t.inkMuted }]}>{tr('onboarding.stepProfile.thatsNotMe')}</Text>
             </Tap>
           </Animated.View>
         )}
@@ -199,11 +200,11 @@ export function ProfileStep({ pick, dots, onDone }: { pick: ReturnType<typeof us
         {dots}
         <Tap onPress={() => (phase === 'name' ? submitName() : canGo && void done(true))} accessibilityRole="button" accessibilityState={{ disabled: phase !== 'name' && !canGo }}
           style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, opacity: phase === 'name' || canGo ? 1 : 0.35, alignItems: 'center', justifyContent: 'center', boxShadow: t.shadowCard }}>
-          <Text style={[ui(15, 600), { color: t.bgScreen }]}>{phase === 'name' ? 'Next' : 'Continue'}</Text>
+          <Text style={[ui(15, 600), { color: t.bgScreen }]}>{phase === 'name' ? tr('common.next') : tr('common.continue')}</Text>
         </Tap>
         {canGo ? <View style={{ height: 42 }} /> : (
           <Tap onPress={() => void done(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
-            <Text style={[ui(13, 600), { color: t.inkMuted }]}>Skip for now</Text>
+            <Text style={[ui(13, 600), { color: t.inkMuted }]}>{tr('onboarding.stepProfile.skipForNow')}</Text>
           </Tap>
         )}
       </View>
@@ -234,7 +235,7 @@ const face = (s: Selfie, size: number, thumb: boolean) =>
 
 const AVATAR_PX = 512;
 /** The face's square as the profile avatar: our own copy (the cache's can be cleared, the photo deleted). */
-async function saveAvatar(s: Selfie) {
+export async function saveAvatar(s: Selfie) {
   const src = await faceFile(s.p.uri, s.box, AVATAR_PX);
   if (!src) return;
   const dest = new File(Paths.document, `avatar-${Date.now()}.jpg`);

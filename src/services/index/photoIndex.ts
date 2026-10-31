@@ -7,6 +7,7 @@ import { EVAL_ALBUM, GalleryService } from '../galleryService';
 import { b64ToFloats, DIM, floatsToB64 } from './vectors';
 
 const BATCH = 128; // 52 ms/photo vs 62 at 32 and 67 at 16 (GPU + CPU, MODEL_BENCHMARKS.md); input buffer 128 × 600 KB = 77 MB
+const FIRST_BATCH = 32; // the first call also pays model load: keep it short so the first scored photos show up fast
 /** Developer tools' CLIP model switch (ClipEmbedder.devModel): a distilled model, indexed into its own DB; null = shipped. */
 export const DEV_MODEL = ClipEmbedder?.devModel?.() ?? null;
 /** Which TinyCLIP the bundled ONNX is (written by scripts/build_assets.py), or the dev model. */
@@ -74,27 +75,40 @@ let running: Promise<number> | null = null;
 export type IndexProgressFn = (done: number, total: number, last: PhotoAsset, bg?: { batteryPct: number | null; etaSec: number | null }) => void;
 
 export function indexLibrary(onProgress?: IndexProgressFn): Promise<number> {
-  return (running ??= run(onProgress).finally(() => { running = null; setReading(0); }));
+  return (running ??= (async () => {
+    // a first pass of the newest photos, then at once the rest: the cap only says when the first curated photos are ready
+    const first = firstPass;
+    const n = await run(onProgress, first);
+    return first != null ? n + (await run(onProgress, null)) : n;
+  })().finally(() => { running = null; setReading(0); }));
 }
+
+let firstPass: number | null = null;
+/**
+ * Onboarding's first pass reads only the newest `n` camera photos (null: none), so a 100k library reaches its curated photos in
+ * seconds, not after listing and reading everything. It doesn't stop there: the full pass follows straight away, in the background,
+ * and onboarding carries on once the first pass is in.
+ */
+export const capIndex = (n: number | null) => { firstPass = n; };
 
 /** How many new photos the foreground index is reading right now (Today: "Checking 2 new photos…"). */
 export const reading = { n: 0, subs: new Set<() => void>() };
 const setReading = (n: number) => { reading.n = n; reading.subs.forEach((f) => f()); };
 
-async function run(onProgress?: IndexProgressFn): Promise<number> {
+async function run(onProgress: IndexProgressFn | undefined, limit: number | null): Promise<number> {
   const d = await db();
   const bg = await ClipEmbedder?.backgroundIndexStatus();
   // A fast or paused run is the user's to stop; a charging-only job just yields to the app.
   if (bg && bg.state !== 'running' && bg.state !== 'paused') await ClipEmbedder!.cancelBackgroundIndex();
   const tl = Date.now();
-  const assets = await GalleryService.listLibraryPhotos();
+  const assets = await GalleryService.listLibraryPhotos(limit ?? undefined);
   console.log(`[photoIndex] listed ${assets.length} photos in ${Date.now() - tl} ms`);
   const byId = new Map(assets.map((a, i) => [a.id, [a, i] as const]));
   const merged = (await mergeBackgroundResults(d, byId)).n;
   const rows = await d.getAllAsync<{ id: string; hasEmb: number }>('SELECT id, emb IS NOT NULL AS hasEmb FROM photos');
   const have = new Map(rows.map((r) => [r.id, !!r.hasEmb]));
   const live = new Set(assets.map((a) => a.id));
-  const gone = rows.filter((r) => !live.has(r.id)).map((r) => r.id);
+  const gone = limit ? [] : rows.filter((r) => !live.has(r.id)).map((r) => r.id); // a capped listing doesn't see the rest
   for (let i = 0; i < gone.length; i += 500) {
     const ids = gone.slice(i, i + 500);
     await d.runAsync(`DELETE FROM photos WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
@@ -111,28 +125,29 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
   if (bg?.state === 'running') return merged + retagged + (await follow(d, byId, onProgress));
   if (bg?.state === 'paused') return merged + retagged; // waits for Resume or the next charge
 
-  const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id)));
-  if (ClipEmbedder && bg?.canFast && todo.length >= FAST_MIN) {
+  const todo = assets.filter((a) => !have.has(a.id) || (ClipEmbedder && !have.get(a.id))).slice(0, limit ?? undefined);
+  if (ClipEmbedder && !limit && bg?.canFast && todo.length >= FAST_MIN) {
     await ClipEmbedder.scheduleBackgroundIndex(todo.map((a) => a.id), todo.map((a) => a.uri), MODEL, true);
     return merged + retagged + (await follow(d, byId, onProgress));
   }
   const t0 = Date.now();
   const infosOf = (b: typeof todo) => Promise.all(b.map((a) => MediaLibrary.getAssetInfoAsync(a.id).catch(() => null)));
-  let nextInfos = infosOf(todo.slice(0, BATCH));
+  let nextInfos = infosOf(todo.slice(0, FIRST_BATCH));
   let i = 0;
   setReading(todo.length);
-  for (; i < todo.length; i += BATCH) {
+  // a small first batch: the first scored photos (onboarding's pool, the first stories) land in ~1 s, then full batches
+  for (let n = FIRST_BATCH; i < todo.length; i += n, n = BATCH) {
     if (ClipEmbedder && AppState.currentState !== 'active') {
       const rest = todo.slice(i);
       await ClipEmbedder.scheduleBackgroundIndex(rest.map((a) => a.id), rest.map((a) => a.uri), MODEL, false);
       console.log(`[photoIndex] app left the foreground: ${rest.length} photos handed to the background worker`);
       break;
     }
-    const batch = todo.slice(i, i + BATCH);
+    const batch = todo.slice(i, i + n);
     const tb = Date.now();
     const infos = await nextInfos;
     const infoWait = Date.now() - tb;
-    nextInfos = infosOf(todo.slice(i + BATCH, i + 2 * BATCH)); // GPS + local uri of the next batch while this one embeds
+    nextInfos = infosOf(todo.slice(i + n, i + n + BATCH)); // GPS + local uri of the next batch while this one embeds
     let vecs: Float32Array | null = null;
     let concepts: { ids: number[]; scores: number[] } | null = null;
     const te = Date.now();
@@ -155,9 +170,9 @@ async function run(onProgress?: IndexProgressFn): Promise<number> {
         ]);
       }
     });
-    onProgress?.(Math.min(i + BATCH, todo.length), todo.length, batch[batch.length - 1]);
+    onProgress?.(Math.min(i + n, todo.length), todo.length, batch[batch.length - 1]);
     const per = (ms: number) => (ms / batch.length).toFixed(0);
-    console.log(`[photoIndex] ${Math.min(i + BATCH, todo.length)}/${todo.length}: ${per(Date.now() - tb)} ms/photo = info wait ${per(infoWait)} + embed+concepts ${per(tw - te)} + db ${per(Date.now() - tw)}`);
+    console.log(`[photoIndex] ${Math.min(i + n, todo.length)}/${todo.length}: ${per(Date.now() - tb)} ms/photo = info wait ${per(infoWait)} + embed+concepts ${per(tw - te)} + db ${per(Date.now() - tw)}`);
   }
   if (i) console.log(`[photoIndex] indexed ${Math.min(i, todo.length)} photos in ${Date.now() - t0} ms (${((Date.now() - t0) / Math.min(i, todo.length)).toFixed(0)} ms/photo)`);
   return merged + Math.min(i, todo.length) + retagged;

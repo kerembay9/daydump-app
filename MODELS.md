@@ -158,6 +158,9 @@ name is asked first and flies into the header (the selfie scan, `useSelfiePick`,
 pick: "That's me" flies the face into the header's avatar and shows a strip of the same person's other selfies to swap it;
 "Not me" moves to the next person. Continue saves the avatar; "Skip for now" leaves the initial letter. Continue needs a
 pick unless none was found; indexing carries on either way.
+The vision models (GPU program, CPU half, concepts head) are loaded when onboarding mounts (`ClipEmbedder.warmVision`, no photo
+access needed), and the first index batch is 32 photos, then 128, so the first scored photos show ~1-3 s after the grant. Onboarding indexes only the newest 1,280 camera photos (`capIndex`, 10 batches; the listing stops early too), so a huge library doesn't hold it up; the rest is indexed when onboarding ends. Skipped
+quietly while the vision pack hasn't landed.
 Denied: straight to the app. The slides are two taps. The notification permission is asked after onboarding, not before it.
 
 ## What the user sees, by scenario

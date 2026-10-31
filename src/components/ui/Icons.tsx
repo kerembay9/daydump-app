@@ -16,6 +16,7 @@ import Crop from 'lucide-react-native/icons/crop';
 import Download from 'lucide-react-native/icons/download';
 import GalleryHorizontal from 'lucide-react-native/icons/gallery-horizontal';
 import Heart from 'lucide-react-native/icons/heart';
+import Lock from 'lucide-react-native/icons/lock';
 import Maximize2 from 'lucide-react-native/icons/maximize-2';
 import ImageIcon from 'lucide-react-native/icons/image';
 import MessageCircle from 'lucide-react-native/icons/message-circle';
@@ -102,6 +103,7 @@ export const Icons = {
   back: lucide(ChevronLeft),
   chevron: lucide(ChevronRight),
   clock: lucide(Clock),
+  lock: lucide(Lock),
   trash: lucide(Trash),
   close: lucide(X),
   settings: lucide(Settings),

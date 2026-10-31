@@ -11,12 +11,14 @@ import { Tape } from '../../components/ui/Tape';
 import { Tap } from '../../components/ui/Tap';
 import { Icons } from '../../components/ui/Icons';
 import { useApp, useProgress } from '../../state/AppState';
+import { usePro } from '../../state/Pro';
 import { Pill } from '../../components/ui/Pill';
 import { GalleryService } from '../../services/galleryService';
 import { currentCreateDraft, receiveShared } from '../../services/dumps';
 import { monthOf, Pile, PILES } from '../../services/tidy/rules';
 import { formatBytes as bytes } from '../../components/tidy/TidyGrid';
 import { clearMoved, hasFullAccess, history, restore, scannedBefore, Session, setStoryPhotos, startScan, tidySupported, useTidy } from '../../services/tidy/scan';
+import { tr } from '../../i18n';
 
 const SHOWN: Pile[] = ['same', 'copies', 'screens', 'blurry', 'paper', 'chats', 'private'];
 const REVIEW_ONLY = new Set<Pile>(['paper', 'chats']);
@@ -65,7 +67,7 @@ function Mosaic({ uris, wide }: { uris: string[]; wide: boolean }) {
   );
 }
 
-const PHASE = { list: 'Listing your photos…', embed: 'Reading photos Discover skips', check: 'Checking', group: 'Finding same shots…' } as const;
+const phaseText = (phase: 'list' | 'embed' | 'check' | 'group') => ({ list: tr('tidy.phaseList'), embed: tr('tidy.phaseEmbed'), check: tr('tidy.phaseCheck'), group: tr('tidy.phaseGroup') }[phase]);
 
 /** Tidy (keepers): repeats and clutter in piles, each photo in one; everything removed goes to Trash, with undo and a history. */
 export default function Tidy() {
@@ -76,7 +78,11 @@ export default function Tidy() {
   const [last, setLast] = useState<Session | null>(null);
   const supported = tidySupported();
   const { stories } = useApp();
-  useEffect(() => setStoryPhotos(stories.flatMap((st) => st.picks.map((p) => p.id))), [stories]);
+  const { accessOf } = usePro();
+  useEffect(() => {
+    const ids = (open: boolean) => stories.filter((st) => (accessOf(st) === 'open') === open).flatMap((st) => st.picks.map((p) => p.id));
+    setStoryPhotos(ids(true), ids(false));
+  }, [stories, accessOf]);
   const [pickedMonth, setMonth] = useState<string | null>(null);
 
   const loadLast = useCallback(() => {
@@ -118,17 +124,17 @@ export default function Tidy() {
   const month = pickedMonth && months.some(([k]) => k === pickedMonth) ? pickedMonth : null;
   const inMonth = useCallback((ms: number) => !month || monthOf(ms) === month, [month]);
   const picked = r ? SHOWN.flatMap((k) => r.piles[k].filter((x) => x.pre && inMonth(x.p.created))) : [];
-  const header = <TopHeader title="Tidy" right={supported && access ? <IconButton label="Trash history" onPress={() => router.push('/tidy/history')}><Icons.clock size={17} /></IconButton> : null} />;
+  const header = <TopHeader title={tr('tidy.title')} right={supported && access ? <IconButton label={tr('tidy.trashHistory')} onPress={() => router.push('/tidy/history')}><Icons.clock size={17} /></IconButton> : null} />;
 
   if (!supported) return (
     <Screen>{header}
-      <Note title="Needs Android 11 or newer" body="Older Android has no Trash, so anything Tidy removed would be gone for good." />
+      <Note title={tr('tidy.unsupportedTitle')} body={tr('tidy.unsupportedBody')} />
     </Screen>
   );
   if (access === false) return (
     <Screen>{header}
-      <Note title="Tidy needs access to all your photos to count them." body="With only some photos shared, repeats and sizes would be half the story.">
-        <View style={{ alignSelf: 'flex-start' }}><Button text="Allow all photos" onPress={allowAll} /></View>
+      <Note title={tr('tidy.permissionTitle')} body={tr('tidy.permissionBody')}>
+        <View style={{ alignSelf: 'flex-start' }}><Button text={tr('tidy.allowAll')} onPress={allowAll} /></View>
       </Note>
     </Screen>
   );
@@ -137,19 +143,19 @@ export default function Tidy() {
     <Screen>
       {header}
       {s.moved ? (
-        <Note title={`Moved ${n(s.moved.n)} to Trash`} body={`${bytes(s.moved.bytes)} back · Space comes back when Trash empties.`}>
+        <Note title={tr('tidy.movedToTrash', { count: n(s.moved.n) })} body={tr('tidy.movedBackInfo', { bytes: bytes(s.moved.bytes) })}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button primary={false} text="Undo" label="Undo the move to Trash" onPress={() => restore(s.moved!.session)} />
-            <Button primary={false} text="Done" onPress={clearMoved} />
+            <Button primary={false} text={tr('tidy.undo')} label={tr('tidy.undoLabel')} onPress={() => restore(s.moved!.session)} />
+            <Button primary={false} text={tr('tidy.done')} onPress={clearMoved} />
           </View>
           {s.moved.keepers.length ? (
             <View style={{ gap: 8, marginTop: 6 }}>
               <Text style={[ui(12.5, 500), { color: t.ink }]}>
-                Kept {s.moved.keepers.length} of {s.moved.from}. Start a dump from these keepers?
+                {tr('tidy.keptKeepersPrompt', { count: s.moved.keepers.length, total: s.moved.from })}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button text="Start a dump" onPress={() => toDump('new')} />
-                {draft ? <Button primary={false} text="Add to my draft" onPress={() => toDump('add')} /> : null}
+                <Button text={tr('tidy.startDump')} onPress={() => toDump('new')} />
+                {draft ? <Button primary={false} text={tr('tidy.addToDraft')} onPress={() => toDump('add')} /> : null}
               </View>
             </View>
           ) : null}
@@ -157,19 +163,19 @@ export default function Tidy() {
       ) : null}
 
       {s.phase === 'idle' || s.phase === 'error' ? (
-        <Note title={s.phase === 'error' ? 'The scan stopped' : 'Find repeats and clutter.'}
-          body={s.phase === 'error' ? 'Something went wrong reading your photos. Nothing was moved.' : 'Nothing leaves your device. Anything you remove goes to Trash first, and you can undo it.'}>
+        <Note title={s.phase === 'error' ? tr('tidy.scanStoppedTitle') : tr('tidy.findRepeatsTitle')}
+          body={s.phase === 'error' ? tr('tidy.scanStoppedBody') : tr('tidy.findRepeatsBody')}>
           <View style={{ alignSelf: 'flex-start' }}>
-            <Button text={s.phase === 'error' ? 'Try again' : 'Start'} label={s.phase === 'error' ? 'Try again' : 'Start Tidy'} onPress={() => { if (!indexing) startScan(); }} />
+            <Button text={s.phase === 'error' ? tr('tidy.tryAgain') : tr('tidy.start')} label={s.phase === 'error' ? tr('tidy.tryAgain') : tr('tidy.startTidy')} onPress={() => { if (!indexing) startScan(); }} />
           </View>
-          {indexing ? <Text style={[ui(11), { color: t.inkMuted }]}>Waiting for your photos to finish indexing.</Text> : null}
+          {indexing ? <Text style={[ui(11), { color: t.inkMuted }]}>{tr('tidy.waitingIndexing')}</Text> : null}
         </Note>
       ) : s.phase !== 'done' ? (
         <FrameCard radius={16} padding={16} style={{ gap: 6, marginTop: 8 }}>
-          <Text style={[display(19, 1.12), { color: t.ink }]}>{r ? 'Still scanning…' : 'Scanning'}</Text>
+          <Text style={[display(19, 1.12), { color: t.ink }]}>{r ? tr('tidy.stillScanning') : tr('tidy.scanning')}</Text>
           <Text style={[ui(12), { color: t.inkMuted }]}>
-            {s.phase === 'list' || s.phase === 'group' ? PHASE[s.phase]
-              : `${PHASE[s.phase]}${s.at && s.phase === 'check' ? ` ${new Date(s.at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}` : ''} · ${n(s.done)} of ${n(s.total)}`}
+            {s.phase === 'list' || s.phase === 'group' ? phaseText(s.phase)
+              : `${phaseText(s.phase)}${s.at && s.phase === 'check' ? ` ${new Date(s.at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}` : ''} · ${tr('tidy.doneOfTotal', { done: n(s.done), total: n(s.total) })}`}
           </Text>
           <View style={{ height: 4, borderRadius: 2, backgroundColor: t.borderStrong, overflow: 'hidden' }}>
             <View style={{ width: `${s.total ? (100 * s.done) / s.total : 0}%`, height: 4, backgroundColor: t.ink }} />
@@ -180,11 +186,11 @@ export default function Tidy() {
       {r && s.phase === 'done' ? (
         <>
           <Text style={[ui(12), { color: t.inkMuted, marginTop: 2 }]}>
-            {picked.length ? `${n(picked.length)} photos could go · about ${bytes(picked.reduce((a, x) => a + x.p.size, 0))}` : 'Nothing picked to clear right now'}
+            {picked.length ? tr('tidy.couldGo', { photos: n(picked.length), bytes: bytes(picked.reduce((a, x) => a + x.p.size, 0)) }) : tr('tidy.nothingPicked')}
           </Text>
           {months.length > 1 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}>
-              <Pill label="All months" on={!month} onPress={() => setMonth(null)} height={30} size={11.5} />
+              <Pill label={tr('tidy.allMonths')} on={!month} onPress={() => setMonth(null)} height={30} size={11.5} />
               {months.map(([k, left]) => (
                 <Pill key={k} label={left ? `${monthLabel(k)} · ${n(left)}` : monthLabel(k)} on={month === k} onPress={() => setMonth(month === k ? null : k)} height={30} size={11.5}
                   left={left ? undefined : <Icons.check size={12} color={month === k ? t.bgScreen : t.ink} />} />
@@ -198,9 +204,9 @@ export default function Tidy() {
               const inSets = r.sets.filter((st) => inMonth(st.photos[st.keeper].created));
               const sets = inSets.length;
               const mb = bytes(items.filter((x) => k === 'same' ? x.pre : true).reduce((a, x) => a + x.p.size, 0));
-              const line = k === 'same' ? `${n(sets)} set${sets === 1 ? '' : 's'} · ${n(items.length)} photos · ${mb}`
-                : k === 'private' ? `${n(items.length)} · Check these yourself.`
-                : `${n(items.length)} · ${mb}${REVIEW_ONLY.has(k) ? ' · review only' : ''}`;
+              const line = k === 'same' ? tr('tidy.sameLine', { sets: tr('create.setsCount', { count: sets }), photos: n(items.length), size: mb })
+                : k === 'private' ? tr('tidy.privateLine', { count: n(items.length) })
+                : `${n(items.length)} · ${mb}${REVIEW_ONLY.has(k) ? ` · ${tr('tidy.reviewOnly')}` : ''}`;
               const wide = k === 'same';
               return (
                 <Tap key={k} accessibilityRole="button" accessibilityLabel={`${PILES[k].title}, ${line}`}
@@ -214,13 +220,13 @@ export default function Tidy() {
             })}
           </View>
           <Tap onPress={startScan} accessibilityRole="button" style={{ alignSelf: 'center', padding: 10 }}>
-            <Text style={[ui(11, 600), { color: t.inkMuted }]}>Scan again</Text>
+            <Text style={[ui(11, 600), { color: t.inkMuted }]}>{tr('tidy.scanAgain')}</Text>
           </Tap>
         </>
       ) : null}
       {last ? (
         <Text style={[ui(11), { color: t.inkMuted, textAlign: 'center', marginTop: 8 }]}>
-          Last tidy: {day(last.session)} · {n(last.n)} photos cleared
+          {tr('tidy.lastTidyInfo', { date: day(last.session), count: n(last.n) })}
         </Text>
       ) : null}
     </Screen>

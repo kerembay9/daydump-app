@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Aizvērt",
+    "back": "Atpakaļ",
+    "termsOfService": "Pakalpojuma sniegšanas noteikumi",
+    "privacyPolicy": "Privātuma politika"
+  },
+  "tabs": {
+    "discover": "Atklāt",
+    "create": "Izveidot",
+    "tidy": "Sakārtot",
+    "library": "Bibliotēka"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Foto izlases bez pūlēm",
+      "title": "Pārvērtiet galerijas haosu izlasēs",
+      "description": "Aizmirstiet par tūkstošiem fotoattēlu pārlūkošanu. PicDump izvēlas jūsu dienu un ceļojumu labākos kadrus, sakārtotus patīkamā ritmā.",
+      "point1": "Filmu stili, apmales un IG / TikTok izmēri",
+      "point2": "Kolāžu izkārtojumi ar vienu vilkšanu"
+    },
+    "privacy": {
+      "badge": "Atlase ierīcē",
+      "title": "Atlasīts jūsu tālrunī, nevis mākonī",
+      "description": "Fotoattēlu atlase, meklēšana un izlašu veidošana notiek jūsu tālrunī. PicDump nekad neaugšupielādē jūsu fotoattēlus atlasei.",
+      "point1": "Piekļuve fotoattēliem palīdz atrast spilgtākos mirkļus"
+    },
+    "allowContinue": "Atļaut piekļuvi fotoattēliem un turpināt",
+    "continue": "Turpināt",
+    "page": "{{n}}. no {{total}} lpp.",
+    "notifPreview": "Paziņojuma priekšskatījums",
+    "notifNow": "· tikko",
+    "notifTitle": "Jūsu PicDump ir gatavs 🎞️",
+    "notifBody": "Šodienas labākie foto apkopoti vienā izlasē. Apskatiet pirms miega.",
+    "notifyHeading": "Jūsu diena plkst. 20:00, jūsu nedēļa svētdienā",
+    "notifyBody": "Paziņojums plkst. 20:00, kad šodienas izlase ir gatava, un svētdienas pusdienlaikā ar nedēļas kopsavilkumu.",
+    "turnOn": "Ieslēgt",
+    "notNow": "Ne tagad"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Katra izlase jūsu galerijā.",
+      "sub": "Bezmaksas versijā iekļauti kopsavilkumi un viena izlase nedēļā. Pro atver visas."
+    },
+    "tidy": {
+      "heading": "Atbrīvojieties no nekārtības.",
+      "sub": "Bezmaksas versija atrod dublikātus un izplūdušos kadrus. Pro tos pārvieto uz miskasti ar vienu pieskārienu."
+    },
+    "finish": {
+      "heading": "Saglabājiet filmas noskaņu.",
+      "sub": "Original, Warm 35mm un Adjust ir bez maksas. Pro eksportē visus stilus un tekstūras."
+    },
+    "search": {
+      "heading": "Meklējiet savā galerijā.",
+      "sub": "Atrodiet vietu, mēnesi vai priekšmetu ar vārdiem. Meklēšana ir pieejama ar Pro."
+    },
+    "found": {
+      "heading": {
+        "one": "Mēs atradām {{count}} izlasi jūsu galerijā.",
+        "other": "Mēs atradām {{count}} izlases jūsu galerijā."
+      },
+      "sub": "{{titles}}. Pro atver tās visas.",
+      "subMore": "{{titles}} un citas. Pro atver tās visas."
+    },
+    "welcome": "Laipni lūdzam PicDump Pro!",
+    "purchaseNotActive": "Pirkums tika veikts, taču Pro vēl nav aktivizēts. Pieskarieties vienumam Atjaunot pirkumus.",
+    "restored": "Pirkumi atjaunoti. Laipni lūdzam atpakaļ Pro!",
+    "noSubscription": "Nav atrasts aktīvs PicDump Pro abonements.",
+    "close": "Aizvērt",
+    "feature": {
+      "dumps": {
+        "title": "Visas izlases ir atbloķētas",
+        "sub": "Katrs ceļojums un stāsts, ko atrod sadaļa Atklāt, nevis tikai viena izlase nedēļā."
+      },
+      "search": {
+        "title": "Meklējiet savā galerijā",
+        "sub": "Atrodiet vietu, mēnesi vai priekšmetu, ievadot atslēgvārdus."
+      },
+      "looks": {
+        "title": "Visi filmu stili",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, kā arī graudainums, izbalēšana un vinjete."
+      },
+      "tidy": {
+        "title": "Dzēsiet dublikātus un nekārtību",
+        "sub": "Pārvietojiet dublikātus, izplūdušus foto un ekrānuzņēmumus uz Miskasti vienā reizē."
+      },
+      "yours": {
+        "title": "Jūsu izlase, jūsu stils",
+        "sub": "Bez PicDump noslēguma slaida un 4 līdz 20 fotoattēli katrā izlasē."
+      }
+    },
+    "plansFailed": "Neizdevās ielādēt plānus. Pārbaudiet savienojumu un mēģiniet vēlreiz.",
+    "startTrial": "Sākt {{trial}}",
+    "continue": "Turpināt",
+    "restore": "Atjaunot pirkumus",
+    "trialThen": "Izmēģinājuma laikā bez maksas, pēc tam {{price}}. ",
+    "disclosure": "Maksājums tiek iekasēts no jūsu veikala konta. Abonementi tiek automātiski atjaunoti, ja vien tie netiek atcelti vismaz 24 stundas pirms pašreizējā perioda beigām."
+  },
+  "profile": {
+    "title": "Profils un iestatījumi",
+    "changePhoto": "Mainīt profila foto",
+    "namePlaceholder": "Jūsu vārds",
+    "handlePlaceholder": "lietotajvards",
+    "theme": {
+      "system": "Sistēmas",
+      "auto": "Automātiska",
+      "cashmere": "Cashmere",
+      "light": "Gaiša",
+      "espresso": "Espresso",
+      "dark": "Tumša"
+    },
+    "reindex": {
+      "title": "Pārindeksēt bibliotēku?",
+      "body": "PicDump vēlreiz nolasīs katru fotoattēlu. Tas aizņems dažas minūtes un patērēs akumulatoru. Jūsu izlases Bibliotēkā tiks saglabātas.",
+      "action": "Pārindeksēt"
+    },
+    "dumpPicks": {
+      "title": "Izlašu izvēles",
+      "photosPerDump": "Fotoattēli vienā izlasē",
+      "photosPerDumpSub": "Sadaļa Atklāt izvēlas kadru skaitu šajā diapazonā, visbiežāk vidējo vērtību.",
+      "fewest": "Vismazāk fotoattēlu",
+      "to": "līdz",
+      "most": "Visvairāk fotoattēlu",
+      "hideSensitive": "Paslēpt sensitīvus foto",
+      "hideSensitiveSub": "Personu apliecinoši dokumenti, bankas kartes un medicīnas dokumenti nekad neparādīsies izlasēs.",
+      "screenshots": "Iekļaut ekrānuzņēmumus",
+      "screenshotsSub": "Ekrānuzņēmumi var tikt iekļauti izlasēs.",
+      "recap": "Kopsavilkums",
+      "recapSub": "Šodienas izlase plkst. 20:00, nedēļas kopsavilkums svētdienas pusdienlaikā"
+    },
+    "export": {
+      "title": "Eksports un publicēšana",
+      "note": "Jaunās izlases tiks veidotas ar šeit iestatīto izmēru un kvalitāti.",
+      "postSize": "Noklusējuma ieraksta izmērs",
+      "quality": "Noklusējuma eksporta kvalitāte",
+      "hd": "HD (2160 px)",
+      "standard": "Standarta (1080 px)",
+      "saveOnPost": "Publicējot saglabāt arī galerijā",
+      "saveOnPostSub": "Saglabā slaidu kopiju PicDump albumā"
+    },
+    "appearance": {
+      "title": "Izskats un tēma"
+    },
+    "library": {
+      "title": "Foto bibliotēka un meklēšana",
+      "access": "Piekļuve",
+      "openSettings": "Atvērt iestatījumus"
+    },
+    "about": {
+      "title": "Privātums un informācija",
+      "onDevice": "Viss notiek jūsu tālrunī",
+      "onDeviceSub": "Kā PicDump atlasa fotoattēlus, tos nekur neaugšupielādējot",
+      "contact": "Kontakti",
+      "noMail": "E-pasta lietotne nav atrasta. Rakstiet uz info@horizonzeta.com",
+      "version": "Versija"
+    }
+  }
+}

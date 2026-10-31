@@ -18,7 +18,7 @@ import { DebugStoriesModal } from '../components/DebugStoriesModal';
 import { ModelBench } from '../components/ModelBench';
 import { LegalDocType, LegalModal } from '../components/LegalModal';
 import { PrivacyModal } from '../components/OnboardingModal';
-import { PaywallModal } from '../components/PaywallModal';
+import { usePro } from '../state/Pro';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { useTheme, ThemeMode, ThemeNow } from '../theme/ThemeProvider';
 import { useApp, useProgress } from '../state/AppState';
@@ -29,14 +29,17 @@ import { DEV_MODEL, resetIndex } from '../services/index/photoIndex';
 import { NotificationService } from '../services/notificationService';
 import { AppIcon, ClipEmbedder, QueryTranslate } from '../../modules/clip-embedder';
 import { langName, searchLangs, setSearchLangs, syncLangs, useLangStates } from '../services/index/queryLang';
-import { cycleFakeSubscription, getSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { cycleFakeSubscription, MANAGE_URL, Sub } from '../services/subscription';
+import { daysLeft, NO_UNLOCKS, UNLOCK_EVERY } from '../services/unlocks';
+import { brand } from '../theme/tokens';
+import { tr } from '../i18n';
 
 /** Default Post Size tap order (the mock's cycleDefaultRatio). */
 const RATIO_CYCLE = ['4:5', '9:16', '1:1', '3:4'];
 const THEMES: { mode: ThemeMode; name: string; sub: string; swatch: string[] }[] = [
-  { mode: 'system', name: 'System', sub: 'Auto', swatch: ['#EFE6DA', '#241D14'] },
-  { mode: 'light', name: 'Cashmere', sub: 'Light', swatch: ['#EFE6DA'] },
-  { mode: 'dark', name: 'Espresso', sub: 'Dark', swatch: ['#241D14'] },
+  { mode: 'system', name: 'profile.theme.system', sub: 'profile.theme.auto', swatch: [brand.paper, brand.ristretto.tile] },
+  { mode: 'light', name: 'profile.theme.cashmere', sub: 'profile.theme.light', swatch: [brand.paper] },
+  { mode: 'dark', name: 'profile.theme.espresso', sub: 'profile.theme.dark', swatch: [brand.ristretto.tile] },
 ];
 const DEV_TAPS = 5;
 const toast = (m: string) => (Platform.OS === 'android' ? ToastAndroid.show(m, ToastAndroid.SHORT) : console.log('[profile]', m));
@@ -51,6 +54,10 @@ export default function Profile() {
 function ProfileBody() {
   const { t, mode, setMode } = useTheme();
   const app = useApp();
+  const pro = usePro();
+  const sub = pro.sub;
+  // when this screen opened: the dev unlock row's day count can't call Date.now() in render
+  const [openedAt] = useState(Date.now);
   const insets = useSafeAreaInsets();
   const [p, setP] = useState<ProfileT>(profileNow);
   const [access, setAccess] = useState<'all' | 'limited' | 'none' | null>(null);
@@ -60,9 +67,7 @@ function ProfileBody() {
   const [bench, setBench] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [avatarSheet, setAvatarSheet] = useState(false);
-  const [sub, setSub] = useState<Sub | null>(null);
   const [icon, setIcon] = useState(() => AppIcon?.get());
-  const [paywall, setPaywall] = useState(false);
   const taps = useRef<number[]>([]);
 
   // Leaving while a field is still focused: Android may not fire onEndEditing, so save typed text on the way out.
@@ -76,7 +81,6 @@ function ProfileBody() {
     };
     MediaLibrary.getPermissionsAsync(false, ['photo']).then((r) => setAccess(r.accessPrivileges ?? (r.granted ? 'all' : 'none')), () => setAccess(null));
     NotificationService.isEnabled().then(setRecap);
-    getSubscription().then(setSub);
     return flushTyped;
   }, []));
 
@@ -110,7 +114,7 @@ function ProfileBody() {
     const want = !recap;
     setRecap(want);
     const ok = await NotificationService.setEnabled(want);
-    if (!ok) { setRecap(false); toast('Notifications are off for PicDump in Android settings'); }
+    if (!ok) { setRecap(false); toast(`Notifications are off for PicDump in ${Platform.OS === 'ios' ? 'Settings' : 'Android settings'}`); }
   };
 
   const toggleStories = (k: 'hideSensitive' | 'screenshots') => () => {
@@ -118,17 +122,18 @@ function ProfileBody() {
     setProfile({ [k]: !p[k] }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
-  // Discover's photos per dump: min 4..max, max min..20
+  // Discover's photos per dump: min 4..max, max min..20. Pro; a lapsed user keeps the range they set.
   const setSlides = (k: 'slidesMin' | 'slidesMax', v: number) => {
+    if (!pro.isPro) return pro.openPaywall('slides-per-dump');
     setP((x) => ({ ...x, [k]: v }));
     setProfile({ [k]: v }).then(app.rebuildStories, (e) => console.warn('[profile] save failed:', e));
   };
 
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const reindex = () => setConfirm({
-    title: 'Reindex your library?',
-    body: 'PicDump will read every photo again. This takes a few minutes and some battery. Your dumps in Library are kept.',
-    action: 'Reindex',
+    title: tr('profile.reindex.title'),
+    body: tr('profile.reindex.body'),
+    action: tr('profile.reindex.action'),
     onConfirm: () => { resetIndex().then(app.refreshStories, (e) => console.warn('[profile] reindex failed:', e)); },
   });
 
@@ -149,14 +154,14 @@ function ProfileBody() {
   return (
     <Screen keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
       <View style={{ paddingTop: 2, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <IconButton label="Back" onPress={back}><Icons.back size={16} /></IconButton>
-        <Text style={[display(20), { color: t.ink }]}>Profile &amp; Settings</Text>
+        <IconButton label={tr('common.back')} onPress={back}><Icons.back size={16} /></IconButton>
+        <Text style={[display(20), { color: t.ink }]}>{tr('profile.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <FrameCard radius={20} padding={12} style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Tap onPress={() => setAvatarSheet(true)} accessibilityRole="button" accessibilityLabel="Change profile photo">
+          <Tap onPress={() => setAvatarSheet(true)} accessibilityRole="button" accessibilityLabel={tr('profile.changePhoto')}>
             <FrameCard radius={27} style={{ width: 54, height: 54, padding: 2 }}>
               <View style={{ flex: 1, borderRadius: 25, overflow: 'hidden', backgroundColor: t.accentFab, alignItems: 'center', justifyContent: 'center' }}>
                 {p.avatar ? <Image source={{ uri: p.avatar }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -170,41 +175,41 @@ function ProfileBody() {
           </Tap>
           <View style={{ flex: 1, minWidth: 0 }}>
             <TextInput value={p.name} onChangeText={(name) => setP((x) => ({ ...x, name }))} onEndEditing={() => save({ name: p.name.trim() })}
-              placeholder="Your name" placeholderTextColor={t.inkMuted} returnKeyType="done" maxLength={40}
+              placeholder={tr('profile.namePlaceholder')} placeholderTextColor={t.inkMuted} returnKeyType="done" maxLength={40}
               style={[display(20), { color: t.ink, padding: 0 }]} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
               <Text style={[ui(11.5, 500), { color: t.inkMuted }]}>@</Text>
               <TextInput value={p.handle} onChangeText={(h) => setP((x) => ({ ...x, handle: h.replace(/[@\s]/g, '') }))} onEndEditing={() => save({ handle: p.handle })}
-                placeholder="your_account" placeholderTextColor={t.inkMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="done" maxLength={30}
+                placeholder={tr('profile.handlePlaceholder')} placeholderTextColor={t.inkMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="done" maxLength={30}
                 style={[ui(11.5, 500), { color: t.inkMuted, padding: 0, flex: 1 }]} />
             </View>
           </View>
         </View>
       </FrameCard>
 
-      <SubCard sub={sub} onGoPro={() => setPaywall(true)} />
+      <SubCard sub={sub} onGoPro={() => pro.openPaywall('profile')} />
 
-      <Section title="Dump picks">
-        <Row label="Photos per dump" sub="Discover picks a count in this range, mostly from the middle." right={
+      <Section title={tr('profile.dumpPicks.title')}>
+        <Row label={tr('profile.dumpPicks.photosPerDump')} sub={tr('profile.dumpPicks.photosPerDumpSub')} right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Stepper label="Fewest photos" value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
-            <Text style={[ui(11), { color: t.inkMuted }]}>to</Text>
-            <Stepper label="Most photos" value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
+            <Stepper label={tr('profile.dumpPicks.fewest')} value={p.slidesMin} lo={4} hi={p.slidesMax} onChange={(v) => setSlides('slidesMin', v)} />
+            <Text style={[ui(11), { color: t.inkMuted }]}>{tr('profile.dumpPicks.to')}</Text>
+            <Stepper label={tr('profile.dumpPicks.most')} value={p.slidesMax} lo={p.slidesMin} hi={20} onChange={(v) => setSlides('slidesMax', v)} />
           </View>} />
-        <Row label="Hide sensitive photos" sub="IDs, bank cards and medical papers never show up in dumps." onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
-        <Row label="Include screenshots" sub="Screenshots can show up in dumps." onPress={toggleStories('screenshots')} toggle={p.screenshots} />
-        <Row label="Recap" sub="Today’s dump at 8 PM, your week on Sunday at noon" onPress={toggleRecap} toggle={recap} last />
+        <Row label={tr('profile.dumpPicks.hideSensitive')} sub={tr('profile.dumpPicks.hideSensitiveSub')} onPress={toggleStories('hideSensitive')} toggle={p.hideSensitive} />
+        <Row label={tr('profile.dumpPicks.screenshots')} sub={tr('profile.dumpPicks.screenshotsSub')} onPress={toggleStories('screenshots')} toggle={p.screenshots} />
+        <Row label={tr('profile.dumpPicks.recap')} sub={tr('profile.dumpPicks.recapSub')} onPress={toggleRecap} toggle={recap} last />
       </Section>
 
-      <Section title="Export & posting" note="New dumps start with the size and quality set here.">
-        <Row label="Default Post Size" onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
+      <Section title={tr('profile.export.title')} note={tr('profile.export.note')}>
+        <Row label={tr('profile.export.postSize')} onPress={() => save({ ratio: RATIO_CYCLE[(RATIO_CYCLE.indexOf(ratio.key) + 1) % RATIO_CYCLE.length] })}
           right={<View style={{ backgroundColor: t.ink, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={[ui(10.5, 600), { color: t.bgScreen }]}>{`${ratio.key} (${ratio.sub})`}</Text></View>} />
-        <Row label="Default Export Quality" onPress={() => save({ exportHD: !p.exportHD })}
-          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? 'HD (2160 px)' : 'Standard (1080 px)'}</Text>} />
-        <Row label="Posting also saves to gallery" sub="Keeps a copy of the slides in the PicDump album" onPress={() => save({ saveOnPost: !p.saveOnPost })} toggle={p.saveOnPost} last />
+        <Row label={tr('profile.export.quality')} onPress={() => save({ exportHD: !p.exportHD })}
+          right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{p.exportHD ? tr('profile.export.hd') : tr('profile.export.standard')}</Text>} />
+        <Row label={tr('profile.export.saveOnPost')} sub={tr('profile.export.saveOnPostSub')} onPress={() => save({ saveOnPost: !p.saveOnPost })} toggle={p.saveOnPost} last />
       </Section>
 
-      <Section title="Appearance & theme" pad>
+      <Section title={tr('profile.appearance.title')} pad>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {THEMES.map((th) => {
             const on = mode === th.mode;
@@ -214,17 +219,17 @@ function ProfileBody() {
                 <View style={{ width: 14, height: 14, borderRadius: 7, overflow: 'hidden', flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }}>
                   {th.swatch.map((c) => <View key={c} style={{ flex: 1, backgroundColor: c }} />)}
                 </View>
-                <Text style={[ui(10.5, 600), { color: on ? t.bgScreen : t.ink }]}>{th.name}</Text>
-                <Text style={[ui(9), { color: on ? t.bgScreen : t.inkMuted, opacity: on ? 0.75 : 1 }]}>{th.sub}</Text>
+                <Text style={[ui(10.5, 600), { color: on ? t.bgScreen : t.ink }]}>{tr(th.name)}</Text>
+                <Text style={[ui(9), { color: on ? t.bgScreen : t.inkMuted, opacity: on ? 0.75 : 1 }]}>{tr(th.sub)}</Text>
               </Tap>
             );
           })}
         </View>
       </Section>
 
-      <Section title="Photo library & search">
-        <Row label="Access" right={access && access !== 'all'
-          ? <SmallBtn label="Open settings" onPress={() => Linking.openSettings()} />
+      <Section title={tr('profile.library.title')}>
+        <Row label={tr('profile.library.access')} right={access && access !== 'all'
+          ? <SmallBtn label={tr('profile.library.openSettings')} onPress={() => Linking.openSettings()} />
           : <Text style={[ui(11, 500), { color: t.inkMuted }]}>{accessLine}</Text>}
           sub={access && access !== 'all' ? accessLine : undefined} />
         <IndexRow onReindex={reindex} last={!QueryTranslate} />
@@ -234,12 +239,12 @@ function ProfileBody() {
         }} />}
       </Section>
 
-      <Section title="Privacy & about">
-        <Row label="Everything happens on your phone" sub="How PicDump picks photos without uploading them" onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Privacy Policy" onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Terms of Service" onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-        <Row label="Contact" onPress={() => Linking.openURL('mailto:support@picdump.app?subject=PicDump').catch(() => toast('No mail app found. Write to support@picdump.app'))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>support@picdump.app</Text>} />
-        <Row label="Version" sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
+      <Section title={tr('profile.about.title')}>
+        <Row label={tr('profile.about.onDevice')} sub={tr('profile.about.onDeviceSub')} onPress={() => setPrivacy(true)} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('common.privacyPolicy')} onPress={() => setLegal('privacy')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('common.termsOfService')} onPress={() => setLegal('terms')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+        <Row label={tr('profile.about.contact')} onPress={() => Linking.openURL('mailto:info@horizonzeta.com?subject=PicDump').catch(() => toast(tr('profile.about.noMail')))} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>info@horizonzeta.com</Text>} />
+        <Row label={tr('profile.about.version')} sub={devHint || undefined} onPress={__DEV__ ? versionTap : undefined} right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{Constants.expoConfig?.version ?? '–'}</Text>} last />
       </Section>
 
       {__DEV__ && p.dev && (
@@ -251,7 +256,10 @@ function ProfileBody() {
           <Row label="Selfie experiment" onPress={() => router.push('/selfie')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="People experiment" onPress={() => router.push('/people')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
           <Row label="Today tags" sub="The Today card's checklist on one day's photos, with every score" onPress={() => router.push('/today-tags')} right={<Icons.chevron size={14} color={t.inkMuted} />} />
-          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(setSub)} />}
+          {__DEV__ && <Row label="Fake Pro subscription" sub={sub ? `${sub.plan}, ${sub.renews ? 'renewing' : 'cancelled'}` : 'Off'} onPress={() => cycleFakeSubscription(sub).then(pro.refresh)} />}
+          <Row label="Free unlock" sub={`${pro.unlocks.ids.length} unlocked · ${daysLeft(pro.unlocks, openedAt) ? `next in ${daysLeft(pro.unlocks, openedAt)} days` : 'one free now'}. Tap to reset`}
+            onPress={() => pro.setUnlocks(NO_UNLOCKS)} />
+          <Row label="Pretend 7 days passed" sub="Moves the last free unlock a week back." onPress={() => pro.setUnlocks({ ...pro.unlocks, lastAt: pro.unlocks.lastAt == null ? null : pro.unlocks.lastAt - UNLOCK_EVERY })} />
           <Row label="Send 8 PM recap now" sub="No dump today yet: uses the top story's cover" onPress={() => {
             const cover = (app.stories.find((s) => s.kind === 'today') ?? app.stories[0])?.picks[0]?.uri;
             if (cover) ClipEmbedder?.setRecapCover(cover);
@@ -263,6 +271,7 @@ function ProfileBody() {
             NotificationService.sendTestNotification(true).catch((e) => toast(e.message));
           }} />
           <Row label="Show onboarding" onPress={app.showOnboarding} right={<Icons.chevron size={14} color={t.inkMuted} />} />
+          <Row label="Onboarding every launch" sub="Opens onboarding on every app start, as on a first run." onPress={() => save({ onboardingEveryLaunch: !p.onboardingEveryLaunch })} toggle={p.onboardingEveryLaunch} />
           <Row label="Bands" sub="Masking tape on Discover and onboarding. Tap to switch" onPress={() => save({ bands: BANDS[(BANDS.indexOf(p.bands) + 1) % BANDS.length] })}
             right={<Text style={[ui(11, 500), { color: t.inkMuted }]}>{BAND_NAMES[p.bands]}</Text>} />
           <Row label="Paper grain" sub="Grainy paper texture behind Discover." onPress={() => save({ paper: !p.paper })} toggle={p.paper} />
@@ -278,7 +287,6 @@ function ProfileBody() {
       <PrivacyModal visible={privacy} onClose={() => setPrivacy(false)} />
       <AvatarSheet visible={avatarSheet} onClose={() => setAvatarSheet(false)} hasAvatar={!!p.avatar} onUse={setAvatarFrom} onGallery={pickAvatar}
         onRemove={() => { dropAvatarFile(p.avatar); save({ avatar: '' }); }} />
-      <PaywallModal visible={paywall} onClose={() => setPaywall(false)} onPurchased={() => { getSubscription().then(setSub); }} />
       <LegalModal visible={legal != null} type={legal ?? 'terms'} onClose={() => setLegal(null)} />
       <DebugStoriesModal visible={debug} onClose={() => setDebug(false)} onResetIndex={app.refreshStories} />
       <BenchModal visible={bench} onClose={() => setBench(false)} />
@@ -318,7 +326,7 @@ function SubCard({ sub, onGoPro }: { sub: Sub | null; onGoPro: () => void }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[display(17), { color: t.ink }]}>PicDump Pro</Text>
         <Text style={[ui(10.5), { color: t.inkMuted, marginTop: 1 }]}>
-          {!sub ? 'Unlimited dumps, Ultra HD 2160 px exports & more.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
+          {!sub ? 'Every dump, search, all looks and texture, Tidy and no end slide.' : `${sub.plan} · ${sub.renews ? `renews ${date(sub.until)}` : `ends ${date(sub.until)}, won’t renew`}`}
         </Text>
       </View>
       {sub ? <SmallBtn label="Manage" onPress={() => Linking.openURL(MANAGE_URL).catch(() => toast('Couldn’t open the store'))} />
@@ -427,14 +435,14 @@ function Stepper({ label: l, value, lo, hi, onChange }: { label: string; value: 
     return (
       <Tap onPress={off ? undefined : () => onChange(value + d)} accessibilityRole="button" accessibilityLabel={`${name} ${l.toLowerCase()}`} accessibilityState={{ disabled: off }} hitSlop={6}
         style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.borderStrong, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
-        <Text style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
+        <Text maxFontSizeMultiplier={1} style={[ui(13, 600), { color: t.ink, lineHeight: 15 }]}>{d < 0 ? '−' : '+'}</Text>
       </Tap>
     );
   };
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessible={false}>
       {step(-1, 'Lower')}
-      <Text accessibilityLabel={`${l}, ${value}`} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
+      <Text accessibilityLabel={`${l}, ${value}`} maxFontSizeMultiplier={1.3} style={[ui(11, 700), { color: t.ink, minWidth: 16, textAlign: 'center' }]}>{value}</Text>
       {step(1, 'Raise')}
     </View>
   );

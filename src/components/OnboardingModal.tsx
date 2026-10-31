@@ -22,27 +22,28 @@ import { useSelfiePick } from './SelfieFinder';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { useModels } from '../state/models';
 import { NotificationService } from '../services/notificationService';
+import { tr } from '../i18n';
 
 type Slide = { id: 'hook' | 'privacy'; badge: string; title: string; description: string; points?: { icon: LucideIcon; text: string }[] };
 
 const SLIDES: Slide[] = [
   {
     id: 'hook',
-    badge: 'Effortless photo dumps',
-    title: 'Turn camera roll chaos into dumps',
-    description: 'Say goodbye to scrolling through thousands of shots. PicDump picks the best photos of your days and trips, paced with flow.',
+    badge: 'onboarding.hook.badge',
+    title: 'onboarding.hook.title',
+    description: 'onboarding.hook.description',
     points: [
-      { icon: Film, text: 'Film looks, borders and IG / TikTok sizes' },
-      { icon: Layers, text: 'Collage layouts, one swipe at a time' },
+      { icon: Film, text: 'onboarding.hook.point1' },
+      { icon: Layers, text: 'onboarding.hook.point2' },
     ],
   },
   {
     id: 'privacy',
-    badge: 'On-device curation',
-    title: 'Picked on your phone, not in the cloud',
-    description: 'Photo picks, search and dumps run on your phone. PicDump does not upload your photos to curate them.',
+    badge: 'onboarding.privacy.badge',
+    title: 'onboarding.privacy.title',
+    description: 'onboarding.privacy.description',
     points: [
-      { icon: ImageIcon, text: 'Photo access lets it find your standout moments' },
+      { icon: ImageIcon, text: 'onboarding.privacy.point1' },
     ],
   },
 ];
@@ -51,13 +52,14 @@ const SLIDES: Slide[] = [
  * First-run slides in the app's theme. The last one (privacy) asks for photo access; with it, indexing starts (onStart) and the
  * recap notification's ask shows (NotifyStep), then the profile step (ProfileStep): pages 3 and 4 of the same dots, slid in (they
  * read the photos, so the pager can't reach them before the grant). There is no paywall step. onFinish(started): whether onStart already ran.
+ * from 'notify': the new onboarding screens (app/onboarding) came first and asked for photos; this carries on from the recap ask until their later phases land.
  */
-export function OnboardingModal({ visible, onStart, onFinish }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void }) {
+export function OnboardingModal({ visible, onStart, onFinish, from = 'slides' }: { visible: boolean; onStart: () => Promise<void>; onFinish: (started: boolean) => void; from?: 'slides' | 'notify' }) {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
-  const [step, setStep] = useState<'slides' | 'notify' | 'profile'>('slides'); // notify + profile: after the photo grant
+  const [step, setStep] = useState<'slides' | 'notify' | 'profile'>(from); // notify + profile: after the photo grant (from: the route-group screens already asked)
   const scroll = useRef<ScrollView>(null);
   const last = page === SLIDES.length - 1;
   // the selfie finder's models load while the slides are read
@@ -126,7 +128,7 @@ export function OnboardingModal({ visible, onStart, onFinish }: { visible: boole
           <Dots at={page} />
           <Tap onPress={last ? finish : next} accessibilityRole="button"
             style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
-            <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? 'Allow photos & continue' : 'Continue'}</Text>
+            <Text style={[ui(15, 600), { color: t.bgScreen }]}>{last ? tr('onboarding.allowContinue') : tr('onboarding.continue')}</Text>
           </Tap>
         </View>
         </>}
@@ -141,7 +143,7 @@ const PAGES = 4; // the two slides, then NotifyStep and ProfileStep
 function Dots({ at }: { at: number }) {
   const { t } = useTheme();
   return (
-    <View accessible accessibilityLabel={`Page ${at + 1} of ${PAGES}`} style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
+    <View accessible accessibilityLabel={tr('onboarding.page', { n: at + 1, total: PAGES })} style={{ flexDirection: 'row', gap: 6, marginBottom: 20 }}>
       {Array.from({ length: PAGES }, (_, i) => (
         <View key={i} style={{ height: 6, borderRadius: 3, width: i === at ? 22 : 6, backgroundColor: i === at ? t.ink : t.borderStrong }} />
       ))}
@@ -197,7 +199,7 @@ function NotifyStep({ dots, onDone }: { dots: React.ReactNode; onDone: () => voi
       <Animated.View entering={SlideInRight.duration(320)} style={{ flex: 1 }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 14, paddingBottom: 12 }}>
         <Animated.Text entering={FadeInDown.duration(500)} style={[label(10, 0.14), { color: t.inkMuted, textAlign: 'center', marginBottom: 10 }]}>{caps('Recap')}</Animated.Text>
-        <Animated.Text entering={FadeInDown.delay(80).duration(500)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>Your day at 8 PM, your week on Sunday</Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(80).duration(500)} style={[display(26, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 18 }]}>{tr('onboarding.notifyHeading')}</Animated.Text>
 
         {/* the lock screen the recap lands on */}
         <Animated.View entering={FadeInDown.delay(160).springify().damping(16)}>
@@ -206,18 +208,18 @@ function NotifyStep({ dots, onDone }: { dots: React.ReactNode; onDone: () => voi
               <Text style={[display(44, 1), { color: t.ink }]}>8:00</Text>
               <Text style={[ui(12, 500), { color: t.inkMuted, marginTop: 4 }]}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
             </Animated.View>
-            <Animated.View accessibilityLabel="Notification preview"
+            <Animated.View accessibilityLabel={tr('onboarding.notifPreview')}
               style={[{ backgroundColor: t.bgScreen, borderRadius: 18, borderWidth: 1, borderColor: t.borderSubtle, padding: 12, boxShadow: t.shadowCard }, card]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Animated.View style={ring}>
                   <Image source={require('../../assets/icon.png')} style={{ width: 22, height: 22, borderRadius: 6 }} />
                 </Animated.View>
                 <Text style={[ui(11.5, 600), { color: t.ink }]}>PicDump</Text>
-                <Text style={[ui(11), { color: t.inkMuted }]}>· now</Text>
+                <Text style={[ui(11), { color: t.inkMuted }]}>{tr('onboarding.notifNow')}</Text>
                 <Bell size={13} color={t.inkMuted} strokeWidth={2} style={{ marginLeft: 'auto' }} />
               </View>
-              <Text style={[ui(14, 600), { color: t.ink, marginTop: 8 }]}>Your PicDump is ready 🎞️</Text>
-              <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 2, lineHeight: 17 }]}>{"Today's photos, curated into one dump. Take a look before bed."}</Text>
+              <Text style={[ui(14, 600), { color: t.ink, marginTop: 8 }]}>{tr('onboarding.notifTitle')}</Text>
+              <Text style={[ui(12.5), { color: t.inkMuted, marginTop: 2, lineHeight: 17 }]}>{tr('onboarding.notifBody')}</Text>
               <Animated.View style={[{ borderRadius: 12, overflow: 'hidden', backgroundColor: t.borderStrong, flexDirection: 'row', gap: 3 }, pic]}>
                 {shots.length ? <>
                   <Shot k={k} i={0} uri={shots[0]} flex={1.6} />
@@ -229,7 +231,7 @@ function NotifyStep({ dots, onDone }: { dots: React.ReactNode; onDone: () => voi
         </Animated.View>
 
         <Animated.Text entering={FadeInDown.delay(260).duration(500)} style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginTop: 22 }]}>
-          {"A heads-up at 8 PM when today's dump is ready, and on Sunday at noon with your week."}
+          {tr('onboarding.notifyBody')}
         </Animated.Text>
       </ScrollView>
       </Animated.View>
@@ -239,10 +241,10 @@ function NotifyStep({ dots, onDone }: { dots: React.ReactNode; onDone: () => voi
         <Tap onPress={() => choose(true)} accessibilityRole="button"
           style={{ alignSelf: 'stretch', height: 52, borderRadius: 16, backgroundColor: t.ink, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: t.shadowCard }}>
           <Bell size={16} color={t.bgScreen} strokeWidth={2} />
-          <Text style={[ui(15, 600), { color: t.bgScreen }]}>Turn on</Text>
+          <Text style={[ui(15, 600), { color: t.bgScreen }]}>{tr('onboarding.turnOn')}</Text>
         </Tap>
         <Tap onPress={() => choose(false)} accessibilityRole="button" style={{ height: 36, marginTop: 6, paddingHorizontal: 16, justifyContent: 'center' }}>
-          <Text style={[ui(13, 600), { color: t.inkMuted }]}>Not now</Text>
+          <Text style={[ui(13, 600), { color: t.inkMuted }]}>{tr('onboarding.notNow')}</Text>
         </Tap>
       </View>
     </>
@@ -271,15 +273,15 @@ function SlideBody({ s, active, width }: { s: Slide; active: boolean; width: num
       <View style={{ marginBottom: 14 }}>
         {s.id === 'hook' ? <HookStage active={active} /> : <PrivacyStage active={active} />}
       </View>
-      <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{caps(s.badge)}</Text>
-      <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{s.title}</Text>
-      <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{s.description}</Text>
+      <Text style={[label(10, 0.14), { color: t.inkMuted, marginBottom: 12 }]}>{caps(tr(s.badge))}</Text>
+      <Text style={[display(28, 1.12), { color: t.ink, textAlign: 'center', marginBottom: 12 }]}>{tr(s.title)}</Text>
+      <Text style={[ui(14), { color: t.inkMuted, textAlign: 'center', lineHeight: 21, marginBottom: 22 }]}>{tr(s.description)}</Text>
       {s.points && (
         <FrameCard radius={16} padding={14} style={{ alignSelf: 'stretch', gap: 10 }}>
           {s.points.map((pt) => (
             <View key={pt.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <pt.icon size={15} color={t.ink} strokeWidth={1.75} />
-              <Text style={[ui(12.5, 500), { color: t.ink, flexShrink: 1 }]}>{pt.text}</Text>
+              <Text style={[ui(12.5, 500), { color: t.ink, flexShrink: 1 }]}>{tr(pt.text)}</Text>
             </View>
           ))}
         </FrameCard>
@@ -297,7 +299,7 @@ export function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: 
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <View style={{ flex: 1, backgroundColor: t.bgScreen, experimental_backgroundImage: t.bgGrad ?? undefined, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 }}>
         <View style={{ paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <IconButton label="Close" onPress={onClose}><Icons.close size={16} /></IconButton>
+          <IconButton label={tr('common.close')} onPress={onClose}><Icons.close size={16} /></IconButton>
         </View>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <SlideBody s={SLIDES.find((x) => x.id === 'privacy')!} active={visible} width={width} />

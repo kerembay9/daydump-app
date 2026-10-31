@@ -1,0 +1,158 @@
+{
+  "common": {
+    "close": "Bezárás",
+    "back": "Vissza",
+    "termsOfService": "Felhasználási feltételek",
+    "privacyPolicy": "Adatvédelmi irányelvek"
+  },
+  "tabs": {
+    "discover": "Felfedezés",
+    "create": "Létrehozás",
+    "tidy": "Rendrakás",
+    "library": "Könyvtár"
+  },
+  "onboarding": {
+    "hook": {
+      "badge": "Könnyed fotódumpok",
+      "title": "Varázsolj stílusos dumpokat a galériád káoszából",
+      "description": "Felejtsd el a több ezer kép közötti keresgélést. A PicDump kiválogatja a napjaid és utazásaid legjobb pillanatait, remek ritmusban.",
+      "point1": "Filmes stílusok, keretek és IG / TikTok méretek",
+      "point2": "Kollázs elrendezések egyetlen mozdulattal"
+    },
+    "privacy": {
+      "badge": "Eszközön futó válogatás",
+      "title": "A telefonodon válogat, nem a felhőben",
+      "description": "A fotóválogatás, a keresés és a dumpok készítése a készülékeden zajlik. A PicDump soha nem tölti fel a képeidet a válogatáshoz.",
+      "point1": "A fotók elérésével megtalálja a legemlékezetesebb pillanatokat"
+    },
+    "allowContinue": "Fotók engedélyezése és folytatás",
+    "continue": "Folytatás",
+    "page": "{{n}} / {{total}} oldal",
+    "notifPreview": "Értesítés előnézete",
+    "notifNow": "· most",
+    "notifTitle": "A PicDumpod készen áll 🎞️",
+    "notifBody": "A mai fotóid egyetlen dumpba válogatva. Nézd meg lefekvés előtt!",
+    "notifyHeading": "A napod este 8-kor, a heted vasárnap",
+    "notifyBody": "Jelzünk este 8-kor, amikor elkészül a mai dump, és vasárnap délben a heti összefoglalóval.",
+    "turnOn": "Bekapcsolás",
+    "notNow": "Most nem"
+  },
+  "paywall": {
+    "dumps": {
+      "heading": "Minden dump a fotótáradban.",
+      "sub": "Az ingyenes verzió tartalmazza az összefoglalókat és heti egy dumpot. A Pro mindegyiket megnyitja."
+    },
+    "tidy": {
+      "heading": "Számolj le a felesleggel.",
+      "sub": "Az ingyenes verzió megtalálja a felesleges ismétlődéseket és homályos képeket. A Pro egyetlen koppintással a Lomtárba helyezi őket."
+    },
+    "finish": {
+      "heading": "Őrizd meg az analóg hatást.",
+      "sub": "Az Original, a Warm 35mm és az Adjust ingyenes. A Pro minden filmes stílust és textúrát exportál."
+    },
+    "search": {
+      "heading": "Keress a fotótáradban.",
+      "sub": "Találj meg egy helyet, hónapot vagy dolgot szavak alapján. A keresés a Pro része."
+    },
+    "found": {
+      "heading": {
+        "one": "Találtunk {{count}} dumpot a fotótáradban.",
+        "other": "Találtunk {{count}} dumpot a fotótáradban."
+      },
+      "sub": "{{titles}}. A Pro mindegyiket megnyitja.",
+      "subMore": "{{titles}} és még több. A Pro mindegyiket megnyitja."
+    },
+    "welcome": "Üdvözlünk a PicDump Pro-ban!",
+    "purchaseNotActive": "A vásárlás sikeres volt, de a Pro még nem aktiválódott. Koppints a Vásárlások visszaállítása gombra.",
+    "restored": "Vásárlások visszaállítva. Újra Pro tag vagy!",
+    "noSubscription": "Nem található aktív PicDump Pro előfizetés.",
+    "close": "Paywall bezárása",
+    "feature": {
+      "dumps": {
+        "title": "Minden dump elérhető",
+        "sub": "Minden utazás és történet, amit a Felfedezés talál – nem csak heti egy."
+      },
+      "search": {
+        "title": "Keresés a fotótárban",
+        "sub": "Keress helyeket, hónapokat vagy tárgyakat egyszerű szavakkal."
+      },
+      "looks": {
+        "title": "Minden filmes stílus",
+        "sub": "Cashmere, Soft Film, Sunfade, B&W Roll, valamint szemcsézettség, fakítás és vignetta."
+      },
+      "tidy": {
+        "title": "Töröld a duplikátumokat és felesleget",
+        "sub": "Mozgasd az ismétlődő, homályos fotókat és képernyőképeket a Lomtárba egy lépésben."
+      },
+      "yours": {
+        "title": "A te dumpod, a te stílusod",
+        "sub": "PicDump zárókártya nélkül, és 4–20 fotó dumpolásonként."
+      }
+    },
+    "plansFailed": "Nem sikerült betölteni a csomagokat. Ellenőrizd az internetkapcsolatot, és próbáld újra.",
+    "startTrial": "{{trial}} indítása",
+    "continue": "Folytatás",
+    "restore": "Vásárlások visszaállítása",
+    "trialThen": "A próbaidőszak ingyenes, utána {{price}}. ",
+    "disclosure": "A fizetés az áruházi fiókodra kerül terhelésre. Az előfizetés automatikusan megújul, hacsak nem mondod le legalább 24 órával az aktuális időszak lejárta előtt."
+  },
+  "profile": {
+    "title": "Profil és beállítások",
+    "changePhoto": "Profilkép módosítása",
+    "namePlaceholder": "A neved",
+    "handlePlaceholder": "felhasznalonev",
+    "theme": {
+      "system": "Rendszer",
+      "auto": "Automatikus",
+      "cashmere": "Cashmere",
+      "light": "Világos",
+      "espresso": "Espresso",
+      "dark": "Sötét"
+    },
+    "reindex": {
+      "title": "Újraindexeled a könyvtárat?",
+      "body": "A PicDump ismét átvizsgálja az összes fotót. Ez eltarthat pár percig és merítheti az akkumulátort. A Könyvtárban lévő dumpjaid megmaradnak.",
+      "action": "Újraindexelés"
+    },
+    "dumpPicks": {
+      "title": "Dump beállítások",
+      "photosPerDump": "Fotók száma dumpolásonként",
+      "photosPerDumpSub": "A Felfedezés ebből a tartományból választ képeket, leginkább a középértéket.",
+      "fewest": "Legkevesebb fotó",
+      "to": "–",
+      "most": "Legtöbb fotó",
+      "hideSensitive": "Érzékeny fotók elrejtése",
+      "hideSensitiveSub": "Az iratok, bankkártyák és orvosi leletek sosem kerülnek a dumpokba.",
+      "screenshots": "Képernyőképek engedélyezése",
+      "screenshotsSub": "A képernyőképek bekerülhetnek a dumpokba.",
+      "recap": "Összefoglaló",
+      "recapSub": "A mai dump este 8-kor, a heti összefoglaló vasárnap délben"
+    },
+    "export": {
+      "title": "Exportálás és megosztás",
+      "note": "Az új dumpok az itt megadott mérettel és minőséggel indulnak.",
+      "postSize": "Alapértelmezett posztméret",
+      "quality": "Alapértelmezett exportálási minőség",
+      "hd": "HD (2160 px)",
+      "standard": "Normál (1080 px)",
+      "saveOnPost": "Megosztáskor mentés a galériába is",
+      "saveOnPostSub": "Egy másolatot ment a képekről a PicDump albumba"
+    },
+    "appearance": {
+      "title": "Megjelenés és téma"
+    },
+    "library": {
+      "title": "Fotókönyvtár és keresés",
+      "access": "Hozzáférés",
+      "openSettings": "Beállítások megnyitása"
+    },
+    "about": {
+      "title": "Adatvédelem és infó",
+      "onDevice": "Minden a készülékeden zajlik",
+      "onDeviceSub": "Így válogat fotókat a PicDump feltöltés nélkül",
+      "contact": "Kapcsolat",
+      "noMail": "Nem található levelező app. Írj a következő címre: info@horizonzeta.com",
+      "version": "Verzió"
+    }
+  }
+}
