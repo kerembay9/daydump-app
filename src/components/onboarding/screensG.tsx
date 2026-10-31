@@ -13,9 +13,8 @@ import { tr } from '../../i18n';
 import { Icons } from '../ui/Icons';
 import { Tap } from '../ui/Tap';
 import { Card, Shell } from './Shell';
-import { PrintSpec, PrintStack, SAMPLE } from './Prints';
+import { PrintSpec, PrintStack, usePic } from './Prints';
 import { Nav, Note, RowsCard } from './parts';
-import { useLatestShots } from '../ProfileStep';
 
 /** Phase G · Conversion (screens 28-30): the recap, the paywall, and done. */
 
@@ -60,7 +59,7 @@ export function PaywallScreen({ onPurchased, onFree }: { onPurchased: () => void
   const { answers, set, index, tidy, access } = useOnboardingFlow();
   const app = useApp();
   const { refresh } = usePro();
-  const shots = useLatestShots(3);
+  const pic = usePic();
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -103,8 +102,8 @@ export function PaywallScreen({ onPurchased, onFree }: { onPurchased: () => void
 
   const failed = plans != null && plans.length === 0;
   const prints: PrintSpec[] = [
-    { x: 60, y: 18, w: 84, h: 84, r: -6, bg: shots[0] ?? SAMPLE[5] }, { x: 198, y: 14, w: 84, h: 84, r: 6, bg: shots[1] ?? SAMPLE[6] },
-    { x: 112, y: 4, w: 118, h: 102, r: -1, bg: SAMPLE[0], tape: true, cells: [SAMPLE[4], SAMPLE[2], SAMPLE[1], SAMPLE[6]] },
+    { x: 60, y: 18, w: 84, h: 84, r: -6, bg: pic(0) }, { x: 198, y: 14, w: 84, h: 84, r: 6, bg: pic(1) },
+    { x: 112, y: 4, w: 118, h: 102, r: -1, bg: pic(2), tape: true, cells: [pic(2), pic(3), pic(4), pic(5)] },
   ];
   return (
     <Shell onClose={onFree} busy={purchasing}
@@ -170,11 +169,11 @@ export function PaywallScreen({ onPurchased, onFree }: { onPurchased: () => void
 
 /** 30 · Done: Pro welcome, or the free tier with the first dump waiting at the top of Discover */
 export function DoneScreen({ pro, onOpen }: { pro: boolean; onOpen: () => void }) {
-  const shots = useLatestShots(2);
+  const pic = usePic();
   useEffect(() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}); }, []);
   const prints: PrintSpec[] = [
-    { x: 30, y: 54, w: 128, h: 160, r: -7, bg: shots[0] ?? SAMPLE[5] }, { x: 186, y: 44, w: 128, h: 160, r: 7, bg: shots[1] ?? SAMPLE[6] },
-    { x: 80, y: 24, w: 182, h: 226, r: -1.5, bg: SAMPLE[0], bw: 5, tape: true, cells: [SAMPLE[4], SAMPLE[2], SAMPLE[1], SAMPLE[6]], chip: tr('onboarding.flow.done.today') },
+    { x: 30, y: 54, w: 128, h: 160, r: -7, bg: pic(0) }, { x: 186, y: 44, w: 128, h: 160, r: 7, bg: pic(1) },
+    { x: 80, y: 24, w: 182, h: 226, r: -1.5, bg: pic(2), bw: 5, tape: true, cells: [pic(2), pic(3), pic(4), pic(5)], chip: tr('onboarding.flow.done.today') },
   ];
   return (
     <Shell justify="center" headline={tr(pro ? 'onboarding.flow.done.titlePro' : 'onboarding.flow.done.title')} sub={tr(pro ? 'onboarding.flow.done.subPro' : 'onboarding.flow.done.sub')}

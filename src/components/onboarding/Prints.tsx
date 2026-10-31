@@ -1,11 +1,12 @@
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Platform, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeProvider';
 import { fixed } from '../../theme/tokens';
 import { ui } from '../../theme/type';
 import { Tape } from '../ui/Tape';
+import { useOnboardingFlow } from '../../state/OnboardingFlow';
 
 /** Sample photos for the screens that show no real ones yet (design: PH). Gradients stand in for pictures. */
 export const SAMPLE = [
@@ -33,7 +34,27 @@ export type PrintSpec = {
   cells?: string[];
 };
 
-const isUri = (s: string) => !s.startsWith('linear-gradient');
+export const isUri = (s: string) => !s.startsWith('linear-gradient');
+
+/**
+ * The picture for slot `i` on the screens after the photo question: a real library photo when there are any (slots wrap around the
+ * pool), else the SAMPLE gradient. Screens 1-3 never call this: no access yet, so they keep the gradients.
+ */
+export function usePic(): (i: number) => string {
+  const { photos } = useOnboardingFlow();
+  return (i: number) => (photos.length ? photos[i % photos.length] : SAMPLE[i % SAMPLE.length]);
+}
+
+/** A box filled with a photo uri or a SAMPLE gradient; `filter` (a look) applies to the picture only, so borders stay sharp. */
+export function Pic({ bg, style, filter }: { bg: string; style?: StyleProp<ViewStyle>; filter?: string }) {
+  return (
+    <View style={[{ overflow: 'hidden' }, style]}>
+      <View style={{ flex: 1, filter, experimental_backgroundImage: isUri(bg) ? undefined : bg }}>
+        {isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" /> : null}
+      </View>
+    </View>
+  );
+}
 
 function Fill({ bg }: { bg: string }) {
   return isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" /> : <View style={{ flex: 1, experimental_backgroundImage: bg }} />;

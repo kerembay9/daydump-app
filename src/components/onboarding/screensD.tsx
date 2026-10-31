@@ -10,7 +10,7 @@ import { Slider } from '../edit/Slider';
 import { Tap } from '../ui/Tap';
 import { tr } from '../../i18n';
 import { Shell } from './Shell';
-import { SAMPLE } from './Prints';
+import { Pic, usePic } from './Prints';
 import { ChoiceCard, fitRatio, Label, LOOK_FILTER, matteColor, Nav, Note, Option, pick, PillButton, Pills, SlidePreview } from './parts';
 
 /** Phase D · Your style (screens 13-19): size, shape, layout, look, frame and caption voice; then the recap. */
@@ -18,13 +18,15 @@ import { ChoiceCard, fitRatio, Label, LOOK_FILTER, matteColor, Nav, Note, Option
 const opt = (group: string, id: string) => tr(`onboarding.flow.opt.${group}.${id}`);
 
 // one print of the fan on screen 13: springs in or out as the count changes
-function FanPrint({ i, n, p }: { i: number; n: number; p: { x: number; y: number; r: number } }) {
+function FanPrint({ i, n, p, bg }: { i: number; n: number; p: { x: number; y: number; r: number }; bg: string }) {
   const on = i < n;
   const k = useSharedValue(on ? 1 : 0);
   useEffect(() => { k.value = withSpring(on ? 1 : 0, { damping: 14, stiffness: 160 }); }, [on, k]);
   const st = useAnimatedStyle(() => ({ opacity: k.value, transform: [{ translateY: (1 - k.value) * -50 }, { rotate: `${p.r}deg` }] }));
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: p.x, top: p.y, width: 84, height: 108, borderWidth: 4, borderColor: fixed.printBorder, borderRadius: 8, experimental_backgroundImage: SAMPLE[i % 8] }, st]} />
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: p.x, top: p.y, width: 84, height: 108 }, st]}>
+      <Pic bg={bg} style={{ flex: 1, borderWidth: 4, borderColor: fixed.printBorder, borderRadius: 8 }} />
+    </Animated.View>
   );
 }
 
@@ -32,6 +34,7 @@ function FanPrint({ i, n, p }: { i: number; n: number; p: { x: number; y: number
 export function SizeScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
   const { answers, set } = useOnboardingFlow();
+  const pic = usePic();
   const n = answers.size;
   return (
     <Shell onBack={nav.onBack} progress={nav.progress} eyebrow={tr('onboarding.flow.style.eyebrow')} headline={tr('onboarding.flow.size.title')} sub={tr('onboarding.flow.size.sub')} primary={{ label: tr('common.continue'), onPress: nav.onNext }}>
@@ -39,7 +42,7 @@ export function SizeScreen({ nav }: { nav: Nav }) {
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 342, maxWidth: '100%', height: 190, alignSelf: 'center' }}>
           {Array.from({ length: 20 }, (_, i) => {
             const k = n > 1 ? i / (n - 1) : 0.5;
-            return <FanPrint key={i} i={i} n={n} p={{ x: Math.round(16 + k * 214), y: 20 + Math.round(Math.abs(k - 0.5) * 40), r: Math.round((-9 + k * 18) * 10) / 10 }} />;
+            return <FanPrint key={i} i={i} n={n} bg={pic(i)} p={{ x: Math.round(16 + k * 214), y: 20 + Math.round(Math.abs(k - 0.5) * 40), r: Math.round((-9 + k * 18) * 10) / 10 }} />;
           })}
         </View>
         <Text style={[display(19.5), { color: t.ink, textAlign: 'center' }]}>{tr('onboarding.flow.size.label', { count: n })}</Text>
@@ -94,12 +97,13 @@ export function LayoutScreen({ nav }: { nav: Nav }) {
 export function LookScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
   const { answers, set } = useOnboardingFlow();
+  const pic = usePic();
   const cur = answers.look;
   return (
     <Shell onBack={nav.onBack} progress={nav.progress} eyebrow={tr('onboarding.flow.style.eyebrow')} headline={tr('onboarding.flow.look.title')} sub={tr('onboarding.flow.look.sub')} primary={{ label: tr('common.continue'), onPress: nav.onNext }}>
       <View style={{ gap: 12, marginTop: 4 }}>
         <View style={{ alignItems: 'center', gap: 8 }}>
-          <View style={{ width: 168, height: 210, borderWidth: 5, borderColor: fixed.printBorder, borderRadius: 8, boxShadow: t.shadowPrint, experimental_backgroundImage: SAMPLE[4], filter: LOOK_FILTER[cur] }} />
+          <Pic bg={pic(0)} filter={LOOK_FILTER[cur]} style={{ width: 168, height: 210, borderWidth: 5, borderColor: fixed.printBorder, borderRadius: 8, boxShadow: t.shadowPrint }} />
           <Text style={[display(16.5), { color: t.ink }]}>{opt('look', cur)}</Text>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -108,7 +112,7 @@ export function LookScreen({ nav }: { nav: Nav }) {
             return (
               <Tap key={l} onPress={() => { pick(); set('look', l); }} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${opt('look', l)}${isProLook(l) ? ', Pro' : ''}`} style={{ width: '31%', flexGrow: 1, alignItems: 'center', gap: 6 }}>
                 <View style={{ width: '100%', aspectRatio: 0.85 }}>
-                  <View style={{ flex: 1, borderWidth: 3, borderColor: on ? t.ink : fixed.printBorder, borderRadius: 8, boxShadow: t.shadowPrint, experimental_backgroundImage: SAMPLE[4], filter: LOOK_FILTER[l] }} />
+                  <Pic bg={pic(0)} filter={LOOK_FILTER[l]} style={{ flex: 1, borderWidth: 3, borderColor: on ? t.ink : fixed.printBorder, borderRadius: 8, boxShadow: t.shadowPrint }} />
                   {isProLook(l) ? <View style={{ position: 'absolute', right: 5, top: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: fixed.chipBg }}><Text style={[ui(9, 600), { color: fixed.chipText }]}>Pro</Text></View> : null}
                 </View>
                 <Text style={[ui(11, on ? 700 : 500), { color: t.ink }]}>{opt('look', l)}</Text>

@@ -15,7 +15,7 @@ import { Tap } from '../ui/Tap';
 import { Icons } from '../ui/Icons';
 import { useLatestShots } from '../ProfileStep';
 import { Card, Shell } from './Shell';
-import { PrintSpec, PrintStack, SAMPLE } from './Prints';
+import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
 import { Nav, Note } from './parts';
 
 /** Phase E · Your roll (screens 20-23): the index reading the library, what it found, the clutter, search. Full access only. */
@@ -153,7 +153,8 @@ export function ClutterScreen({ nav }: { nav: Nav }) {
 /** 23 · Search teaser: a sample query and its results; search itself is Pro */
 export function SearchScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
-  const results: [string, string, number][] = [['Aug 3', SAMPLE[4], -2], ['Aug 3', SAMPLE[0], 2], ['Aug 14', SAMPLE[6], -1], ['Aug 21', SAMPLE[2], 3]];
+  const pic = usePic();
+  const results: [string, string, number][] = [['Aug 3', pic(0), -2], ['Aug 3', pic(1), 2], ['Aug 14', pic(2), -1], ['Aug 21', pic(3), 3]];
   const query = tr('onboarding.flow.search.query');
   // the query types itself letter by letter (40 ms), then the results slide in
   const [n, setN] = useState(0);
@@ -172,8 +173,9 @@ export function SearchScreen({ nav }: { nav: Nav }) {
         {n >= query.length ? (
           <Animated.View entering={FadeInDown.duration(350)} style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
             {results.map(([d, bg, r], i) => (
-              <View key={i} style={{ width: 74, height: 92, borderWidth: 3, borderColor: fixed.printBorder, borderRadius: 6, overflow: 'hidden', boxShadow: t.shadowPrint, experimental_backgroundImage: bg, transform: [{ rotate: `${r}deg` }] }}>
-                <View style={{ position: 'absolute', right: 4, bottom: 4, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6, backgroundColor: fixed.chipBg }}><Text style={[ui(9, 600), { color: fixed.chipText }]}>{d}</Text></View>
+              <View key={i} style={{ width: 74, height: 92, transform: [{ rotate: `${r}deg` }] }}>
+                <Pic bg={bg} style={{ flex: 1, borderWidth: 3, borderColor: fixed.printBorder, borderRadius: 6, boxShadow: t.shadowPrint }} />
+                <View style={{ position: 'absolute', right: 7, bottom: 7, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6, backgroundColor: fixed.chipBg }}><Text style={[ui(9, 600), { color: fixed.chipText }]}>{d}</Text></View>
               </View>
             ))}
           </Animated.View>

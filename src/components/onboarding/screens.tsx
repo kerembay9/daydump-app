@@ -6,7 +6,7 @@ import { caps, display, label, ui } from '../../theme/type';
 import { Icons } from '../ui/Icons';
 import { useLatestShots } from '../ProfileStep';
 import { Card, Shell } from './Shell';
-import { PrintSpec, PrintStack, SAMPLE } from './Prints';
+import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
 import { RevenueCatService } from '../../services/revenuecat';
 import { dateSpan, librarySize, type Access } from '../../services/onboardingFlow';
 import type { LibraryStats } from '../../state/OnboardingFlow';
@@ -110,14 +110,15 @@ export function AccessScreen({ onAsk, onBack, busy }: { onAsk: () => void; onBac
 export function LimitedScreen({ access, shared, onSettings, onContinue }: { access: Access | null; shared: number | null; onSettings: () => void; onContinue: () => void }) {
   const { t } = useTheme();
   const limited = access === 'limited';
-  const cells = [SAMPLE[4], SAMPLE[2], SAMPLE[1], SAMPLE[6]];
+  const pic = usePic();
+  const cells = [pic(0), pic(1), pic(2), pic(3)];
   return (
     <Shell headline={tr('onboarding.flow.limited.title')} sub={tr(limited ? 'onboarding.flow.limited.subLimited' : 'onboarding.flow.limited.subNone')}
       primary={{ label: tr('onboarding.flow.limited.openSettings'), onPress: onSettings }}
       secondary={{ label: tr(limited ? 'onboarding.flow.limited.continueSelected' : 'onboarding.flow.limited.continueWithout'), onPress: onContinue }}>
       <Card style={{ marginTop: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View style={{ width: 84, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-          {cells.map((bg, i) => <View key={i} style={{ width: 40, height: 40, borderRadius: 4, experimental_backgroundImage: bg, opacity: limited ? 1 : 0.25 }} />)}
+          {cells.map((bg, i) => <Pic key={i} bg={bg} style={{ width: 40, height: 40, borderRadius: 4, opacity: limited ? 1 : 0.25 }} />)}
         </View>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={[ui(13, 600), { color: t.ink }]}>{limited && shared != null ? tr('onboarding.flow.limited.sharedTitle', { count: shared.toLocaleString(getLocale()) }) : tr('onboarding.flow.limited.noneTitle')}</Text>

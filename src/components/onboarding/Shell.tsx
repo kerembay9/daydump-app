@@ -1,5 +1,5 @@
-import React from 'react';
-import { I18nManager, ScrollView, StyleProp, Text, View, ViewStyle } from 'react-native';
+import React, { useState } from 'react';
+import { I18nManager, LayoutChangeEvent, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -50,6 +50,11 @@ export function Shell({ onBack, onClose, progress, eyebrow, headline, sub, justi
   const kb = useAnimatedKeyboard();
   const base = Math.max(insets.bottom, 8);
   const lift = useAnimatedStyle(() => ({ paddingBottom: base + Math.max(0, kb.height.value - insets.bottom) }));
+  // the page never scrolls: if the content is taller than the space between the header and the buttons, it shrinks to fit
+  const [room, setRoom] = useState(0), [need, setNeed] = useState(0);
+  const scale = room > 0 && need > room ? room / need : 1;
+  const onRoom = (e: LayoutChangeEvent) => setRoom(e.nativeEvent.layout.height);
+  const onNeed = (e: LayoutChangeEvent) => setNeed(e.nativeEvent.layout.height);
   const press = (a: Action, impact: boolean) => () => {
     if (busy || a.disabled) return;
     if (impact) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -80,13 +85,15 @@ export function Shell({ onBack, onClose, progress, eyebrow, headline, sub, justi
         </View>
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 12, justifyContent: justify }} showsVerticalScrollIndicator={false}>
-        {above}
-        {eyebrow ? <Text style={[label(10, 0.14), { color: t.inkMuted }]}>{caps(eyebrow)}</Text> : null}
-        <Animated.Text entering={FadeInDown.duration(450)} accessibilityRole="header" style={[display(headlineSize(headline), 1.08), { color: t.ink }]}>{headline}</Animated.Text>
-        {sub ? <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginTop: -4 }]}>{sub}</Text> : null}
-        {children}
-      </ScrollView>
+      <View onLayout={onRoom} style={{ flex: 1, overflow: 'hidden', justifyContent: justify }}>
+        <View onLayout={onNeed} style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 12, transformOrigin: 'top center', transform: [{ scale }] }}>
+          {above}
+          {eyebrow ? <Text style={[label(10, 0.14), { color: t.inkMuted }]}>{caps(eyebrow)}</Text> : null}
+          <Animated.Text entering={FadeInDown.duration(450)} accessibilityRole="header" style={[display(headlineSize(headline), 1.08), { color: t.ink }]}>{headline}</Animated.Text>
+          {sub ? <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, marginTop: -4 }]}>{sub}</Text> : null}
+          {children}
+        </View>
+      </View>
 
       <View style={{ paddingHorizontal: 24, paddingTop: 10, gap: 6 }}>
         {leadIn ? <Text style={[ui(12), { color: t.inkMuted, lineHeight: 17, textAlign: 'center', marginBottom: 6 }]}>{leadIn}</Text> : null}

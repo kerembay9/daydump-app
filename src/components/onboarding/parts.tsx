@@ -10,7 +10,7 @@ import { tr } from '../../i18n';
 import { Icons } from '../ui/Icons';
 import { Tap } from '../ui/Tap';
 import { Tape } from '../ui/Tape';
-import { SAMPLE } from './Prints';
+import { Pic, usePic } from './Prints';
 
 /** What every onboarding screen gets from its route: the next and back actions and the progress (undefined = bar hidden). */
 export type Nav = { onNext: () => void; onBack?: () => void; progress?: number };
@@ -38,7 +38,7 @@ export function ChoiceCard({ o, on, onPress, radio = true }: { o: Option; on: bo
       style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: t.bgCard, borderWidth: 1.5, borderColor: on ? t.ink : t.borderSubtle, borderRadius: 16, boxShadow: t.shadowCard }}>
       {o.thumb ? (
         <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: o.thumb.w, height: o.thumb.h, borderWidth: 2, borderColor: fixed.printBorder, borderRadius: 4, boxShadow: t.shadowPrint, experimental_backgroundImage: o.thumb.bg, transform: [{ rotate: `${o.thumb.r}deg` }] }} />
+          <Pic bg={o.thumb.bg} style={{ width: o.thumb.w, height: o.thumb.h, borderWidth: 2, borderColor: fixed.printBorder, borderRadius: 4, boxShadow: t.shadowPrint, transform: [{ rotate: `${o.thumb.r}deg` }] }} />
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 4 }}>
@@ -105,11 +105,13 @@ export function fitRatio(ratio: string, maxW: number, maxH: number): { w: number
  * A slide as the user is shaping it: ratio, layout, frame and look on four sample photos (design: Slide preview).
  * The size morphs over 450 ms when the shape changes; hold shows the originals (no look) with an "Original" chip.
  */
-export function SlidePreview({ ratio, layout, fit, matte, look, maxW, maxH, boxH, rot = 0, tape, chip, coach, hold, onHold, photos = [SAMPLE[4], SAMPLE[2], SAMPLE[1], SAMPLE[6]], label }: {
+export function SlidePreview({ ratio, layout, fit, matte, look, maxW, maxH, boxH, rot = 0, tape, chip, coach, hold, onHold, photos: given, label }: {
   ratio: string; layout: string; fit: string; matte: string; look: string; maxW: number; maxH: number; boxH: number; rot?: number; tape?: boolean;
   chip?: string; coach?: string; hold?: boolean; onHold?: (on: boolean) => void; photos?: string[]; label?: string;
 }) {
   const { t } = useTheme();
+  const pic = usePic();
+  const photos = given ?? [pic(0), pic(1), pic(2), pic(3)];
   const { w, h } = fitRatio(ratio, maxW, maxH);
   const sw = useSharedValue(w), sh = useSharedValue(h);
   useEffect(() => {
