@@ -3,10 +3,11 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { GalleryService, isCameraPhoto } from '../services/galleryService';
+import { poolFromLibrary, poolFromStories } from '../services/onboardingPhotos';
 import { tidySupported } from '../services/tidy/scan';
 import { ClipEmbedder } from '../../modules/clip-embedder';
 import { type Access, type Answers, progressOf, setAnswer, START, toggleAnswer } from '../services/onboardingFlow';
-import { useApp } from './AppState';
+import { useApp, useProgress } from './AppState';
 import { useSelfiePick } from '../components/SelfieFinder';
 
 /** What screen 5 shows about the library: how many photos, and the first and last date. */
@@ -52,8 +53,12 @@ export const useOnboardingFlow = (): Flow => {
 const toAccess = (p: { granted: boolean; limited: boolean }): Access => (p.limited ? 'limited' : p.granted ? 'full' : 'denied');
 
 const POOL = 12;
+const NO_PHOTOS: string[] = [];
 
-/** A dozen camera photos spread over the newest couple of hundred, so the prints don't all show the same minute. */
+/**
+ * The first pool, before the index has read anything: a dozen camera photos spread over the newest couple of hundred. Metadata is all there
+ * is to go by, so a hand or a page of notes can be in it; the pool is replaced by tag-rated photos as the index fills (below).
+ */
 async function readPhotos(): Promise<string[]> {
   const { assets } = await MediaLibrary.getAssetsAsync({ mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]], first: 240 });
   const all = GalleryService.pruneAndCleanAssets(assets);
@@ -93,12 +98,29 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
   const app = useApp();
   const [access, setAccess] = useState<Access | null>(null);
   const [stats, setStats] = useState<LibraryStats | null>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [firstPhotos, setFirstPhotos] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Answers>(START);
   const selfie = useSelfiePick(access === 'full');
   const [editing, setEditing] = useState(false);
   const [purchased, setPurchased] = useState(false);
   const [progress, setProgress] = useState(0);
+  // The pool gets better as the index fills: the covers of Discover's best stories once there are enough, until then the best tag-rated
+  // photos read so far. Until one of those exists the prints show the sample gradients: the metadata pick (firstPhotos) can't tell a hand
+  // or a page of notes from a good photo, so it is only used where nothing better will come (no on-device index, or the index has finished
+  // and found too few photos worth showing). Once it is the stories' it stays put, so the prints don't change under the screens.
+  const { stories, library } = app;
+  const { progress: reading } = useProgress();
+  const nothingBetter = !ClipEmbedder || (!!library?.photos.length && !reading);
+  const better = useMemo(() => {
+    if (!access || access === 'denied') return { pool: [] as string[], final: false };
+    const fromStories = poolFromStories(stories, POOL);
+    if (fromStories.length >= 8) return { pool: fromStories, final: true };
+    const fromLibrary = library?.hasClip ? poolFromLibrary(library.photos, library.conceptNames.length, POOL) : [];
+    return { pool: fromLibrary.length >= 6 ? fromLibrary : [], final: false };
+  }, [access, stories, library]);
+  const [settled, setSettled] = useState<string[] | null>(null);
+  if (!settled && better.final) setSettled(better.pool);
+  const photos = settled ?? (better.pool.length ? better.pool : nothingBetter ? firstPhotos : NO_PHOTOS);
   const set = useCallback(<K extends keyof Answers>(key: K, value: Answers[K]) => setAnswers((a) => setAnswer(a, key, value)), []);
   const toggle = useCallback((key: 'topics' | 'pains', id: string) => setAnswers((a) => ({ ...a, [key]: toggleAnswer(a[key], id) })), []);
   const reach = useCallback((step: string) => setProgress((p) => Math.max(p, progressOf(step))), []);
@@ -131,7 +153,7 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
     if (!access || access === 'denied') return;
     let live = true;
     readStats().then((s) => { if (live) setStats(s); }, (e) => console.warn('[onboarding] library stats failed:', e));
-    readPhotos().then((p) => { if (live) setPhotos(p); }, (e) => console.warn('[onboarding] library photos failed:', e));
+    readPhotos().then((p) => { if (live) setFirstPhotos(p); }, (e) => console.warn('[onboarding] library photos failed:', e));
     return () => { live = false; };
   }, [access]);
 

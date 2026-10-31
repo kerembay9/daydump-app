@@ -4,7 +4,6 @@ import Check from 'lucide-react-native/icons/check';
 import { useTheme } from '../../theme/ThemeProvider';
 import { caps, display, label, ui } from '../../theme/type';
 import { Icons } from '../ui/Icons';
-import { useLatestShots } from '../ProfileStep';
 import { Card, Shell } from './Shell';
 import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
 import { RevenueCatService } from '../../services/revenuecat';
@@ -132,8 +131,7 @@ export function LimitedScreen({ access, shared, onSettings, onContinue }: { acce
 /** 5 · Library count, from the photos the OS let us see */
 export function LibraryScreen({ access, stats, onNext }: { access: Access | null; stats: LibraryStats | null; onNext: () => void }) {
   const { t } = useTheme();
-  const shots = useLatestShots(3);
-  const pick = (i: number) => shots[i] ?? SAMPLE[[1, 2, 4][i]];
+  const pick = usePic();
   const prints: PrintSpec[] = [
     { x: 90, y: 28, w: 96, h: 118, r: -7, bg: pick(0) },
     { x: 156, y: 24, w: 96, h: 118, r: 6, bg: pick(1) },

@@ -14,11 +14,11 @@ import { useApp } from '../../state/AppState';
 import { useOnboardingFlow } from '../../state/OnboardingFlow';
 import { tr } from '../../i18n';
 import { FaceCircle } from '../FaceCircle';
-import { saveAvatar, useLatestShots } from '../ProfileStep';
+import { saveAvatar } from '../ProfileStep';
 import { Icons } from '../ui/Icons';
 import { Tap } from '../ui/Tap';
 import { Card, Shell } from './Shell';
-import { SAMPLE } from './Prints';
+import { Pic, usePic } from './Prints';
 import { Label, Nav, Note, PillButton, Pills, pick, SlidePreview } from './parts';
 
 /** Phase F · Make it yours (screens 24-27): selfie, name, reminders, and the first dump. */
@@ -66,7 +66,7 @@ export function SelfieScreen({ nav }: { nav: Nav }) {
 export function NameScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
   const { answers, set } = useOnboardingFlow();
-  const shots = useLatestShots(3);
+  const pic = usePic();
   const name = answers.name.trim();
   const go = () => {
     // saved now, so Home and the previews have it from the start
@@ -87,9 +87,7 @@ export function NameScreen({ nav }: { nav: Nav }) {
           </View>
           <View style={{ flexDirection: 'row', gap: 4 }}>
             {[0, 1, 2].map((i) => (
-              <View key={i} style={{ width: 38, height: 52, borderRadius: 4, overflow: 'hidden', borderWidth: 2, borderColor: fixed.printBorder, experimental_backgroundImage: shots[i] ? undefined : SAMPLE[[4, 2, 1][i]], transform: [{ rotate: `${[-3, 2, -2][i]}deg` }] }}>
-                {shots[i] ? <Image source={{ uri: shots[i] }} style={{ flex: 1 }} contentFit="cover" /> : null}
-              </View>
+              <Pic key={i} bg={pic(i)} style={{ width: 38, height: 52, borderRadius: 4, borderWidth: 2, borderColor: fixed.printBorder, transform: [{ rotate: `${[-3, 2, -2][i]}deg` }] }} />
             ))}
           </View>
         </Card>

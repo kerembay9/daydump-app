@@ -50,14 +50,14 @@ export function Pic({ bg, style, filter }: { bg: string; style?: StyleProp<ViewS
   return (
     <View style={[{ overflow: 'hidden' }, style]}>
       <View style={{ flex: 1, filter, experimental_backgroundImage: isUri(bg) ? undefined : bg }}>
-        {isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" /> : null}
+        {isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" transition={250} /> : null}
       </View>
     </View>
   );
 }
 
 function Fill({ bg }: { bg: string }) {
-  return isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" /> : <View style={{ flex: 1, experimental_backgroundImage: bg }} />;
+  return isUri(bg) ? <Image source={{ uri: bg }} style={{ flex: 1 }} contentFit="cover" transition={250} /> : <View style={{ flex: 1, experimental_backgroundImage: bg }} />;
 }
 
 /** The drop: a small spring, 60 ms stagger by index, the tape last (design: Prints). */

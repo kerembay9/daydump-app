@@ -13,9 +13,8 @@ import { Print } from '../ui/Print';
 import { Tape } from '../ui/Tape';
 import { Tap } from '../ui/Tap';
 import { Icons } from '../ui/Icons';
-import { useLatestShots } from '../ProfileStep';
 import { Card, Shell } from './Shell';
-import { Pic, PrintSpec, PrintStack, SAMPLE, usePic } from './Prints';
+import { Pic, PrintSpec, PrintStack, usePic } from './Prints';
 import { Nav, Note } from './parts';
 
 /** Phase E · Your roll (screens 20-23): the index reading the library, what it found, the clutter, search. Full access only. */
@@ -28,7 +27,7 @@ export function FindingScreen({ nav }: { nav: Nav }) {
   const { t } = useTheme();
   const app = useApp();
   const { progress } = useProgress();
-  const shots = useLatestShots(6);
+  const pic = usePic();
   const total = progress?.total ?? app.paused?.total ?? app.library?.photos.length ?? 0;
   const done = progress ? progress.done : app.paused ? app.paused.done : total;
   const paused = !!app.paused && !progress;
@@ -46,7 +45,7 @@ export function FindingScreen({ nav }: { nav: Nav }) {
 
   const shown = finished ? 6 : Math.max(1, Math.round((total ? done / total : 0) * 6));
   const spots: [number, number, number][] = [[10, 20, -5], [122, 8, 3], [232, 24, -2], [22, 128, 4], [132, 118, -4], [236, 132, 6]];
-  const prints: PrintSpec[] = spots.slice(0, shown).map(([x, y, r], i) => ({ x, y, w: 94, h: 110, r, bg: shots[i] ?? SAMPLE[[4, 1, 2, 6, 0, 3][i]] }));
+  const prints: PrintSpec[] = spots.slice(0, shown).map(([x, y, r], i) => ({ x, y, w: 94, h: 110, r, bg: pic(i) }));
   const main = paused ? tr('onboarding.flow.finding.paused', { done: fmt(done), total: fmt(total) })
     : finished ? tr('onboarding.flow.finding.read', { total: fmt(total) })
     : tr('onboarding.flow.finding.reading', { done: fmt(done), total: fmt(total) });
