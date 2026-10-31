@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { I18nManager, LayoutChangeEvent, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -44,7 +44,8 @@ export function Shell({ onBack, onClose, progress, eyebrow, headline, sub, justi
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const fill = useSharedValue(progress ?? 0);
-  fill.value = withTiming(progress ?? 0, { duration: 500, easing: Easing.bezier(0.4, 0, 0.2, 1) });
+  // not in render: a write there logs a Reanimated warning on every re-render (the size slider re-renders its screen on each step)
+  useEffect(() => { fill.value = withTiming(progress ?? 0, { duration: 500, easing: Easing.bezier(0.4, 0, 0.2, 1) }); }, [progress, fill]);
   const bar = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
   // the keyboard lifts the whole screen, the buttons with it (screen 25's name field)
   const kb = useAnimatedKeyboard();

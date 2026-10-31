@@ -105,8 +105,8 @@ type ClipEmbedderModule = {
   tidyStats?(ids: string[], side: number, faces: boolean): Promise<(TidyStats | null)[]>;
   /** SHA-1 of each file's first 64 KB; null = unreadable. */
   tidyHash?(ids: string[]): Promise<(string | null)[]>;
-  /** Same-shot sets over photos in time order (vecs n x 512, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
-  tidySets?(vecs: Float32Array, times: number[], strict: boolean[]): Promise<number[]>;
+  /** Same-shot sets over photos in time order (vecs: n x 512 little-endian floats as base64, zero row = none; strict: a document or screen) -> set number per photo, -1 = none. */
+  tidySets?(vecs: string, times: number[], strict: boolean[]): Promise<number[]>;
   /** Ids still in MediaStore, Trash included; expires = when Trash empties it (ms, 0 = not trashed). A missing id is gone for good. */
   trashState?(ids: string[]): Promise<Record<string, { trashed: boolean; expires: number }>>;
   /** Android's own Move to Trash (trashed) or Restore dialog for MediaStore ids; true = the user allowed it. Never deletes. */

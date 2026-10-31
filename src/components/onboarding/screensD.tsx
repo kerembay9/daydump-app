@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeProvider';
 import { fixed } from '../../theme/tokens';
 import { display, ui } from '../../theme/type';
@@ -17,18 +17,33 @@ import { ChoiceCard, fitRatio, Label, LOOK_FILTER, matteColor, Nav, Note, Option
 
 const opt = (group: string, id: string) => tr(`onboarding.flow.opt.${group}.${id}`);
 
-// one print of the fan on screen 13: springs in or out as the count changes
-function FanPrint({ i, n, p, bg }: { i: number; n: number; p: { x: number; y: number; r: number }; bg: string }) {
-  const on = i < n;
+// One print of the fan on screen 13: springs in or out as the count changes, and slides to its place on the UI thread (transforms, not
+// left/top: moving 20 photo views through layout on every slider step was what made the slider lag). Memoised on plain props, so a step
+// only re-renders the prints that moved; the ones not shown keep a fixed spot and are skipped.
+const FanPrint = React.memo(function FanPrint({ on, x, y, r, bg }: { on: boolean; x: number; y: number; r: number; bg: string }) {
   const k = useSharedValue(on ? 1 : 0);
+  const px = useSharedValue(x), py = useSharedValue(y), pr = useSharedValue(r);
+  const shown = React.useRef(on);
   useEffect(() => { k.value = withSpring(on ? 1 : 0, { damping: 14, stiffness: 160 }); }, [on, k]);
-  const st = useAnimatedStyle(() => ({ opacity: k.value, transform: [{ translateY: (1 - k.value) * -50 }, { rotate: `${p.r}deg` }] }));
+  useEffect(() => {
+    // a print that was away appears at its place; the ones on screen glide there
+    if (shown.current && on) { const cfg = { duration: 160 }; px.value = withTiming(x, cfg); py.value = withTiming(y, cfg); pr.value = withTiming(r, cfg); }
+    else { px.value = x; py.value = y; pr.value = r; }
+    shown.current = on;
+  }, [on, x, y, r, px, py, pr]);
+  const st = useAnimatedStyle(() => ({ opacity: k.value, transform: [{ translateX: px.value }, { translateY: py.value + (1 - k.value) * -50 }, { rotate: `${pr.value}deg` }] }));
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: p.x, top: p.y, width: 84, height: 108 }, st]}>
+    <Animated.View pointerEvents="none" renderToHardwareTextureAndroid style={[{ position: 'absolute', left: 0, top: 0, width: 84, height: 108 }, st]}>
       <Pic bg={bg} style={{ flex: 1, borderWidth: 4, borderColor: fixed.printBorder, borderRadius: 8 }} />
     </Animated.View>
   );
-}
+});
+
+// where print i of n sits in the fan; the prints beyond n wait at the end of it
+const fan = (i: number, n: number) => {
+  const k = i >= n ? 1 : n > 1 ? i / (n - 1) : 0.5;
+  return { x: Math.round(16 + k * 214), y: 20 + Math.round(Math.abs(k - 0.5) * 40), r: Math.round((-9 + k * 18) * 10) / 10 };
+};
 
 /** 13 · How many photos per dump? A fan of prints that grows and shrinks with the slider */
 export function SizeScreen({ nav }: { nav: Nav }) {
@@ -41,8 +56,8 @@ export function SizeScreen({ nav }: { nav: Nav }) {
       <View style={{ gap: 12, marginTop: 8 }}>
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 342, maxWidth: '100%', height: 190, alignSelf: 'center' }}>
           {Array.from({ length: 20 }, (_, i) => {
-            const k = n > 1 ? i / (n - 1) : 0.5;
-            return <FanPrint key={i} i={i} n={n} bg={pic(i)} p={{ x: Math.round(16 + k * 214), y: 20 + Math.round(Math.abs(k - 0.5) * 40), r: Math.round((-9 + k * 18) * 10) / 10 }} />;
+            const { x, y, r } = fan(i, n);
+            return <FanPrint key={i} on={i < n} x={x} y={y} r={r} bg={pic(i)} />;
           })}
         </View>
         <Text style={[display(19.5), { color: t.ink, textAlign: 'center' }]}>{tr('onboarding.flow.size.label', { count: n })}</Text>

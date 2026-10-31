@@ -246,9 +246,12 @@ class ClipEmbedderModule : Module() {
       }
     }
     AsyncFunction("tidyHash") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { ids.map { headHash(ctx, it) } } }
-    AsyncFunction("tidySets") { vecs: expo.modules.kotlin.typedarray.Float32Array, times: List<Double>, strict: List<Boolean> ->
-      val v = FloatArray(vecs.length)
-      vecs.toDirectBuffer().order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(v)
+    // The vectors come as base64 (like topConcepts): a Float32Array argument is read lazily on this queue's thread, off the JS thread, and
+    // reading a Hermes object there crashed the app (SIGSEGV in JavaScriptTypedArray.length).
+    AsyncFunction("tidySets") { vecsB64: String, times: List<Double>, strict: List<Boolean> ->
+      val bytes = Base64.decode(vecsB64, Base64.NO_WRAP)
+      val v = FloatArray(bytes.size / 4)
+      java.nio.ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(v)
       tidySets(v, times.toDoubleArray(), strict.toBooleanArray())
     }
     AsyncFunction("trashState") Coroutine { ids: List<String> -> withContext(Dispatchers.IO) { trashState(ctx, ids) } }

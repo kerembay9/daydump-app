@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { GalleryService, isCameraPhoto } from '../services/galleryService';
 import { tidySupported } from '../services/tidy/scan';
@@ -74,6 +76,18 @@ async function readStats(): Promise<LibraryStats | null> {
   return { count: newest.totalCount, oldest: first, newest: latest };
 }
 
+/**
+ * Draws the photo pool once, invisible, at the size of the fan's prints on screen 13 (84 x 108): the decoded bitmaps are in the image cache
+ * before that screen mounts 20 views over them, so its first frame and the first slider drags don't wait on decoding.
+ */
+function Warm({ photos }: { photos: string[] }) {
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: 84, height: 108, opacity: 0 }}>
+      {photos.map((uri) => <Image key={uri} source={{ uri }} style={{ position: 'absolute', width: 84, height: 108 }} contentFit="cover" />)}
+    </View>
+  );
+}
+
 /** Answers kept across the onboarding screens; mounted by the route group, so a restart (Developer tools) starts clean. */
 export function OnboardingFlowProvider({ children }: { children: React.ReactNode }) {
   const app = useApp();
@@ -123,5 +137,5 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
 
   const value = useMemo(() => ({ access, stats, photos, ask, recheck, answers, set, toggle, index: !!ClipEmbedder, tidy: tidySupported(), selfie, purchased, setPurchased, editing, setEditing, progress, reach }),
     [access, stats, photos, ask, recheck, answers, set, toggle, selfie, purchased, editing, progress, reach]);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={value}>{children}{photos.length ? <Warm photos={photos} /> : null}</Ctx.Provider>;
 }
